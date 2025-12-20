@@ -27,6 +27,19 @@ const LESSON_STEPS_CIRCUIT = {
     {
       id: "circuit-1",
       title: "Step 1: Materials & OLED Wiring (Power + I²C)",
+
+      imageGrid: {
+  columns: 3,
+  rows: 2,
+  items: [
+    { label: "Arduino UNO (or Nano)", image: require("../../../assets/circuit/arduino_uno.png") },
+    { label: "SSD1306 OLED",         image: require("../../../assets/circuit/ssd1306_oled.png") },
+    { label: "Push Buttons ×3",      image: require("../../../assets/circuit/pushbuttons.png") },
+    { label: "Breadboard",           image: require("../../../assets/circuit/breadboard.jpg") },
+    { label: "Jumper Wires",         image: require("../../../assets/circuit/jumper_wires.jpg") },
+  ],
+},
+
       descAfterCircuit: processDesc(`
 Gather these parts first:
 
@@ -56,7 +69,7 @@ Once this is wired, your OLED has power + data connection.
 
   2: [
     {
-      id: "circuit-2",
+            id: "circuit-2",
       title: "Step 2: Install OLED Libraries",
       desc: processDesc(`
 We’ll use the Adafruit SSD1306 + GFX drivers.
@@ -66,15 +79,19 @@ Install the display libraries:
 @Search and install "Adafruit SSD1306"
 @Search and install "Adafruit GFX Library"
 @Restart IDE if examples do not appear
+      `),
 
+      circuitImage: {
+        image: require("../../../assets/circuit/adafruitssd1306.png"),
+        
+      },
+
+      descAfterCircuit: processDesc(`
 Common Issues:
 @“SSD1306 allocation failed” → wrong display size example
 @Blank screen → wrong SDA/SCL wiring or incorrect address (0x3C/0x3D)
 @Upload stalls → reset Arduino and try again
       `),
-      circuitImage: {
-        uri: "https://dummyimage.com/1200x700/ddd/000.png&text=Arduino+IDE+Library+Manager",
-      },
     },
   ],
 
