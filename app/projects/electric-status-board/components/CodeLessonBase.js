@@ -10,7 +10,8 @@ import {
   TouchableOpacity,
   Platform,
   TextInput,
-  ActivityIndicator
+  ActivityIndicator,
+  Image
 } from "react-native";
 import { Stack, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
@@ -21,11 +22,8 @@ import SplitView from "./SplitView";
 import ArduinoEditor from "./ArduinoEditor";
 import CircuitEditor from "./circuitEditor";
 import useEditorToggle from "../hooks/useEditorToggle";
-import { Image } from "react-native";
-
 
 /* ---------------- LESSON DATA: steps per lesson ---------------- */
-
 
 const getTotalLessons = (stepsObj) => Object.keys(stepsObj || {}).length;
 
@@ -945,11 +943,40 @@ const checkBlanks = async () => {
           </View>
         )}
 
+        {step.imageGrid && Array.isArray(step.imageGrid.items) ? (
+          <View style={styles.imageGridWrap}>
+            <View style={styles.imageGrid}>
+              {step.imageGrid.items.map((it, idx) => (
+                <View
+                  key={`ig-${idx}`}
+                  style={[
+                    styles.imageGridItem,
+                    { width: `${Math.floor(100 / (step.imageGrid.columns || 3))}%` },
+                  ]}
+                >
+                  <View style={styles.imageGridImgWrap}>
+                    <Image
+                      source={typeof it.image === "string" ? { uri: it.image } : it.image}
+                      style={styles.imageGridImg}
+                      resizeMode="contain"
+                    />
+                  </View>
+                  {!!it.label ? (
+                    <Text style={styles.imageGridLabel}>{it.label}</Text>
+                  ) : null}
+                </View>
+              ))}
+            </View>
+          </View>
+        ) : null}
+
         {step.descAfterCircuit ? (
           <View style={styles.stepDescBlock}>
             {renderWithInlineCode(step.descAfterCircuit)}
           </View>
         ) : null}
+
+
 
         {/* ---- Code blocks ---- */}
         {Array.isArray(step.codes) && step.codes.length > 0 ? (
@@ -2524,5 +2551,47 @@ codeCommentCol: {
   flexShrink: 0,         // don't shrink into wrapping
 },
 
+/* ---------- Generic Configurable Image Grid ---------- */
 
+  imageGridBlock: { marginTop: 10 },
+
+  // row wrap container
+  imageGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "flex-start",
+  },
+
+  // each grid item (JSX also sets inline width based on columns)
+  imageGridItem: {
+    padding: 8,
+    marginBottom: 12,
+    alignItems: "center",
+  },
+
+  // image wrapper keeps consistent aspect ratio so all images match size
+  imageGridImgWrap: {
+    width: "100%",
+    aspectRatio: 1.6,     // tweak to taste (wider vs taller)
+    borderRadius: 8,
+    overflow: "hidden",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#fff",
+  },
+
+  // actual image fills the wrapper
+  imageGridImg: {
+    width: "100%",
+    height: "100%",
+  },
+
+  imageGridLabel: {
+    paddingTop: 8,
+    paddingBottom: 4,
+    fontSize: 13.5,
+    fontWeight: "600",
+    color: "#222",
+    textAlign: "center",
+  },
 });
