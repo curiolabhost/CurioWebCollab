@@ -27,6 +27,19 @@ const LESSON_STEPS_CIRCUIT = {
     {
       id: "circuit-1",
       title: "Step 1: Materials & OLED Wiring (Power + I²C)",
+
+      imageGrid: {
+  columns: 3,
+  rows: 2,
+  items: [
+    { label: "Arduino UNO (or Nano)", image: require("../../../assets/circuit/arduino_uno.png") },
+    { label: "SSD1306 OLED",         image: require("../../../assets/circuit/ssd1306_oled.png") },
+    { label: "Push Buttons ×3",      image: require("../../../assets/circuit/pushbuttons.png") },
+    { label: "Breadboard",           image: require("../../../assets/circuit/breadboard.jpg") },
+    { label: "Jumper Wires",         image: require("../../../assets/circuit/jumper_wires.jpg") },
+  ],
+},
+
       descAfterCircuit: processDesc(`
 Gather these parts first:
 
