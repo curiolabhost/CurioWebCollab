@@ -85,7 +85,7 @@ Install the display libraries:
         image: require("../../../assets/circuit/adafruitssd1306.png"),
         
       },
-
+      
       descAfterCircuit: processDesc(`
 Common Issues:
 @“SSD1306 allocation failed” → wrong display size example
