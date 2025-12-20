@@ -13,8 +13,8 @@ const LESSON_STEPS_ADVANCED = {
       hint: `Adafruit_GFX provides drawing; Adafruit_SSD1306 is the OLED driver.`,
       code: `^^#include <Wire.h>
 #include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
-(ADD CLOCK MODULE HERE - ANUSHKA)
+#include <Adafruit_SSD1306.h> 
+(ADD CLOCK MODULE HERE - ANUSHKA)     
 ^^
 void setup(){
 }
