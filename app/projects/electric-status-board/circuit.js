@@ -69,7 +69,7 @@ Once this is wired, your OLED has power + data connection.
 
   2: [
     {
-      id: "circuit-2",
+            id: "circuit-2",
       title: "Step 2: Install OLED Libraries",
       desc: processDesc(`
 We’ll use the Adafruit SSD1306 + GFX drivers.
@@ -79,15 +79,19 @@ Install the display libraries:
 @Search and install "Adafruit SSD1306"
 @Search and install "Adafruit GFX Library"
 @Restart IDE if examples do not appear
+      `),
 
+      circuitImage: {
+        image: require("../../../assets/circuit/adafruitssd1306.png"),
+        
+      },
+
+      descAfterCircuit: processDesc(`
 Common Issues:
 @“SSD1306 allocation failed” → wrong display size example
 @Blank screen → wrong SDA/SCL wiring or incorrect address (0x3C/0x3D)
 @Upload stalls → reset Arduino and try again
       `),
-      circuitImage: {
-        uri: "https://dummyimage.com/1200x700/ddd/000.png&text=Arduino+IDE+Library+Manager",
-      },
     },
   ],
 

@@ -932,6 +932,7 @@ const checkBlanks = async () => {
           </View>
         ) : null}
 
+
         {step.gif && (
           <View style={styles.gifCard}>
             <Image
@@ -975,8 +976,6 @@ const checkBlanks = async () => {
             {renderWithInlineCode(step.descAfterCircuit)}
           </View>
         ) : null}
-
-
 
         {/* ---- Code blocks ---- */}
         {Array.isArray(step.codes) && step.codes.length > 0 ? (
@@ -1380,9 +1379,16 @@ const checkBlanks = async () => {
         {step.circuitImage && (
           <View style={styles.gifCard}>
             <Image
-              source={step.circuitImage}
+                 source={
+                // support: "string" (uri), { uri: "..." }, { image: require(...) }, or direct require(...)
+                typeof step.circuitImage === "string"
+                  ? { uri: step.circuitImage }
+                  : step.circuitImage.image
+                  ? step.circuitImage.image
+                  : step.circuitImage
+              }
               style={styles.gifImage}
-              resizeMode="contain"
+             resizeMode="contain"
             />
           </View>
         )}
@@ -2122,31 +2128,31 @@ editorToggleBtn: {
   btnGhostText: { color: "#c05454", fontWeight: "700" },
 
   gifCard: {
-    backgroundColor: "#fff8db",       // soft light-yellow background
-    borderWidth: 1,
-    borderColor: "#ecd892",
-    borderRadius: 12,
-    padding: 12,
-    marginTop: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    elevation: 2,
-    alignSelf: "center",   // don’t stretch full width of parent
-    width: "100%",         // still responsive on small screens
-    maxWidth: 600,         // cap how wide it can get 
+backgroundColor: "transparent",
+borderWidth: 0,
+borderRadius: 0,
+padding: 0,
+ marginTop: 0,
+alignItems: "center",
+justifyContent: "center",
+elevation: 0,
+alignSelf: "center",
+width: "100%",
+maxWidth: 600,
   },
 
   gifImage: {
     width: "100%",
-    height: 200,
-    borderRadius: 10,
-    backgroundColor: "#e8e6e6ff",
+    height: 500,
+    aspectRatio: 16 / 9,
+    borderRadius: 0,
+    backgroundColor: "transparent",
   },
 
   gifCaption: {
     fontSize: 13,
     color: "#6a5c1d",
-    marginTop: 6,
+    marginTop: 3,
     fontStyle: "italic",
   },
 
@@ -2272,8 +2278,8 @@ editorToggleBtn: {
   },
 
   stepDescBlock: {
-    marginTop: 6,
-    marginBottom: 8,
+    marginTop: 8,
+    marginBottom: 4,
   },
   richTextLine: {
     flexDirection: "row",
