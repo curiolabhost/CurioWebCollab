@@ -1848,30 +1848,47 @@ const BOTH_MIN_LEFT_RATIO = 0.35;
 const BOTH_MAX_LEFT_RATIO = 0.65;
 const BOTH_MIN_PX = 320;
 
+const CODE_ONLY_DEFAULT_LEFT_RATIO = 0.6; // bigger left pane => smaller code editor
+const SPLIT_PERSIST_CODE_ONLY = "esb:split:codeOnly:leftRatio:v2";
+const SPLIT_PERSIST_BOTH = "esb:split:both:leftRatio:v2";
+
 return (
   <View style={styles.screen}>
     {showBoth ? (
-      <>
-        {/* BOTH tools: resizable but constrained */}
-          <SplitView
-            left={<CircuitEditor showExit onExit={exitTools} />}
-            right={<ArduinoEditor />}
-            initialLeftRatio={0.55}
-            minLeftRatio={BOTH_MIN_LEFT_RATIO}
-            maxLeftRatio={BOTH_MAX_LEFT_RATIO}
-            minLeftPx={BOTH_MIN_PX}
-            minRightPx={BOTH_MIN_PX}
-          />
-      </>
+      /* BOTH tools open: lesson hidden */
+      <SplitView
+        left={<CircuitEditor showExit onExit={exitTools} />}
+        right={<ArduinoEditor />}
+        initialLeftRatio={0.55}
+        persistKey={SPLIT_PERSIST_BOTH}
+        minLeftRatio={BOTH_MIN_LEFT_RATIO}
+        maxLeftRatio={BOTH_MAX_LEFT_RATIO}
+        minLeftPx={BOTH_MIN_PX}
+        minRightPx={BOTH_MIN_PX}
+      />
     ) : showEditor || showCircuit ? (
+      /* ONE tool open: lesson visible on left */
       <SplitView
         left={leftPane}
-        right={showCircuit ? <CircuitEditor /> : <ArduinoEditor />}
+        right={
+          showCircuit ? (
+            <CircuitEditor showExit onExit={exitTools} />
+          ) : (
+            <ArduinoEditor />
+          )
+        }
 
-        // ONLY circuit open: fixed size
+        // Code-only mode: smaller editor by default + remember user resize
+        initialLeftRatio={!showCircuit && showEditor ? CODE_ONLY_DEFAULT_LEFT_RATIO : 0.6}
+        persistKey={!showCircuit && showEditor ? SPLIT_PERSIST_CODE_ONLY : null}
+        minRightPx={!showCircuit && showEditor ? 320 : 0}
+        maxLeftRatio={!showCircuit && showEditor ? 0.9 : 0.85}
+
+        // Circuit-only mode: fixed size (no resize)
         fixedRightPx={showCircuit && !showEditor ? CIRCUIT_FIXED_WIDTH : null}
       />
     ) : (
+      /* No tools open: just lesson */
       leftPane
     )}
   </View>

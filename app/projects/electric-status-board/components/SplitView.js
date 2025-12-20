@@ -1,57 +1,129 @@
-// app/projects/electric-status-board/components/SplitView.js
-import React, { useRef, useState, useMemo, useEffect } from "react";
-import { View, Platform } from "react-native";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { View, Platform, PanResponder } from "react-native";
+
+const isWeb = Platform.OS === "web" && typeof window !== "undefined";
+
+// Optional AsyncStorage support (native persistence)
+let AsyncStorage = null;
+try {
+  // eslint-disable-next-line global-require
+  AsyncStorage = require("@react-native-async-storage/async-storage").default;
+} catch {
+  AsyncStorage = null;
+}
+
+function clamp(v, lo, hi) {
+  return Math.max(lo, Math.min(hi, v));
+}
+
+async function readPersistedRatio(key) {
+  if (!key) return null;
+
+  // Web: localStorage
+  if (isWeb) {
+    try {
+      const raw = window.localStorage.getItem(key);
+      const r = raw != null ? Number(raw) : null;
+      if (r != null && Number.isFinite(r) && r > 0 && r < 1) return r;
+    } catch {}
+    return null;
+  }
+
+  // Native: AsyncStorage (if available)
+  if (AsyncStorage) {
+    try {
+      const raw = await AsyncStorage.getItem(key);
+      const r = raw != null ? Number(raw) : null;
+      if (r != null && Number.isFinite(r) && r > 0 && r < 1) return r;
+    } catch {}
+  }
+  return null;
+}
+
+async function writePersistedRatio(key, ratio) {
+  if (!key) return;
+
+  const value = String(ratio);
+
+  if (isWeb) {
+    try {
+      window.localStorage.setItem(key, value);
+    } catch {}
+    return;
+  }
+
+  if (AsyncStorage) {
+    try {
+      await AsyncStorage.setItem(key, value);
+    } catch {}
+  }
+}
 
 export default function SplitView({
   left,
   right,
 
-  // default behavior (lesson + editor)
+  // Default (used only if no persisted value and no controlled leftPx)
   initialLeftRatio = 0.6,
 
-  // constraints (ratio + px)
+  // Optional: persist the ratio across close/reopen
+  persistKey = null,
+
+  // Constraints
   minLeftPx = 200,
-  minLeftRatio = 0.0, // e.g. 0.35 when you want ratio-limited resizing
-  minRightPx = 0,     // e.g. 320 to prevent right pane getting too small
+  minRightPx = 0,
+  minLeftRatio = 0,   // 0.35 etc
   maxLeftRatio = 0.85,
 
-  // handle
+  // Divider
   handleWidth = 12,
 
-  // NEW: lock resizing completely
+  // Disable resizing
   locked = false,
 
-  // NEW: hard-set right pane width (for circuit-only editor case)
-  fixedRightPx = null, // number like 520 to lock the circuit editor width
+  // Hard-set right pane width (disables resizing)
+  fixedRightPx = null,
+
+  // Controlled mode (optional):
+  // If you pass leftPx, SplitView will use it and call onLeftPxChange during drag.
+  leftPx = null,
+  onLeftPxChange = null,
+
+  // Callback after resize ends
+  onResizeEnd = null,
 }) {
   const [containerW, setContainerW] = useState(0);
-  const [leftW, setLeftW] = useState(null);
+  const [internalLeftPx, setInternalLeftPx] = useState(null);
   const [dragging, setDragging] = useState(false);
 
+  const containerWRef = useRef(0);
+  const leftPxRef = useRef(null);
   const dragStartXRef = useRef(0);
   const dragStartLeftRef = useRef(0);
+  const didInitFromPersistRef = useRef(false);
+  const persistedRatioRef = useRef(null);
 
-  const isWeb = Platform.OS === "web" && typeof window !== "undefined";
+  // Keep refs fresh
+  useEffect(() => {
+    containerWRef.current = containerW;
+  }, [containerW]);
 
-  function clamp(v, lo, hi) {
-    return Math.max(lo, Math.min(hi, v));
-  }
+  const effectiveLeftPx = leftPx != null ? leftPx : internalLeftPx;
+
+  useEffect(() => {
+    leftPxRef.current = effectiveLeftPx;
+  }, [effectiveLeftPx]);
 
   // Compute constraints based on container width
   const constraints = useMemo(() => {
     const w = containerW || 0;
 
-    // Minimum left width can be driven by px OR ratio
     const minLeftByRatio = minLeftRatio > 0 ? w * minLeftRatio : 0;
     const minLeft = Math.max(minLeftPx, minLeftByRatio);
 
-    // Maximum left width must respect:
-    // - maxLeftRatio
-    // - minimum right pane px (if provided)
-    // - fixed right width (if provided)
     const maxLeftByRatio = w * maxLeftRatio;
 
-    let maxLeftByRight = w; // default no constraint
+    let maxLeftByRight = w; // default
     if (fixedRightPx != null) {
       maxLeftByRight = w - handleWidth - fixedRightPx;
     } else if (minRightPx > 0) {
@@ -61,107 +133,193 @@ export default function SplitView({
     const maxLeft = Math.min(maxLeftByRatio, maxLeftByRight);
 
     return { minLeft, maxLeft };
-  }, [containerW, minLeftPx, minLeftRatio, maxLeftRatio, minRightPx, fixedRightPx, handleWidth]);
+  }, [
+    containerW,
+    minLeftPx,
+    minRightPx,
+    minLeftRatio,
+    maxLeftRatio,
+    fixedRightPx,
+    handleWidth,
+  ]);
 
-  function onContainerLayout(e) {
-    const w = e.nativeEvent.layout.width;
-    const prevW = containerW || w;
-    setContainerW(w);
+  // Load persisted ratio once
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      if (!persistKey) return;
+      const r = await readPersistedRatio(persistKey);
+      if (!alive) return;
+      if (r != null) {
+        persistedRatioRef.current = r;
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, [persistKey]);
 
-    // If right pane is hard-fixed, we hard-force left width too.
+  // Initialize size when we first know container width
+  useEffect(() => {
+    if (!containerW) return;
+
+    // If right pane is fixed, force left size accordingly
     if (fixedRightPx != null) {
-      const forcedLeft = w - handleWidth - fixedRightPx;
-      setLeftW(clamp(forcedLeft, constraints.minLeft, constraints.maxLeft));
+      const forcedLeft = containerW - handleWidth - fixedRightPx;
+      const clamped = clamp(forcedLeft, constraints.minLeft, constraints.maxLeft);
+
+      if (leftPx != null) {
+        // controlled
+        onLeftPxChange?.(clamped);
+      } else {
+        setInternalLeftPx(clamped);
+      }
+      didInitFromPersistRef.current = true;
       return;
     }
 
-    if (leftW === null) {
-      setLeftW(clamp(w * initialLeftRatio, constraints.minLeft, constraints.maxLeft));
-    } else {
-      const ratio = leftW / prevW;
-      setLeftW(clamp(ratio * w, constraints.minLeft, constraints.maxLeft));
-    }
+    // If we’re controlled and already have a leftPx, don’t auto-initialize
+    if (leftPx != null) return;
+
+    // If we already have internal px, don’t re-init
+    if (internalLeftPx != null) return;
+
+    // Use persisted ratio if available, else initialLeftRatio
+    const ratioToUse =
+      persistedRatioRef.current != null ? persistedRatioRef.current : initialLeftRatio;
+
+    const next = clamp(containerW * ratioToUse, constraints.minLeft, constraints.maxLeft);
+    setInternalLeftPx(next);
+    didInitFromPersistRef.current = true;
+  }, [
+    containerW,
+    fixedRightPx,
+    handleWidth,
+    constraints.minLeft,
+    constraints.maxLeft,
+    initialLeftRatio,
+    leftPx,
+    internalLeftPx,
+    onLeftPxChange,
+  ]);
+
+  function commitLeftPx(nextLeftPx) {
+    if (leftPx != null) onLeftPxChange?.(nextLeftPx);
+    else setInternalLeftPx(nextLeftPx);
   }
 
-  // If fixedRightPx changes later, enforce it immediately
-  useEffect(() => {
-    if (!containerW) return;
-    if (fixedRightPx == null) return;
+  // Persist ratio at end of drag
+  async function persistCurrentRatio() {
+    if (!persistKey) return;
+    if (!containerWRef.current) return;
+    const lw = leftPxRef.current;
+    if (lw == null) return;
 
-    const forcedLeft = containerW - handleWidth - fixedRightPx;
-    setLeftW(clamp(forcedLeft, constraints.minLeft, constraints.maxLeft));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fixedRightPx, containerW]);
+    const ratio = lw / containerWRef.current;
+    if (!(ratio > 0 && ratio < 1)) return;
 
-  const resolvedLeftW =
-    leftW !== null ? leftW : containerW * initialLeftRatio;
+    persistedRatioRef.current = ratio;
+    await writePersistedRatio(persistKey, ratio);
+  }
 
-  const dividerCursor =
-    Platform.OS === "web" ? { cursor: locked || fixedRightPx != null ? "default" : "col-resize", userSelect: "none" } : {};
-
-  // ---------- DRAG HANDLERS (WEB only) ----------
   function startDrag(clientX) {
-    if (!isWeb) return;
     if (locked || fixedRightPx != null) return;
-    if (!containerW) return;
+    if (!containerWRef.current) return;
 
     setDragging(true);
     dragStartXRef.current = clientX;
-    const baseLeft = leftW !== null ? leftW : containerW * initialLeftRatio;
+    const baseLeft = leftPxRef.current != null ? leftPxRef.current : containerWRef.current * initialLeftRatio;
     dragStartLeftRef.current = baseLeft;
-
-    window.addEventListener("mousemove", onMouseMove);
-    window.addEventListener("mouseup", endDrag);
-    window.addEventListener("touchmove", onTouchMove, { passive: false });
-    window.addEventListener("touchend", endDrag);
-    window.addEventListener("touchcancel", endDrag);
-  }
-
-  function onMouseDown(e) {
-    e.preventDefault();
-    startDrag(e.clientX);
-  }
-
-  function onTouchStart(e) {
-    if (!isWeb) return;
-    const touch = e.touches[0];
-    if (!touch) return;
-    startDrag(touch.clientX);
-  }
-
-  function onMouseMove(e) {
-    e.preventDefault();
-    applyDrag(e.clientX);
-  }
-
-  function onTouchMove(e) {
-    e.preventDefault();
-    const touch = e.touches[0];
-    if (!touch) return;
-    applyDrag(touch.clientX);
   }
 
   function applyDrag(clientX) {
-    if (!containerW) return;
+    const w = containerWRef.current;
+    if (!w) return;
+
     const dx = clientX - dragStartXRef.current;
+    const next = clamp(dragStartLeftRef.current + dx, constraints.minLeft, constraints.maxLeft);
 
-    const next = clamp(
-      dragStartLeftRef.current + dx,
-      constraints.minLeft,
-      constraints.maxLeft
-    );
-    setLeftW(next);
+    commitLeftPx(next);
   }
 
-  function endDrag() {
-    if (!isWeb) return;
+  async function endDrag() {
+    if (!dragging) return;
     setDragging(false);
-    window.removeEventListener("mousemove", onMouseMove);
-    window.removeEventListener("mouseup", endDrag);
-    window.removeEventListener("touchmove", onTouchMove);
-    window.removeEventListener("touchend", endDrag);
-    window.removeEventListener("touchcancel", endDrag);
+
+    await persistCurrentRatio();
+    onResizeEnd?.(leftPxRef.current);
   }
+
+  // Web: mouse/touch listeners on window
+  useEffect(() => {
+    if (!isWeb) return;
+    if (!dragging) return;
+
+    function onMouseMove(e) {
+      e.preventDefault();
+      applyDrag(e.clientX);
+    }
+    function onMouseUp() {
+      endDrag();
+    }
+    function onTouchMove(e) {
+      e.preventDefault();
+      const t = e.touches?.[0];
+      if (!t) return;
+      applyDrag(t.clientX);
+    }
+    function onTouchEnd() {
+      endDrag();
+    }
+
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
+    window.addEventListener("touchmove", onTouchMove, { passive: false });
+    window.addEventListener("touchend", onTouchEnd);
+    window.addEventListener("touchcancel", onTouchEnd);
+
+    return () => {
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+      window.removeEventListener("touchmove", onTouchMove);
+      window.removeEventListener("touchend", onTouchEnd);
+      window.removeEventListener("touchcancel", onTouchEnd);
+    };
+  }, [dragging, constraints.minLeft, constraints.maxLeft]);
+
+  // Native: PanResponder
+  const panResponder = useMemo(() => {
+    if (isWeb) return null;
+
+    return PanResponder.create({
+      onStartShouldSetPanResponder: () => !(locked || fixedRightPx != null),
+      onMoveShouldSetPanResponder: () => !(locked || fixedRightPx != null),
+      onPanResponderGrant: (evt) => {
+        const x = evt?.nativeEvent?.pageX ?? 0;
+        startDrag(x);
+      },
+      onPanResponderMove: (evt) => {
+        const x = evt?.nativeEvent?.pageX ?? 0;
+        applyDrag(x);
+      },
+      onPanResponderRelease: () => {
+        endDrag();
+      },
+      onPanResponderTerminate: () => {
+        endDrag();
+      },
+    });
+  }, [locked, fixedRightPx, constraints.minLeft, constraints.maxLeft]);
+
+  const resolvedLeft =
+    effectiveLeftPx != null
+      ? effectiveLeftPx
+      : containerW
+      ? containerW * initialLeftRatio
+      : 0;
+
+  const dividerCursor =
+    isWeb ? { cursor: locked || fixedRightPx != null ? "default" : "col-resize", userSelect: "none" } : {};
 
   const rightStyle =
     fixedRightPx != null
@@ -170,26 +328,42 @@ export default function SplitView({
 
   return (
     <View
-      onLayout={onContainerLayout}
+      onLayout={(e) => {
+        const w = e.nativeEvent.layout.width;
+        setContainerW(w);
+      }}
       style={{ flex: 1, flexDirection: "row", position: "relative" }}
     >
-      {/* LEFT PANE */}
-      <View style={{ width: resolvedLeftW, minWidth: constraints.minLeft }}>
+      {/* LEFT */}
+      <View style={{ width: clamp(resolvedLeft, constraints.minLeft, constraints.maxLeft), minWidth: constraints.minLeft }}>
         {left}
       </View>
 
-      {/* DRAG HANDLE (disabled when locked/fixedRight) */}
+      {/* HANDLE */}
       <View
-        onMouseDown={isWeb && !(locked || fixedRightPx != null) ? onMouseDown : undefined}
-        onTouchStart={isWeb && !(locked || fixedRightPx != null) ? onTouchStart : undefined}
+        {...(isWeb
+          ? {
+              onMouseDown: (e) => {
+                e.preventDefault();
+                startDrag(e.clientX);
+              },
+              onTouchStart: (e) => {
+                const t = e.touches?.[0];
+                if (!t) return;
+                startDrag(t.clientX);
+              },
+            }
+          : panResponder
+          ? panResponder.panHandlers
+          : {})}
         style={{
           width: handleWidth,
           backgroundColor: "rgba(0,0,0,0.08)",
           alignItems: "center",
           justifyContent: "center",
-          zIndex: 1000,
-          ...dividerCursor,
+          zIndex: 10,
           opacity: locked || fixedRightPx != null ? 0.3 : 1,
+          ...dividerCursor,
         }}
         pointerEvents={locked || fixedRightPx != null ? "none" : "auto"}
       >
@@ -204,10 +378,10 @@ export default function SplitView({
         />
       </View>
 
-      {/* RIGHT PANE */}
+      {/* RIGHT */}
       <View style={rightStyle}>{right}</View>
 
-      {/* Overlay during drag (web only) */}
+      {/* overlay while dragging (prevents weird selections on web) */}
       {isWeb && dragging ? (
         <View
           style={{
