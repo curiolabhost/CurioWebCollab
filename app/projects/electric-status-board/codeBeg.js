@@ -19,7 +19,8 @@ const LESSON_STEPS_BEGINNER = {
           // this used to be step.gif
           imageGridBeforeCode: {
             columns: 1,
-            rows: 1,
+            width: 300,
+            height: 300,
             items: [
               {
                 image: require("../../../assets/videos/CurioLabL1S1.gif"),

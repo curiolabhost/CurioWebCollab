@@ -36,8 +36,9 @@ const LESSON_STEPS_CIRCUIT = {
         {
           topicTitle: "Materials",
           imageGridBeforeCode: {
-            columns: 3,
-            rows: 2,
+            columns: 4,
+            width: 200,
+            height: 200,
             items: [
               {
                 label: "Arduino UNO (or Nano)",
