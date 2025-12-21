@@ -139,32 +139,67 @@ function StepCard({ step, storageKey, globalKey, apiBaseUrl, analyticsTag }) {
     if (!grid || !Array.isArray(grid.items) || grid.items.length === 0) return null;
 
     const columns = Math.max(1, Number(grid.columns || 3));
+
+    // New: allow explicit sizing from lesson content
+    const gridW = grid.width != null ? Number(grid.width) : null;   // px
+    const gridH = grid.height != null ? Number(grid.height) : null; // px
+
+    // If no explicit size is provided, we fall back to responsive layout
+    const useFixedSize = Number.isFinite(gridW) || Number.isFinite(gridH);
+
+    // Responsive tile width when no fixed size is provided
     const widthPct = `${Math.floor(100 / columns)}%`;
 
     return (
       <View style={styles.imageGridWrap} key={keyPrefix}>
         <View style={styles.imageGrid}>
-          {grid.items.map((it, idx) => (
-            <View
-              key={`${keyPrefix}-item-${idx}`}
-              style={[styles.imageGridItem, { width: widthPct }]}
-            >
-              <View style={styles.imageGridImgWrap}>
-                <Image
-                  source={typeof it.image === "string" ? { uri: it.image } : it.image}
-                  style={styles.imageGridImg}
-                  resizeMode="contain"
-                />
+          {grid.items.map((it, idx) => {
+            const itemW = it.width != null ? Number(it.width) : gridW;
+            const itemH = it.height != null ? Number(it.height) : gridH;
+
+            const fixedW = Number.isFinite(itemW) ? itemW : null;
+            const fixedH = Number.isFinite(itemH) ? itemH : null;
+
+            const itemUsesFixed = fixedW || fixedH;
+
+            return (
+              <View
+                key={`${keyPrefix}-item-${idx}`}
+                style={[
+                  styles.imageGridItem,
+                  // If fixed sizing exists anywhere, use "auto" tile widths so they don't stretch
+                  useFixedSize ? { width: "auto" } : { width: widthPct },
+                ]}
+              >
+                <View
+                  style={[
+                    styles.imageGridImgWrap,
+                    // If fixed size provided for this item/grid, enforce it
+                    itemUsesFixed
+                      ? {
+                          width: fixedW ?? 180,   // default fallback if only height given
+                          height: fixedH ?? 120,  // default fallback if only width given
+                          aspectRatio: undefined, // IMPORTANT: disable aspectRatio when fixed
+                        }
+                      : null,
+                  ]}
+                >
+                  <Image
+                    source={typeof it.image === "string" ? { uri: it.image } : it.image}
+                    style={styles.imageGridImg}
+                    resizeMode="contain"
+                  />
+                </View>
+
+                {!!it.label ? <Text style={styles.imageGridLabel}>{it.label}</Text> : null}
               </View>
-              {!!it.label ? (
-                <Text style={styles.imageGridLabel}>{it.label}</Text>
-              ) : null}
-            </View>
-          ))}
+            );
+          })}
         </View>
       </View>
     );
   };
+
 
   /* ==========================================================
      RENDER DESCRIPTION WITH INLINE BLANKS + CODE
@@ -653,10 +688,12 @@ export default function CodeLessonBase({
   };
 
   /* ---- MAIN LEFT CONTENT ---- */
-  const leftPane = (
-    <View style={{ flex: 1 }}>
-      <Stack.Screen options={{ headerShown: false }} />
+const leftPane = (
+  <View style={{ flex: 1 }}>
+    <Stack.Screen options={{ headerShown: false }} />
 
+    {/* EVERYTHING THAT SHOULD SCROLL GOES INSIDE HERE */}
+    <ScrollView ref={scrollRef} contentContainerStyle={styles.container}>
       {/* Header */}
       <View style={styles.headerRow}>
         <TouchableOpacity
@@ -676,7 +713,7 @@ export default function CodeLessonBase({
             style={styles.circuitBtn}
             onPress={() => setShowCircuit((v) => !v)}
           >
-            <Text style={styles.circuitBtnText}>{`⚡ Circuit`}</Text>
+            <Text style={styles.circuitBtnText}>{`⚡`}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -689,121 +726,64 @@ export default function CodeLessonBase({
 
       {/* Progress */}
       <View style={{ paddingHorizontal: 18 }}>
-        <View style={styles.progressGroup}>
-          <Text style={styles.progressHeader}>Overall progress</Text>
-          <View style={styles.progressBarWrap}>
-            <View
-              style={[styles.progressBarFill, { width: `${overallProgress}%` }]}
-            />
+        <View style={styles.progressRow}>
+          <View style={[styles.progressGroup, styles.progressHalf]}>
+            <Text style={styles.progressHeader}>Overall progress</Text>
+            <View style={styles.progressBarWrap}>
+              <View
+                style={[styles.progressBarFill, { width: `${overallProgress}%` }]}
+              />
+            </View>
+            <Text style={styles.progressLabel}>{overallProgress}% complete</Text>
           </View>
-          <Text style={styles.progressLabel}>{overallProgress}% complete</Text>
-        </View>
 
-        <View style={[styles.progressGroup, { marginTop: 8 }]}>
-          <Text style={styles.progressHeader}>This lesson</Text>
-          <View style={styles.progressBarWrap}>
-            <View
-              style={[
-                styles.progressBarFillSecondary,
-                { width: `${lessonProgress}%` },
-              ]}
-            />
+          <View style={[styles.progressGroup, styles.progressHalf]}>
+            <Text style={styles.progressHeader}>This lesson</Text>
+            <View style={styles.progressBarWrap}>
+              <View
+                style={[
+                  styles.progressBarFillSecondary,
+                  { width: `${lessonProgress}%` },
+                ]}
+              />
+            </View>
+            <Text style={styles.progressLabel}>{lessonProgress}% of steps</Text>
           </View>
-          <Text style={styles.progressLabel}>{lessonProgress}% of steps</Text>
         </View>
       </View>
 
       {/* Step card + Sidebar */}
-      <ScrollView ref={scrollRef} contentContainerStyle={styles.container}>
-        {steps.length > 0 ? (
-          <View style={styles.lessonLayoutRow}>
-            <StepCard
-              step={steps[safeStepIndex]}
-              storageKey={`${_localBlanksPrefixKey}:L${lesson}-S${safeStepIndex}`}
-              globalKey={_globalBlanksKey}
-              apiBaseUrl={apiBaseUrl}
-              analyticsTag={analyticsTag}
-            />
+      {steps.length > 0 ? (
+        <View style={styles.lessonLayoutRow}>
+          <StepCard
+            step={steps[safeStepIndex]}
+            storageKey={`${_localBlanksPrefixKey}:L${lesson}-S${safeStepIndex}`}
+            globalKey={_globalBlanksKey}
+            apiBaseUrl={apiBaseUrl}
+            analyticsTag={analyticsTag}
+          />
 
-            <LessonSidebar
-              lessonSteps={lessonSteps}
-              currentLesson={lesson}
-              currentStepIndex={safeStepIndex}
-              onSelectStep={handleSelectStep}
-              fullWidth={!showEditor}
-              isStepDone={(lessonNumber, stepIdx) =>
-                doneSet.has(makeStepKey(lessonNumber, stepIdx))
-              }
-            />
-          </View>
-        ) : null}
-      </ScrollView>
-
-      {/* Footer */}
-      <View style={styles.footer}>
-        <View
-          style={{
-            flexDirection: "row",
-            alignItems: "center",
-            justifyContent: "space-between",
-          }}
-        >
-          <TouchableOpacity
-            style={[styles.navBtn, safeStepIndex === 0 && styles.navDisabled]}
-            onPress={() => setStepIndex((i) => Math.max(0, i - 1))}
-            disabled={safeStepIndex === 0}
-          >
-            <Ionicons
-              name="chevron-back"
-              size={18}
-              color={safeStepIndex === 0 ? "#aaa" : "#c05454"}
-            />
-            <Text style={[styles.navText, safeStepIndex === 0 && { color: "#aaa" }]}>
-              Previous
-            </Text>
-          </TouchableOpacity>
-
-          <View style={{ flexDirection: "row", alignItems: "center" }}>
-            {isDone ? (
-              <TouchableOpacity
-                style={[styles.btn, { marginRight: 8 }]}
-                onPress={unmarkDone}
-              >
-                <Ionicons name="checkmark-circle" size={18} color="#fff" />
-                <Text style={styles.btnText}>Marked</Text>
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity
-                style={[styles.btnGhost, { marginRight: 8 }]}
-                onPress={markDone}
-              >
-                <Ionicons name="ellipse-outline" size={18} color="#c05454" />
-                <Text style={styles.btnGhostText}>Mark done</Text>
-              </TouchableOpacity>
-            )}
-
-            <TouchableOpacity
-              style={styles.btnPrimary}
-              onPress={() => {
-                if (safeStepIndex >= steps.length - 1) {
-                  if (lesson < TOTAL_LESSONS) {
-                    setLesson(lesson + 1);
-                    setStepIndex(0);
-                  }
-                } else {
-                  setStepIndex((i) => Math.min(steps.length - 1, i + 1));
-                }
-                scrollToTop();
-              }}
-            >
-              <Text style={styles.btnPrimaryText}>Next</Text>
-              <Ionicons name="chevron-forward" size={18} color="#c05454" />
-            </TouchableOpacity>
-          </View>
+          <LessonSidebar
+            lessonSteps={lessonSteps}
+            currentLesson={lesson}
+            currentStepIndex={safeStepIndex}
+            onSelectStep={handleSelectStep}
+            fullWidth={!showEditor}
+            isStepDone={(lessonNumber, stepIdx) =>
+              doneSet.has(makeStepKey(lessonNumber, stepIdx))
+            }
+          />
         </View>
-      </View>
+      ) : null}
+    </ScrollView>
+
+    {/* Footer stays fixed */}
+    <View style={styles.footer}>
+      ...
     </View>
-  );
+  </View>
+);
+
 
   /* ---- MAIN OUTER VIEW ---- */
   const CIRCUIT_FIXED_WIDTH = 800;
@@ -926,7 +906,7 @@ const styles = StyleSheet.create({
   progressGroup: { marginTop: 4 },
   progressHeader: { fontSize: 12, fontWeight: "600", color: "#374151" },
 
-  container: { padding: 18 },
+  container: { paddingBottom: 18 },
 
   stepOuter: {
     backgroundColor: "#ffe4e6",
@@ -1153,20 +1133,26 @@ const styles = StyleSheet.create({
   btnGhostText: { color: "#c05454", fontWeight: "700" },
 
   /* ---------- Generic Configurable Image Grid ---------- */
-  imageGridWrap: {},
+  imageGridWrap: {
+    marginVertical: 6, 
+    width: "100%", 
+    alignItems: "center",
+  },
   imageGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    justifyContent: "flex-start",
+    justifyContent: "center",
+    alignItems: "flex-start",
+    gap: 10, // optional (RN supports gap in newer versions; if yours doesn't, tell me)
   },
   imageGridItem: {
     padding: 8,
-    marginBottom: 12,
+    marginBottom: 0,
     alignItems: "center",
   },
   imageGridImgWrap: {
     width: "100%",
-    aspectRatio: 1.6,
+    aspectRatio: 1.3,
     borderRadius: 8,
     overflow: "hidden",
     alignItems: "center",
@@ -1182,4 +1168,15 @@ const styles = StyleSheet.create({
     color: "#222",
     textAlign: "center",
   },
+
+  progressRow: {
+  flexDirection: "row",
+  gap: 12,        // creates spacing between the two halves
+  marginTop: 4,
+  },
+
+  progressHalf: {
+    flex: 1,        // forces each progress block to take 50%
+  },
+
 });
