@@ -101,9 +101,6 @@ Once this is wired, your OLED has power + data connection.
         },
       ],
     },
-  ],
-
-  2: [
     {
       id: "circuit-2",
       title: "Step 2: Install OLED Libraries",
@@ -140,9 +137,6 @@ Common Issues:
         },
       ],
     },
-  ],
-
-  3: [
     {
       id: "circuit-3",
       title: "Step 3: Run an Example (Sanity Check)",
@@ -181,9 +175,6 @@ If the OLED works here, wiring + libraries are correct.
         },
       ],
     },
-  ],
-
-  4: [
     {
       id: "circuit-4",
       title: "Step 4: Buttons with Internal Pull-Ups",
