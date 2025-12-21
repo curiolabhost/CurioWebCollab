@@ -1,12 +1,10 @@
-// GuidedCodeBlock.js
-// Codebox rendering, blanks, check, copy, and AI hint controls.
-
 import React from "react";
 import {
   View,
   Text,
-  ScrollView,
+  StyleSheet,
   TouchableOpacity,
+  ScrollView,
   TextInput,
   ActivityIndicator,
   Platform,
@@ -14,13 +12,8 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
 
-const CODE_FONT = Platform.select({
-  ios: "Menlo",
-  android: "monospace",
-  default: "monospace",
-});
-
 // --- Simple Arduino-style syntax groups for example boxes ---
+// Copied from the original CodeLessonBase.js so GuidedCodeBlock renders identically.
 const TYPE_KEYWORDS = [
   "void",
   "int",
@@ -75,6 +68,185 @@ const ARDUINO_FUNCS = [
   "INPUT_PULLUP",
 ];
 
+const CODE_FONT = Platform.select({
+  ios: "Menlo",
+  android: "monospace",
+  default: "monospace",
+});
+
+/* ==========================================================
+   FALLBACK STYLES
+   If CodeLessonBase passes styles, those will override.
+========================================================== */
+const localStyles = StyleSheet.create({
+  codeCard: {
+    backgroundColor: "#0f172a",
+    borderRadius: 12,
+    overflow: "hidden",
+    marginTop: 12,
+    maxWidth: 1200,
+  },
+
+  codeCardHeader: {
+    height: 44,
+    paddingHorizontal: 12,
+    backgroundColor: "#0b1223",
+    borderBottomWidth: 1,
+    borderBottomColor: "#1f2a44",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+
+  codeCardTitle: { color: "#cbd5e1", fontWeight: "700", fontSize: 14 },
+  codeCardHeaderActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+
+  codeHeaderButtons: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+
+  copyBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    backgroundColor: "rgba(255,255,255,0.06)",
+  },
+  copyBtnText: { color: "#cbd5e1", fontSize: 12, fontWeight: "600" },
+
+  codeBox: {
+    padding: 14,
+    overflow: "hidden",
+  },
+
+  codeNormal: {
+    color: "#a3a5a3ff",
+    fontWeight: "400",
+    fontFamily: CODE_FONT,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+
+  // highlighted (WHITE) segments: ^^...^^
+  codeHighlight: {
+    color: "#cdced1ff",
+    fontWeight: "400",
+    fontFamily: CODE_FONT,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+
+  // editable blanks in the code
+  codeBlankInput: {
+    minWidth: 20, // small default width
+    paddingHorizontal: 0,
+    paddingVertical: 0.5,
+    marginHorizontal: 0,
+    marginRight: 0,
+    borderBottomWidth: 1,
+    borderBottomColor: "#5e6d8b6a",
+    fontSize: 14,
+    lineHeight: 20,
+    textAlign: "center", // keeps typed text centered
+    fontFamily: CODE_FONT,
+    flexShrink: 0,
+    color: "#a3a5a3ff",
+  },
+
+  codeBlankInputHighlight: {
+    color: "#cdced1ff", // match highlighted code color
+    borderBottomColor: "#5e6d8b6a", // lighter underline in highlight
+    fontFamily: CODE_FONT,
+  },
+
+  blankCorrect: {
+    borderBottomColor: "#16a34a", // green
+  },
+
+  blankIncorrect: {
+    borderBottomColor: "#dc2626", // red
+  },
+
+  blankWithDot: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+
+  errorDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: "#dc2626",
+    marginLeft: 4,
+  },
+
+  // --- Comment alignment/layout (copied from original) ---
+  codeLineRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    flexWrap: "nowrap",
+  },
+
+  codePartCol: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    flexWrap: "nowrap",
+  },
+
+  codeCommentCol: {
+    marginLeft: 5,
+    color: "#82a8abff",
+    fontFamily: CODE_FONT,
+    fontSize: 14,
+    lineHeight: 20,
+    flexShrink: 0,
+  },
+
+  // --- Syntax color fallbacks (these get overridden by CodeLessonBase styles if passed) ---
+  syntaxComment: { color: "#82a8abff" },
+  syntaxString: { color: "#fca5a5" },
+  syntaxNumber: { color: "#93c5fd" },
+  syntaxType: { color: "#f9a8d4" },
+  syntaxControl: { color: "#c4b5fd" },
+  syntaxArduinoFunc: { color: "#fcd34d" },
+
+  // --- Hint box fallbacks (copied-ish; your parent styles will override) ---
+  blankHintBox: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+    backgroundColor: "#fef2f2",
+    borderWidth: 1,
+    borderColor: "#fecaca",
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    marginTop: 10,
+  },
+
+  hintContent: { flex: 1 },
+
+  blankHintText: {
+    fontSize: 13,
+    color: "#4b5563",
+    lineHeight: 20,
+  },
+
+  aiHintDivider: {
+    height: 1,
+    backgroundColor: "#e5e7eb",
+    marginVertical: 8,
+  },
+});
+
 export default function GuidedCodeBlock({
   step,
   block,
@@ -109,12 +281,19 @@ export default function GuidedCodeBlock({
   setBlankAttemptsByName,
 
   logBlankAnalytics,
-  styles,
+  styles, // <-- may be undefined or missing fields
 
   horizontalScroll = true,
 }) {
-  const AI_COOLDOWN_MS = 8000; // 8 seconds between AI hints per blank
-  const MAX_HINT_LEVEL = 3; // max AI hint depth (1..3)
+  // ✅ Use passed styles if available, otherwise fall back
+  // Merge so we keep ALL fallbacks (instead of replacing the whole object).
+  const S = React.useMemo(
+    () => ({ ...localStyles, ...(styles || {}) }),
+    [styles]
+  );
+
+  const AI_COOLDOWN_MS = 8000;
+  const MAX_HINT_LEVEL = 3;
 
   const code = block?.code || step?.code || "";
   const blockExplanations =
@@ -137,26 +316,19 @@ export default function GuidedCodeBlock({
 
     while ((match = regex.exec(text)) !== null) {
       const token = match[0];
-      let style = styles?.codeHighlight;
+      let style = S.codeHighlight;
 
-      if (token.startsWith("//")) {
-        style = styles?.syntaxComment;
-      } else if (
+      if (token.startsWith("//")) style = S.syntaxComment;
+      else if (
         (token.startsWith('"') && token.endsWith('"')) ||
         (token.startsWith("'") && token.endsWith("'"))
-      ) {
-        style = styles?.syntaxString;
-      } else if (/^\d/.test(token)) {
-        style = styles?.syntaxNumber;
-      } else if (TYPE_KEYWORDS.includes(token)) {
-        style = styles?.syntaxType;
-      } else if (CONTROL_KEYWORDS.includes(token)) {
-        style = styles?.syntaxControl;
-      } else if (ARDUINO_FUNCS.includes(token)) {
-        style = styles?.syntaxArduinoFunc;
-      } else {
-        style = styles?.codeHighlight || { fontFamily: CODE_FONT };
-      }
+      )
+        style = S.syntaxString;
+      else if (/^\d/.test(token)) style = S.syntaxNumber;
+      else if (TYPE_KEYWORDS.includes(token)) style = S.syntaxType;
+      else if (CONTROL_KEYWORDS.includes(token)) style = S.syntaxControl;
+      else if (ARDUINO_FUNCS.includes(token)) style = S.syntaxArduinoFunc;
+      else style = S.codeHighlight;
 
       pieces.push(
         <Text key={`seg-${idx++}`} style={style}>
@@ -179,7 +351,6 @@ export default function GuidedCodeBlock({
         const placeholder = `__BLANK[${name}]__`;
         const replacement =
           value && String(value).trim().length > 0 ? String(value) : "_____";
-
         textToCopy = textToCopy.split(placeholder).join(replacement);
       });
 
@@ -193,144 +364,34 @@ export default function GuidedCodeBlock({
   };
 
   /* ==========================================================
-     CHECK WITH ANSWER KEY FUNCTION
+     AI HELP FOR A SPECIFIC BLANK (ported from CodeLessonBase)
   ========================================================== */
-  const checkBlanks = async () => {
-    if (!step?.answerKey) return;
-
-    const nextAttempt = (checkAttempts || 0) + 1;
-    setCheckAttempts?.((prev) => (prev || 0) + 1);
-
-    const results = {};
-
-    Object.entries(step.answerKey).forEach(([name, spec]) => {
-      const raw = (mergedBlanks?.[name] ?? "").trim();
-      let isCorrect = false;
-
-      if (spec && typeof spec === "object" && !Array.isArray(spec)) {
-        switch (spec.type) {
-          case "identifier": {
-            isCorrect = /^[A-Za-z_][A-Za-z0-9_]*$/.test(raw);
-            break;
-          }
-          case "range": {
-            const num = Number(raw);
-            if (!Number.isNaN(num)) {
-              const min = spec.min ?? -Infinity;
-              const max = spec.max ?? Infinity;
-              isCorrect = num >= min && num <= max;
-            }
-            break;
-          }
-          case "number": {
-            const num = Number(raw);
-            isCorrect = !Number.isNaN(num);
-            break;
-          }
-          case "sameAs": {
-            const otherName = spec.target;
-            const otherVal = (mergedBlanks?.[otherName] ?? "").trim();
-            isCorrect = raw !== "" && raw === otherVal;
-            break;
-          }
-          case "string": {
-            if (raw.length === 0) {
-              isCorrect = false;
-            } else if (spec.regex) {
-              const re = new RegExp(spec.regex);
-              isCorrect = re.test(raw);
-            } else {
-              isCorrect = true;
-            }
-            break;
-          }
-          default: {
-            if (Array.isArray(spec.values)) {
-              isCorrect = spec.values.some((v) => raw === String(v).trim());
-            } else {
-              isCorrect = false;
-            }
-          }
-        }
-      } else {
-        const accepted = Array.isArray(spec)
-          ? spec
-          : spec != null
-          ? [spec]
-          : [];
-        isCorrect = accepted.some((v) => raw === String(v).trim());
-      }
-
-      results[name] = isCorrect;
-    });
-
-    const nextBlankAttempts = { ...(blankAttemptsByName || {}) };
-
-    Object.entries(results).forEach(([name, isCorrect]) => {
-      if (!isCorrect) {
-        const prevCount = nextBlankAttempts[name] ?? 0;
-        nextBlankAttempts[name] = prevCount + 1;
-      }
-    });
-
-    setBlankAttemptsByName?.(nextBlankAttempts);
-
-    setBlankStatus?.(results);
-
-    const incorrectNames = Object.entries(results)
-      .filter(([, ok]) => !ok)
-      .map(([name]) => name);
-
-    const payload = {
-      type: "CHECK_BLANKS",
-      attempt: nextAttempt,
-      results,
-      blanks: Object.entries(results).map(([name, isCorrect]) => ({
-        name,
-        isCorrect,
-        studentAnswer: (mergedBlanks?.[name] ?? "").trim(),
-        difficulty: difficulties[name] || null,
-        attemptsForThisBlank: nextBlankAttempts[name] ?? 0,
-      })),
-      incorrectBlanks: incorrectNames,
-    };
-
-    logBlankAnalytics?.(payload);
-
-    // If everything is correct, clear AI hints
-    if (incorrectNames.length === 0) {
-      setActiveBlankHint?.(null);
-      setAiHelpByBlank?.({});
-    }
-  };
-
-  /* ==========================================================
-     AI HELP FOR A SPECIFIC BLANK  (with previous-hint memory)
-  ========================================================== */
-  const requestAiBlankHelpForBlank = async ({ blankName, code: codeArg }) => {
+  const requestAiBlankHelpForBlank = async ({ blankName, code }) => {
     if (!step) return;
+    if (!apiBaseUrl) return;
 
     const key = `${blockIndex}:${blankName}`;
 
-    const usedHints = aiHintLevelByBlank?.[key] ?? 0;
+    const usedHints = (aiHintLevelByBlank || {})[key] ?? 0;
     if (usedHints >= MAX_HINT_LEVEL) return;
 
-    const studentAnswer = (mergedBlanks?.[blankName] ?? "").trim();
-    const rule = step.answerKey?.[blankName];
+    const studentAnswer = ((mergedBlanks || {})[blankName] ?? "").trim();
+    const rule = step?.answerKey?.[blankName];
     if (!rule) return;
 
-    const previousHintText = aiHelpByBlank?.[key] || null;
+    const previousHintText = (aiHelpByBlank || {})[key] || null;
 
     const now = Date.now();
-    const last = aiLastRequestAtByKey?.[key] || 0;
-
+    const last = (aiLastRequestAtByKey || {})[key] || 0;
     if (now - last < AI_COOLDOWN_MS) {
-      const secondsLeft = Math.ceil((AI_COOLDOWN_MS - (now - last)) / 1000);
+      const secondsLeft = Math.ceil(
+        (AI_COOLDOWN_MS - (now - last)) / 1000
+      );
 
       setAiHelpByBlank?.((prev) => ({
         ...(prev || {}),
         [key]:
-          prev?.[key] ||
+          (prev || {})[key] ||
           `Try tweaking your answer or re-reading the hint first. You can ask AI again in about ${secondsLeft} second${
             secondsLeft === 1 ? "" : "s"
           }.`,
@@ -345,16 +406,16 @@ export default function GuidedCodeBlock({
     else if (upcomingHintNumber === 3) mode = "analogy_based";
 
     const payload = {
-      lessonId: step.id,
-      title: step.title,
-      description: step.desc || null,
-      codeSnippet: codeArg || code || step.code || null,
+      lessonId: step?.id,
+      title: step?.title,
+      description: step?.desc || null,
+      codeSnippet: code || step?.code || null,
 
       blank: {
         name: blankName,
         studentAnswer,
         rule,
-        allBlanks: mergedBlanks,
+        allBlanks: mergedBlanks || {},
         previousHint: previousHintText,
       },
 
@@ -390,7 +451,7 @@ export default function GuidedCodeBlock({
         [key]: upcomingHintNumber,
       }));
 
-      const difficulty = difficulties[blankName] || null;
+      const difficulty = (step?.blankDifficulties || {})[blankName] || null;
 
       logBlankAnalytics?.({
         type: "AI_HINT",
@@ -400,13 +461,18 @@ export default function GuidedCodeBlock({
         studentAnswer,
         previousHintUsed: !!previousHintText,
         difficulty,
+        analyticsTag: analyticsTag || null,
+        stepId: step?.id,
+        stepTitle: step?.title,
+        storageKey: storageKey || null,
+        globalKey: globalKey || null,
       });
     } catch (err) {
       console.warn("AI blank help error:", err);
       setAiHelpByBlank?.((prev) => ({
         ...(prev || {}),
         [key]:
-          prev?.[key] ||
+          (prev || {})[key] ||
           "I had trouble generating more help right now. Try adjusting your answer slightly and re-checking.",
       }));
     } finally {
@@ -415,10 +481,113 @@ export default function GuidedCodeBlock({
   };
 
   /* ==========================================================
-     RENDER CODE WITH BLANKS (with comment alignment)
+     CHECK WITH ANSWER KEY FUNCTION
+  ========================================================== */
+  const checkBlanks = async () => {
+    if (!step?.answerKey) return;
+
+    const nextAttempt = (checkAttempts || 0) + 1;
+    setCheckAttempts?.((prev) => (prev || 0) + 1);
+
+    const results = {};
+
+    Object.entries(step.answerKey).forEach(([name, spec]) => {
+      const raw = ((mergedBlanks || {})[name] ?? "").trim();
+      let isCorrect = false;
+
+      if (spec && typeof spec === "object" && !Array.isArray(spec)) {
+        switch (spec.type) {
+          case "identifier":
+            isCorrect = /^[A-Za-z_][A-Za-z0-9_]*$/.test(raw);
+            break;
+          case "range": {
+            const num = Number(raw);
+            if (!Number.isNaN(num)) {
+              const min = spec.min ?? -Infinity;
+              const max = spec.max ?? Infinity;
+              isCorrect = num >= min && num <= max;
+            }
+            break;
+          }
+          case "number": {
+            const num = Number(raw);
+            isCorrect = !Number.isNaN(num);
+            break;
+          }
+          case "sameAs": {
+            const otherName = spec.target;
+            const otherVal = (((mergedBlanks || {})[otherName]) ?? "").trim();
+            isCorrect = raw !== "" && raw === otherVal;
+            break;
+          }
+          case "string": {
+            if (raw.length === 0) isCorrect = false;
+            else if (spec.regex) isCorrect = new RegExp(spec.regex).test(raw);
+            else isCorrect = true;
+            break;
+          }
+          default: {
+            if (Array.isArray(spec.values))
+              isCorrect = spec.values.some((v) => raw === String(v).trim());
+            else isCorrect = false;
+          }
+        }
+      } else {
+        const accepted = Array.isArray(spec)
+          ? spec
+          : spec != null
+          ? [spec]
+          : [];
+        isCorrect = accepted.some((v) => raw === String(v).trim());
+      }
+
+      results[name] = isCorrect;
+    });
+
+    const nextBlankAttempts = { ...(blankAttemptsByName || {}) };
+    Object.entries(results).forEach(([name, isCorrect]) => {
+      if (!isCorrect) nextBlankAttempts[name] = (nextBlankAttempts[name] ?? 0) + 1;
+    });
+
+    setBlankAttemptsByName?.(nextBlankAttempts);
+    setBlankStatus?.(results);
+
+    const incorrectNames = Object.entries(results)
+      .filter(([, ok]) => !ok)
+      .map(([name]) => name);
+
+    logBlankAnalytics?.({
+      type: "CHECK_BLANKS",
+      attempt: nextAttempt,
+      results,
+      blanks: Object.entries(results).map(([name, isCorrect]) => ({
+        name,
+        isCorrect,
+        studentAnswer: (((mergedBlanks || {})[name]) ?? "").trim(),
+        difficulty: difficulties[name] || null,
+        attemptsForThisBlank: nextBlankAttempts[name] ?? 0,
+      })),
+      incorrectBlanks: incorrectNames,
+      analyticsTag: analyticsTag || null,
+      stepId: step?.id,
+      stepTitle: step?.title,
+      storageKey: storageKey || null,
+      globalKey: globalKey || null,
+    });
+
+    if (incorrectNames.length === 0) {
+      setActiveBlankHint?.(null);
+      setAiHelpByBlank?.({});
+    }
+  };
+
+  /* ==========================================================
+     RENDER CODE WITH BLANKS (ported from CodeLessonBase)
+     - This is what controls blank widths + comment alignment.
   ========================================================== */
 
-  const CHAR_W = 8;
+  // Helpers for aligning // comments into a second column
+  const CHAR_W = 8; // matches original width math (value.length * 8)
 
   const estimateTokenWidthPx = (tok) => {
     if (!tok) return 0;
@@ -427,6 +596,8 @@ export default function GuidedCodeBlock({
     return 0;
   };
 
+  // Split a line into "code tokens" and a single "comment string"
+  // Everything after the first `//` becomes the comment column.
   const splitLineAtComment = (lineTokens) => {
     const codeTokens = [];
     let comment = "";
@@ -445,8 +616,10 @@ export default function GuidedCodeBlock({
 
         if (idx >= 0) {
           const before = s.slice(0, idx);
-          const after = s.slice(idx);
+          const after = s.slice(idx); // includes //
 
+          // If "before" is ONLY whitespace, this is a comment-only line.
+          // Do NOT count that whitespace toward the code column width.
           if (before.trim().length > 0) {
             codeTokens.push({ ...tok, content: before });
             comment = after;
@@ -462,16 +635,18 @@ export default function GuidedCodeBlock({
         continue;
       }
 
-      if (tok.type === "blank") codeTokens.push(tok);
+      if (tok.type === "blank") {
+        codeTokens.push(tok);
+      }
     }
 
     return { codeTokens, comment: comment.trimEnd() };
   };
 
-  const renderCodeWithBlanks = () => {
-    if (!code) return null;
+  const renderCodeWithBlanks = (rawCode, bIndex, explanations) => {
+    if (!rawCode) return null;
 
-    const chunks = code.split(/(\^\^[\s\S]*?\^\^)/g).filter(Boolean);
+    const chunks = rawCode.split(/(\^\^[\s\S]*?\^\^)/g).filter(Boolean);
     const tokens = [];
 
     for (let chunk of chunks) {
@@ -490,13 +665,14 @@ export default function GuidedCodeBlock({
         const blankMatch = part.match(/^__BLANK\[([A-Z0-9_]+)\]__$/);
         if (blankMatch) {
           const name = blankMatch[1];
-          const value = mergedBlanks?.[name] ?? "";
+          const value = ((mergedBlanks || {})[name]) ?? "";
           const displayLength = value.length > 0 ? value.length : 1;
 
           tokens.push({
             type: "blank",
             name,
             value,
+            // EXACT width logic from CodeLessonBase:
             width: Math.max(40, displayLength * 8 + 0),
             highlight: isHighlight,
           });
@@ -525,22 +701,24 @@ export default function GuidedCodeBlock({
       )
     );
 
+    // EXACT padding from CodeLessonBase:
     const CODE_COL_PX = maxCodePx + 12;
 
     return lineSplits.map(({ codeTokens, comment }, lineIdx) => {
       if (!codeTokens.length && !comment) {
         return (
-          <View key={`line-${lineIdx}`} style={styles.codeLineRow}>
+          <View key={`line-${lineIdx}`} style={S.codeLineRow}>
             <View style={{ width: CODE_COL_PX }}>
-              <Text style={styles.codeNormal}>{" "}</Text>
+              <Text style={S.codeNormal}>{" "}</Text>
             </View>
           </View>
         );
       }
 
       return (
-        <View key={`line-${lineIdx}`} style={styles.codeLineRow}>
-          <View style={[styles.codePartCol, { width: CODE_COL_PX }]}>
+        <View key={`line-${lineIdx}`} style={S.codeLineRow}>
+          {/* LEFT: fixed-width code column */}
+          <View style={[S.codePartCol, { width: CODE_COL_PX }]}>
             {codeTokens.map((tok, idx) => {
               if (tok.type === "text") {
                 const textContent = tok.content;
@@ -554,17 +732,17 @@ export default function GuidedCodeBlock({
                 }
 
                 return (
-                  <Text key={`t-${lineIdx}-${idx}`} style={styles.codeNormal}>
+                  <Text key={`t-${lineIdx}-${idx}`} style={S.codeNormal}>
                     {textContent}
                   </Text>
                 );
               }
 
               if (tok.type === "blank") {
-                const status = blankStatus?.[tok.name];
+                const status = (blankStatus || {})[tok.name];
 
                 return (
-                  <View key={`b-${lineIdx}-${idx}`} style={styles.blankWithDot}>
+                  <View key={`b-${lineIdx}-${idx}`} style={S.blankWithDot}>
                     <TextInput
                       value={tok.value}
                       onChangeText={(txt) => {
@@ -580,14 +758,14 @@ export default function GuidedCodeBlock({
                         setActiveBlankHint?.((prev) =>
                           prev &&
                           prev.name === tok.name &&
-                          prev.blockIndex === blockIndex
+                          prev.blockIndex === bIndex
                             ? null
                             : prev
                         );
 
                         setAiHelpByBlank?.((prev) => {
                           const next = { ...(prev || {}) };
-                          delete next[`${blockIndex}:${tok.name}`];
+                          delete next[`${bIndex}:${tok.name}`];
                           return next;
                         });
                       }}
@@ -595,27 +773,27 @@ export default function GuidedCodeBlock({
                       autoCorrect={false}
                       spellCheck={false}
                       style={[
-                        styles.codeBlankInput,
-                        tok.highlight && styles.codeBlankInputHighlight,
-                        status === true && styles.blankCorrect,
-                        status === false && styles.blankIncorrect,
+                        S.codeBlankInput,
+                        tok.highlight && S.codeBlankInputHighlight,
+                        status === true && S.blankCorrect,
+                        status === false && S.blankIncorrect,
                         { width: tok.width },
                       ]}
                     />
 
                     {status === false && (
                       <TouchableOpacity
-                        style={styles.errorDot}
+                        style={S.errorDot}
                         onPress={() => {
                           const explanation =
-                            (blockExplanations && blockExplanations[tok.name]) ||
+                            (explanations && explanations[tok.name]) ||
                             (step?.blankExplanations && step.blankExplanations[tok.name]) ||
                             "Hint: Re-check what this blank represents.";
 
                           setActiveBlankHint?.({
                             name: tok.name,
                             text: explanation,
-                            blockIndex,
+                            blockIndex: bIndex,
                           });
                         }}
                       />
@@ -628,12 +806,9 @@ export default function GuidedCodeBlock({
             })}
           </View>
 
+          {/* RIGHT: comment column (aligned) */}
           {!!comment && (
-            <Text
-              style={styles.codeCommentCol}
-              numberOfLines={0}
-              ellipsizeMode="clip"
-            >
+            <Text style={S.codeCommentCol} numberOfLines={0} ellipsizeMode="clip">
               {comment}
             </Text>
           )}
@@ -654,7 +829,7 @@ export default function GuidedCodeBlock({
 
   const aiText =
     aiKey && Object.prototype.hasOwnProperty.call(aiHelpByBlank || {}, aiKey)
-      ? aiHelpByBlank[aiKey]
+      ? (aiHelpByBlank || {})[aiKey]
       : null;
 
   const loadingThis = aiKey && aiLoadingKey === aiKey;
@@ -664,28 +839,25 @@ export default function GuidedCodeBlock({
 
   return (
     <>
-      <View style={styles.codeCard}>
-        <View style={styles.codeCardHeader}>
-          <Text style={styles.codeCardTitle}>Example Code</Text>
+      <View style={S.codeCard}>
+        <View style={S.codeCardHeader}>
+          <Text style={S.codeCardTitle}>Example Code</Text>
 
-          <View style={styles.codeCardHeaderActions || styles.codeHeaderButtons}>
+          <View style={S.codeCardHeaderActions || S.codeHeaderButtons}>
             {step?.answerKey && (
-              <TouchableOpacity style={styles.copyBtn} onPress={checkBlanks}>
+              <TouchableOpacity style={S.copyBtn} onPress={checkBlanks}>
                 <Ionicons
                   name="checkmark-done-outline"
                   size={16}
                   color="#cbd5e1"
                 />
-                <Text style={styles.copyBtnText}>Check Code</Text>
+                <Text style={S.copyBtnText}>Check Code</Text>
               </TouchableOpacity>
             )}
 
-            <TouchableOpacity
-              style={styles.copyBtn}
-              onPress={() => copyCode(code)}
-            >
+            <TouchableOpacity style={S.copyBtn} onPress={() => copyCode(code)}>
               <Ionicons name="copy-outline" size={16} color="#cbd5e1" />
-              <Text style={styles.copyBtnText}>Copy to Editor</Text>
+              <Text style={S.copyBtnText}>Copy to Editor</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -696,15 +868,19 @@ export default function GuidedCodeBlock({
             showsHorizontalScrollIndicator
             contentContainerStyle={{ flexGrow: 1 }}
           >
-            <View style={styles.codeBox}>{renderCodeWithBlanks()}</View>
+            <View style={S.codeBox}>
+              {renderCodeWithBlanks(code, blockIndex, blockExplanations)}
+            </View>
           </ScrollView>
         ) : (
-          <View style={styles.codeBox}>{renderCodeWithBlanks()}</View>
+          <View style={S.codeBox}>
+            {renderCodeWithBlanks(code, blockIndex, blockExplanations)}
+          </View>
         )}
       </View>
 
       {showHintBox && (
-        <View style={styles.blankHintBox}>
+        <View style={S.blankHintBox}>
           <Ionicons
             name="alert-circle-outline"
             size={18}
@@ -712,18 +888,14 @@ export default function GuidedCodeBlock({
             style={{ marginRight: 8, marginTop: 2 }}
           />
 
-          <View style={styles.hintContent}>
-            <Text style={styles.blankHintText}>{activeBlankHint.text}</Text>
+          <View style={S.hintContent}>
+            <Text style={S.blankHintText}>{activeBlankHint.text}</Text>
 
             {!aiText && !loadingThis && (
               <Text
                 style={[
-                  styles.blankHintText,
-                  {
-                    fontSize: 11,
-                    color: "#9ca3af",
-                    marginTop: 4,
-                  },
+                  S.blankHintText,
+                  { fontSize: 11, color: "#9ca3af", marginTop: 4 },
                 ]}
               >
                 More AI hints are allowed after you’ve thought it through for at
@@ -733,17 +905,17 @@ export default function GuidedCodeBlock({
 
             {aiText && (
               <>
-                <View style={styles.aiHintDivider} />
-                <Text style={styles.blankHintText}>{aiText}</Text>
+                <View style={S.aiHintDivider} />
+                <Text style={S.blankHintText}>{aiText}</Text>
               </>
             )}
 
             {!aiText && loadingThis && (
               <>
-                <View style={styles.aiHintDivider} />
+                <View style={S.aiHintDivider} />
                 <Text
                   style={[
-                    styles.blankHintText,
+                    S.blankHintText,
                     { fontStyle: "italic", color: "#6b7280" },
                   ]}
                 >
@@ -765,16 +937,12 @@ export default function GuidedCodeBlock({
                 onPress={() =>
                   requestAiBlankHelpForBlank({
                     blankName: activeBlankHint.name,
-                    code: code,
+                    code,
                   })
                 }
                 style={{ marginRight: 8 }}
               >
-                <Ionicons
-                  name="help-circle-outline"
-                  size={18}
-                  color="#2563eb"
-                />
+                <Ionicons name="help-circle-outline" size={18} color="#2563eb" />
               </TouchableOpacity>
             )}
 

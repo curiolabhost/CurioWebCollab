@@ -1,4 +1,4 @@
-// code.js
+// code.js  (CodeLessonBase.js)
 // answer key: https://wokwi.com/projects/447184024115506177
 
 import React from "react";
@@ -131,6 +131,40 @@ function StepCard({ step, storageKey, globalKey, apiBaseUrl, analyticsTag }) {
      5. MERGED BLANKS
   ========================================================== */
   const mergedBlanks = { ...localBlanks, ...globalBlanks };
+
+  /* ==========================================================
+     ONE IMAGE SYSTEM: imageGrid renderer (use for all images)
+  ========================================================== */
+  const renderImageGrid = (grid, keyPrefix = "grid") => {
+    if (!grid || !Array.isArray(grid.items) || grid.items.length === 0) return null;
+
+    const columns = Math.max(1, Number(grid.columns || 3));
+    const widthPct = `${Math.floor(100 / columns)}%`;
+
+    return (
+      <View style={styles.imageGridWrap} key={keyPrefix}>
+        <View style={styles.imageGrid}>
+          {grid.items.map((it, idx) => (
+            <View
+              key={`${keyPrefix}-item-${idx}`}
+              style={[styles.imageGridItem, { width: widthPct }]}
+            >
+              <View style={styles.imageGridImgWrap}>
+                <Image
+                  source={typeof it.image === "string" ? { uri: it.image } : it.image}
+                  style={styles.imageGridImg}
+                  resizeMode="contain"
+                />
+              </View>
+              {!!it.label ? (
+                <Text style={styles.imageGridLabel}>{it.label}</Text>
+              ) : null}
+            </View>
+          ))}
+        </View>
+      </View>
+    );
+  };
 
   /* ==========================================================
      RENDER DESCRIPTION WITH INLINE BLANKS + CODE
@@ -289,50 +323,15 @@ function StepCard({ step, storageKey, globalKey, apiBaseUrl, analyticsTag }) {
         ) : null}
 
         {step.desc ? (
-          <View style={styles.stepDescBlock}>{renderWithInlineCode(step.desc)}</View>
-        ) : null}
-
-        {step.gif ? (
-          <View style={styles.gifCard}>
-            <Image source={step.gif} style={styles.gifImage} resizeMode="contain" />
-            <Text style={styles.gifCaption}>{step.gifCaption}</Text>
-          </View>
-        ) : null}
-
-        {step.imageGrid && Array.isArray(step.imageGrid.items) ? (
-          <View style={styles.imageGridWrap}>
-            <View style={styles.imageGrid}>
-              {step.imageGrid.items.map((it, idx) => (
-                <View
-                  key={`ig-${idx}`}
-                  style={[
-                    styles.imageGridItem,
-                    { width: `${Math.floor(100 / (step.imageGrid.columns || 3))}%` },
-                  ]}
-                >
-                  <View style={styles.imageGridImgWrap}>
-                    <Image
-                      source={typeof it.image === "string" ? { uri: it.image } : it.image}
-                      style={styles.imageGridImg}
-                      resizeMode="contain"
-                    />
-                  </View>
-                  {!!it.label ? (
-                    <Text style={styles.imageGridLabel}>{it.label}</Text>
-                  ) : null}
-                </View>
-              ))}
-            </View>
-          </View>
-        ) : null}
-
-        {step.descAfterCircuit ? (
           <View style={styles.stepDescBlock}>
-            {renderWithInlineCode(step.descAfterCircuit)}
+            {renderWithInlineCode(step.desc)}
           </View>
         ) : null}
 
-        {/* ---- Code blocks (multi) ---- */}
+        {/* NOTE: we no longer render step.gif / step.circuitImage / step.imageGrid here.
+           All images should live inside step.codes[] as imageGrid* fields. */}
+
+        {/* ---- Code blocks (multi only) ---- */}
         {Array.isArray(step.codes) && step.codes.length > 0 ? (
           <>
             {step.codes.map((block, idx) => (
@@ -344,118 +343,98 @@ function StepCard({ step, storageKey, globalKey, apiBaseUrl, analyticsTag }) {
                   <Text style={styles.topicTitle}>{block.topicTitle}</Text>
                 ) : null}
 
+                {/* BEFORE CODE */}
                 {block.descBeforeCode ? (
                   <View style={styles.stepDescBlock}>
                     {renderWithInlineCode(block.descBeforeCode)}
                   </View>
                 ) : null}
 
-                <GuidedCodeBlock
-                  step={step}
-                  block={block}
-                  blockIndex={idx}
-                  storageKey={storageKey}
-                  globalKey={GLOBAL_KEY}
-                  apiBaseUrl={apiBaseUrl}
-                  analyticsTag={analyticsTag}
-                  mergedBlanks={mergedBlanks}
-                  setLocalBlanks={setLocalBlanks}
-                  setGlobalBlanks={setGlobalBlanks}
-                  blankStatus={blankStatus}
-                  setBlankStatus={setBlankStatus}
-                  activeBlankHint={activeBlankHint}
-                  setActiveBlankHint={setActiveBlankHint}
-                  aiHelpByBlank={aiHelpByBlank}
-                  setAiHelpByBlank={setAiHelpByBlank}
-                  aiLoadingKey={aiLoadingKey}
-                  setAiLoadingKey={setAiLoadingKey}
-                  aiLastRequestAtByKey={aiLastRequestAtByKey}
-                  setAiLastRequestAtByKey={setAiLastRequestAtByKey}
-                  aiHintLevelByBlank={aiHintLevelByBlank}
-                  setAiHintLevelByBlank={setAiHintLevelByBlank}
-                  checkAttempts={checkAttempts}
-                  setCheckAttempts={setCheckAttempts}
-                  blankAttemptsByName={blankAttemptsByName}
-                  setBlankAttemptsByName={setBlankAttemptsByName}
-                  logBlankAnalytics={logBlankAnalytics}
-                  styles={styles}
-                />
+                {block.imageGridBeforeCode
+                  ? renderImageGrid(block.imageGridBeforeCode, `b-${idx}-imgBefore`)
+                  : null}
 
+                {block.descBetweenBeforeAndCode ? (
+                  <View style={styles.stepDescBlock}>
+                    {renderWithInlineCode(block.descBetweenBeforeAndCode)}
+                  </View>
+                ) : null}
+
+                {/* CODE BOX */}
+                {block.code ? (
+                  <GuidedCodeBlock
+                    step={step}
+                    block={block}
+                    blockIndex={idx}
+                    storageKey={storageKey}
+                    globalKey={GLOBAL_KEY}
+                    apiBaseUrl={apiBaseUrl}
+                    analyticsTag={analyticsTag}
+                    mergedBlanks={mergedBlanks}
+                    setLocalBlanks={setLocalBlanks}
+                    setGlobalBlanks={setGlobalBlanks}
+                    blankStatus={blankStatus}
+                    setBlankStatus={setBlankStatus}
+                    activeBlankHint={activeBlankHint}
+                    setActiveBlankHint={setActiveBlankHint}
+                    aiHelpByBlank={aiHelpByBlank}
+                    setAiHelpByBlank={setAiHelpByBlank}
+                    aiLoadingKey={aiLoadingKey}
+                    setAiLoadingKey={setAiLoadingKey}
+                    aiLastRequestAtByKey={aiLastRequestAtByKey}
+                    setAiLastRequestAtByKey={setAiLastRequestAtByKey}
+                    aiHintLevelByBlank={aiHintLevelByBlank}
+                    setAiHintLevelByBlank={setAiHintLevelByBlank}
+                    checkAttempts={checkAttempts}
+                    setCheckAttempts={setCheckAttempts}
+                    blankAttemptsByName={blankAttemptsByName}
+                    setBlankAttemptsByName={setBlankAttemptsByName}
+                    logBlankAnalytics={logBlankAnalytics}
+                    styles={styles}
+                  />
+                ) : null}
+
+                {/* AFTER CODE */}
                 {block.descAfterCode ? (
                   <View style={styles.stepDescBlock}>
                     {renderWithInlineCode(block.descAfterCode)}
                   </View>
                 ) : null}
+
+                {block.imageGridAfterCode
+                  ? renderImageGrid(block.imageGridAfterCode, `b-${idx}-imgAfter`)
+                  : null}
+
+                {block.descAfterImage ? (
+                  <View style={styles.stepDescBlock}>
+                    {renderWithInlineCode(block.descAfterImage)}
+                  </View>
+                ) : null}
+
+                {/* Optional hint (keep at block-level if you want) */}
+                {block.hint ? (
+                  <View style={styles.hintBox}>
+                    <Ionicons name="bulb-outline" size={18} color="#6a5c1d" />
+                    <Text style={styles.hintText}>
+                      <Text style={{ fontWeight: "700" }}>Hint: </Text>
+                      {block.hint}
+                    </Text>
+                  </View>
+                ) : null}
               </View>
             ))}
           </>
-        ) : step.code ? (
-          /* ---- Single code block ---- */
-          <>
-            <GuidedCodeBlock
-              step={step}
-              block={{ code: step.code }}
-              blockIndex={"single"}
-              storageKey={storageKey}
-              globalKey={GLOBAL_KEY}
-              apiBaseUrl={apiBaseUrl}
-              analyticsTag={analyticsTag}
-              mergedBlanks={mergedBlanks}
-              setLocalBlanks={setLocalBlanks}
-              setGlobalBlanks={setGlobalBlanks}
-              blankStatus={blankStatus}
-              setBlankStatus={setBlankStatus}
-              activeBlankHint={activeBlankHint}
-              setActiveBlankHint={setActiveBlankHint}
-              aiHelpByBlank={aiHelpByBlank}
-              setAiHelpByBlank={setAiHelpByBlank}
-              aiLoadingKey={aiLoadingKey}
-              setAiLoadingKey={setAiLoadingKey}
-              aiLastRequestAtByKey={aiLastRequestAtByKey}
-              setAiLastRequestAtByKey={setAiLastRequestAtByKey}
-              aiHintLevelByBlank={aiHintLevelByBlank}
-              setAiHintLevelByBlank={setAiHintLevelByBlank}
-              checkAttempts={checkAttempts}
-              setCheckAttempts={setCheckAttempts}
-              blankAttemptsByName={blankAttemptsByName}
-              setBlankAttemptsByName={setBlankAttemptsByName}
-              logBlankAnalytics={logBlankAnalytics}
-              styles={styles}
-              horizontalScroll={false}
-            />
+        ) : null}
 
-            {step.descAfterCode ? (
-              <View style={styles.stepDescBlock}>
-                {renderWithInlineCode(step.descAfterCode)}
-              </View>
-            ) : null}
-
-            {step.circuitImage ? (
-              <View style={styles.gifCard}>
-                <Image
-                  source={
-                    typeof step.circuitImage === "string"
-                      ? { uri: step.circuitImage }
-                      : step.circuitImage.image
-                      ? step.circuitImage.image
-                      : step.circuitImage
-                  }
-                  style={styles.gifImage}
-                  resizeMode="contain"
-                />
-              </View>
-            ) : null}
-
-            {step.hint ? (
-              <View style={styles.hintBox}>
-                <Ionicons name="bulb-outline" size={18} color="#6a5c1d" />
-                <Text style={styles.hintText}>
-                  <Text style={{ fontWeight: "700" }}>Hint: </Text>
-                  {step.hint}
-                </Text>
-              </View>
-            ) : null}
-          </>
+        {/* Optional step-level hint (if you still want one global hint) */}
+        {step.hint ? (
+          <View style={styles.hintBox}>
+            <Ionicons name="bulb-outline" size={18} color="#6a5c1d" />
+            <Text style={styles.hintText}>
+              <Text style={{ fontWeight: "700" }}>Hint: </Text>
+              {step.hint}
+            </Text>
+          </View>
         ) : null}
       </View>
     </View>
@@ -492,7 +471,8 @@ function LessonSidebar({
 
             {steps.map((step, idx) => {
               const isActive = isCurrentLesson && idx === currentStepIndex;
-              const done = typeof isStepDone === "function" && isStepDone(lessonNum, idx);
+              const done =
+                typeof isStepDone === "function" && isStepDone(lessonNum, idx);
 
               return (
                 <TouchableOpacity
@@ -545,9 +525,11 @@ export default function CodeLessonBase({
 
   // Resolve storage keys from either explicit props or storagePrefix
   const _doneSetKey = doneSetKey || `${storagePrefix}:doneSet`;
-  const _overallProgressKey = overallProgressKey || `${storagePrefix}:overallProgress`;
+  const _overallProgressKey =
+    overallProgressKey || `${storagePrefix}:overallProgress`;
   const _globalBlanksKey = globalBlanksKey || `${storagePrefix}:blanks:GLOBAL`;
-  const _localBlanksPrefixKey = localBlanksPrefixKey || `${storagePrefix}:blanks:LOCAL`;
+  const _localBlanksPrefixKey =
+    localBlanksPrefixKey || `${storagePrefix}:blanks:LOCAL`;
 
   const router = useRouter();
   const { showEditor, toggle } = useEditorToggle();
@@ -641,7 +623,9 @@ export default function CodeLessonBase({
   });
 
   const lessonProgress =
-    steps.length > 0 ? Math.round((completedInThisLesson / steps.length) * 100) : 0;
+    steps.length > 0
+      ? Math.round((completedInThisLesson / steps.length) * 100)
+      : 0;
 
   const markDone = () =>
     setDoneSet((prev) => {
@@ -675,7 +659,10 @@ export default function CodeLessonBase({
 
       {/* Header */}
       <View style={styles.headerRow}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => router.replace(backRoute)}>
+        <TouchableOpacity
+          style={styles.backBtn}
+          onPress={() => router.replace(backRoute)}
+        >
           <Ionicons name="arrow-back" size={18} color="#c05454" />
           <Text style={styles.backText}>Back</Text>
         </TouchableOpacity>
@@ -705,7 +692,9 @@ export default function CodeLessonBase({
         <View style={styles.progressGroup}>
           <Text style={styles.progressHeader}>Overall progress</Text>
           <View style={styles.progressBarWrap}>
-            <View style={[styles.progressBarFill, { width: `${overallProgress}%` }]} />
+            <View
+              style={[styles.progressBarFill, { width: `${overallProgress}%` }]}
+            />
           </View>
           <Text style={styles.progressLabel}>{overallProgress}% complete</Text>
         </View>
@@ -776,12 +765,18 @@ export default function CodeLessonBase({
 
           <View style={{ flexDirection: "row", alignItems: "center" }}>
             {isDone ? (
-              <TouchableOpacity style={[styles.btn, { marginRight: 8 }]} onPress={unmarkDone}>
+              <TouchableOpacity
+                style={[styles.btn, { marginRight: 8 }]}
+                onPress={unmarkDone}
+              >
                 <Ionicons name="checkmark-circle" size={18} color="#fff" />
                 <Text style={styles.btnText}>Marked</Text>
               </TouchableOpacity>
             ) : (
-              <TouchableOpacity style={[styles.btnGhost, { marginRight: 8 }]} onPress={markDone}>
+              <TouchableOpacity
+                style={[styles.btnGhost, { marginRight: 8 }]}
+                onPress={markDone}
+              >
                 <Ionicons name="ellipse-outline" size={18} color="#c05454" />
                 <Text style={styles.btnGhostText}>Mark done</Text>
               </TouchableOpacity>
@@ -844,9 +839,7 @@ export default function CodeLessonBase({
               <ArduinoEditor />
             )
           }
-          initialLeftRatio={
-            !showCircuit && showEditor ? CODE_ONLY_DEFAULT_LEFT_RATIO : 0.6
-          }
+          initialLeftRatio={!showCircuit && showEditor ? CODE_ONLY_DEFAULT_LEFT_RATIO : 0.6}
           persistKey={!showCircuit && showEditor ? SPLIT_PERSIST_CODE_ONLY : null}
           minRightPx={!showCircuit && showEditor ? 420 : 0}
           maxLeftRatio={!showCircuit && showEditor ? 0.9 : 0.85}
@@ -1051,33 +1044,6 @@ const styles = StyleSheet.create({
   },
   hintText: { fontSize: 14, color: "#6a5c1d", flex: 1, lineHeight: 20 },
 
-  gifCard: {
-    backgroundColor: "transparent",
-    borderWidth: 0,
-    borderRadius: 0,
-    padding: 0,
-    marginTop: 0,
-    alignItems: "center",
-    justifyContent: "center",
-    elevation: 0,
-    alignSelf: "center",
-    width: "100%",
-    maxWidth: 600,
-  },
-  gifImage: {
-    width: "100%",
-    height: 500,
-    aspectRatio: 16 / 9,
-    borderRadius: 0,
-    backgroundColor: "transparent",
-  },
-  gifCaption: {
-    fontSize: 13,
-    color: "#6a5c1d",
-    marginTop: 3,
-    fontStyle: "italic",
-  },
-
   lessonLayoutRow: { flexDirection: "row", alignItems: "flex-start" },
 
   lessonSidebar: {
@@ -1186,10 +1152,18 @@ const styles = StyleSheet.create({
   },
   btnGhostText: { color: "#c05454", fontWeight: "700" },
 
-  // placeholders to match references in your JSX (won't break build)
+  /* ---------- Generic Configurable Image Grid ---------- */
   imageGridWrap: {},
-  imageGrid: { flexDirection: "row", flexWrap: "wrap", justifyContent: "flex-start" },
-  imageGridItem: { padding: 8, marginBottom: 12, alignItems: "center" },
+  imageGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "flex-start",
+  },
+  imageGridItem: {
+    padding: 8,
+    marginBottom: 12,
+    alignItems: "center",
+  },
   imageGridImgWrap: {
     width: "100%",
     aspectRatio: 1.6,
