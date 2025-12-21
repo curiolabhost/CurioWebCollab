@@ -28,19 +28,41 @@ const LESSON_STEPS_CIRCUIT = {
       id: "circuit-1",
       title: "Step 1: Materials & OLED Wiring (Power + I²C)",
 
-      imageGrid: {
-  columns: 3,
-  rows: 2,
-  items: [
-    { label: "Arduino UNO (or Nano)", image: require("../../../assets/circuit/arduino_uno.png") },
-    { label: "SSD1306 OLED",         image: require("../../../assets/circuit/ssd1306_oled.png") },
-    { label: "Push Buttons ×3",      image: require("../../../assets/circuit/pushbuttons.png") },
-    { label: "Breadboard",           image: require("../../../assets/circuit/breadboard.jpg") },
-    { label: "Jumper Wires",         image: require("../../../assets/circuit/jumper_wires.jpg") },
-  ],
-},
+      // Put everything into the CodeLessonBase "block" layout:
+      // - images => imageGridBeforeCode / imageGridAfterCode
+      // - text   => descBeforeCode / descAfterCode / descAfterImage
+      // - no code box needed, so block.code is omitted
+      codes: [
+        {
+          topicTitle: "Materials",
+          imageGridBeforeCode: {
+            columns: 3,
+            rows: 2,
+            items: [
+              {
+                label: "Arduino UNO (or Nano)",
+                image: require("../../../assets/circuit/arduino_uno.png"),
+              },
+              {
+                label: "SSD1306 OLED",
+                image: require("../../../assets/circuit/ssd1306_oled.png"),
+              },
+              {
+                label: "Push Buttons ×3",
+                image: require("../../../assets/circuit/pushbuttons.png"),
+              },
+              {
+                label: "Breadboard",
+                image: require("../../../assets/circuit/breadboard.jpg"),
+              },
+              {
+                label: "Jumper Wires",
+                image: require("../../../assets/circuit/jumper_wires.jpg"),
+              },
+            ],
+          },
 
-      descAfterCircuit: processDesc(`
+          descAfterCode: processDesc(`
 Gather these parts first:
 
 @Arduino UNO (or Nano)
@@ -48,7 +70,10 @@ Gather these parts first:
 @3× momentary pushbuttons
 @Breadboard
 @Jumper wires
+          `),
 
+          topicTitle2: "Wiring (OLED Power + I²C)", // optional: if your renderer ignores this, remove it
+          descAfterImage: processDesc(`
 Power the OLED:
 @OLED VCC → 5V (or 3.3V on some boards)
 @OLED GND → GND
@@ -60,18 +85,33 @@ I²C lines (OLED ↔ Arduino):
 @Typical I²C address is 0x3C (sometimes 0x3D)
 
 Once this is wired, your OLED has power + data connection.
-      `),
-      circuitImage: {
-        uri: "https://dummyimage.com/1200x700/ddd/000.png&text=OLED+Circuit+Photo+Placeholder",
-      },
+          `),
+
+          // If you want a single “big photo” here, convert it into an image grid (1 column).
+          imageGridAfterCode: {
+            columns: 1,
+            items: [
+              {
+                label: "OLED Wiring Reference",
+                image:
+                  "https://dummyimage.com/1200x700/ddd/000.png&text=OLED+Circuit+Photo+Placeholder",
+              },
+            ],
+          },
+        },
+      ],
     },
   ],
 
   2: [
     {
-            id: "circuit-2",
+      id: "circuit-2",
       title: "Step 2: Install OLED Libraries",
-      desc: processDesc(`
+
+      codes: [
+        {
+          topicTitle: "Install the Libraries",
+          descBeforeCode: processDesc(`
 We’ll use the Adafruit SSD1306 + GFX drivers.
 
 Install the display libraries:
@@ -79,19 +119,26 @@ Install the display libraries:
 @Search and install "Adafruit SSD1306"
 @Search and install "Adafruit GFX Library"
 @Restart IDE if examples do not appear
-      `),
+          `),
 
-      circuitImage: {
-        image: require("../../../assets/circuit/adafruitssd1306.png"),
-        
-      },
+          imageGridAfterCode: {
+            columns: 1,
+            items: [
+              {
+                label: "Library Manager Search",
+                image: require("../../../assets/circuit/adafruitssd1306.png"),
+              },
+            ],
+          },
 
-      descAfterCircuit: processDesc(`
+          descAfterImage: processDesc(`
 Common Issues:
 @“SSD1306 allocation failed” → wrong display size example
 @Blank screen → wrong SDA/SCL wiring or incorrect address (0x3C/0x3D)
 @Upload stalls → reset Arduino and try again
-      `),
+          `),
+        },
+      ],
     },
   ],
 
@@ -99,7 +146,11 @@ Common Issues:
     {
       id: "circuit-3",
       title: "Step 3: Run an Example (Sanity Check)",
-      desc: processDesc(`
+
+      codes: [
+        {
+          topicTitle: "Confirm the OLED Works First",
+          descBeforeCode: processDesc(`
 Before building your own menu, run a known working test.
 
 Open the example sketch:
@@ -115,10 +166,20 @@ Expected output:
 @Scrolling or drawing test shapes
 
 If the OLED works here, wiring + libraries are correct.
-      `),
-      circuitImage: {
-        uri: "https://dummyimage.com/1200x700/ddd/000.png&text=OLED+Test+Output",
-      },
+          `),
+
+          imageGridAfterCode: {
+            columns: 1,
+            items: [
+              {
+                label: "Expected OLED Output",
+                image:
+                  "https://dummyimage.com/1200x700/ddd/000.png&text=OLED+Test+Output",
+              },
+            ],
+          },
+        },
+      ],
     },
   ],
 
@@ -126,7 +187,11 @@ If the OLED works here, wiring + libraries are correct.
     {
       id: "circuit-4",
       title: "Step 4: Buttons with Internal Pull-Ups",
-      desc: processDesc(`
+
+      codes: [
+        {
+          topicTitle: "Button Wiring (INPUT_PULLUP)",
+          descBeforeCode: processDesc(`
 We will use INPUT_PULLUP so the button reads LOW when pressed.
 
 2-leg button wiring:
@@ -145,13 +210,24 @@ Typical mapping:
 @Opposite side goes to GND
 
 Press = LOW, Release = HIGH (via pull-up).
-      `),
-      circuitImage: {
-        uri: "https://dummyimage.com/1200x500/ffffff/000000.png&text=Buttons+with+Internal+Pull-Ups",
-      },
+          `),
+
+          imageGridAfterCode: {
+            columns: 1,
+            items: [
+              {
+                label: "Buttons with Internal Pull-Ups",
+                image:
+                  "https://dummyimage.com/1200x500/ffffff/000000.png&text=Buttons+with+Internal+Pull-Ups",
+              },
+            ],
+          },
+        },
+      ],
     },
   ],
 };
+
 
 // ------------------------------------------------------------
 // Screen Wrapper
