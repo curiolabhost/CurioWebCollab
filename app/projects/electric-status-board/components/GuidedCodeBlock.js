@@ -13,7 +13,6 @@ import { Ionicons } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
 
 // --- Simple Arduino-style syntax groups for example boxes ---
-// Copied from the original CodeLessonBase.js so GuidedCodeBlock renders identically.
 const TYPE_KEYWORDS = [
   "void",
   "int",
@@ -68,6 +67,11 @@ const ARDUINO_FUNCS = [
   "INPUT_PULLUP",
 ];
 
+// ✅ faster membership checks
+const TYPE_SET = new Set(TYPE_KEYWORDS);
+const CONTROL_SET = new Set(CONTROL_KEYWORDS);
+const ARDUINO_SET = new Set(ARDUINO_FUNCS);
+
 const CODE_FONT = Platform.select({
   ios: "Menlo",
   android: "monospace",
@@ -76,7 +80,6 @@ const CODE_FONT = Platform.select({
 
 /* ==========================================================
    FALLBACK STYLES
-   If CodeLessonBase passes styles, those will override.
 ========================================================== */
 const localStyles = StyleSheet.create({
   codeCard: {
@@ -135,7 +138,6 @@ const localStyles = StyleSheet.create({
     lineHeight: 20,
   },
 
-  // highlighted (WHITE) segments: ^^...^^
   codeHighlight: {
     color: "#cdced1ff",
     fontWeight: "400",
@@ -144,9 +146,8 @@ const localStyles = StyleSheet.create({
     lineHeight: 20,
   },
 
-  // editable blanks in the code
   codeBlankInput: {
-    minWidth: 20, // small default width
+    minWidth: 20,
     paddingHorizontal: 0,
     paddingVertical: 0.5,
     marginHorizontal: 0,
@@ -155,25 +156,20 @@ const localStyles = StyleSheet.create({
     borderBottomColor: "#5e6d8b6a",
     fontSize: 14,
     lineHeight: 20,
-    textAlign: "center", // keeps typed text centered
+    textAlign: "center",
     fontFamily: CODE_FONT,
     flexShrink: 0,
     color: "#a3a5a3ff",
   },
 
   codeBlankInputHighlight: {
-    color: "#cdced1ff", // match highlighted code color
-    borderBottomColor: "#5e6d8b6a", // lighter underline in highlight
+    color: "#cdced1ff",
+    borderBottomColor: "#5e6d8b6a",
     fontFamily: CODE_FONT,
   },
 
-  blankCorrect: {
-    borderBottomColor: "#16a34a", // green
-  },
-
-  blankIncorrect: {
-    borderBottomColor: "#dc2626", // red
-  },
+  blankCorrect: { borderBottomColor: "#16a34a" },
+  blankIncorrect: { borderBottomColor: "#dc2626" },
 
   blankWithDot: {
     flexDirection: "row",
@@ -188,7 +184,6 @@ const localStyles = StyleSheet.create({
     marginLeft: 4,
   },
 
-  // --- Comment alignment/layout (copied from original) ---
   codeLineRow: {
     flexDirection: "row",
     alignItems: "flex-start",
@@ -210,15 +205,43 @@ const localStyles = StyleSheet.create({
     flexShrink: 0,
   },
 
-  // --- Syntax color fallbacks (these get overridden by CodeLessonBase styles if passed) ---
-  syntaxComment: { color: "#82a8abff" },
-  syntaxString: { color: "#fca5a5" },
-  syntaxNumber: { color: "#93c5fd" },
-  syntaxType: { color: "#f9a8d4" },
-  syntaxControl: { color: "#c4b5fd" },
-  syntaxArduinoFunc: { color: "#fcd34d" },
+  syntaxComment: {
+    color: "#82a8abff",
+    fontFamily: CODE_FONT,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  syntaxString: {
+    color: "#fca5a5",
+    fontFamily: CODE_FONT,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  syntaxNumber: {
+    color: "#93c5fd",
+    fontFamily: CODE_FONT,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  syntaxType: {
+    color: "#f9a8d4",
+    fontFamily: CODE_FONT,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  syntaxControl: {
+    color: "#c4b5fd",
+    fontFamily: CODE_FONT,
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  syntaxArduinoFunc: {
+    color: "#fcd34d",
+    fontFamily: CODE_FONT,
+    fontSize: 14,
+    lineHeight: 20,
+  },
 
-  // --- Hint box fallbacks (copied-ish; your parent styles will override) ---
   blankHintBox: {
     flexDirection: "row",
     alignItems: "flex-start",
@@ -246,6 +269,108 @@ const localStyles = StyleSheet.create({
     marginVertical: 8,
   },
 });
+
+/* ==========================================================
+   Small helpers
+========================================================== */
+const CHAR_W = 8;
+
+function splitToTemplateTokens(rawCode) {
+  // Template tokens DO NOT depend on values
+  // Only store: newline / text / blank{name} / highlight flag.
+  if (!rawCode) return [];
+
+  const chunks = rawCode.split(/(\^\^[\s\S]*?\^\^)/g).filter(Boolean);
+  const tokens = [];
+
+  for (const chunk of chunks) {
+    const isHighlight = chunk.startsWith("^^") && chunk.endsWith("^^");
+    const inner = isHighlight ? chunk.slice(2, -2) : chunk;
+
+    const parts = inner.split(/(__BLANK\[[A-Z0-9_]+\]__|\n)/g);
+
+    for (const part of parts) {
+      if (part === "\n") {
+        tokens.push({ type: "newline" });
+        continue;
+      }
+      if (!part) continue;
+
+      const blankMatch = part.match(/^__BLANK\[([A-Z0-9_]+)\]__$/);
+      if (blankMatch) {
+        tokens.push({
+          type: "blank",
+          name: blankMatch[1],
+          highlight: isHighlight,
+        });
+      } else {
+        tokens.push({
+          type: "text",
+          content: part,
+          highlight: isHighlight,
+        });
+      }
+    }
+  }
+
+  // Group into lines
+  const lines = [[]];
+  for (const tok of tokens) {
+    if (tok.type === "newline") lines.push([]);
+    else lines[lines.length - 1].push(tok);
+  }
+  return lines;
+}
+
+// Split a line into "code tokens" and "comment string" (template-level)
+function splitLineAtCommentTemplate(lineTokens) {
+  const codeTokens = [];
+  let comment = "";
+  let inComment = false;
+
+  for (const tok of lineTokens) {
+    if (inComment) {
+      if (tok.type === "text") comment += tok.content;
+      else if (tok.type === "blank") comment += "_____";
+      continue;
+    }
+
+    if (tok.type === "text") {
+      const s = tok.content || "";
+      const idx = s.indexOf("//");
+
+      if (idx >= 0) {
+        const before = s.slice(0, idx);
+        const after = s.slice(idx);
+
+        if (before.trim().length > 0) {
+          codeTokens.push({ ...tok, content: before });
+          comment = after;
+        } else {
+          comment = after;
+        }
+
+        inComment = true;
+      } else {
+        codeTokens.push(tok);
+      }
+      continue;
+    }
+
+    if (tok.type === "blank") {
+      codeTokens.push(tok);
+    }
+  }
+
+  return { codeTokens, comment: comment.trimEnd() };
+}
+
+function estimateTemplateTokenWidthPx(tok, valueLen) {
+  if (!tok) return 0;
+  if (tok.type === "blank") return Math.max(40, Math.max(1, valueLen) * CHAR_W);
+  if (tok.type === "text") return (tok.content?.length || 0) * CHAR_W;
+  return 0;
+}
 
 export default function GuidedCodeBlock({
   step,
@@ -281,25 +406,50 @@ export default function GuidedCodeBlock({
   setBlankAttemptsByName,
 
   logBlankAnalytics,
-  styles, // <-- may be undefined or missing fields
+  styles,
 
   horizontalScroll = true,
 }) {
-  // ✅ Use passed styles if available, otherwise fall back
-  // Merge so we keep ALL fallbacks (instead of replacing the whole object).
-  const S = React.useMemo(
-    () => ({ ...localStyles, ...(styles || {}) }),
-    [styles]
-  );
+  const S = React.useMemo(() => ({ ...localStyles, ...(styles || {}) }), [styles]);
 
   const AI_COOLDOWN_MS = 8000;
   const MAX_HINT_LEVEL = 3;
 
   const code = block?.code || step?.code || "";
-  const blockExplanations =
-    block?.blankExplanations || step?.blankExplanations || null;
+  const blockExplanations = block?.blankExplanations || step?.blankExplanations || null;
+
+  // ✅ answerKey can live on block OR step
+  const answerKey = block?.answerKey || step?.answerKey || null;
 
   const difficulties = step?.blankDifficulties || {};
+
+  /* ==========================================================
+     SUPER IMPORTANT PERFORMANCE CHANGE:
+     localValues updates instantly (no parent setState per keypress)
+  ========================================================== */
+  const [localValues, setLocalValues] = React.useState(() => mergedBlanks || {});
+  const localValuesRef = React.useRef(localValues);
+  localValuesRef.current = localValues;
+
+  // If mergedBlanks changes due to navigation/restore, sync local values (but don’t fight typing)
+  React.useEffect(() => {
+    // Shallow merge so any new blanks appear, but keep what user is typing
+    setLocalValues((prev) => ({ ...(mergedBlanks || {}), ...(prev || {}) }));
+  }, [mergedBlanks]);
+
+  // Optional: ultra-light parent local update (doesn't have to happen on every keypress)
+  const rafRef = React.useRef(null);
+  const scheduleParentLocalUpdate = React.useCallback(
+    (name, value) => {
+      if (!setLocalBlanks) return;
+
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      rafRef.current = requestAnimationFrame(() => {
+        setLocalBlanks((prev) => ({ ...(prev || {}), [name]: value }));
+      });
+    },
+    [setLocalBlanks]
+  );
 
   /* ==========================================================
      SYNTAX HIGHLIGHTING
@@ -308,8 +458,7 @@ export default function GuidedCodeBlock({
     if (!text) return null;
 
     const pieces = [];
-    const regex =
-      /(\b[A-Za-z_]\w*\b|\/\/[^\n]*|"[^"\n]*"|'[^'\n]*'|\d+|\s+|[^\w\s]+)/g;
+    const regex = /(\b[A-Za-z_]\w*\b|\/\/[^\n]*|"[^"\n]*"|'[^'\n]*'|\d+|\s+|[^\w\s]+)/g;
 
     let match;
     let idx = 0;
@@ -325,9 +474,9 @@ export default function GuidedCodeBlock({
       )
         style = S.syntaxString;
       else if (/^\d/.test(token)) style = S.syntaxNumber;
-      else if (TYPE_KEYWORDS.includes(token)) style = S.syntaxType;
-      else if (CONTROL_KEYWORDS.includes(token)) style = S.syntaxControl;
-      else if (ARDUINO_FUNCS.includes(token)) style = S.syntaxArduinoFunc;
+      else if (TYPE_SET.has(token)) style = S.syntaxType;
+      else if (CONTROL_SET.has(token)) style = S.syntaxControl;
+      else if (ARDUINO_SET.has(token)) style = S.syntaxArduinoFunc;
       else style = S.codeHighlight;
 
       pieces.push(
@@ -340,6 +489,18 @@ export default function GuidedCodeBlock({
     return pieces;
   };
 
+  // ✅ NEW: if blank value EXACTLY matches a special token, apply syntax style
+  const getCompletedBlankSyntaxStyle = (rawValue) => {
+    const v = (rawValue ?? "").trim();
+    if (!v) return null;
+
+    if (TYPE_SET.has(v)) return S.syntaxType;
+    if (CONTROL_SET.has(v)) return S.syntaxControl;
+    if (ARDUINO_SET.has(v)) return S.syntaxArduinoFunc;
+
+    return null;
+  };
+
   /* ==========================================================
      COPY FUNCTION
   ========================================================== */
@@ -347,7 +508,8 @@ export default function GuidedCodeBlock({
     try {
       let textToCopy = rawCode || "";
 
-      Object.entries(mergedBlanks || {}).forEach(([name, value]) => {
+      const values = localValuesRef.current || mergedBlanks || {};
+      Object.entries(values || {}).forEach(([name, value]) => {
         const placeholder = `__BLANK[${name}]__`;
         const replacement =
           value && String(value).trim().length > 0 ? String(value) : "_____";
@@ -364,7 +526,7 @@ export default function GuidedCodeBlock({
   };
 
   /* ==========================================================
-     AI HELP FOR A SPECIFIC BLANK (ported from CodeLessonBase)
+     AI HELP FOR A SPECIFIC BLANK
   ========================================================== */
   const requestAiBlankHelpForBlank = async ({ blankName, code }) => {
     if (!step) return;
@@ -375,8 +537,8 @@ export default function GuidedCodeBlock({
     const usedHints = (aiHintLevelByBlank || {})[key] ?? 0;
     if (usedHints >= MAX_HINT_LEVEL) return;
 
-    const studentAnswer = ((mergedBlanks || {})[blankName] ?? "").trim();
-    const rule = step?.answerKey?.[blankName];
+    const studentAnswer = ((localValuesRef.current || {})[blankName] ?? "").trim();
+    const rule = answerKey?.[blankName];
     if (!rule) return;
 
     const previousHintText = (aiHelpByBlank || {})[key] || null;
@@ -384,9 +546,7 @@ export default function GuidedCodeBlock({
     const now = Date.now();
     const last = (aiLastRequestAtByKey || {})[key] || 0;
     if (now - last < AI_COOLDOWN_MS) {
-      const secondsLeft = Math.ceil(
-        (AI_COOLDOWN_MS - (now - last)) / 1000
-      );
+      const secondsLeft = Math.ceil((AI_COOLDOWN_MS - (now - last)) / 1000);
 
       setAiHelpByBlank?.((prev) => ({
         ...(prev || {}),
@@ -410,15 +570,13 @@ export default function GuidedCodeBlock({
       title: step?.title,
       description: step?.desc || null,
       codeSnippet: code || step?.code || null,
-
       blank: {
         name: blankName,
         studentAnswer,
         rule,
-        allBlanks: mergedBlanks || {},
+        allBlanks: localValuesRef.current || {},
         previousHint: previousHintText,
       },
-
       mode,
       hintLevel: upcomingHintNumber,
     };
@@ -481,18 +639,19 @@ export default function GuidedCodeBlock({
   };
 
   /* ==========================================================
-     CHECK WITH ANSWER KEY FUNCTION
+     CHECK FUNCTION
   ========================================================== */
   const checkBlanks = async () => {
-    if (!step?.answerKey) return;
+    if (!answerKey) return;
 
     const nextAttempt = (checkAttempts || 0) + 1;
     setCheckAttempts?.((prev) => (prev || 0) + 1);
 
     const results = {};
+    const values = localValuesRef.current || {};
 
-    Object.entries(step.answerKey).forEach(([name, spec]) => {
-      const raw = ((mergedBlanks || {})[name] ?? "").trim();
+    Object.entries(answerKey).forEach(([name, spec]) => {
+      const raw = (values[name] ?? "").trim();
       let isCorrect = false;
 
       if (spec && typeof spec === "object" && !Array.isArray(spec)) {
@@ -516,7 +675,7 @@ export default function GuidedCodeBlock({
           }
           case "sameAs": {
             const otherName = spec.target;
-            const otherVal = (((mergedBlanks || {})[otherName]) ?? "").trim();
+            const otherVal = (values[otherName] ?? "").trim();
             isCorrect = raw !== "" && raw === otherVal;
             break;
           }
@@ -533,11 +692,7 @@ export default function GuidedCodeBlock({
           }
         }
       } else {
-        const accepted = Array.isArray(spec)
-          ? spec
-          : spec != null
-          ? [spec]
-          : [];
+        const accepted = Array.isArray(spec) ? spec : spec != null ? [spec] : [];
         isCorrect = accepted.some((v) => raw === String(v).trim());
       }
 
@@ -545,8 +700,8 @@ export default function GuidedCodeBlock({
     });
 
     const nextBlankAttempts = { ...(blankAttemptsByName || {}) };
-    Object.entries(results).forEach(([name, isCorrect]) => {
-      if (!isCorrect) nextBlankAttempts[name] = (nextBlankAttempts[name] ?? 0) + 1;
+    Object.entries(results).forEach(([name, ok]) => {
+      if (!ok) nextBlankAttempts[name] = (nextBlankAttempts[name] ?? 0) + 1;
     });
 
     setBlankAttemptsByName?.(nextBlankAttempts);
@@ -563,7 +718,7 @@ export default function GuidedCodeBlock({
       blanks: Object.entries(results).map(([name, isCorrect]) => ({
         name,
         isCorrect,
-        studentAnswer: (((mergedBlanks || {})[name]) ?? "").trim(),
+        studentAnswer: (values[name] ?? "").trim(),
         difficulty: difficulties[name] || null,
         attemptsForThisBlank: nextBlankAttempts[name] ?? 0,
       })),
@@ -582,133 +737,49 @@ export default function GuidedCodeBlock({
   };
 
   /* ==========================================================
-     RENDER CODE WITH BLANKS (ported from CodeLessonBase)
-     - This is what controls blank widths + comment alignment.
+     TEMPLATE PARSING (ONCE) + COMMENT SPLITS (ONCE)
+     This is the huge perf win.
   ========================================================== */
+  const templateLines = React.useMemo(() => splitToTemplateTokens(code), [code]);
 
-  // Helpers for aligning // comments into a second column
-  const CHAR_W = 8; // matches original width math (value.length * 8)
+  const templateLineSplits = React.useMemo(
+    () => templateLines.map(splitLineAtCommentTemplate),
+    [templateLines]
+  );
 
-  const estimateTokenWidthPx = (tok) => {
-    if (!tok) return 0;
-    if (tok.type === "blank") return tok.width || 0;
-    if (tok.type === "text") return (tok.content?.length || 0) * CHAR_W;
-    return 0;
-  };
+  // Compute CODE_COL_PX from template + current values (cheap-ish)
+  const codeColPx = React.useMemo(() => {
+    // We only need max line width; use localValues (fast local state)
+    const values = localValues || {};
+    let maxCodePx = 0;
 
-  // Split a line into "code tokens" and a single "comment string"
-  // Everything after the first `//` becomes the comment column.
-  const splitLineAtComment = (lineTokens) => {
-    const codeTokens = [];
-    let comment = "";
-    let inComment = false;
-
-    for (const tok of lineTokens) {
-      if (inComment) {
-        if (tok.type === "text") comment += tok.content;
-        else if (tok.type === "blank") comment += "_____";
-        continue;
-      }
-
-      if (tok.type === "text") {
-        const s = tok.content || "";
-        const idx = s.indexOf("//");
-
-        if (idx >= 0) {
-          const before = s.slice(0, idx);
-          const after = s.slice(idx); // includes //
-
-          // If "before" is ONLY whitespace, this is a comment-only line.
-          // Do NOT count that whitespace toward the code column width.
-          if (before.trim().length > 0) {
-            codeTokens.push({ ...tok, content: before });
-            comment = after;
-          } else {
-            comment = after;
-          }
-
-          inComment = true;
-          continue;
+    for (const { codeTokens } of templateLineSplits) {
+      let lineW = 0;
+      for (const t of codeTokens) {
+        if (t.type === "blank") {
+          const v = (values[t.name] ?? "");
+          lineW += estimateTemplateTokenWidthPx(t, v.length);
         } else {
-          codeTokens.push(tok);
+          lineW += estimateTemplateTokenWidthPx(t, 0);
         }
-        continue;
       }
-
-      if (tok.type === "blank") {
-        codeTokens.push(tok);
-      }
+      if (lineW > maxCodePx) maxCodePx = lineW;
     }
 
-    return { codeTokens, comment: comment.trimEnd() };
-  };
+    return maxCodePx + 12;
+  }, [templateLineSplits, localValues]);
 
-  const renderCodeWithBlanks = (rawCode, bIndex, explanations) => {
-    if (!rawCode) return null;
+  /* ==========================================================
+     RENDER CODE FROM TEMPLATE (NO re-tokenize per keystroke)
+  ========================================================== */
+  const renderCodeFromTemplate = () => {
+    const values = localValues || {};
 
-    const chunks = rawCode.split(/(\^\^[\s\S]*?\^\^)/g).filter(Boolean);
-    const tokens = [];
-
-    for (let chunk of chunks) {
-      const isHighlight = chunk.startsWith("^^") && chunk.endsWith("^^");
-      const inner = isHighlight ? chunk.slice(2, -2) : chunk;
-
-      const parts = inner.split(/(__BLANK\[[A-Z0-9_]+\]__|\n)/g);
-
-      for (let part of parts) {
-        if (part === "\n") {
-          tokens.push({ type: "newline" });
-          continue;
-        }
-        if (!part) continue;
-
-        const blankMatch = part.match(/^__BLANK\[([A-Z0-9_]+)\]__$/);
-        if (blankMatch) {
-          const name = blankMatch[1];
-          const value = ((mergedBlanks || {})[name]) ?? "";
-          const displayLength = value.length > 0 ? value.length : 1;
-
-          tokens.push({
-            type: "blank",
-            name,
-            value,
-            // EXACT width logic from CodeLessonBase:
-            width: Math.max(40, displayLength * 8 + 0),
-            highlight: isHighlight,
-          });
-        } else {
-          tokens.push({
-            type: "text",
-            highlight: isHighlight,
-            content: part,
-          });
-        }
-      }
-    }
-
-    const lines = [[]];
-    tokens.forEach((tok) => {
-      if (tok.type === "newline") lines.push([]);
-      else lines[lines.length - 1].push(tok);
-    });
-
-    const lineSplits = lines.map(splitLineAtComment);
-
-    const maxCodePx = Math.max(
-      0,
-      ...lineSplits.map(({ codeTokens }) =>
-        codeTokens.reduce((sum, t) => sum + estimateTokenWidthPx(t), 0)
-      )
-    );
-
-    // EXACT padding from CodeLessonBase:
-    const CODE_COL_PX = maxCodePx + 12;
-
-    return lineSplits.map(({ codeTokens, comment }, lineIdx) => {
+    return templateLineSplits.map(({ codeTokens, comment }, lineIdx) => {
       if (!codeTokens.length && !comment) {
         return (
           <View key={`line-${lineIdx}`} style={S.codeLineRow}>
-            <View style={{ width: CODE_COL_PX }}>
+            <View style={{ width: codeColPx }}>
               <Text style={S.codeNormal}>{" "}</Text>
             </View>
           </View>
@@ -717,8 +788,7 @@ export default function GuidedCodeBlock({
 
       return (
         <View key={`line-${lineIdx}`} style={S.codeLineRow}>
-          {/* LEFT: fixed-width code column */}
-          <View style={[S.codePartCol, { width: CODE_COL_PX }]}>
+          <View style={[S.codePartCol, { width: codeColPx }]}>
             {codeTokens.map((tok, idx) => {
               if (tok.type === "text") {
                 const textContent = tok.content;
@@ -739,35 +809,41 @@ export default function GuidedCodeBlock({
               }
 
               if (tok.type === "blank") {
-                const status = (blankStatus || {})[tok.name];
+                const name = tok.name;
+                const val = values[name] ?? "";
+                const status = (blankStatus || {})[name];
+                const width = Math.max(40, Math.max(1, String(val).length) * CHAR_W);
 
                 return (
                   <View key={`b-${lineIdx}-${idx}`} style={S.blankWithDot}>
                     <TextInput
-                      value={tok.value}
+                      value={String(val)}
                       onChangeText={(txt) => {
-                        setLocalBlanks?.((prev) => ({ ...(prev || {}), [tok.name]: txt }));
-                        setGlobalBlanks?.((prev) => ({ ...(prev || {}), [tok.name]: txt }));
+                        // ✅ instantaneous local update
+                        setLocalValues((prev) => ({
+                          ...(prev || {}),
+                          [name]: txt,
+                        }));
 
-                        setBlankStatus?.((prev) => {
-                          const copy = { ...(prev || {}) };
-                          delete copy[tok.name];
-                          return copy;
-                        });
+                        // optional: lightweight parent local update (not global)
+                        scheduleParentLocalUpdate(name, txt);
 
-                        setActiveBlankHint?.((prev) =>
-                          prev &&
-                          prev.name === tok.name &&
-                          prev.blockIndex === bIndex
-                            ? null
-                            : prev
-                        );
-
-                        setAiHelpByBlank?.((prev) => {
-                          const next = { ...(prev || {}) };
-                          delete next[`${bIndex}:${tok.name}`];
-                          return next;
-                        });
+                        // clear correctness while typing (only for this blank)
+                        if ((blankStatus || {})[name] != null) {
+                          setBlankStatus?.((prev) => {
+                            const copy = { ...(prev || {}) };
+                            delete copy[name];
+                            return copy;
+                          });
+                        }
+                      }}
+                      onBlur={() => {
+                        // ✅ commit to global only once
+                        const committed = (localValuesRef.current || {})[name] ?? "";
+                        setGlobalBlanks?.((prev) => ({
+                          ...(prev || {}),
+                          [name]: committed,
+                        }));
                       }}
                       autoCapitalize="none"
                       autoCorrect={false}
@@ -777,7 +853,11 @@ export default function GuidedCodeBlock({
                         tok.highlight && S.codeBlankInputHighlight,
                         status === true && S.blankCorrect,
                         status === false && S.blankIncorrect,
-                        { width: tok.width },
+
+                        // ✅ syntax color when FULL word matches special token
+                        getCompletedBlankSyntaxStyle(val),
+
+                        { width },
                       ]}
                     />
 
@@ -786,14 +866,14 @@ export default function GuidedCodeBlock({
                         style={S.errorDot}
                         onPress={() => {
                           const explanation =
-                            (explanations && explanations[tok.name]) ||
-                            (step?.blankExplanations && step.blankExplanations[tok.name]) ||
+                            (blockExplanations && blockExplanations[name]) ||
+                            (step?.blankExplanations && step.blankExplanations[name]) ||
                             "Hint: Re-check what this blank represents.";
 
                           setActiveBlankHint?.({
-                            name: tok.name,
+                            name,
                             text: explanation,
-                            blockIndex: bIndex,
+                            blockIndex,
                           });
                         }}
                       />
@@ -806,7 +886,6 @@ export default function GuidedCodeBlock({
             })}
           </View>
 
-          {/* RIGHT: comment column (aligned) */}
           {!!comment && (
             <Text style={S.codeCommentCol} numberOfLines={0} ellipsizeMode="clip">
               {comment}
@@ -821,9 +900,7 @@ export default function GuidedCodeBlock({
      HINT BOX (scoped to this blockIndex)
   ========================================================== */
   const aiKey =
-    activeBlankHint &&
-    activeBlankHint.blockIndex === blockIndex &&
-    activeBlankHint.name
+    activeBlankHint && activeBlankHint.blockIndex === blockIndex && activeBlankHint.name
       ? `${blockIndex}:${activeBlankHint.name}`
       : null;
 
@@ -833,9 +910,7 @@ export default function GuidedCodeBlock({
       : null;
 
   const loadingThis = aiKey && aiLoadingKey === aiKey;
-
-  const showHintBox =
-    activeBlankHint && activeBlankHint.blockIndex === blockIndex;
+  const showHintBox = activeBlankHint && activeBlankHint.blockIndex === blockIndex;
 
   return (
     <>
@@ -844,13 +919,9 @@ export default function GuidedCodeBlock({
           <Text style={S.codeCardTitle}>Example Code</Text>
 
           <View style={S.codeCardHeaderActions || S.codeHeaderButtons}>
-            {step?.answerKey && (
+            {answerKey && (
               <TouchableOpacity style={S.copyBtn} onPress={checkBlanks}>
-                <Ionicons
-                  name="checkmark-done-outline"
-                  size={16}
-                  color="#cbd5e1"
-                />
+                <Ionicons name="checkmark-done-outline" size={16} color="#cbd5e1" />
                 <Text style={S.copyBtnText}>Check Code</Text>
               </TouchableOpacity>
             )}
@@ -863,19 +934,11 @@ export default function GuidedCodeBlock({
         </View>
 
         {horizontalScroll ? (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator
-            contentContainerStyle={{ flexGrow: 1 }}
-          >
-            <View style={S.codeBox}>
-              {renderCodeWithBlanks(code, blockIndex, blockExplanations)}
-            </View>
+          <ScrollView horizontal showsHorizontalScrollIndicator contentContainerStyle={{ flexGrow: 1 }}>
+            <View style={S.codeBox}>{renderCodeFromTemplate()}</View>
           </ScrollView>
         ) : (
-          <View style={S.codeBox}>
-            {renderCodeWithBlanks(code, blockIndex, blockExplanations)}
-          </View>
+          <View style={S.codeBox}>{renderCodeFromTemplate()}</View>
         )}
       </View>
 
@@ -892,14 +955,9 @@ export default function GuidedCodeBlock({
             <Text style={S.blankHintText}>{activeBlankHint.text}</Text>
 
             {!aiText && !loadingThis && (
-              <Text
-                style={[
-                  S.blankHintText,
-                  { fontSize: 11, color: "#9ca3af", marginTop: 4 },
-                ]}
-              >
-                More AI hints are allowed after you’ve thought it through for at
-                least 6 seconds. You are allowed up to 3 hints per blank.
+              <Text style={[S.blankHintText, { fontSize: 11, color: "#9ca3af", marginTop: 4 }]}>
+                More AI hints are allowed after you’ve thought it through for at least 6 seconds.
+                You are allowed up to 3 hints per blank.
               </Text>
             )}
 
@@ -913,12 +971,7 @@ export default function GuidedCodeBlock({
             {!aiText && loadingThis && (
               <>
                 <View style={S.aiHintDivider} />
-                <Text
-                  style={[
-                    S.blankHintText,
-                    { fontStyle: "italic", color: "#6b7280" },
-                  ]}
-                >
+                <Text style={[S.blankHintText, { fontStyle: "italic", color: "#6b7280" }]}>
                   Thinking…
                 </Text>
               </>
@@ -927,11 +980,7 @@ export default function GuidedCodeBlock({
 
           <View style={{ flexDirection: "row", alignItems: "flex-start" }}>
             {loadingThis ? (
-              <ActivityIndicator
-                size="small"
-                color="#2563eb"
-                style={{ marginRight: 8 }}
-              />
+              <ActivityIndicator size="small" color="#2563eb" style={{ marginRight: 8 }} />
             ) : (
               <TouchableOpacity
                 onPress={() =>
