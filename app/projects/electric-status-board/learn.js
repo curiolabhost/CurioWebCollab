@@ -115,18 +115,19 @@ export default function ElectricStatusBoard() {
         options={{ title: "Electric Status Board", headerShown: false }}
       />
 
-      {/* BACK BUTTON BLOCK */}
-      <View style={styles.headerRow}>
+      {/*  MINI HEADER (BACK ONLY) */}
+      <View style={styles.miniHeader}>
         <TouchableOpacity
-          style={styles.backBtn}
+          style={styles.miniHeaderIconBtn}
           onPress={goBackOrProjects}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           accessibilityRole="button"
           accessibilityLabel="Go back"
         >
-          <Ionicons name="arrow-back" size={18} color="#c05454" />
-          <Text style={styles.backText}>Back</Text>
+          <Ionicons name="arrow-back" size={18} color="#111" />
         </TouchableOpacity>
       </View>
+
 
       {/* WHOLE PAGE SCROLLABLE: top = overview, bottom = learn section */}
       <ScrollView
@@ -373,19 +374,6 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     paddingBottom: 0,
   },
-  backBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 6,
-    backgroundColor: "white",
-    borderWidth: 2,
-    borderColor: "#c05454",
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 10,
-    alignSelf: "flex-start",
-  },
-  backText: { color: "#c05454", fontWeight: "700" },
 
   scrollOuter: {
     paddingVertical: 18,
@@ -562,4 +550,19 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     color: "#4b5563",
   },
+
+    miniHeader: {
+  height: 38,
+  backgroundColor: "#fff",
+  flexDirection: "row",
+  alignItems: "center",
+  paddingHorizontal: 8,
+  borderBottomWidth: 1,
+  borderBottomColor: "#e5e7eb",
+},
+
+miniHeaderIconBtn: {
+  padding: 6,
+  borderRadius: 10,
+},
 });
