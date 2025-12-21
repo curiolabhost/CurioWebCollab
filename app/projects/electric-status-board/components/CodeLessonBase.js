@@ -688,101 +688,108 @@ export default function CodeLessonBase({
   };
 
   /* ---- MAIN LEFT CONTENT ---- */
-const leftPane = (
-  <View style={{ flex: 1 }}>
-    <Stack.Screen options={{ headerShown: false }} />
+  const leftPane = (
+    <View style={{ flex: 1 }}>
+      <Stack.Screen options={{ headerShown: false }} />
 
-    {/* EVERYTHING THAT SHOULD SCROLL GOES INSIDE HERE */}
-    <ScrollView ref={scrollRef} contentContainerStyle={styles.container}>
-      {/* Header */}
-      <View style={styles.headerRow}>
+      {/* ✅ FIXED ICON HEADER (NOT SCROLLABLE) */}
+      <View style={styles.miniHeader}>
         <TouchableOpacity
-          style={styles.backBtn}
+          style={styles.miniHeaderIconBtn}
           onPress={() => router.replace(backRoute)}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Ionicons name="arrow-back" size={18} color="#c05454" />
-          <Text style={styles.backText}>Back</Text>
+          <Ionicons name="arrow-back" size={22} color="#111" />
         </TouchableOpacity>
 
-        <View style={styles.headerRightCol}>
-          <TouchableOpacity style={styles.editorToggleBtn} onPress={toggle}>
-            <Text style={styles.editorToggleText}>{`</>`}</Text>
+        <View style={styles.miniHeaderRight}>
+          <TouchableOpacity
+            style={styles.miniHeaderIconBtn}
+            onPress={toggle}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Text style={styles.miniHeaderCodeIcon}>{`</>`}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.circuitBtn}
+            style={styles.miniHeaderIconBtn}
             onPress={() => setShowCircuit((v) => !v)}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Text style={styles.circuitBtnText}>{`⚡`}</Text>
+            {/* choose icon you like best */}
+            <Ionicons name="hardware-chip-outline" size={22} color="#111" />
           </TouchableOpacity>
         </View>
       </View>
 
-      {/* Title */}
-      <View style={styles.titleWrap}>
-        <Text style={styles.h1}>{`Lesson ${lesson}: ${headerTopic}`}</Text>
-        <Text style={styles.p}>Learn by completing each step below.</Text>
-      </View>
+      {/* ✅ SCROLLABLE CONTENT (title + progress + lesson) */}
+      <ScrollView ref={scrollRef} contentContainerStyle={styles.containerScroll}>
+        {/* Title */}
+        <View style={styles.titleWrap}>
+          <Text style={styles.h1}>{`Lesson ${lesson}: ${headerTopic}`}</Text>
+          <Text style={styles.p}>Learn by completing each step below.</Text>
+        </View>
 
-      {/* Progress */}
-      <View style={{ paddingHorizontal: 18 }}>
-        <View style={styles.progressRow}>
-          <View style={[styles.progressGroup, styles.progressHalf]}>
-            <Text style={styles.progressHeader}>Overall progress</Text>
-            <View style={styles.progressBarWrap}>
-              <View
-                style={[styles.progressBarFill, { width: `${overallProgress}%` }]}
-              />
+        {/* Progress */}
+        <View style={{ paddingHorizontal: 18 }}>
+          <View style={styles.progressRow}>
+            <View style={[styles.progressGroup, styles.progressHalf]}>
+              <Text style={styles.progressHeader}>Overall progress</Text>
+              <View style={styles.progressBarWrap}>
+                <View
+                  style={[styles.progressBarFill, { width: `${overallProgress}%` }]}
+                />
+              </View>
+              <Text style={styles.progressLabel}>{overallProgress}% complete</Text>
             </View>
-            <Text style={styles.progressLabel}>{overallProgress}% complete</Text>
-          </View>
 
-          <View style={[styles.progressGroup, styles.progressHalf]}>
-            <Text style={styles.progressHeader}>This lesson</Text>
-            <View style={styles.progressBarWrap}>
-              <View
-                style={[
-                  styles.progressBarFillSecondary,
-                  { width: `${lessonProgress}%` },
-                ]}
-              />
+            <View style={[styles.progressGroup, styles.progressHalf]}>
+              <Text style={styles.progressHeader}>This lesson</Text>
+              <View style={styles.progressBarWrap}>
+                <View
+                  style={[
+                    styles.progressBarFillSecondary,
+                    { width: `${lessonProgress}%` },
+                  ]}
+                />
+              </View>
+              <Text style={styles.progressLabel}>{lessonProgress}% of steps</Text>
             </View>
-            <Text style={styles.progressLabel}>{lessonProgress}% of steps</Text>
           </View>
         </View>
+
+        {/* Step card + Sidebar */}
+        {steps.length > 0 ? (
+          <View style={styles.lessonLayoutRow}>
+            <StepCard
+              step={steps[safeStepIndex]}
+              storageKey={`${_localBlanksPrefixKey}:L${lesson}-S${safeStepIndex}`}
+              globalKey={_globalBlanksKey}
+              apiBaseUrl={apiBaseUrl}
+              analyticsTag={analyticsTag}
+            />
+
+            <LessonSidebar
+              lessonSteps={lessonSteps}
+              currentLesson={lesson}
+              currentStepIndex={safeStepIndex}
+              onSelectStep={handleSelectStep}
+              fullWidth={!showEditor}
+              isStepDone={(lessonNumber, stepIdx) =>
+                doneSet.has(makeStepKey(lessonNumber, stepIdx))
+              }
+            />
+          </View>
+        ) : null}
+      </ScrollView>
+
+      {/* Footer stays fixed */}
+      <View style={styles.footer}>
+        ...
       </View>
-
-      {/* Step card + Sidebar */}
-      {steps.length > 0 ? (
-        <View style={styles.lessonLayoutRow}>
-          <StepCard
-            step={steps[safeStepIndex]}
-            storageKey={`${_localBlanksPrefixKey}:L${lesson}-S${safeStepIndex}`}
-            globalKey={_globalBlanksKey}
-            apiBaseUrl={apiBaseUrl}
-            analyticsTag={analyticsTag}
-          />
-
-          <LessonSidebar
-            lessonSteps={lessonSteps}
-            currentLesson={lesson}
-            currentStepIndex={safeStepIndex}
-            onSelectStep={handleSelectStep}
-            fullWidth={!showEditor}
-            isStepDone={(lessonNumber, stepIdx) =>
-              doneSet.has(makeStepKey(lessonNumber, stepIdx))
-            }
-          />
-        </View>
-      ) : null}
-    </ScrollView>
-
-    {/* Footer stays fixed */}
-    <View style={styles.footer}>
-      ...
     </View>
-  </View>
-);
+  );
+
 
 
   /* ---- MAIN OUTER VIEW ---- */
@@ -1178,5 +1185,43 @@ const styles = StyleSheet.create({
   progressHalf: {
     flex: 1,        // forces each progress block to take 50%
   },
+
+  miniHeader: {
+  height: 38,
+  backgroundColor: "#fff",
+  flexDirection: "row",
+  alignItems: "center",
+  paddingHorizontal: 8,
+  borderBottomWidth: 1,
+  borderBottomColor: "#e5e7eb",
+},
+
+miniHeaderRight: {
+  marginLeft: "auto",
+  flexDirection: "row",
+  alignItems: "center",
+  gap: 7,
+},
+
+miniHeaderIconBtn: {
+  padding: 6,
+  borderRadius: 10,
+},
+
+miniHeaderCodeIcon: {
+  fontSize: 18,
+  fontWeight: "800",
+  color: "#111",
+  fontFamily: Platform.select({
+    ios: "Menlo",
+    android: "monospace",
+    default: "monospace",
+  }),
+},
+
+containerScroll: {
+  paddingBottom: 18,
+},
+
 
 });
