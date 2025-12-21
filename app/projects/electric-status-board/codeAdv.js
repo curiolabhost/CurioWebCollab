@@ -144,35 +144,37 @@ Adafruit_SSD1306 display (WIDTH, __BLANK[HEIGHT2]__ , &Wire, RESET);
 ^^
 void setup() {
   Wire.begin();
-  display.__BLANK[BEGIN]__(__BLANK[BEGINA]__, __BLANK[BEGINB]__);
-  display.__BLANK[CLEAR]__;      // to clear display
-  display.__BLANK[SETTEXTSIZE]__(__BLANK[SETTEXTSIZE2]__);      // to select text size
-  display.__BLANK[SETTEXTCOLOR]__(__BLANK[SETTEXTCOLOR2]__);      // to select text color
-  display.__BLANK[SETCURSOR]__(0, 0);   // to set cursor location
-  display.__BLANK[DISPLAY]__();    // to update the screen to display 
+  __BLANK[BEGINA]__;      // Initialize OLED
+  __BLANK[CLEAR]__;      // to clear display
+  __BLANK[SETTEXTSIZE]__(__BLANK[SETTEXTSIZE2]__);      // to select text size
+  __BLANK[SETTEXTCOLOR]__(__BLANK[SETTEXTCOLOR2]__);      // to select text color
+  __BLANK[SETCURSOR]__(__BLANK[XCOORD]__, __BLANK[YCOORD]__);   // to set cursor location
+  __BLANK[DISPLAY]__;    // to update the screen to display 
 
 // set the modes for the buttons you are using 
   pinMode(PREV, INPUT_PULLUP);  // PREV button is an input, not output
   pinMode(__BLANK[NEXT]__, __BLANK[INPUT1]__);  // NEXT button
-  __BLANK[PINMODE]__(__BLANK[SELECT]__, __BLANK[INPUT2]__);^^
+  __BLANK[PINMODE]__(__BLANK[SELECT]__, __BLANK[INPUT2]__);^^.     // SELECT button
 }`,
       answerKey: {
         BEGIN:        ["begin"],
-        BEGINA:       ["SSD1306_SWITCHCAPVCC"],
+        BEGINA:       ["display.begin(SSD1306_SWITCHCAPVCC, 0x3C)"],
         BEGINB:      ["0x3C"],
         // so student should write "clearDisplay()"
-        CLEAR:        ["clearDisplay()"],
-        SETTEXTSIZE:  ["setTextSize"],
+        CLEAR:        ["display.clearDisplay()"],
+        SETTEXTSIZE:  ["display.setTextSize"],
         // Typical text size 1–5 (you can widen if you want)
         SETTEXTSIZE2: { type: "range", min: 1, max: 5 },
-        SETTEXTCOLOR: ["setTextColor"],
+        SETTEXTCOLOR: ["display.setTextColor"],
         SETTEXTCOLOR2: [
           "SSD1306_WHITE",
           "SSD1306_BLACK",
           "SSD1306_INVERSE",
         ],
-        SETCURSOR:    ["setCursor"],
-        DISPLAY:      ["display"],      // makes display.display();
+        SETCURSOR:    ["display.setCursor"],
+        XCOORD:      { type: "range", min: 0, max: 127},
+        YCOORD:      { type: "range", min: 0, max: 63},
+        DISPLAY:      ["display.display()"],      // makes display.display();
         // Button setup
         NEXT:   ["NEXT"],               // reuse constant name
         INPUT1: ["INPUT_PULLUP"],
@@ -191,6 +193,8 @@ void setup() {
         SETTEXTCOLOR: "Use the function that sets the text color on the OLED, such as setTextColor.",
         SETTEXTCOLOR2: "Pick a text color constant such as SSD1306_WHITE (normal), SSD1306_BLACK (erase), or SSD1306_INVERSE (inverted).",
         SETCURSOR: "Use the function that sets the text cursor position, such as setCursor. It takes x and y pixel positions as arguments.",
+        XCOORD: "This is the x-coordinate (horizontal position) of the cursor. You can choose any number from 0 to the screen width minus the text width.",
+        YCOORD: "This is the y-coordinate (vertical position) of the cursor. You can choose any number from 0 to the screen height minus the text height.",
         DISPLAY: "This should be the function that actually sends the current buffer to the OLED, usually display().",
         NEXT: "Use the name of the constant you defined earlier for the NEXT button pin (for example NEXT), not the pin number directly.",
         INPUT1: "Use the pin mode constant that enables the internal pull-up for the NEXT button, usually INPUT_PULLUP.",
@@ -1050,12 +1054,12 @@ __BLANK[TRACKTYPE]__  __BLANK[TRACKNAME]__ = __BLANK[TRACKNUM]__;
 
 void setup() {
   Wire.begin();
-  display.__BLANK[BEGIN]__(__BLANK[BEGINA]__, 0x3C);
-  display.__BLANK[CLEAR]__; // to clear display
-  display.__BLANK[SETTEXTSIZE]__; // to select text size
-  display.__BLANK[SETTEXTCOLOR]__; // to select text color
-  display.__BLANK[SETCURSOR]__(0, 0); // to set cursor location
-  display.__BLANK[DISPLAY]__(); // to update the screen to display 
+  __BLANK[BEGINA]__;      // Initialize OLED
+  __BLANK[CLEAR]__;      // to clear display
+  __BLANK[SETTEXTSIZE]__(__BLANK[SETTEXTSIZE2]__);      // to select text size
+  __BLANK[SETTEXTCOLOR]__(__BLANK[SETTEXTCOLOR2]__);      // to select text color
+  __BLANK[SETCURSOR]__(__BLANK[XCOORD]__, __BLANK[YCOORD]__);   // to set cursor location
+  __BLANK[DISPLAY]__;    // to update the screen to display 
 
   // set the modes for the buttons you are using 
   pinMode(PREV, INPUT_PULLUP); // PREV button is an input, not output
@@ -1271,12 +1275,12 @@ bool showingStatus = false;   // menu mode (false) vs status mode (true)
 
 void setup() {
   Wire.begin();
-  display.__BLANK[BEGIN]__(__BLANK[BEGINA]__, 0x3C);
-  display.__BLANK[CLEAR]__;        // to clear display
-  display.__BLANK[SETTEXTSIZE]__;  // to select text size
-  display.__BLANK[SETTEXTCOLOR]__; // to select text color
-  display.__BLANK[SETCURSOR]__(0, 0); // to set cursor location
-  display.__BLANK[DISPLAY]__();    // to update the screen to display 
+  __BLANK[BEGINA]__;      // Initialize OLED
+  __BLANK[CLEAR]__;      // to clear display
+  __BLANK[SETTEXTSIZE]__(__BLANK[SETTEXTSIZE2]__);      // to select text size
+  __BLANK[SETTEXTCOLOR]__(__BLANK[SETTEXTCOLOR2]__);      // to select text color
+  __BLANK[SETCURSOR]__(__BLANK[XCOORD]__, __BLANK[YCOORD]__);   // to set cursor location
+  __BLANK[DISPLAY]__;    // to update the screen to display 
 
   // set the modes for the buttons you are using 
   pinMode(PREV, INPUT_PULLUP); // PREV button is an input, not output
