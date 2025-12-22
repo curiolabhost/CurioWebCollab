@@ -731,7 +731,7 @@ export default function CodeLessonBase({
         </View>
 
         {/* Progress */}
-        <View style={{ paddingHorizontal: 18 }}>
+        <View style={{ paddingHorizontal: 18, marginBottom: 16}}>
           <View style={styles.progressRow}>
             <View style={[styles.progressGroup, styles.progressHalf]}>
               <Text style={styles.progressHeader}>Overall progress</Text>
@@ -760,33 +760,56 @@ export default function CodeLessonBase({
 
         {/* Step card + Sidebar */}
         {steps.length > 0 ? (
-          <View style={styles.lessonLayoutRow}>
-            <StepCard
-              step={steps[safeStepIndex]}
-              storageKey={`${_localBlanksPrefixKey}:L${lesson}-S${safeStepIndex}`}
-              globalKey={_globalBlanksKey}
-              apiBaseUrl={apiBaseUrl}
-              analyticsTag={analyticsTag}
-            />
+<View style={styles.lessonLayoutRow}>
+  {/* LEFT COLUMN */}
+  <View style={styles.stepCol}>
+    <StepCard
+      step={steps[safeStepIndex]}
+      storageKey={`${_localBlanksPrefixKey}:L${lesson}-S${safeStepIndex}`}
+      globalKey={_globalBlanksKey}
+      apiBaseUrl={apiBaseUrl}
+      analyticsTag={analyticsTag}
+    />
 
-            <LessonSidebar
-              lessonSteps={lessonSteps}
-              currentLesson={lesson}
-              currentStepIndex={safeStepIndex}
-              onSelectStep={handleSelectStep}
-              fullWidth={!showEditor}
-              isStepDone={(lessonNumber, stepIdx) =>
-                doneSet.has(makeStepKey(lessonNumber, stepIdx))
-              }
-            />
-          </View>
+    {/* NEW: action wrapper below StepCard (same width vibe, outside pink outline) */}
+    <View style={styles.stepActionOuter}>
+      <View style={styles.stepActionCard}>
+        <TouchableOpacity
+          onPress={isDone ? unmarkDone : markDone}
+          style={[
+            styles.markDoneBtnFixed,
+            isDone && styles.markDoneBtnFixedDone,
+          ]}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
+          <Text
+            style={[
+              styles.markDoneText,
+              isDone && styles.markDoneTextDone,
+            ]}
+          >
+            {isDone ? "Done" : "Mark Done"}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  </View>
+
+  {/* RIGHT COLUMN: sidebar unchanged */}
+  <LessonSidebar
+    lessonSteps={lessonSteps}
+    currentLesson={lesson}
+    currentStepIndex={safeStepIndex}
+    onSelectStep={handleSelectStep}
+    fullWidth={!showEditor}
+    isStepDone={(lessonNumber, stepIdx) =>
+      doneSet.has(makeStepKey(lessonNumber, stepIdx))
+    }
+  />
+</View>
+
         ) : null}
       </ScrollView>
-
-      {/* Footer stays fixed */}
-      <View style={styles.footer}>
-        ...
-      </View>
     </View>
   );
 
@@ -918,14 +941,15 @@ const styles = StyleSheet.create({
   stepOuter: {
     backgroundColor: "#ffe4e6",
     borderRadius: 16,
-    padding: 10,
-    width: "75%",
+    padding: 5,
+    width: "100%",
     alignSelf: "flex-start",
+    marginLeft: 10,
   },
   stepCard: {
     backgroundColor: "#fff",
     borderRadius: 12,
-    padding: 14,
+    padding: 15,
     elevation: 2,
   },
 
@@ -1220,8 +1244,71 @@ miniHeaderCodeIcon: {
 },
 
 containerScroll: {
+  paddingTop: 7,
   paddingBottom: 18,
 },
+
+stepCol: {
+  width: "75%",
+  alignSelf: "flex-start",
+  flexShrink: 0,
+},
+
+// action row wrapper that "feels like" the StepCard wrapper but is its own thing
+stepActionOuter: {
+  marginTop: 10,
+  borderRadius: 16,
+  width: "100%",
+  alignSelf: "flex-start",
+  padding: 0,
+},
+
+// inner card like stepCard (white)
+stepActionCard: {
+  backgroundColor: "#ffffff06",
+  borderRadius: 12,
+  padding: 0,
+  elevation: 2,
+  flexDirection: "row",
+  justifyContent: "flex-end",
+  alignItems: "center",
+},
+
+// fixed-size button (won’t stretch)
+markDoneBtnFixed: {
+  width: 100,
+  height: 30,
+  borderRadius: 12,
+  borderWidth: 2,
+  borderColor: "#c05454",
+  backgroundColor: "#fff",
+  alignItems: "center",
+  justifyContent: "center",
+},
+
+markDoneBtnFixedDone: {
+  backgroundColor: "#c05454",
+},
+
+markDoneText: {
+  fontSize: 13,
+  fontWeight: "700",
+  color: "#c05454",
+    fontFamily: Platform.select({
+    default: "monospace",
+  }),
+},
+
+markDoneTextDone: {
+  color: "#fff",
+    fontSize: 13,
+  fontWeight: "700",
+    fontFamily: Platform.select({
+    default: "monospace",
+  }),
+},
+
+
 
 
 });
