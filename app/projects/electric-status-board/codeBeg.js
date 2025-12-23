@@ -427,9 +427,17 @@ level = level + 2;`,
         "A list (array) stores many values under one variable name. This is perfect for storing multiple menu options.",
       hint: "Arrays are 0-indexed: the first item is at index 0.",
       codes: [
-      {
-        title:`Practice: Arrays`,
-        code: `// List of four numbers^^
+        {
+          // ✅ gif -> imageGrid
+          imageGridBeforeCode: {
+            columns: 1,
+            rows: 1,
+            items: [{ image: require("../../../assets/array.png"), label: "Array example" }],
+          },
+          descBetweenBeforeAndCode: `Here we practice creating arrays of strings and accessing items by index. Fill the blanks below to complete the examples.`,
+
+          title: `Practice: Arrays`,
+          code: `// List of four numbers^^
 int numbers[] = {1, 2, 3, 4};
 int select = numbers [1];^^
 
@@ -448,8 +456,34 @@ __BLANK[VARRAYTYPE]__  __BLANK[VARRAYNAME]__ = __BLANK[CALL]__;^^`,
   - \`numbers[1]\` gives the second item → \`2\`  
   - \`numbers[3]\` gives the last item → \`4\`
 
-Arrays are extremely useful when you want your code to handle lots of similar values without writing dozens of separate variables.`
-      }]
+Arrays are extremely useful when you want your code to handle lots of similar values without writing dozens of separate variables.
+
+More Practice:
+String days[] = {"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"};
+
+Fill in the blanks:
+days[3] =  __BLANK[DAY]__
+days[0] =  __BLANK[DAY2]__
+days[__BLANK[DAY3]__] = Monday
+days[__BLANK[DAY4]__] = Sunday`,
+
+          answerKey: {
+            DAY: ["Thursday"],
+            DAY2: ["Tuesday"],
+            DAY3: ["0"],
+            DAY4: ["6"],
+        },
+        blankexplanations:{
+          DAY: "day at the 3rd index in list",
+          DAY2: "day at the 1st index in list",
+          DAY3: "index of Monday in list",
+          DAY4: "index of Sunday in list",
+
+        },
+
+
+        },
+      ],
     },
 
     {
