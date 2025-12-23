@@ -15,6 +15,15 @@ void loop() {
 }
 `;
 
+// Add this missing constant for Arduino functions
+const ARDUINO_FUNCS = [
+  "pinMode", "digitalWrite", "digitalRead",
+  "analogWrite", "analogRead",
+  "delay", "millis", "micros",
+  "Serial.begin", "Serial.print", "Serial.println",
+  "setup", "loop"
+];
+
 export default function ArduinoEditor({ height = "100%", width = "100%", apiBaseUrl = "http://localhost:4000" }) {
   const [value, setValue] = React.useState("");
   const [status, setStatus] = React.useState("Ready.");
@@ -174,9 +183,8 @@ export default function ArduinoEditor({ height = "100%", width = "100%", apiBase
         ],
       },
     });
-  };
 
-
+    // Register completion item provider
     monaco.languages.registerCompletionItemProvider("cpp", {
       provideCompletionItems: () => ({
         suggestions: ARDUINO_FUNCS.map((label) => ({
@@ -618,6 +626,7 @@ export default function ArduinoEditor({ height = "100%", width = "100%", apiBase
       </div>
     </div>
   );
+}
 
 const toolbarButtonStyle = {
   fontSize: 11,
