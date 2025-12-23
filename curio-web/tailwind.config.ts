@@ -6,7 +6,14 @@ const config: Config = {
     "./components/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
-    extend: {},
+    extend: {
+      colors: {
+        curio: {
+          primary: "#265ba3",
+          "primary-hover": "#1e539c",
+        },
+      },
+    },
   },
   plugins: [],
 };
