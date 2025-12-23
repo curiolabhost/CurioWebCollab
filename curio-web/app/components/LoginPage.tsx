@@ -107,8 +107,8 @@ export function LoginPage({ onLogin }: LoginPageProps) {
         return (
           <div className="space-y-6">
             <div className="text-center mb-6">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-indigo-100 rounded-full mb-4">
-                <span className="text-indigo-600">1</span>
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-sky-100 rounded-full mb-4">
+                <span className="text-sky-600">1</span>
               </div>
               <h2 className="text-gray-900 mb-2">How old are you?</h2>
               <p className="text-gray-600">Help us personalize your learning experience</p>
@@ -122,8 +122,8 @@ export function LoginPage({ onLogin }: LoginPageProps) {
                   onClick={() => setAge(ageRange)}
                   className={`p-4 border-2 rounded-lg transition ${
                     age === ageRange
-                      ? "border-indigo-600 bg-indigo-50 text-indigo-900"
-                      : "border-gray-200 hover:border-indigo-300 text-gray-700"
+                      ? "border-sky-600 bg-sky-50 text-sky-900"
+                      : "border-gray-200 hover:border-sky-300 text-gray-700"
                   }`}
                 >
                   {ageRange}
@@ -137,8 +137,8 @@ export function LoginPage({ onLogin }: LoginPageProps) {
         return (
           <div className="space-y-6">
             <div className="text-center mb-6">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-indigo-100 rounded-full mb-4">
-                <span className="text-indigo-600">2</span>
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-sky-100 rounded-full mb-4">
+                <span className="text-sky-600">2</span>
               </div>
               <h2 className="text-gray-900 mb-2">What grade are you in?</h2>
               <p className="text-gray-600">We'll customize projects to your level</p>
@@ -150,8 +150,8 @@ export function LoginPage({ onLogin }: LoginPageProps) {
                 "Middle School (6-8)",
                 "High School (9-12)",
                 "College",
-                "Graduate School",
-                "Not in School",
+                "Home-School",
+                "Others",
               ].map((gradeLevel) => (
                 <button
                   key={gradeLevel}
@@ -159,8 +159,8 @@ export function LoginPage({ onLogin }: LoginPageProps) {
                   onClick={() => setGrade(gradeLevel)}
                   className={`p-4 border-2 rounded-lg transition ${
                     grade === gradeLevel
-                      ? "border-indigo-600 bg-indigo-50 text-indigo-900"
-                      : "border-gray-200 hover:border-indigo-300 text-gray-700"
+                      ? "border-sky-600 bg-sky-50 text-sky-900"
+                      : "border-gray-200 hover:border-sky-300 text-gray-700"
                   }`}
                 >
                   {gradeLevel}
@@ -174,8 +174,8 @@ export function LoginPage({ onLogin }: LoginPageProps) {
         return (
           <div className="space-y-6">
             <div className="text-center mb-6">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-indigo-100 rounded-full mb-4">
-                <span className="text-indigo-600">3</span>
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-sky-100 rounded-full mb-4">
+                <span className="text-sky-600">3</span>
               </div>
               <h2 className="text-gray-900 mb-2">What's your coding experience?</h2>
               <p className="text-gray-600">No experience required - we'll guide you!</p>
@@ -194,20 +194,20 @@ export function LoginPage({ onLogin }: LoginPageProps) {
                   onClick={() => setCodingExperience(item.level)}
                   className={`w-full p-4 border-2 rounded-lg text-left transition ${
                     codingExperience === item.level
-                      ? "border-indigo-600 bg-indigo-50"
-                      : "border-gray-200 hover:border-indigo-300"
+                      ? "border-sky-600 bg-sky-50"
+                      : "border-gray-200 hover:border-sky-300"
                   }`}
                 >
                   <div
                     className={`mb-1 ${
-                      codingExperience === item.level ? "text-indigo-900" : "text-gray-900"
+                      codingExperience === item.level ? "text-sky-900" : "text-gray-900"
                     }`}
                   >
                     {item.level}
                   </div>
                   <div
                     className={`text-sm ${
-                      codingExperience === item.level ? "text-indigo-700" : "text-gray-600"
+                      codingExperience === item.level ? "text-sky-700" : "text-gray-600"
                     }`}
                   >
                     {item.description}
@@ -222,8 +222,8 @@ export function LoginPage({ onLogin }: LoginPageProps) {
         return (
           <div className="space-y-6">
             <div className="text-center mb-6">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-indigo-100 rounded-full mb-4">
-                <span className="text-indigo-600">4</span>
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-sky-100 rounded-full mb-4">
+                <span className="text-sky-600">4</span>
               </div>
               <h2 className="text-gray-900 mb-2">Create your account</h2>
               <p className="text-gray-600">Almost there! Let's set up your login</p>
@@ -241,8 +241,8 @@ export function LoginPage({ onLogin }: LoginPageProps) {
                     id="signup-name"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
-                    placeholder="John Doe"
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-transparent outline-none transition"
+                    placeholder="Emily Song"
                   />
                 </div>
               </div>
@@ -258,7 +258,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
                     id="signup-email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-transparent outline-none transition"
                     placeholder="you@example.com"
                   />
                 </div>
@@ -275,7 +275,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
                     id="signup-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-transparent outline-none transition"
                     placeholder="••••••••"
                   />
                 </div>
@@ -294,7 +294,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
       <div className="max-w-md w-full">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-indigo-600 rounded-2xl mb-4">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-sky-600 rounded-2xl mb-4">
             <Cpu className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-gray-900 mb-2">Curio.</h1>
@@ -323,7 +323,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
                       id="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
+                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-transparent outline-none transition"
                       placeholder="you@example.com"
                     />
                   </div>
@@ -340,7 +340,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
                       id="password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
+                      className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-sky-500 focus:border-transparent outline-none transition"
                       placeholder="••••••••"
                     />
                   </div>
@@ -354,7 +354,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
 
                 <button
                   type="submit"
-                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-lg transition"
+                  className="w-full bg-sky-600 hover:bg-sky-700 text-white py-3 rounded-lg transition"
                 >
                   Sign In
                 </button>
@@ -367,7 +367,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
                     setSignupStep(1);
                     setError("");
                   }}
-                  className="text-indigo-600 hover:text-indigo-700 transition"
+                  className="text-sky-600 hover:text-sky-700 transition"
                 >
                   Don't have an account? Sign up
                 </button>
@@ -380,11 +380,11 @@ export function LoginPage({ onLogin }: LoginPageProps) {
               <div className="mb-8">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-gray-600">Step {signupStep} of 4</span>
-                  <span className="text-indigo-600">{Math.round((signupStep / 4) * 100)}%</span>
+                  <span className="text-sky-600">{Math.round((signupStep / 4) * 100)}%</span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2">
                   <div
-                    className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
+                    className="bg-sky-600 h-2 rounded-full transition-all duration-300"
                     style={{ width: `${(signupStep / 4) * 100}%` }}
                   />
                 </div>
@@ -423,7 +423,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
 
                   <button
                     type="submit"
-                    className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
+                    className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-sky-800 text-white rounded-lg hover:bg-sky-900 transition"
                   >
                     <span>{signupStep === 4 ? "Create Account" : "Continue"}</span>
                     {signupStep < 4 && <ChevronRight className="w-4 h-4" />}
@@ -441,7 +441,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
                     setGrade("");
                     setCodingExperience("");
                   }}
-                  className="text-indigo-600 hover:text-indigo-700 transition"
+                  className="text-sky-600 hover:text-sky-700 transition"
                 >
                   Already have an account? Sign in
                 </button>
