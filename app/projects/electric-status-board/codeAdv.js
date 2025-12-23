@@ -13,7 +13,7 @@ const LESSON_STEPS_ADVANCED = {
         {
           topicTitle: "Include Libraries",
           descBeforeCode:
-            "We include the right libraries to talk to the SSD1306 OLED over I²C and draw text/shapes.",
+            "Coding libraries are collections of prewritten code that help you do common tasks. We use libraries in order to avoid writing all the code from scratch. For our electronic status board, we will need the right libraries to talk to the SSD1306 OLED over I²C and draw text/shapes.",
           imageGridBeforeCode: null,
           descBetweenBeforeAndCode: null,
           code: `^^#include <Wire.h>
@@ -78,7 +78,7 @@ ADD EXPLANATION FOR CLOCK MODULE HERE - ANUSHKA
       codes: [
         {
           topicTitle: "Define the OLED dimensions",
-          descBeforeCode: `Define the OLED dimensions and create the display object. Many modules are 128×64; slim ones are 128×32. So now, we have to define the width to be 128 and height to be 64 or 32. 
+          descBeforeCode: `Define the OLED dimensions and create the display object. This allows the libaray to know the correct dimensions of the screen and to send data to the correct pixels. Many modules are 128×64; slim ones are 128×32. So now, we have to define the width to be 128 and height to be 64 or 32. 
 
 **Fill in the blanks.**`,
           imageGridBeforeCode: null,
@@ -134,7 +134,7 @@ void loop(){
         {
           topicTitle: "Define button pins",
           descBeforeCode:
-            "Next, we create names for the three buttons so the code knows which Arduino pins they are connected to, and it's easier to use those names later in the code than the raw numbers. Review Lesson 1 if you want more practice with buttons.",
+            "Next, we create names for the three buttons so the code knows which Arduino pins they are connected to, and it's easier to use those names later in the code than the raw numbers. As a reminder, for this project we will need buttons to move the cursor to the next option, previous option, and selecting the option. Review Lesson 1 if you want more practice with buttons.",
           imageGridBeforeCode: {
             columns: 1,
             items: [
@@ -240,7 +240,7 @@ For example, the first blank for PREV can be 3 if you connected it to digital pi
         {
           topicTitle: "Initialize OLED + Buttons in setup()",
           descBeforeCode:
-            "Start I²C, initialize the OLED at 0x3C, clear the screen, and set the button pins to INPUT_PULLUP.",
+            "Now we need to start I²C, initialize the OLED at 0x3C, clear the screen, and set the button pins to INPUT_PULLUP. We will be putting all these functions in void setup() since we only want this to run once at the beginning of the code. Refer to the descriptions below to understand what each function does.",
           imageGridBeforeCode: null,
           descBetweenBeforeAndCode: null,
           code: `#include <Wire.h>
@@ -335,7 +335,7 @@ Configures the button pins as inputs with internal pull-up resistors.
               },
             ],
           },
-          descBetweenBeforeAndCode: `This is an example of a function, which we named welcomeFunc. All the lines of code within the curly brackets define what our welcomeFunc would do. You can see that we call the Welcome Func in the setup () or loop() to run that function. 
+          descBetweenBeforeAndCode: `This is an example of a function, which we named welcomeFunc. All the lines of code within the curly brackets define what our welcomeFunc would do. You can see that we call the Welcome Func in the setup () or loop() to run that function. As a reminder, functions are reusable blocks of code that perform a specfic task. 
       
 Since we want the welcome page to show up only ONCE when we turn the device on, we will place that function in the **setup()**.
 Read through each line of the code in the example above, and try to understand what it does.`,
@@ -376,7 +376,7 @@ But, **rename the function as something else and have it display a different mes
         {
           topicTitle: "Status Screen Function",
           descBeforeCode:
-            "Clear the screen, print the status chosen from the menu screen",
+            "In order to display the status that we want we need to clear the screen then print the status chosen from the menu screen",
           imageGridBeforeCode: null,
           descBetweenBeforeAndCode: null,
           code: `void __BLANK[WELCOMEFUNCTION]__{
@@ -610,10 +610,10 @@ __BLANK[TRACKTYPE]__ __BLANK[TRACKNAME]__ = __BLANK[TRACKNUM]__; ^^
 
 // Practice how you can use the array and the counter. ^^
 String option = __BLANK[STATUSNAME]__ [__BLANK[TRACKNAME]__];^^`,
-          descAfterCode: `These two variables let the menu scroll correctly:
-  - If you go past the last item → wrap back to the first  
-  - If you go before the first → wrap to the last
-So the menu always cycles smoothly, just like the image above.
+          descAfterCode: `These two variables let the menu scroll correctly. In our code we can check the value of counter:
+  - If it is past the last item → wrap back to the first  
+  - If it is before the first → wrap to the last
+This way the menu will always "wrap around" and cycle smoothly, just like the image above.
 
 What would the String option read?   __BLANK[OPTION]__`,
           imageGridAfterCode: null,
@@ -835,7 +835,7 @@ The loop stops when \`i\` becomes equal to \`totalOptions\`. This makes the code
         {
           topicTitle: "Add a highlight indicator",
           descBeforeCode:
-            "We want the menu to show which status is currently selected. We do this by checking if the loop index i matches a desired index number.",
+            "We want the menu to show which status is currently selected by displaying a symbol like > next to the status. We do this by checking if the loop index i matches a desired index number.",
           imageGridBeforeCode: null,
           descBetweenBeforeAndCode: null,
           code: `^^int indexChosen = 1;    ^^// example: 'Studying' is selected^^
