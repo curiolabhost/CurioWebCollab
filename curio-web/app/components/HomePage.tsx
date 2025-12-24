@@ -96,7 +96,7 @@ export function HomePage({ onNavigateToLogin, onNavigateToDashboard }: HomePageP
       </nav>
 
       {/* Hero Section */}
-      <section className="bg-gradient-to-br from-[#E8F4A6] to-[#D4E89E] py-16 md:py-24">
+      <section className="bg-gradient-to-br from-[#4996ff] to-[#D4E89E] py-16 md:py-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="max-w-2xl">
             <h1 className="text-4xl md:text-6xl mb-4">Build. Learn. Create.</h1>
