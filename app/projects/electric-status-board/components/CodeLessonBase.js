@@ -15,7 +15,7 @@ import {
 import { Stack, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-
+import { Video } from "expo-av";
 import SplitView from "./SplitView";
 import ArduinoEditor from "./ArduinoEditor";
 import CircuitEditor from "./circuitEditor";
@@ -135,6 +135,33 @@ function StepCard({ step, storageKey, globalKey, apiBaseUrl, analyticsTag }) {
   /* ==========================================================
      ONE IMAGE SYSTEM: imageGrid renderer (use for all images)
   ========================================================== */
+
+    function renderMedia(item) {
+    if (!item) return null;
+    if (item.video) {
+  return (
+    <Video
+      source={item.video.src}
+      useNativeControls={item.video.controls !== false}
+      isLooping={item.video.loop === true}
+      resizeMode="contain"
+      style={styles.videoBox}
+      videoStyle={styles.videoInner}   // ✅ key line for web
+    />
+  );
+}
+    if (item.image) {
+      return (
+        <Image
+          source={typeof item.image === "string" ? { uri: item.image } : item.image}
+          style={styles.imageGridImg}
+          resizeMode="contain"
+        />
+      );
+    }
+    return null;
+  }
+
   const renderImageGrid = (grid, keyPrefix = "grid") => {
     if (!grid || !Array.isArray(grid.items) || grid.items.length === 0) return null;
 
@@ -149,11 +176,14 @@ function StepCard({ step, storageKey, globalKey, apiBaseUrl, analyticsTag }) {
 
     // Responsive tile width when no fixed size is provided
     const widthPct = `${Math.floor(100 / columns)}%`;
+    
 
     return (
       <View style={styles.imageGridWrap} key={keyPrefix}>
         <View style={styles.imageGrid}>
           {grid.items.map((it, idx) => {
+
+            const isVideo = !!it?.video;
             const itemW = it.width != null ? Number(it.width) : gridW;
             const itemH = it.height != null ? Number(it.height) : gridH;
 
@@ -181,14 +211,12 @@ function StepCard({ step, storageKey, globalKey, apiBaseUrl, analyticsTag }) {
                           height: fixedH ?? 120,  // default fallback if only width given
                           aspectRatio: undefined, // IMPORTANT: disable aspectRatio when fixed
                         }
+                      : isVideo
+                      ? styles.video16x9Wrap
                       : null,
                   ]}
                 >
-                  <Image
-                    source={typeof it.image === "string" ? { uri: it.image } : it.image}
-                    style={styles.imageGridImg}
-                    resizeMode="contain"
-                  />
+                  {renderMedia(it)}
                 </View>
 
                 {!!it.label ? <Text style={styles.imageGridLabel}>{it.label}</Text> : null}
@@ -1167,7 +1195,7 @@ const styles = StyleSheet.create({
   imageGridWrap: {
     marginVertical: 6, 
     width: "100%", 
-    alignItems: "center",
+    alignItems: "stretch",
   },
   imageGrid: {
     flexDirection: "row",
@@ -1190,7 +1218,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: "#fff",
   },
-  imageGridImg: { width: "100%", height: "100%" },
+  imageGridImg: { 
+    width: "100%", 
+    height: "100%" 
+  },
   imageGridLabel: {
     paddingTop: 8,
     paddingBottom: 4,
@@ -1308,7 +1339,19 @@ markDoneTextDone: {
   }),
 },
 
+video16x9Wrap: {
+  width: "100%",
+  aspectRatio: 16 / 9,
+},
+videoBox: {
+  width: "100%",
+  height: "100%",
+},
 
-
+videoInner: {
+  width: "100%",
+  height: "100%",
+  objectFit: "contain",  // ✅ web-only but safe to keep
+},
 
 });

@@ -165,10 +165,10 @@ const localStyles = StyleSheet.create({
 
   codeBlankInput: {
     minWidth: 20,
-    paddingHorizontal: 0,
+    paddingHorizontal: 2,
     paddingVertical: 0.5,
     marginHorizontal: 0,
-    marginRight: 0,
+    marginRight: 2,
     borderBottomWidth: 1,
     borderBottomColor: "#5e6d8b6a",
     fontSize: 14,

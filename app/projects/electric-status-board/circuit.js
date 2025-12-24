@@ -10,8 +10,26 @@ function processDesc(text) {
     .split("\n")
     .map((line) => {
       const trimmed = line.trim();
+      // Bulleted lines starting with "@"
       if (trimmed.startsWith("@")) {
-        return "• " + trimmed.substring(1).trim();
+        const content = trimmed.substring(1).trim();
+        // Match "1. ..." or "Step 1: ..." inside the bullet
+        const stepMatch =
+          content.match(/^(\d+\.)\s*(.*)/) || content.match(/^(Step\s+\d+:)\s*(.*)/i);
+        if (stepMatch) {
+          const label = stepMatch[1];
+          const rest = stepMatch[2];
+          // Bold only the label inside the bullet
+          return "• **" + label + "**" + (rest ? " " + rest : "");
+        }
+        return "• " + content;
+      }
+
+      // Bold only the numeric step label like "1." or "Step 1:"
+      const match =
+        trimmed.match(/^(\d+\.)\s*(.*)/) || trimmed.match(/^(Step\s+\d+:)\s*(.*)/i);
+      if (match) {
+        return "**" + match[1] + "**" + (match[2] ? " " + match[2] : "");
       }
       return line;
     })
@@ -37,8 +55,8 @@ const LESSON_STEPS_CIRCUIT = {
           topicTitle: "Materials",
           imageGridBeforeCode: {
             columns: 4,
-            width: 200,
-            height: 200,
+            width: 180,
+            height: 180,
             items: [
               {
                 label: "Arduino UNO (or Nano)",
@@ -62,40 +80,35 @@ const LESSON_STEPS_CIRCUIT = {
               },
             ],
           },
+        },
 
-          descAfterCode: processDesc(`
-Gather these parts first:
-
-@Arduino UNO (or Nano)
-@SSD1306 OLED (I²C, 128×64 or 128×32)
-@3× momentary pushbuttons
-@Breadboard
-@Jumper wires
-          `),
-
-          topicTitle2: "Wiring (OLED Power + I²C)", // optional: if your renderer ignores this, remove it
+        {
+          topicTitle: "Connect OLED to Arduino",
           descAfterImage: processDesc(`
-Power the OLED:
-@OLED VCC → 5V (or 3.3V on some boards)
-@OLED GND → GND
-@Raw OLED panels (no breakout) usually require 3.3V only
+            
+@Step 1: Open your wokwi page and add the arduino uno, breadboard, and SSD1306 OLED
+@Step 2: Connect VCC on OLED to 5V on arduino 
+@Step 3: Connect GND on OLED to GND on arduino
+@Step 4: Connect SDA on OLED to A4 on arduino
+@Step 5: Connect SCL on OLED to A5 on arduino
 
-I²C lines (OLED ↔ Arduino):
-@OLED SDA → A4
-@OLED SCL → A5
-@Typical I²C address is 0x3C (sometimes 0x3D)
-
-Once this is wired, your OLED has power + data connection.
+Once this is done, your OLED has power + data connection.
           `),
 
           // If you want a single “big photo” here, convert it into an image grid (1 column).
           imageGridAfterCode: {
             columns: 1,
+             width: 600,
+            height: 400,
             items: [
               {
                 label: "OLED Wiring Reference",
-                image:
-                  "https://dummyimage.com/1200x700/ddd/000.png&text=OLED+Circuit+Photo+Placeholder",
+                video: {
+                 
+                src: require("../../../assets/videos/addcomponenttowokwipage.mp4"),
+                controls: true,
+                loop: false,
+            },
               },
             ],
           },
@@ -121,6 +134,8 @@ Install the display libraries:
 
           imageGridAfterCode: {
             columns: 1,
+            width: 800,
+            height: 400,
             items: [
               {
                 label: "Library Manager Search",
