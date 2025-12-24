@@ -36,9 +36,7 @@ export default async function ProjectDetailPage({
     );
   }
 
-  // ✅ Support BOTH schemas:
-  // New schema: description/fullDescription/hours
-  // Old schema (your uploaded file): shortDescription/overview/estimatedHours
+
   const description: string =
     project.description ?? project.shortDescription ?? "";
 
@@ -47,7 +45,7 @@ export default async function ProjectDetailPage({
 
   const hours: string = project.hours ?? project.estimatedHours ?? "";
 
-  // ✅ Arrays: always safe
+
   const learningOutcomes: string[] = Array.isArray(project.learningOutcomes)
     ? project.learningOutcomes
     : [];
@@ -79,7 +77,7 @@ export default async function ProjectDetailPage({
       </div>
 
       {/* Hero */}
-      <div className="bg-gradient-to-br from-indigo-600 to-purple-600 text-white">
+      <div className="bg-gradient-to-br from-sky-800 to-indigo-500 text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16">
           <div className="grid md:grid-cols-2 gap-8 items-center">
             <div>
@@ -101,7 +99,7 @@ export default async function ProjectDetailPage({
                   <Button
                     size="lg"
                     variant="outline"
-                    className="bg-white text-indigo-600 hover:bg-gray-100"
+                    className="bg-white text-indigo-900 hover:bg-gray-100"
                   >
                     Start Learning
                   </Button>
@@ -111,7 +109,7 @@ export default async function ProjectDetailPage({
                   <Button
                     size="lg"
                     variant="outline"
-                    className="border-white text-indigo-600 hover:bg-white/10 hover:text-white"
+                    className="border-white text-indigo-900 hover:bg-white/10 hover:text-white"
                   >
                     Preview Lessons
                   </Button>
@@ -135,25 +133,25 @@ export default async function ProjectDetailPage({
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
             <div>
-              <BarChart3 className="w-8 h-8 text-indigo-600 mx-auto mb-2" />
+              <BarChart3 className="w-8 h-8 text-indigo-800 mx-auto mb-2" />
               <div className="font-medium">Level</div>
               <div className="text-sm text-gray-600">{project.difficulty}</div>
             </div>
 
             <div>
-              <Users className="w-8 h-8 text-indigo-600 mx-auto mb-2" />
+              <Users className="w-8 h-8 text-indigo-800 mx-auto mb-2" />
               <div className="font-medium">Age Range</div>
               <div className="text-sm text-gray-600">{project.ageRange}</div>
             </div>
 
             <div>
-              <Clock className="w-8 h-8 text-indigo-600 mx-auto mb-2" />
+              <Clock className="w-8 h-8 text-indigo-800 mx-auto mb-2" />
               <div className="font-medium">Duration</div>
               <div className="text-sm text-gray-600">{hours}</div>
             </div>
 
             <div>
-              <Award className="w-8 h-8 text-indigo-600 mx-auto mb-2" />
+              <Award className="w-8 h-8 text-indigo-800 mx-auto mb-2" />
               <div className="font-medium">Certificate</div>
               <div className="text-sm text-gray-600">Upon completion</div>
             </div>
@@ -261,7 +259,7 @@ export default async function ProjectDetailPage({
               </div>
             </div>
 
-            <div className="bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl p-6 text-white">
+            <div className="bg-gradient-to-br from-sky-600 to-purple-700 rounded-xl p-6 text-white">
               <h3 className="text-xl font-semibold mb-2">Ready to Start?</h3>
               <p className="text-sm text-indigo-100 mb-4">
                 Join thousands of students building amazing projects.
