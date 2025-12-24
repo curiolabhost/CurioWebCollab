@@ -1017,6 +1017,163 @@ Feel free to change how you want the menu to show. You do not need to stick to i
   6: [
     {
       id: 1,
+      title: "Step 1: Adding Timer Functionality (Lance)",
+      codes: [
+        {
+          topicTitle: "Outlining Logical Process",
+          descBeforeCode: "...",
+          imageGridBeforeCode: null,
+          descBetweenBeforeAndCode: null,
+          code: `^^
+...
+^^`,
+          descAfterCode: `...`,
+          imageGridAfterCode: null,
+          descAfterImage: null,
+          hint: "...",
+        },
+      ],
+    },
+
+    {
+      id: 2,
+      title: "Step 2: NEXT/PREV Input Handling",
+      codes: [
+        {
+          topicTitle: "Timer Selection Function",
+          descBeforeCode: "Recall how we indexed through arrays in the showMenu() function from Lesson 4, Step 5 and the \"Loop Through Array\" practice. We will now add a new function that handles the timer selection process using the same techniques.",
+          imageGridBeforeCode: null,
+          descBetweenBeforeAndCode: null,
+          code: `^^void handleTimerSelectMode() { // NEXT / PREV choose preset^^
+^^  if (isPressed(NEXT) == true) {^^
+^^    timerPresetIndex = timerPresetIndex + 1;^^
+^^    if (timerPresetIndex >= totalTimerPresets) {^^
+^^      timerPresetIndex = 0;^^
+^^      }^^
+^^      delay(200);^^
+^^  }^^
+
+^^  if (isPressed(PREV) == true) {^^
+^^    timerPresetIndex = timerPresetIndex - 1;^^
+^^    if (timerPresetIndex < 0) {^^
+^^      timerPresetIndex = totalTimerPresets - 1;^^
+^^    }^^
+^^    delay(200);^^
+^^  }^^`,
+          descAfterCode: `...`,
+          imageGridAfterCode: null,
+          descAfterImage: null,
+          hint: "...",
+        },
+      ],
+    },
+
+    {
+      id: 3,
+      title: "Step 3: SEL Input Handling",
+      codes: [
+        {
+          topicTitle: "Wrapping Up Timer Selection Function",
+          descBeforeCode: "Recall how we indexed through arrays in the showMenu() function from Lesson 4, Step 5 and the \"Loop Through Array\" practice. We will now add a new function that handles the timer selection process using the same techniques.",
+          imageGridBeforeCode: null,
+          descBetweenBeforeAndCode: null,
+          code: `^^void handleTimerSelectMode() { // NEXT / PREV choose preset^^
+^^  if (isPressed(NEXT) == true) {^^
+^^    timerPresetIndex = timerPresetIndex + 1;^^
+^^    if (timerPresetIndex >= totalTimerPresets) {^^
+^^      timerPresetIndex = 0;^^
+^^      }^^
+^^      delay(200);^^
+^^  }^^
+
+^^  if (isPressed(PREV) == true) {^^
+^^    timerPresetIndex = timerPresetIndex - 1;^^
+^^    if (timerPresetIndex < 0) {^^
+^^      timerPresetIndex = totalTimerPresets - 1;^^
+^^    }^^
+^^    delay(200);^^
+^^  }^^
+
+^^// SELECT → start countdown^^
+^^  if (isPressed(SEL) == true) {^^
+^^    DateTime now = rtc.now();^^
+^^    int minutes = TIMER_PRESETS_MIN[timerPresetIndex];^^
+^^    timerEndTime = now + TimeSpan(0, minutes, 0);  // 0 hours, minutes, 0 seconds^^
+^^    screenMode = 3;^^
+^^    delay(200);^^
+^^  }^^`,
+          descAfterCode: `...`,
+          imageGridAfterCode: null,
+          descAfterImage: null,
+          hint: "...",
+        },
+      ],
+    },
+
+    {
+      id: 4,
+      title: "Step 4: ",
+      codes: [
+        {
+          topicTitle: "Clock Module Placeholder",
+          descBeforeCode: "...",
+          imageGridBeforeCode: null,
+          descBetweenBeforeAndCode: null,
+          code: `^^
+...
+^^`,
+          descAfterCode: `...`,
+          imageGridAfterCode: null,
+          descAfterImage: null,
+          hint: "...",
+        },
+      ],
+    },
+
+    {
+      id: 5,
+      title: "Step 5: ",
+      codes: [
+        {
+          topicTitle: "Clock Module Placeholder",
+          descBeforeCode: "...",
+          imageGridBeforeCode: null,
+          descBetweenBeforeAndCode: null,
+          code: `^^
+...
+^^`,
+          descAfterCode: `...`,
+          imageGridAfterCode: null,
+          descAfterImage: null,
+          hint: "...",
+        },
+      ],
+    },
+
+    {
+      id: 6,
+      title: "Step 6: ",
+      codes: [
+        {
+          topicTitle: "Clock Module Placeholder",
+          descBeforeCode: "...",
+          imageGridBeforeCode: null,
+          descBetweenBeforeAndCode: null,
+          code: `^^
+...
+^^`,
+          descAfterCode: `...`,
+          imageGridAfterCode: null,
+          descAfterImage: null,
+          hint: "...",
+        },
+      ],
+    },
+  ],
+
+  7: [
+    {
+      id: 1,
       title: "Step 1: How Buttons Work & INPUT_PULLUP",
       codes: [
         {
@@ -1323,7 +1480,7 @@ bool __BLANK[HELPER1]__(int pin) {
     },
   ],
 
-  7: [
+  8: [
     {
       id: 1,
       title: "Step 1: Using button to toggle around the menu",
