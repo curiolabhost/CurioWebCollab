@@ -11,13 +11,13 @@ export default function AccountSetupPage() {
     // If already logged in, go straight to projects
     const storedUser = localStorage.getItem("currentUser");
     if (storedUser) {
-      window.location.href = "/projects";
+      //window.location.href = "/projects";
     }
   }, []);
 
   const handleLogin = (user: { email: string; name: string }) => {
     localStorage.setItem("currentUser", JSON.stringify(user));
-    window.location.href = "/projects";
+    //window.location.href = "/projects";
   };
 
   return (
