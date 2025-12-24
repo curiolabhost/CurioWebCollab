@@ -15,6 +15,15 @@ void loop() {
 }
 `;
 
+// Add this missing constant for Arduino functions
+const ARDUINO_FUNCS = [
+  "pinMode", "digitalWrite", "digitalRead",
+  "analogWrite", "analogRead",
+  "delay", "millis", "micros",
+  "Serial.begin", "Serial.print", "Serial.println",
+  "setup", "loop"
+];
+
 export default function ArduinoEditor({ height = "100%", width = "100%", apiBaseUrl = "http://localhost:4000" }) {
   const [value, setValue] = React.useState("");
   const [status, setStatus] = React.useState("Ready.");
@@ -70,14 +79,17 @@ export default function ArduinoEditor({ height = "100%", width = "100%", apiBase
       base: "vs-dark",
       inherit: true,
       rules: [
-        { token: "comment",          foreground: "#82a8abff" }, // syntaxComment
-        { token: "keyword.control",  foreground: "#a1cd75ff" }, // syntaxControl
-        { token: "keyword",          foreground: "#a1cd75ff" }, // for/while/etc
-        { token: "keyword.arduino",  foreground: "#ce9261ff" },   // syntaxArduinoFunc
-        { token: "type",             foreground: "#4EC9B0" },   // syntaxType
-        { token: "number",           foreground: "#B5CEA8" },   // syntaxNumber
-        { token: "string",           foreground: "#CE9178" },   // syntaxString
+        { token: "comment",          foreground: "#82a8abff" },
+        { token: "keyword.control",  foreground: "#a1cd75ff" },
+        { token: "keyword",          foreground: "#a1cd75ff" },
+        { token: "keyword.arduino",  foreground: "#ce9261ff", fontStyle: "bold" },
+        { token: "type",             foreground: "#4EC9B0" },
+        { token: "number",           foreground: "#B5CEA8" },
+        { token: "string",           foreground: "#CE9178" },
+        { token: "string.escape",    foreground: "#D7BA7D" },
+        { token: "constant",         foreground: "#DCDCAA" },
         { token: "preprocessor",     foreground: "#9CDCFE" },
+        { token: "function",         foreground: "#ce9261ff" },
       ],
       colors: {
         "editor.background": "#0f172a",
@@ -92,106 +104,87 @@ export default function ArduinoEditor({ height = "100%", width = "100%", apiBase
     // Arduino-ish tokenization layered on top of C++
     monaco.languages.setMonarchTokensProvider("cpp", {
       keywords: [
-        "for",
-        "while",
-        "do",
-        "switch",
-        "case",
-        "break",
-        "continue",
-        "if",
-        "else",
-        "#define",
-        "#include"
+        "for", "while", "do", "switch", "case", "break", "continue",
+        "if", "else", "return"
       ],
+
       arduinoKeywords: [
-        "setup",
-        "loop",
-        "pinMode",
-        "digitalWrite",
-        "digitalRead",
-        "analogWrite",
-        "analogRead",
-        "delay",
-        "millis",
-        "micros",
-        "Serial",
-        "Serial.begin",
-        "Serial.print",
-        "Serial.println",
-        "HIGH",
-        "LOW",
-        "INPUT",
-        "OUTPUT",
-        "INPUT_PULLUP",
+        "setup", "loop",
+        "pinMode", "digitalWrite", "digitalRead",
+        "analogWrite", "analogRead",
+        "delay", "millis", "micros",
+        "Serial", "Serial.begin", "Serial.print", "Serial.println",
       ],
+
+      arduinoConstants: [
+        "HIGH", "LOW",
+        "INPUT", "OUTPUT", "INPUT_PULLUP",
+      ],
+
       typeKeywords: [
-        "void",
-        "int",
-        "long",
-        "float",
-        "double",
-        "char",
-        "bool",
-        "boolean",
-        "unsigned",
-        "short",
-        "byte",
-        "word",
-        "String",
-        "static",
-        "const",
+        "void", "int", "long", "float", "double",
+        "char", "bool", "boolean",
+        "unsigned", "short", "byte", "word",
+        "String", "static", "const",
       ],
-      controlKeywords: ["if", "else", "return"],
+
       tokenizer: {
         root: [
+          // Preprocessor directives
+          [/^\s*#\s*\w+/, "preprocessor"],
+
+          // Function calls (Arduino style)
+          [/\b(pinMode|digitalWrite|digitalRead|analogWrite|analogRead|delay|millis|micros)\b(?=\s*\()/, "function"],
+
+          // Identifiers + dotted identifiers
           [
-            /[a-zA-Z_]\w*/,
+            /[a-zA-Z_]\w*(?:\.[a-zA-Z_]\w*)*/,
             {
               cases: {
-                "@arduinoKeywords": "keyword.arduino",  // purple
-                "@controlKeywords": "keyword.control",  // green
-                "@typeKeywords": "type",                // teal
-                "@keywords": "keyword",                 // C/C++ keywords
+                "@arduinoKeywords": "keyword.arduino",
+                "@arduinoConstants": "constant",
+                "@typeKeywords": "type",
+                "@keywords": "keyword",
                 "@default": "identifier",
               },
             },
           ],
+
           { include: "@whitespace" },
+
           [/[{}()\[\]]/, "@brackets"],
-          [/\d+/, "number"],
-          [/".*?"/, "string"],
+
+          // Numbers
+          [/0b[01]+/, "number"],
+          [/0x[\da-fA-F]+/, "number"],
+          [/\d+(\.\d+)?([eE][\-+]?\d+)?/, "number"],
+
+          // Strings
+          [/"/, "string", "@string"],
           [/'[^\\']'/, "string"],
         ],
 
         whitespace: [
           [/[ \t\r\n]+/, "white"],
           [/\/\/.*$/, "comment"],
-          [/\/\*.*\*\//, "comment"],
+          [/\/\*/, "comment", "@comment"],
+        ],
+
+        comment: [
+          [/[^\/*]+/, "comment"],
+          [/\*\//, "comment", "@pop"],
+          [/[\/*]/, "comment"],
+        ],
+
+        string: [
+          [/[^\\"]+/, "string"],
+          [/\\./, "string.escape"],
+          [/"/, "string", "@pop"],
         ],
       },
     });
 
-    const ARDUINO_FUNCS = [
-      "pinMode",
-      "digitalWrite",
-      "digitalRead",
-      "analogWrite",
-      "analogRead",
-      "delay",
-      "millis",
-      "micros",
-      "Serial",
-      "Serial.begin",
-      "Serial.print",
-      "Serial.println",
-      "HIGH",
-      "LOW",
-      "INPUT",
-      "OUTPUT",
-      "INPUT_PULLUP",
-    ];
-
+    // Register completion item provider
     monaco.languages.registerCompletionItemProvider("cpp", {
       provideCompletionItems: () => ({
         suggestions: ARDUINO_FUNCS.map((label) => ({
