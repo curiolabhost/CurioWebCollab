@@ -87,7 +87,24 @@ const localStyles = StyleSheet.create({
     borderRadius: 12,
     overflow: "hidden",
     marginTop: 12,
-    maxWidth: 1200,
+  },
+
+    codeRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    width: "100%",
+  },
+
+  // left column wrapper
+  codeLeft: {
+    flexShrink: 0,
+  },
+
+  // right column placeholder (future panel)
+  codeRight: {
+    flex: 1,
+    marginLeft: 12,
+    minWidth: 220, // so it doesn't collapse too easily
   },
 
   codeCardHeader: {
@@ -127,7 +144,7 @@ const localStyles = StyleSheet.create({
 
   codeBox: {
     padding: 14,
-    overflow: "hidden",
+    overflow: "visible",
   },
 
   codeNormal: {
@@ -273,7 +290,7 @@ const localStyles = StyleSheet.create({
 /* ==========================================================
    Small helpers
 ========================================================== */
-const CHAR_W = 8;
+const CHAR_W = 8.6;
 
 function splitToTemplateTokens(rawCode) {
   // Template tokens DO NOT depend on values
