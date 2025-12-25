@@ -47,7 +47,7 @@ export function HomePage({ onNavigateToLogin, onNavigateToDashboard }: HomePageP
                   Blogs
                 </a>
                 <a href="#" className="text-gray-600 hover:text-primary transition-colors">
-                  Curricula
+                  Curriculum
                 </a>
               </div>
             </div>
@@ -134,7 +134,7 @@ export function HomePage({ onNavigateToLogin, onNavigateToDashboard }: HomePageP
                 </Button>
 
                 <Button variant="ghost" className="w-full sm:w-auto ml-0 sm:ml-4">
-                  For educators
+                  For parents and educators
                   <ArrowRight className="w-5 h-5 ml-1" />
                 </Button>
               </div>
@@ -142,7 +142,7 @@ export function HomePage({ onNavigateToLogin, onNavigateToDashboard }: HomePageP
 
             <div className="relative">
               <ImageWithFallback
-                src="https://images.unsplash.com/photo-1759884248009-92c5e957708e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080"
+                src="/homepageMain.png"
                 alt="Students learning"
                 className="rounded-2xl shadow-xl w-full"
               />
