@@ -162,7 +162,6 @@ Expected output:
 
 If the OLED works here, wiring + libraries are correct.
           `),
-
           imageGridAfterCode: {
             columns: 1,
             items: [
@@ -179,7 +178,6 @@ If the OLED works here, wiring + libraries are correct.
     {
       id: "circuit-4",
       title: "Step 4: Buttons with Internal Pull-Ups",
-
       codes: [
         {
           topicTitle: "Button Wiring (INPUT_PULLUP)",
@@ -203,7 +201,6 @@ Typical mapping:
 
 Press = LOW, Release = HIGH (via pull-up).
           `),
-
           imageGridAfterCode: {
             columns: 1,
             items: [
@@ -218,8 +215,42 @@ Press = LOW, Release = HIGH (via pull-up).
       ],
     },
   ],
-};
+  2: [
+    {
+      id: "circuit-1",
+      title: "Step 1: Advanced Clock Components",
+      codes: [
+        {
+          topicTitle: "Adding a Clock Component",
+          descBeforeCode: processDesc(`
+If you feel ready to add a clock component to your wiring, you will need a
+component called RTC DS3231. This piece, when connected to the arduino, can
+store the time from your computer, allowing your status board to display
+the real time.
 
+Installing the libraries: Search and Install RTClib.h
+          `),
+        },
+      ],
+    },
+    {
+      id: "circuit-2",
+      title: "Step 2: RTC Wiring",
+      codes: [
+        {
+          topicTitle: "Where to Wire the RTC",
+          descBeforeCode: processDesc(`
+Set the wiring up like so:
+@GND → GND
+@5V → 5V
+@SDA → A4
+@SCL → A5
+          `),
+        },
+      ],
+    },
+  ],
+};
 
 // ------------------------------------------------------------
 // Screen Wrapper
