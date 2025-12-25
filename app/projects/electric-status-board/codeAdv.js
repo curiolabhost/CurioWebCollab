@@ -13,7 +13,7 @@ const LESSON_STEPS_ADVANCED = {
         {
           topicTitle: "Include Libraries",
           descBeforeCode:
-            "Coding libraries are collections of prewritten code that help you do common tasks. We use libraries in order to avoid writing all the code from scratch. For our electronic status board, we will need the right libraries to talk to the SSD1306 OLED over I²C and draw text/shapes.",
+            "Coding libraries are collections of prewritten code that help you perform common tasks. Using libraries saves time and prevents you from having to write everything from scratch. For our electronic status board, we need the correct libraries to communicate with the SSD1306 OLED display over I²C and to draw text and shapes on the screen.",
           imageGridBeforeCode: null,
           descBetweenBeforeAndCode: null,
           code: `^^#include <Wire.h>
@@ -134,7 +134,7 @@ void loop(){
         {
           topicTitle: "Define button pins",
           descBeforeCode:
-            "Next, we create names for the three buttons so the code knows which Arduino pins they are connected to, and it's easier to use those names later in the code than the raw numbers. As a reminder, for this project we will need buttons to move the cursor to the next option, previous option, and selecting the option. Review Lesson 1 if you want more practice with buttons.",
+            "Next, we create names for the three buttons so the code knows which Arduino pins they are connected to, and so the program is easier to read and understand than if we used raw pin numbers. For this project, we need one button to move the cursor to the next option, one button to move to the previous option, and one button to select the highlighted option. If you want more practice working with buttons, review Lesson 1.",
           imageGridBeforeCode: {
             columns: 1,
             items: [
@@ -240,7 +240,7 @@ For example, the first blank for PREV can be 3 if you connected it to digital pi
         {
           topicTitle: "Initialize OLED + Buttons in setup()",
           descBeforeCode:
-            "Now we need to start I²C, initialize the OLED at 0x3C, clear the screen, and set the button pins to INPUT_PULLUP. We will be putting all these functions in void setup() since we only want this to run once at the beginning of the code. Refer to the descriptions below to understand what each function does.",
+            "Now we need to start I²C, initialize the OLED display at address 0x3C, clear the screen, and set the button pins to INPUT_PULLUP. All of these actions are placed inside void setup() because they only need to run once at the beginning of the program. Refer to the descriptions below to understand what each function does.",
           imageGridBeforeCode: null,
           descBetweenBeforeAndCode: null,
           code: `#include <Wire.h>
@@ -335,7 +335,7 @@ Configures the button pins as inputs with internal pull-up resistors.
               },
             ],
           },
-          descBetweenBeforeAndCode: `This is an example of a function, which we named welcomeFunc. All the lines of code within the curly brackets define what our welcomeFunc would do. You can see that we call the Welcome Func in the setup () or loop() to run that function. As a reminder, functions are reusable blocks of code that perform a specfic task. 
+          descBetweenBeforeAndCode: `This is an example of a function named welcomeFunc. All of the lines of code inside the curly brackets define what welcomeFunc does. You can run this function by calling it in either setup() or loop(). As a reminder, functions are reusable blocks of code that perform a specific task. 
       
 Since we want the welcome page to show up only ONCE when we turn the device on, we will place that function in the **setup()**.
 Read through each line of the code in the example above, and try to understand what it does.`,
