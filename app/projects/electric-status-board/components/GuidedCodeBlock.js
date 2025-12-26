@@ -871,7 +871,7 @@ export default function GuidedCodeBlock({
                         status === true && S.blankCorrect,
                         status === false && S.blankIncorrect,
 
-                        // ✅ syntax color when FULL word matches special token
+                        // syntax color when FULL word matches special token
                         getCompletedBlankSyntaxStyle(val),
 
                         { width },
