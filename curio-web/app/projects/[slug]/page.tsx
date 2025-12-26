@@ -16,6 +16,7 @@ import {
 import { Button } from "../../components/ui/button";
 import { ImageWithFallback } from "../../components/ui/ImageWithFallback";
 import { PROJECTS } from "../../data/projects";
+import SmartBackButton from "./SmartBackButton";
 
 type AnyProject = any;
 
@@ -26,7 +27,9 @@ export default async function ProjectDetailPage({
 }) {
   const { slug } = await params;
 
-  const project: AnyProject | undefined = PROJECTS.find((p: AnyProject) => p.slug === slug);
+  const project: AnyProject | undefined = PROJECTS.find(
+    (p: AnyProject) => p.slug === slug
+  );
 
   if (!project) {
     return (
@@ -36,7 +39,6 @@ export default async function ProjectDetailPage({
     );
   }
 
-
   const description: string =
     project.description ?? project.shortDescription ?? "";
 
@@ -44,7 +46,6 @@ export default async function ProjectDetailPage({
     project.fullDescription ?? project.overview ?? "";
 
   const hours: string = project.hours ?? project.estimatedHours ?? "";
-
 
   const learningOutcomes: string[] = Array.isArray(project.learningOutcomes)
     ? project.learningOutcomes
@@ -58,21 +59,20 @@ export default async function ProjectDetailPage({
     ? project.prerequisites
     : [];
 
-  const materials: string[] = Array.isArray(project.materials) ? project.materials : [];
-  const skills: string[] = Array.isArray(project.skills) ? project.skills : [];
+  const materials: string[] = Array.isArray(project.materials)
+    ? project.materials
+    : [];
+
+  const skills: string[] = Array.isArray(project.skills)
+    ? project.skills
+    : [];
 
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-          <Link
-            href="/account-setup"
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
-          >
-            <ChevronLeft className="w-5 h-5" />
-            Back to Projects
-          </Link>
+          <SmartBackButton label="Back to Projects" />
         </div>
       </div>
 
@@ -90,9 +90,13 @@ export default async function ProjectDetailPage({
                 </span>
               </div>
 
-              <h1 className="text-4xl font-semibold mb-4">{project.title}</h1>
+              <h1 className="text-4xl font-semibold mb-4">
+                {project.title}
+              </h1>
 
-              <p className="text-lg text-indigo-100 mb-6">{description}</p>
+              <p className="text-lg text-indigo-100 mb-6">
+                {description}
+              </p>
 
               <div className="flex flex-wrap gap-3">
                 <Link href={`/lessons/${project.slug}`}>
@@ -135,13 +139,17 @@ export default async function ProjectDetailPage({
             <div>
               <BarChart3 className="w-8 h-8 text-indigo-800 mx-auto mb-2" />
               <div className="font-medium">Level</div>
-              <div className="text-sm text-gray-600">{project.difficulty}</div>
+              <div className="text-sm text-gray-600">
+                {project.difficulty}
+              </div>
             </div>
 
             <div>
               <Users className="w-8 h-8 text-indigo-800 mx-auto mb-2" />
               <div className="font-medium">Age Range</div>
-              <div className="text-sm text-gray-600">{project.ageRange}</div>
+              <div className="text-sm text-gray-600">
+                {project.ageRange}
+              </div>
             </div>
 
             <div>
@@ -153,7 +161,9 @@ export default async function ProjectDetailPage({
             <div>
               <Award className="w-8 h-8 text-indigo-800 mx-auto mb-2" />
               <div className="font-medium">Certificate</div>
-              <div className="text-sm text-gray-600">Upon completion</div>
+              <div className="text-sm text-gray-600">
+                Upon completion
+              </div>
             </div>
           </div>
         </div>
@@ -165,15 +175,21 @@ export default async function ProjectDetailPage({
           {/* Left */}
           <div className="lg:col-span-2 space-y-8">
             <div className="bg-white rounded-xl p-6 shadow-sm">
-              <h2 className="text-2xl font-semibold mb-4">Project Overview</h2>
-              <p className="text-gray-700 leading-relaxed">{fullDescription}</p>
+              <h2 className="text-2xl font-semibold mb-4">
+                Project Overview
+              </h2>
+              <p className="text-gray-700 leading-relaxed">
+                {fullDescription}
+              </p>
             </div>
 
             {learningOutcomes.length > 0 && (
               <div className="bg-white rounded-xl p-6 shadow-sm">
                 <div className="flex items-center gap-3 mb-4">
                   <Target className="w-6 h-6 text-indigo-600" />
-                  <h3 className="text-xl font-semibold">What You’ll Learn</h3>
+                  <h3 className="text-xl font-semibold">
+                    What You’ll Learn
+                  </h3>
                 </div>
                 <ul className="space-y-3">
                   {learningOutcomes.map((item, i) => (
@@ -190,7 +206,9 @@ export default async function ProjectDetailPage({
               <div className="bg-white rounded-xl p-6 shadow-sm">
                 <div className="flex items-center gap-3 mb-4">
                   <Lightbulb className="w-6 h-6 text-indigo-600" />
-                  <h3 className="text-xl font-semibold">Project Highlights</h3>
+                  <h3 className="text-xl font-semibold">
+                    Project Highlights
+                  </h3>
                 </div>
                 <div className="grid md:grid-cols-2 gap-4">
                   {projectHighlights.map((item, i) => (
@@ -208,10 +226,15 @@ export default async function ProjectDetailPage({
 
             {prerequisites.length > 0 && (
               <div className="bg-white rounded-xl p-6 shadow-sm">
-                <h3 className="text-xl font-semibold mb-4">Prerequisites</h3>
+                <h3 className="text-xl font-semibold mb-4">
+                  Prerequisites
+                </h3>
                 <ul className="space-y-2">
                   {prerequisites.map((item, i) => (
-                    <li key={i} className="flex items-center gap-3 text-gray-700">
+                    <li
+                      key={i}
+                      className="flex items-center gap-3 text-gray-700"
+                    >
                       <span className="w-1.5 h-1.5 bg-indigo-600 rounded-full" />
                       {item}
                     </li>
@@ -220,8 +243,13 @@ export default async function ProjectDetailPage({
               </div>
             )}
 
-            <div id="preview" className="bg-white rounded-xl p-6 shadow-sm">
-              <h3 className="text-xl font-semibold mb-2">Preview Lessons</h3>
+            <div
+              id="preview"
+              className="bg-white rounded-xl p-6 shadow-sm"
+            >
+              <h3 className="text-xl font-semibold mb-2">
+                Preview Lessons
+              </h3>
               <p className="text-gray-700">
                 Preview coming soon — sample steps and code will appear here.
               </p>
@@ -233,11 +261,16 @@ export default async function ProjectDetailPage({
             <div className="bg-white rounded-xl p-6 shadow-sm">
               <div className="flex items-center gap-3 mb-4">
                 <Wrench className="w-6 h-6 text-indigo-600" />
-                <h3 className="text-xl font-semibold">Materials Needed</h3>
+                <h3 className="text-xl font-semibold">
+                  Materials Needed
+                </h3>
               </div>
               <ul className="space-y-2">
                 {materials.map((item, i) => (
-                  <li key={i} className="flex gap-2 text-sm text-gray-700">
+                  <li
+                    key={i}
+                    className="flex gap-2 text-sm text-gray-700"
+                  >
                     <CheckCircle className="w-4 h-4 text-indigo-600 mt-0.5" />
                     {item}
                   </li>
@@ -246,7 +279,9 @@ export default async function ProjectDetailPage({
             </div>
 
             <div className="bg-white rounded-xl p-6 shadow-sm">
-              <h3 className="text-xl font-semibold mb-4">Skills You’ll Use</h3>
+              <h3 className="text-xl font-semibold mb-4">
+                Skills You’ll Use
+              </h3>
               <div className="flex flex-wrap gap-2">
                 {skills.map((skill, i) => (
                   <span
@@ -260,27 +295,24 @@ export default async function ProjectDetailPage({
             </div>
 
             <div className="bg-gradient-to-br from-sky-600 to-purple-700 rounded-xl p-6 text-white">
-              <h3 className="text-xl font-semibold mb-2">Ready to Start?</h3>
+              <h3 className="text-xl font-semibold mb-2">
+                Ready to Start?
+              </h3>
               <p className="text-sm text-indigo-100 mb-4">
                 Join thousands of students building amazing projects.
               </p>
               <Link href={`/lessons/${project.slug}`}>
-                <Button 
-                variant="outline"
-                className="w-full bg-white text-indigo-600 hover:bg-gray-100">
+                <Button
+                  variant="outline"
+                  className="w-full bg-white text-indigo-600 hover:bg-gray-100"
+                >
                   Start Learning Now
                 </Button>
               </Link>
             </div>
 
             <div className="bg-white rounded-xl p-4 shadow-sm">
-              <Link
-                href="/account-setup"
-                className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
-              >
-                <ChevronLeft className="w-5 h-5" />
-                Back
-              </Link>
+              <SmartBackButton label="Back" />
             </div>
           </div>
         </div>
