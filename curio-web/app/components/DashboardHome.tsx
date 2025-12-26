@@ -75,6 +75,9 @@ function daysBetween(a: Date, b: Date) {
 export function DashboardHome() {
   const router = useRouter();
   const projects = PROJECTS;
+  const availableProjects = projects.filter((p) => p.available);
+  const unavailableProjects = projects.filter((p) => !p.available);
+
 
   const [activeProject, setActiveProject] = useState<ActiveProject>({
     project: projects[0],
@@ -503,18 +506,23 @@ export function DashboardHome() {
                           <div className="flex items-start justify-between mb-2 gap-3">
                             <h3 className="text-lg font-semibold text-gray-900">{completed.project.title}</h3>
 
-                            <span
-                              className={[
-                                "px-3 py-1 rounded-full text-sm whitespace-nowrap",
-                                completed.project.difficulty === "Beginner"
-                                  ? "bg-green-100 text-green-700"
-                                  : completed.project.difficulty === "Intermediate"
-                                  ? "bg-yellow-100 text-yellow-700"
-                                  : "bg-red-100 text-red-700",
-                              ].join(" ")}
-                            >
-                              {completed.project.difficulty}
-                            </span>
+                            <div className="flex flex-wrap gap-2 justify-end">
+                                {(completed.project.difficulties ?? []).map((level) => (
+                                    <span
+                                    key={level}
+                                    className={[
+                                        "px-3 py-1 rounded-full text-sm whitespace-nowrap",
+                                        level === "Beginner"
+                                        ? "bg-green-100 text-green-700"
+                                        : level === "Intermediate"
+                                        ? "bg-yellow-100 text-yellow-700"
+                                        : "bg-red-100 text-red-700",
+                                    ].join(" ")}
+                                    >
+                                    {level}
+                                    </span>
+                                ))}
+                                </div>
                           </div>
 
                           <p className="text-gray-600 text-sm mb-4">{completed.project.description}</p>
@@ -549,10 +557,10 @@ export function DashboardHome() {
 
         {/* Available Projects */}
         <div>
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Explore More Projects</h2>
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Available Projects</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {projects.map((project) => (
+            {availableProjects.map((project) => (
               <div
                 key={project.id}
                 className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100 hover:shadow-lg transition-shadow cursor-pointer"
@@ -563,18 +571,23 @@ export function DashboardHome() {
                   <div className="flex items-start justify-between mb-2 gap-3">
                     <h3 className="flex-1 text-gray-900 font-semibold">{project.title}</h3>
 
-                    <span
-                      className={[
-                        "px-2 py-1 rounded text-xs whitespace-nowrap",
-                        project.difficulty === "Beginner"
-                          ? "bg-green-100 text-green-700"
-                          : project.difficulty === "Intermediate"
-                          ? "bg-yellow-100 text-yellow-700"
-                          : "bg-red-100 text-red-700",
-                      ].join(" ")}
-                    >
-                      {project.difficulty}
-                    </span>
+                    <div className="flex flex-wrap gap-1 justify-end">
+                        {(project.difficulties ?? []).map((level) => (
+                            <span
+                            key={level}
+                            className={[
+                                "px-2 py-1 rounded text-xs whitespace-nowrap",
+                                level === "Beginner"
+                                ? "bg-green-100 text-green-700"
+                                : level === "Intermediate"
+                                ? "bg-yellow-100 text-yellow-700"
+                                : "bg-red-100 text-red-700",
+                            ].join(" ")}
+                            >
+                            {level}
+                            </span>
+                        ))}
+                        </div>
                   </div>
 
                   <p className="text-gray-600 text-sm mb-4 line-clamp-2">{project.description}</p>
@@ -599,6 +612,76 @@ export function DashboardHome() {
             ))}
           </div>
         </div>
+ <div className="mt-12">
+  <h2 className="text-xl font-semibold text-gray-900 mb-4">
+    Projects Coming Soon
+  </h2>
+
+  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    {unavailableProjects.map((project) => (
+      <div
+        key={project.id}
+        className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100 hover:shadow-lg transition-shadow cursor-pointer"
+      >
+        <img
+          src={project.image}
+          alt={project.title}
+          className="w-full h-48 object-cover"
+        />
+
+        <div className="p-5">
+          <div className="flex items-start justify-between mb-2 gap-3">
+            <h3 className="flex-1 text-gray-900 font-semibold">
+              {project.title}
+            </h3>
+
+            <div className="flex flex-wrap gap-1 justify-end">
+              {(project.difficulties ?? []).map((level) => (
+                <span
+                  key={level}
+                  className={[
+                    "px-2 py-1 rounded text-xs whitespace-nowrap",
+                    level === "Beginner"
+                      ? "bg-green-100 text-green-700"
+                      : level === "Intermediate"
+                      ? "bg-yellow-100 text-yellow-700"
+                      : "bg-red-100 text-red-700",
+                  ].join(" ")}
+                >
+                  {level}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          <p className="text-gray-600 text-sm mb-4 line-clamp-2">
+            {project.description}
+          </p>
+
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-gray-500">
+              <Clock className="w-4 h-4" />
+              <span className="text-sm">{project.hours}</span>
+            </div>
+
+            <Link
+              href={`/projects/${project.slug}`}
+              onClick={(e) => e.stopPropagation()}
+              className="px-4 py-2 bg-sky-50 text-sky-700 rounded-lg hover:bg-sky-100 transition-colors inline-flex items-center"
+            >
+              Learn more
+            </Link>
+          </div>
+        </div>
+      </div>
+    ))}
+  </div>
+</div>
+
+
+
+
+
       </div>
 
       {/* Schedule Modal */}

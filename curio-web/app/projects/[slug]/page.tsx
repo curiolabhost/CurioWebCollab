@@ -81,15 +81,20 @@ export default async function ProjectDetailPage({
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 md:py-16">
           <div className="grid md:grid-cols-2 gap-8 items-center">
             <div>
-              <div className="flex items-center gap-2 mb-4">
-                <span className="text-xs px-3 py-1 bg-white/20 rounded-full">
-                  {project.difficulty}
-                </span>
+             <div className="flex flex-wrap items-center gap-2 mb-4">
+                {(project.difficulties ?? []).map((level: string) => (
+                  <span
+                    key={level}
+                    className="text-xs px-3 py-1 bg-white/20 rounded-full"
+                  >
+                    {level}
+                  </span>
+                ))}
+
                 <span className="text-xs px-3 py-1 bg-white/20 rounded-full">
                   {project.category}
                 </span>
               </div>
-
               <h1 className="text-4xl font-semibold mb-4">
                 {project.title}
               </h1>
@@ -99,6 +104,7 @@ export default async function ProjectDetailPage({
               </p>
 
               <div className="flex flex-wrap gap-3">
+                {project.available ? (
                 <Link href={`/lessons/${project.slug}`}>
                   <Button
                     size="lg"
@@ -108,6 +114,17 @@ export default async function ProjectDetailPage({
                     Start Learning
                   </Button>
                 </Link>
+              ) : (
+                <Button
+                  size="lg"
+                  variant="outline"
+                  disabled
+                  className="bg-white/70 text-indigo-900 cursor-not-allowed"
+                >
+                  Not Available
+                </Button>
+              )}
+
 
                 <Link href="#preview">
                   <Button
@@ -140,7 +157,7 @@ export default async function ProjectDetailPage({
               <BarChart3 className="w-8 h-8 text-indigo-800 mx-auto mb-2" />
               <div className="font-medium">Level</div>
               <div className="text-sm text-gray-600">
-                {project.difficulty}
+                {(project.difficulties ?? []).join(", ")}
               </div>
             </div>
 
@@ -301,14 +318,25 @@ export default async function ProjectDetailPage({
               <p className="text-sm text-indigo-100 mb-4">
                 Join thousands of students building amazing projects.
               </p>
-              <Link href={`/lessons/${project.slug}`}>
+              {project.available ? (
+                <Link href={`/lessons/${project.slug}`}>
+                  <Button
+                    variant="outline"
+                    className="w-full bg-white text-indigo-600 hover:bg-gray-100"
+                  >
+                    Start Learning Now
+                  </Button>
+                </Link>
+              ) : (
                 <Button
                   variant="outline"
-                  className="w-full bg-white text-indigo-600 hover:bg-gray-100"
+                  disabled
+                  className="w-full bg-white/70 text-indigo-600 cursor-not-allowed"
                 >
-                  Start Learning Now
+                  This project is coming soon.
                 </Button>
-              </Link>
+              )}
+
             </div>
 
             <div className="bg-white rounded-xl p-4 shadow-sm">
