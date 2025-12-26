@@ -260,7 +260,7 @@ function StepCard({ step, storageKey, globalKey, apiBaseUrl, analyticsTag }) {
 
               const measured = inlineWidthByName[name];
               const INLINE_MIN_W = 50;
-              const INLINE_MAX_W = 220;
+              const INLINE_MAX_W = 520;
               const INLINE_PAD_X = 10;
 
               const fallback = Math.max(
@@ -1019,12 +1019,12 @@ const styles = StyleSheet.create({
 
   inlineBlankInput: {
     minWidth: 45,
-    paddingHorizontal: 4,
+    paddingHorizontal: 2,
     paddingVertical: 1,
     flexShrink: 0,
     alignSelf: "flex-start",
     marginHorizontal: 3,
-    marginRight: 1,
+    marginRight: 3,
     fontSize: 14,
     lineHeight: 20,
     color: "#111827",

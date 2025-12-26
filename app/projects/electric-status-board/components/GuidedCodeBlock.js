@@ -144,7 +144,7 @@ const localStyles = StyleSheet.create({
 
   codeBox: {
     padding: 14,
-    overflow: "hidden",
+    overflow: "visible",
   },
 
   codeNormal: {
@@ -290,7 +290,7 @@ const localStyles = StyleSheet.create({
 /* ==========================================================
    Small helpers
 ========================================================== */
-const CHAR_W = 8;
+const CHAR_W = 8.6;
 
 function splitToTemplateTokens(rawCode) {
   // Template tokens DO NOT depend on values
