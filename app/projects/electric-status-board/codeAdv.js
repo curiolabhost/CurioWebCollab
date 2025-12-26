@@ -13,7 +13,7 @@ const LESSON_STEPS_ADVANCED = {
         {
           topicTitle: "Include Libraries",
           descBeforeCode:
-            "We include the right libraries to talk to the SSD1306 OLED over I²C and draw text/shapes.",
+            "Coding libraries are collections of prewritten code that help you perform common tasks. Using libraries saves time and prevents you from having to write everything from scratch. For our electronic status board, we need the correct libraries to communicate with the SSD1306 OLED display over I²C and to draw text and shapes on the screen.",
           imageGridBeforeCode: null,
           descBetweenBeforeAndCode: null,
           code: `^^#include <Wire.h>
@@ -78,7 +78,7 @@ ADD EXPLANATION FOR CLOCK MODULE HERE - ANUSHKA
       codes: [
         {
           topicTitle: "Define the OLED dimensions",
-          descBeforeCode: `Define the OLED dimensions and create the display object. Many modules are 128×64; slim ones are 128×32. So now, we have to define the width to be 128 and height to be 64 or 32. 
+          descBeforeCode: `Define the OLED dimensions and create the display object. This allows the libaray to know the correct dimensions of the screen and to send data to the correct pixels. Many modules are 128×64; slim ones are 128×32. So now, we have to define the width to be 128 and height to be 64 or 32. 
 
 **Fill in the blanks.**`,
           imageGridBeforeCode: null,
@@ -134,7 +134,7 @@ void loop(){
         {
           topicTitle: "Define button pins",
           descBeforeCode:
-            "Next, we create names for the three buttons so the code knows which Arduino pins they are connected to, and it's easier to use those names later in the code than the raw numbers. Review Lesson 1 if you want more practice with buttons.",
+            "Next, we create names for the three buttons so the code knows which Arduino pins they are connected to, and so the program is easier to read and understand than if we used raw pin numbers. For this project, we need one button to move the cursor to the next option, one button to move to the previous option, and one button to select the highlighted option. If you want more practice working with buttons, review Lesson 1.",
           imageGridBeforeCode: {
             columns: 1,
             items: [
@@ -240,7 +240,7 @@ For example, the first blank for PREV can be 3 if you connected it to digital pi
         {
           topicTitle: "Initialize OLED + Buttons in setup()",
           descBeforeCode:
-            "Start I²C, initialize the OLED at 0x3C, clear the screen, and set the button pins to INPUT_PULLUP.",
+            "Now we need to start I²C, initialize the OLED display at address 0x3C, clear the screen, and set the button pins to INPUT_PULLUP. All of these actions are placed inside void setup() because they only need to run once at the beginning of the program. Refer to the descriptions below to understand what each function does.",
           imageGridBeforeCode: null,
           descBetweenBeforeAndCode: null,
           code: `#include <Wire.h>
@@ -335,7 +335,7 @@ Configures the button pins as inputs with internal pull-up resistors.
               },
             ],
           },
-          descBetweenBeforeAndCode: `This is an example of a function, which we named welcomeFunc. All the lines of code within the curly brackets define what our welcomeFunc would do. You can see that we call the Welcome Func in the setup () or loop() to run that function. 
+          descBetweenBeforeAndCode: `This is an example of a function named welcomeFunc. All of the lines of code inside the curly brackets define what welcomeFunc does. You can run this function by calling it in either setup() or loop(). As a reminder, functions are reusable blocks of code that perform a specific task. 
       
 Since we want the welcome page to show up only ONCE when we turn the device on, we will place that function in the **setup()**.
 Read through each line of the code in the example above, and try to understand what it does.`,
@@ -376,7 +376,7 @@ But, **rename the function as something else and have it display a different mes
         {
           topicTitle: "Status Screen Function",
           descBeforeCode:
-            "Clear the screen, print the status chosen from the menu screen",
+            "In order to display the status that we want we need to clear the screen then print the status chosen from the menu screen",
           imageGridBeforeCode: null,
           descBetweenBeforeAndCode: null,
           code: `void __BLANK[WELCOMEFUNCTION]__{
@@ -610,10 +610,10 @@ __BLANK[TRACKTYPE]__ __BLANK[TRACKNAME]__ = __BLANK[TRACKNUM]__; ^^
 
 // Practice how you can use the array and the counter. ^^
 String option = __BLANK[STATUSNAME]__ [__BLANK[TRACKNAME]__];^^`,
-          descAfterCode: `These two variables let the menu scroll correctly:
-  - If you go past the last item → wrap back to the first  
-  - If you go before the first → wrap to the last
-So the menu always cycles smoothly, just like the image above.
+          descAfterCode: `These two variables let the menu scroll correctly. In our code we can check the value of counter:
+  - If it is past the last item → wrap back to the first  
+  - If it is before the first → wrap to the last
+This way the menu will always "wrap around" and cycle smoothly, just like the image above.
 
 What would the String option read?   __BLANK[OPTION]__`,
           imageGridAfterCode: null,
@@ -835,7 +835,7 @@ The loop stops when \`i\` becomes equal to \`totalOptions\`. This makes the code
         {
           topicTitle: "Add a highlight indicator",
           descBeforeCode:
-            "We want the menu to show which status is currently selected. We do this by checking if the loop index i matches a desired index number.",
+            "We want the menu to show which status is currently selected by displaying a symbol like > next to the status. We do this by checking if the loop index i matches a desired index number.",
           imageGridBeforeCode: null,
           descBetweenBeforeAndCode: null,
           code: `^^int indexChosen = 1;    ^^// example: 'Studying' is selected^^
@@ -1015,6 +1015,163 @@ Feel free to change how you want the menu to show. You do not need to stick to i
   ],
 
   6: [
+    {
+      id: 1,
+      title: "Step 1: Adding Timer Functionality (Lance)",
+      codes: [
+        {
+          topicTitle: "Outlining Logical Process",
+          descBeforeCode: "...",
+          imageGridBeforeCode: null,
+          descBetweenBeforeAndCode: null,
+          code: `^^
+...
+^^`,
+          descAfterCode: `...`,
+          imageGridAfterCode: null,
+          descAfterImage: null,
+          hint: "...",
+        },
+      ],
+    },
+
+    {
+      id: 2,
+      title: "Step 2: NEXT/PREV Input Handling",
+      codes: [
+        {
+          topicTitle: "Timer Selection Function",
+          descBeforeCode: "Recall how we indexed through arrays in the showMenu() function from Lesson 4, Step 5 and the \"Loop Through Array\" practice. We will now add a new function that handles the timer selection process using the same techniques.",
+          imageGridBeforeCode: null,
+          descBetweenBeforeAndCode: null,
+          code: `^^void handleTimerSelectMode() { // NEXT / PREV choose preset^^
+^^  if (isPressed(NEXT) == true) {^^
+^^    timerPresetIndex = timerPresetIndex + 1;^^
+^^    if (timerPresetIndex >= totalTimerPresets) {^^
+^^      timerPresetIndex = 0;^^
+^^      }^^
+^^      delay(200);^^
+^^  }^^
+
+^^  if (isPressed(PREV) == true) {^^
+^^    timerPresetIndex = timerPresetIndex - 1;^^
+^^    if (timerPresetIndex < 0) {^^
+^^      timerPresetIndex = totalTimerPresets - 1;^^
+^^    }^^
+^^    delay(200);^^
+^^  }^^`,
+          descAfterCode: `...`,
+          imageGridAfterCode: null,
+          descAfterImage: null,
+          hint: "...",
+        },
+      ],
+    },
+
+    {
+      id: 3,
+      title: "Step 3: SEL Input Handling",
+      codes: [
+        {
+          topicTitle: "Wrapping Up Timer Selection Function",
+          descBeforeCode: "Recall how we indexed through arrays in the showMenu() function from Lesson 4, Step 5 and the \"Loop Through Array\" practice. We will now add a new function that handles the timer selection process using the same techniques.",
+          imageGridBeforeCode: null,
+          descBetweenBeforeAndCode: null,
+          code: `^^void handleTimerSelectMode() { // NEXT / PREV choose preset^^
+^^  if (isPressed(NEXT) == true) {^^
+^^    timerPresetIndex = timerPresetIndex + 1;^^
+^^    if (timerPresetIndex >= totalTimerPresets) {^^
+^^      timerPresetIndex = 0;^^
+^^      }^^
+^^      delay(200);^^
+^^  }^^
+
+^^  if (isPressed(PREV) == true) {^^
+^^    timerPresetIndex = timerPresetIndex - 1;^^
+^^    if (timerPresetIndex < 0) {^^
+^^      timerPresetIndex = totalTimerPresets - 1;^^
+^^    }^^
+^^    delay(200);^^
+^^  }^^
+
+^^// SELECT → start countdown^^
+^^  if (isPressed(SEL) == true) {^^
+^^    DateTime now = rtc.now();^^
+^^    int minutes = TIMER_PRESETS_MIN[timerPresetIndex];^^
+^^    timerEndTime = now + TimeSpan(0, minutes, 0);  // 0 hours, minutes, 0 seconds^^
+^^    screenMode = 3;^^
+^^    delay(200);^^
+^^  }^^`,
+          descAfterCode: `...`,
+          imageGridAfterCode: null,
+          descAfterImage: null,
+          hint: "...",
+        },
+      ],
+    },
+
+    {
+      id: 4,
+      title: "Step 4: ",
+      codes: [
+        {
+          topicTitle: "Clock Module Placeholder",
+          descBeforeCode: "...",
+          imageGridBeforeCode: null,
+          descBetweenBeforeAndCode: null,
+          code: `^^
+...
+^^`,
+          descAfterCode: `...`,
+          imageGridAfterCode: null,
+          descAfterImage: null,
+          hint: "...",
+        },
+      ],
+    },
+
+    {
+      id: 5,
+      title: "Step 5: ",
+      codes: [
+        {
+          topicTitle: "Clock Module Placeholder",
+          descBeforeCode: "...",
+          imageGridBeforeCode: null,
+          descBetweenBeforeAndCode: null,
+          code: `^^
+...
+^^`,
+          descAfterCode: `...`,
+          imageGridAfterCode: null,
+          descAfterImage: null,
+          hint: "...",
+        },
+      ],
+    },
+
+    {
+      id: 6,
+      title: "Step 6: ",
+      codes: [
+        {
+          topicTitle: "Clock Module Placeholder",
+          descBeforeCode: "...",
+          imageGridBeforeCode: null,
+          descBetweenBeforeAndCode: null,
+          code: `^^
+...
+^^`,
+          descAfterCode: `...`,
+          imageGridAfterCode: null,
+          descAfterImage: null,
+          hint: "...",
+        },
+      ],
+    },
+  ],
+
+  7: [
     {
       id: 1,
       title: "Step 1: How Buttons Work & INPUT_PULLUP",
@@ -1323,7 +1480,7 @@ bool __BLANK[HELPER1]__(int pin) {
     },
   ],
 
-  7: [
+  8: [
     {
       id: 1,
       title: "Step 1: Using button to toggle around the menu",

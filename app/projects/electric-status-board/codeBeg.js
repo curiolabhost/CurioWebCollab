@@ -10,7 +10,7 @@ const LESSON_STEPS_BEGINNER = {
       id: 1,
       title: "Step 1: Understanding Arduino Basics",
       desc:
-        "Arduino is an open-source electronics platform. Every sketch has two main functions: setup() runs once on power/reset, loop() runs continuously.",
+        "Arduino is an open-source electronics platform used to create interactive projects. Every Arduino sketch has two main functions: setup() runs once when the board is powered on or reset, loop() runs continuously as long as the board has power.",
       hint: "pinMode() configures a pin as INPUT or OUTPUT",
 
       // ✅ NEW: all visual content goes through imageGrid, inside codes blocks
@@ -30,7 +30,7 @@ const LESSON_STEPS_BEGINNER = {
           },
 
           // this used to be descAfterCircuit
-          descBetweenBeforeAndCode: `The LED’s positive leg (anode) connects to \`pin 13\`, and the negative leg (cathode) connects to \`GND\`. When the LED is connected to pin 13 on an Arduino, it blinks because pin 13 is set as digital output pin programmed to switch between HIGH (5 V) and LOW (0 V) states in the code.`,
+          descBetweenBeforeAndCode: `The LED’s positive leg (anode) connects to \`pin 13\`, and the negative leg (cathode) connects to \`GND\`. When the LED is connected to pin 13 on an Arduino, it blinks because pin 13 is set as a digital output. The code switches the pin between HIGH (5 V) and LOW (0 V), turning the LED on and off.`,
 
           code: `// Arduino Blink Example
 ^^void setup() {  // This runs once
@@ -48,10 +48,10 @@ void loop() { // This runs forever
           descAfterCode: `Here's what happens step by step:
     **1. Setup:** In the Arduino code, \`pinMode(13, OUTPUT);\` configures pin 13 to act as an output.
     **2. Loop:**
-        - \`digitalWrite(13, HIGH);\` sends 5 V through the LED → it lights up.
+        - \`digitalWrite(13, HIGH);\` sends 5 V through the LED → the LED turns on.
         - \`delay(1000);\` keeps it on for one second.
-        - \`digitalWrite(13, LOW);\` turns the voltage off → LED turns off.
-        - Another \`delay(1000);\` keeps it off for a second.
+        - \`digitalWrite(13, LOW);\` turns the voltage off → the LED turns off.
+        - Another \`delay(1000);\` keeps the LED off for a second.
 
 This continuous on/off cycle makes the LED blink once per second.`,
         },
@@ -64,7 +64,7 @@ This continuous on/off cycle makes the LED blink once per second.`,
       id: 1,
       title: "Step 1: Setting Libraries",
       desc:
-        "We include the right libraries to talk to the SSD1306 OLED over I²C and draw text/shapes.",
+        "Coding libraries are collections of prewritten code that help you perform common tasks. Using libraries saves time and prevents you from having to write everything from scratch. For our electronic status board, we need the correct libraries to communicate with the SSD1306 OLED display over I²C and to draw text and shapes on the screen.",
       hint: "Adafruit_GFX provides drawing; Adafruit_SSD1306 is the OLED driver.",
 
       codes: [
@@ -98,7 +98,7 @@ Loads the driver for the SSD1306 OLED controller. It knows how to send pixel-lev
     {
       id: 2,
       title: "Step 2: Defining Screen",
-      desc: `Define the OLED dimensions and create the display object. Many modules are 128×64; slim ones are 128×32. So now, we have to define the width to be 128 and height to be 64 or 32. 
+      desc: `Define the OLED dimensions and create the display object. This allows the libaray to know the correct dimensions of the screen and to send data to the correct pixels. Many modules are 128×64; slim ones are 128×32. So now, we have to define the width to be 128 and height to be 64 or 32. 
 
 **Fill in the blanks.**`,
       hint: "If your board has no RESET pin wired, keep RESET at -1.",
@@ -109,8 +109,8 @@ Loads the driver for the SSD1306 OLED controller. It knows how to send pixel-lev
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 ^^
-#define WIDTH  __BLANK[WIDTH]__
-#define HEIGHT __BLANK[HEIGHT]__
+#define WIDTH  __BLANK[WIDTH]__.     // width of display in pixels
+#define HEIGHT __BLANK[HEIGHT]__.    // height of display in pixels
 #define RESET  -1
 Adafruit_SSD1306 display (WIDTH, __BLANK[HEIGHT2]__ , &Wire, RESET);^^
 
@@ -151,7 +151,7 @@ void loop(){
     {
       id: 3,
       title: "Step 3: Button Pins",
-      desc: `Next, we create names for the three buttons so the code knows which Arduino pins they are connected to, and it's easier to use those names later in the code than the raw numbers. Review Lesson 1 if you want more practice with buttons.`,
+      desc: `Next, we create names for the three buttons so the code knows which Arduino pins they are connected to, and so the program is easier to read and understand than if we used raw pin numbers. For this project, we need one button to move the cursor to the next option, one button to move to the previous option, and one button to select the highlighted option. If you want more practice working with buttons, review Lesson 1.`,
       hint: "Later, we'll set these pins to INPUT_PULLUP, which means the button will read LOW when pressed and HIGH when released.",
 
       codes: [
@@ -218,7 +218,7 @@ For example, the first blank for PREV can be 3 if you connected it to digital pi
       id: 4,
       title: "Step 4: Initialize Display & Buttons",
       desc:
-        "Start I²C, initialize the OLED at 0x3C, clear the screen, and set the button pins to INPUT_PULLUP.",
+        "Now we need to start I²C, initialize the OLED display at address 0x3C, clear the screen, and set the button pins to INPUT_PULLUP. All of these actions are placed inside void setup() because they only need to run once at the beginning of the program. Refer to the descriptions below to understand what each function does.",
       hint: "INPUT_PULLUP ties the pin internally to Vcc, so a button to GND reads LOW when pressed.",
 
       codes: [
@@ -238,7 +238,7 @@ Adafruit_SSD1306 display (WIDTH, __BLANK[HEIGHT2]__ , &Wire, RESET);
 ^^
 void setup() {
   Wire.begin();
-  display.__BLANK[BEGIN]__(__BLANK[BEGINA]__, __BLANK[BEGINB]__);
+  display.__BLANK[BEGIN]__(__BLANK[BEGINA]__, __BLANK[BEGINB]__);      // Initialize OLED
   display.__BLANK[CLEAR]__;      // to clear display
   display.__BLANK[SETTEXTSIZE]__(__BLANK[SETTEXTSIZE2]__);      // to select text size
   display.__BLANK[SETTEXTCOLOR]__(__BLANK[SETTEXTCOLOR2]__);      // to select text color
@@ -366,10 +366,10 @@ Configures the button pins as inputs with internal pull-up resistors.
           },
 
           // this used to be descAfterCircuit
-          descBetweenBeforeAndCode: `This is an example of a function, which we named welcomeFunc. All the lines of code within the curly brackets define what our welcomeFunc would do. You can see that we call the Welcome Func in the setup () or loop() to run that function. 
+          descBetweenBeforeAndCode: `This is an example of a function named welcomeFunc. All of the lines of code inside the curly brackets define what welcomeFunc does. You can run this function by calling it in either setup() or loop(). As a reminder, functions are reusable blocks of code that perform a specific task..
       
 Since we want the welcome page to show up only ONCE when we turn the device on, we will place that function in the **setup()**.
-Read through each line of the code in the example above, and try to understand what it does.`,
+Read through each line of the code in the example above, and try to understand what it does. Then, fill in the blanks for the code below by following the comment lines to the right. Refer back to lesson 2.4 if you don't remember the functions.`,
 
           code: `#include <Wire.h> 
 ...
@@ -401,7 +401,7 @@ But, **rename the function as something else and have it display a different mes
     {
       id: 2,
       title: "Step 2: Display Chosen Status",
-      desc: "Clear the screen, print the status chosen from the menu screen",
+      desc: "In order to display the status that we want we need to clear the screen then print the status chosen from the menu screen",
 
       codes: [
         {
@@ -534,6 +534,7 @@ level = level + 2;`,
             rows: 1,
             items: [{ image: require("../../../assets/array.png"), label: "Array example" }],
           },
+          descBetweenBeforeAndCode: `Here we practice creating arrays of strings and accessing items by index. Fill the blanks below to complete the examples.`,
 
           title: `Practice: Arrays`,
           code: `// List of four numbers^^
@@ -555,7 +556,33 @@ __BLANK[VARRAYTYPE]__  __BLANK[VARRAYNAME]__ = __BLANK[CALL]__;^^`,
   - \`numbers[1]\` gives the second item → \`2\`  
   - \`numbers[3]\` gives the last item → \`4\`
 
-Arrays are extremely useful when you want your code to handle lots of similar values without writing dozens of separate variables.`,
+Arrays are extremely useful when you want your code to handle lots of similar values without writing dozens of separate variables.`
+        },
+        {
+title: `More Practice:`,
+code: `String days[] = {"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"};
+
+Fill in the blanks:
+days[3] =  __BLANK[DAY]__
+days[1] =  __BLANK[DAY2]__
+days[__BLANK[DAY3]__] = Monday
+days[__BLANK[DAY4]__] = Sunday`,
+
+          answerKey: {
+            DAY: ["Thursday"],
+            DAY2: ["Tuesday"],
+            DAY3: ["0"],
+            DAY4: ["6"],
+        },
+        blankexplanations:{
+          DAY: "day at the 3rd index in list",
+          DAY2: "day at the 1st index in list",
+          DAY3: "index of Monday in list",
+          DAY4: "index of Sunday in list",
+
+        },
+
+
         },
       ],
     },
@@ -623,10 +650,10 @@ __BLANK[TOTTYPE]__ __BLANK[TOTNAME]__ = __BLANK[TOTNUM]__;^^
 __BLANK[TRACKTYPE]__ __BLANK[TRACKNAME]__ = __BLANK[TRACKNUM]__; ^^
 
 String option = __BLANK[STATUSNAME]__ [__BLANK[TRACKNAME]__];^^`,
-          descAfterCode: `These two variables let the menu scroll correctly:
-  - If you go past the last item → wrap back to the first  
-  - If you go before the first → wrap to the last
-So the menu always cycles smoothly, just like the image above.
+          descAfterCode: `These two variables let the menu scroll correctly. In our code we can check the value of counter:
+  - If it is past the last item → wrap back to the first  
+  - If it is before the first → wrap to the last
+This way the menu will always "wrap around" and cycle smoothly, just like the image above.
 
 What would the String option read?   __BLANK[OPTION]__`,
         },
@@ -872,7 +899,7 @@ The loop stops when \`i\` becomes equal to \`totalOptions\`. This makes the code
       id: 4,
       title: "Step 4: Highlight the Selected Status",
       desc:
-        "We want the menu to show which status is currently selected. We do this by checking if the loop index i matches a desired index number.",
+        "We want the menu to show which status is currently selected by displaying a symbol like > next to the status. We do this by checking if the loop index i matches a desired index number.",
       hint: "Use an if statement inside the while loop to decide when to draw the arrow.",
 
       codes: [
