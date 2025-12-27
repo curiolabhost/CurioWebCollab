@@ -98,17 +98,12 @@ Once this is done, your OLED has power + data connection.
           // If you want a single “big photo” here, convert it into an image grid (1 column).
           imageGridAfterCode: {
             columns: 1,
-             width: 600,
+            width: 800,
             height: 400,
             items: [
               {
                 label: "OLED Wiring Reference",
-                video: {
-                 
-                src: require("../../../assets/videos/addcomponenttowokwipage.mp4"),
-                controls: true,
-                loop: false,
-            },
+                image: require("../../../assets/circuit/OLEDwiringreference.png"),
               },
             ],
           },
@@ -121,15 +116,11 @@ Once this is done, your OLED has power + data connection.
 
       codes: [
         {
-          topicTitle: "Install the Libraries",
+          topicTitle: "Add Adafruit SSD1306 + GFX Libraries",
           descBeforeCode: processDesc(`
-We’ll use the Adafruit SSD1306 + GFX drivers.
-
-Install the display libraries:
 @Open Arduino IDE → Tools → Manage Libraries
 @Search and install "Adafruit SSD1306"
 @Search and install "Adafruit GFX Library"
-@Restart IDE if examples do not appear
           `),
 
           imageGridAfterCode: {
@@ -143,9 +134,10 @@ Install the display libraries:
               },
             ],
           },
-
+        },
+        {
+          topicTitle: "Connect OLED to Arduino",
           descAfterImage: processDesc(`
-Common Issues:
 @“SSD1306 allocation failed” → wrong display size example
 @Blank screen → wrong SDA/SCL wiring or incorrect address (0x3C/0x3D)
 @Upload stalls → reset Arduino and try again
@@ -159,32 +151,39 @@ Common Issues:
 
       codes: [
         {
-          topicTitle: "Confirm the OLED Works First",
+          topicTitle: "Confirm the OLED Works",
           descBeforeCode: processDesc(`
 Before building your own menu, run a known working test.
 
-Open the example sketch:
-@File → Examples → Adafruit SSD1306 → ssd1306_128x64
-@If using 128×32, choose the matching example
+Step 1: Open the example sketch:
+@File → Examples → Adafruit SSD1306 → ssd1306_128x64.i2c
+@ If trying this on wokwi, change the line #define SCREEN_ADDRESS 0x3D into #define SCREEN_ADDRESS 0x3C to make it work
 
-Upload the sketch:
-@Select correct board + COM port
-@Click Upload
+Step 2: Upload the sketch to your Arduino:
+@Tools → Port → Select the correct COM port for your Arduino
+@Tools → Board → Select correct board type (e.g., Arduino Uno)
+@Sketch → Upload
 
-Expected output:
-@Adafruit splash screen
-@Scrolling or drawing test shapes
+Step 3: Observe the OLED display:
+@You should see a series of test patterns and graphics on the OLED
+@If not displaying correctly, double-check wiring and library installation
 
-If the OLED works here, wiring + libraries are correct.
+Once this is done, you are good to proceed to building your own menu system!
           `),
 
           imageGridAfterCode: {
             columns: 1,
+             width: 600,
+            height: 400,
             items: [
               {
-                label: "Expected OLED Output",
-                image:
-                  "https://dummyimage.com/1200x700/ddd/000.png&text=OLED+Test+Output",
+                label: "OLED Example Demo",
+                video: {
+                 
+                src: require("../../../assets/videos/exampleOLED_demestration.mp4"),
+                controls: true,
+                loop: false,
+            },
               },
             ],
           },
@@ -193,12 +192,25 @@ If the OLED works here, wiring + libraries are correct.
     },
     {
       id: "circuit-4",
-      title: "Step 4: Buttons with Internal Pull-Ups",
+      title: "Step 4: PushButtons with Internal Pull-Ups",
 
       codes: [
         {
           topicTitle: "Button Wiring (INPUT_PULLUP)",
           descBeforeCode: processDesc(`
+In this project, we will have 3 push buttons for controling the status board menu:
+@Button 1: go to Previous Item
+@Button 2: go to Next Item
+@Button 3: Select Item
+
+4-leg push buttons wiring:
+Step 1: Inside wokwi, add 3 push buttons to your breadboard and place them across breadboard center gap
+Step 2: Wire each button:
+@Choose one side of the button and connect it to one of the pin (D2/D3/D4) for all 3 buttons
+@Opposite side goes to GND for all three buttons
+Step 3: add the resistors to each button to prevent short circuit:
+@Connect a 10k ohm resistor from the button leg connected to the pin to 5V for all three buttons
+
 We will use INPUT_PULLUP so the button reads LOW when pressed.
 
 2-leg button wiring:
@@ -211,10 +223,6 @@ Typical mapping:
 @Next → D3
 @Select → D4
 
-4-leg buttons:
-@Place across breadboard center gap
-@One side goes to D2/D3/D4
-@Opposite side goes to GND
 
 Press = LOW, Release = HIGH (via pull-up).
           `),
