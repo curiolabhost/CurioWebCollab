@@ -211,20 +211,12 @@ Step 2: Wire each button:
 Step 3: add the resistors to each button to prevent short circuit:
 @Connect a 10k ohm resistor from the button leg connected to the pin to 5V for all three buttons
 
+Press = LOW, Release = HIGH (via pull-up).
 We will use INPUT_PULLUP so the button reads LOW when pressed.
 
-2-leg button wiring:
+2-leg button wiring (similar to 4-leg button):
 @One leg → Arduino D2 / D3 / D4
 @Other leg → GND
-@pinMode(pin, INPUT_PULLUP)
-
-Typical mapping:
-@Prev → D2
-@Next → D3
-@Select → D4
-
-
-Press = LOW, Release = HIGH (via pull-up).
           `),
 
           imageGridAfterCode: {
