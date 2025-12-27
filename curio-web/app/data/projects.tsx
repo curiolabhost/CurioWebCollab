@@ -12,12 +12,13 @@ export type Project = {
   description: string; // short blurb
   fullDescription: string; // long overview
 
-  difficulty: Difficulty;
+  difficulties: Difficulty[];
   category: Category;
   image: string;
 
   ageRange: string;
   hours: string;
+  available: boolean;
 
   materials: string[];
   skills: string[];
@@ -29,9 +30,10 @@ export type Project = {
   readonly shortDescription: string;
   readonly overview: string;
   readonly estimatedHours: string;
+  readonly difficulty: Difficulty;
 };
 
-function withCompat(base: Omit<Project, "shortDescription" | "overview" | "estimatedHours">): Project {
+function withCompat(base: Omit<Project, "shortDescription" | "overview" | "estimatedHours" | "difficulty">): Project {
   return {
     ...base,
 
@@ -45,6 +47,9 @@ function withCompat(base: Omit<Project, "shortDescription" | "overview" | "estim
     get estimatedHours() {
       return base.hours;
     },
+    get difficulty() {
+      return base.difficulties?.[0] ?? "Beginner";
+    },
   } as Project;
 }
 
@@ -57,8 +62,9 @@ export const PROJECTS: Project[] = [
       "Start your Arduino journey with this comprehensive introduction course. You'll learn the fundamentals of electronics, circuit building, and programming through hands-on projects.",
     fullDescription:
       "Start your Arduino journey with this comprehensive introduction course. You'll learn the fundamentals of electronics, circuit building, and programming through hands-on projects. By the end of this course, you'll have the confidence to explore more advanced Arduino projects and bring your creative ideas to life.",
-    difficulty: "Beginner",
+    difficulties: ["Beginner"],
     category: "Electronics",
+    available: true,
     image:
       "https://images.unsplash.com/photo-1553408226-42ecf81a214c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080",
     ageRange: "10-18 years",
@@ -99,14 +105,66 @@ export const PROJECTS: Project[] = [
   }),
 
   withCompat({
-    id: 2,
+  id: 2,
+  slug: "focus-board",
+  title: "FocusBoard",
+  description:
+    "Build a FocusBoard — a programmable productivity device that helps users manage focus with clock, timer, and Pomodoro modes.",
+  fullDescription:
+    "Build a FocusBoard, a hands-on Arduino project that combines embedded systems with real-world productivity tools. Students design and program a multi-mode device featuring a real-time clock, customizable timers, and Pomodoro focus sessions. Through button-driven navigation and OLED display logic, learners explore state machines, timing algorithms, and human-centered design while creating a device they can use every day.",
+  difficulties: ["Beginner", "Intermediate", "Advanced"],
+  category: "Electronics",
+  available: true,
+  image:
+    "https://images.unsplash.com/photo-1518770660439-4636190af475?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080",
+  ageRange: "11-18 years",
+  hours: "20-25 hours",
+  materials: [
+    "Arduino Uno or Nano",
+    "OLED display (SSD1306)",
+    "Push buttons (3–4 pieces)",
+    "Breadboard",
+    "Jumper wires",
+    "Real-time clock module (RTC)",
+    "USB cable",
+  ],
+  skills: [
+    "State machine design",
+    "Timing and scheduling logic",
+    "User interface design",
+    "Embedded programming",
+    "System debugging",
+  ],
+  learningOutcomes: [
+    "Implement clock, timer, and Pomodoro modes on an embedded device",
+    "Design a button-based user interface with multiple states",
+    "Use timing logic and real-time clocks for accurate scheduling",
+    "Structure Arduino code for readability and scalability",
+    "Apply human-centered design principles to a physical device",
+  ],
+  prerequisites: [
+    "Basic Arduino programming experience",
+    "Understanding of variables and conditional logic",
+    "Familiarity with simple circuits",
+  ],
+  projectHighlights: [
+    "Multi-mode productivity device with real-world applications",
+    "Hands-on introduction to state machines",
+    "Customizable focus and break cycles",
+    "OLED-based interface with button navigation",
+  ],
+}),
+
+  withCompat({
+    id: 3,
     slug: "remote-controlled-car",
     title: "Remote Controlled Car",
+    available: false,
     description:
       "Transform Arduino programming into an exciting robotics project! Build your own remote-controlled car from scratch and learn about motor control, wireless communication, and mechanical assembly.",
     fullDescription:
       "Transform Arduino programming into an exciting robotics project! Build your own remote-controlled car from scratch and learn about motor control, wireless communication, and mechanical assembly. This project combines electronics, programming, and hands-on building for a complete learning experience.",
-    difficulty: "Intermediate",
+    difficulties: ["Intermediate"],
     category: "Robotics",
     image:
       "https://images.unsplash.com/photo-1743495851178-56ace672e545?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080",
@@ -150,14 +208,15 @@ export const PROJECTS: Project[] = [
   }),
 
   withCompat({
-    id: 3,
+    id: 4,
     slug: "smart-speaker-system",
     title: "Smart Speaker System",
+    available: false,
     description:
       "Create your own smart speaker system with Arduino! Learn about audio electronics, wireless communication, and IoT concepts by building a Bluetooth-enabled speaker.",
     fullDescription:
       "Create your own smart speaker system with Arduino! This project teaches you about audio electronics, wireless communication, and IoT concepts. You'll build a Bluetooth-enabled speaker that can play music, respond to voice commands, and integrate with other smart devices.",
-    difficulty: "Intermediate",
+    difficulties: ["Intermediate"],
     category: "IoT",
     image:
       "https://images.unsplash.com/photo-1512446816042-444d641267d4?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080",
@@ -200,14 +259,15 @@ export const PROJECTS: Project[] = [
   }),
 
   withCompat({
-    id: 4,
+    id: 5,
     slug: "mini-drone",
     title: "Mini Drone",
+    available: false,
     description:
       "Take your Arduino skills to new heights—literally! Build and program a mini drone while learning flight dynamics, sensor fusion, and PID control.",
     fullDescription:
       "Take your Arduino skills to new heights—literally! This advanced project guides you through building and programming a mini drone. You'll learn about flight dynamics, sensor fusion, PID control, and the engineering principles that make flight possible. Safety is paramount, and this course includes comprehensive safety guidelines.",
-    difficulty: "Advanced",
+    difficulties: ["Advanced"],
     category: "Robotics",
     image:
       "https://images.unsplash.com/photo-1699084583993-16958aa157d1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080",
@@ -252,14 +312,15 @@ export const PROJECTS: Project[] = [
   }),
 
   withCompat({
-    id: 5,
+    id: 6,
     slug: "smart-home-hub",
     title: "Smart Home Hub",
+    available: false,
     description:
       "Transform your home into a smart home! Build a central hub that controls devices, monitors sensors, and automates your living space.",
     fullDescription:
       "Transform your home into a smart home! Build a central hub that controls lights, monitors sensors, and automates your living space. This project introduces you to the Internet of Things (IoT) and teaches practical skills for creating connected devices that make life easier.",
-    difficulty: "Advanced",
+    difficulties: ["Advanced"],
     category: "IoT",
     image:
       "https://images.unsplash.com/photo-1679356505858-bf4129177392?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080",
@@ -303,14 +364,15 @@ export const PROJECTS: Project[] = [
   }),
 
   withCompat({
-    id: 6,
+    id: 7,
     slug: "led-light-show",
     title: "LED Light Show",
+    available: false,
     description:
       "Light up your world with programmable LED displays! Create mesmerizing light shows using addressable RGB LEDs, patterns, and interactive controls.",
     fullDescription:
       "Light up your world with programmable LED displays! Learn to create mesmerizing light shows using addressable RGB LEDs. This project combines programming with visual art, teaching you about color theory, animation algorithms, and creative coding.",
-    difficulty: "Beginner",
+    difficulties: ["Beginner"],
     category: "Electronics",
     image:
       "https://images.unsplash.com/photo-1599380061663-01b03dff42df?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080",
@@ -352,14 +414,15 @@ export const PROJECTS: Project[] = [
   }),
 
   withCompat({
-    id: 7,
+    id: 8,
     slug: "weather-station",
     title: "Weather Station",
+    available: false,
     description:
       "Build your own weather station and learn sensor calibration, data logging, and clean data display.",
     fullDescription:
       "Build your own professional-grade weather station! Track temperature, humidity, pressure, rainfall, and wind speed. Learn about meteorology, data science, and sensor integration while creating a practical device that provides real weather insights.",
-    difficulty: "Intermediate",
+    difficulties: ["Intermediate"],
     category: "IoT",
     image:
       "https://images.unsplash.com/photo-1762553025389-a0ee281d6744?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080",
@@ -402,14 +465,15 @@ export const PROJECTS: Project[] = [
   }),
 
   withCompat({
-    id: 8,
+    id: 9,
     slug: "robotic-arm",
     title: "Robotic Arm",
+    available: false,
     description:
       "Step into industrial robotics: build and program a multi-axis robotic arm with precise movements and control.",
     fullDescription:
       "Step into the world of industrial robotics! Build and program a multi-axis robotic arm capable of precise movements and object manipulation. This advanced project teaches you about kinematics, servo control, and the engineering principles behind industrial automation.",
-    difficulty: "Advanced",
+    difficulties: ["Advanced"],
     category: "Robotics",
     image:
       "https://images.unsplash.com/photo-1761195696590-3490ea770aa1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080",
@@ -453,14 +517,15 @@ export const PROJECTS: Project[] = [
   }),
 
   withCompat({
-    id: 9,
+    id: 10,
     slug: "game-controller",
     title: "Game Controller",
+    available: false,
     description:
       "Design your ultimate gaming controller and learn to program Arduino as a USB HID device.",
     fullDescription:
       "Design your ultimate gaming controller! Learn to program Arduino as a USB Human Interface Device (HID) and create a custom controller tailored to your gaming preferences. This project combines electronics with gaming passion and teaches you about input devices and ergonomic design.",
-    difficulty: "Intermediate",
+    difficulties: ["Intermediate"],
     category: "Electronics",
     image:
       "https://images.unsplash.com/photo-1650585680670-4b67e210fe21?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080",
