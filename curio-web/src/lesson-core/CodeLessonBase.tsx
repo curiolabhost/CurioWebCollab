@@ -567,6 +567,11 @@ export default function CodeLessonBase({
                   lessonStepsArr?.[0]?.title ? String(lessonStepsArr[0].title) : "";
 
                 const isLessonActive = lessonNum === lesson;
+                const allStepsDone =
+                    lessonStepsArr.length > 0 &&
+                    lessonStepsArr.every((_, idx) =>
+                        doneSet.has(makeStepKey(lessonNum, idx))
+  );
 
                 return (
                   <div
@@ -577,7 +582,11 @@ export default function CodeLessonBase({
                       onClick={() => toggleLesson(lessonNum)}
                       type="button"
                       className={`w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors ${
-                        isLessonActive ? "bg-indigo-50 hover:bg-indigo-100" : ""
+                        isLessonActive ? 
+                         "bg-indigo-50 hover:bg-indigo-100"
+                        :allStepsDone
+                         ? "bg-green-50 hover:bg-green-100"
+                         : "bg-white"
                       }`}
                     >
                       <div className="text-left">
@@ -607,10 +616,11 @@ export default function CodeLessonBase({
                     </button>
 
                     {expanded ? (
-                      <div className="px-4 pb-4 space-y-1">
+                      <div className="px-4 pb-4 pt-3 space-y-1">
                         {lessonStepsArr.map((st: any, idx: number) => {
                           const isActive = lessonNum === lesson && idx === safeStepIndex;
-
+                          const stepKey = makeStepKey(lessonNum, idx);
+                          const isStepDone = doneSet.has(stepKey);
                           return (
                             <button
                               key={idx}
@@ -619,10 +629,12 @@ export default function CodeLessonBase({
                                 setLesson(lessonNum);
                                 setStepIndex(idx);
                               }}
-                              className={`w-full text-left text-sm py-2 px-3 rounded transition-colors ${
+                              className={`w-full text-left text-sm py-1 px-3 rounded transition-colors ${
                                 isActive
-                                  ? "bg-indigo-100 text-indigo-700"
-                                  : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                                    ? "bg-indigo-100 text-indigo-700"
+                                    : isStepDone
+                                     ? "bg-transparent text-green-700 hover:bg-gray-100 hover: text-green-800"
+                                     : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                               }`}
                             >
                               {st?.title ? String(st.title) : `Step ${idx + 1}`}
@@ -638,7 +650,7 @@ export default function CodeLessonBase({
           </div>
         </div>
       ) : (
-        <div className="w-12 bg-gray-50 border-l border-gray-200 flex items-start justify-center py-4">
+        <div className="w-6 bg-gray-50 border-l border-gray-200 flex items-start justify-center py-4">
           <button
             type="button"
             onClick={() => setSidebarExpanded(true)}
@@ -668,19 +680,24 @@ export default function CodeLessonBase({
     </div>
   );
 
-  return (
-    <div className="min-h-screen bg-white">
-      {showSplit ? (
-        <SplitView
-          left={<div style={{ height: "100%" }}>{lessonUi}</div>}
-          right={editorPane}
-          persistKey={KEYS.splitKey}
-          minLeftPx={900}
-          minRightPx={420}
-        />
-      ) : (
-        <div style={{ height: "100%" }}>{lessonUi}</div>
-      )}
-    </div>
-  );
+return (
+  <div className="h-full w-full bg-white overflow-hidden">
+    {viewMode === "lesson" ? (
+      lessonUi
+    ) : (
+      <SplitView
+        persistKey={KEYS.splitPersistKey ?? null}
+        initialLeftRatio={0.62}
+        minLeftRatio={0.45}
+        maxLeftRatio={0.78}
+        minLeftPx={520}
+        minRightPx={420}
+        handleWidth={12}
+        left={lessonUi}
+        right={editorPane}
+      />
+    )}
+  </div>
+);
+
 }

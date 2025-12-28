@@ -1,16 +1,18 @@
 "use client";
 
 import * as React from "react";
-import Editor, { OnMount, BeforeMount } from "@monaco-editor/react";
+import Editor, { BeforeMount, OnMount } from "@monaco-editor/react";
 
-type ArduinoEditorProps = {
+type Props = {
   height?: string | number;
   width?: string | number;
   apiBaseUrl?: string;
+  screenTitle?: string;
 };
 
 const STORAGE_KEY = "esb:arduino:sketch";
 
+/* Default contents + gray header comment */
 const DEFAULT_SKETCH = `/* Electric Board Code Editor */
 void setup() {
   // put your setup code here, to run once:
@@ -21,282 +23,432 @@ void loop() {
 }
 `;
 
-const ARDUINO_FUNCS = [
-  "pinMode",
-  "digitalWrite",
-  "digitalRead",
-  "analogWrite",
-  "analogRead",
-  "delay",
-  "millis",
-  "micros",
-  "Serial.begin",
-  "Serial.print",
-  "Serial.println",
-  "setup",
-  "loop",
-];
-
 export default function ArduinoEditor({
   height = "100%",
   width = "100%",
   apiBaseUrl = "http://localhost:4000",
-}: ArduinoEditorProps) {
-  const [value, setValue] = React.useState("");
-  const [status, setStatus] = React.useState("Ready.");
-  const [lastSaved, setLastSaved] = React.useState<Date | null>(null);
-  const [lastErrors, setLastErrors] = React.useState<any[]>([]);
-  const [compilerOutput, setCompilerOutput] = React.useState("");
-  const [aiHelpMap, setAiHelpMap] = React.useState<Record<string, string>>({});
+  screenTitle = "Arduino",
+}: Props) {
+  const hasWindow = typeof window !== "undefined";
+  const storage = React.useMemo(
+    () => (hasWindow ? window.localStorage : null),
+    [hasWindow]
+  );
+
+  const [value, setValue] = React.useState<string>(DEFAULT_SKETCH);
+  const [status, setStatus] = React.useState<string>("Ready.");
+  const [lastSaved, setLastSaved] = React.useState<number | null>(null);
+
+  const [isCompiling, setIsCompiling] = React.useState(false);
+  const [compilerOutput, setCompilerOutput] = React.useState<string>("");
+  const [lastErrors, setLastErrors] = React.useState<string[]>([]);
+
+  const [aiHelp, setAiHelp] = React.useState<string>("");
   const [isExplaining, setIsExplaining] = React.useState(false);
 
-  const [popoverVisible, setPopoverVisible] = React.useState(false);
-  const [popoverContent, setPopoverContent] = React.useState("");
-  const [popoverPosition, setPopoverPosition] = React.useState({ top: 0, left: 0 });
+  const [showOutput, setShowOutput] = React.useState(true);
 
-  const [bottomHeight, setBottomHeight] = React.useState(90);
-  const [isResizing, setIsResizing] = React.useState(false);
-
+  // These refs help keep layout/scroll stable and allow future marker support if needed
   const editorRef = React.useRef<any>(null);
   const monacoRef = React.useRef<any>(null);
-  const rafRef = React.useRef<number | null>(null);
 
-  const dragStartYRef = React.useRef(0);
-  const dragStartHeightRef = React.useRef(0);
-
-  /* ------------------------------------------------------------
-     Load saved sketch
-  ------------------------------------------------------------ */
+  // Load initial from localStorage once
   React.useEffect(() => {
-    const saved = window.localStorage.getItem(STORAGE_KEY);
-    setValue(saved ?? DEFAULT_SKETCH);
-  }, []);
+    if (!storage) return;
+    const saved = storage.getItem(STORAGE_KEY);
+    if (saved && saved.trim()) setValue(saved);
+  }, [storage]);
 
-  /* ------------------------------------------------------------
-     Editor change handler (autosave)
-  ------------------------------------------------------------ */
-  const onChange = (v?: string) => {
-    const text = v ?? "";
-    setValue(text);
-    setStatus("Editing...");
-
-    if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    rafRef.current = requestAnimationFrame(() => {
+  // Autosave (debounced)
+  React.useEffect(() => {
+    if (!storage) return;
+    const t = window.setTimeout(() => {
       try {
-        window.localStorage.setItem(STORAGE_KEY, text);
-        setLastSaved(new Date());
-        setStatus("Saved.");
+        storage.setItem(STORAGE_KEY, value);
+        setLastSaved(Date.now());
       } catch {
-        setStatus("Save failed.");
+        // ignore
       }
-    });
-  };
+    }, 350);
+    return () => window.clearTimeout(t);
+  }, [value, storage]);
 
-  /* ------------------------------------------------------------
-     Monaco setup
-  ------------------------------------------------------------ */
-  const beforeMount: BeforeMount = (monaco) => {
-    monaco.editor.defineTheme("arduino-dark", {
-      base: "vs-dark",
-      inherit: true,
-      rules: [
-        { token: "comment", foreground: "#82a8ab" },
-        { token: "keyword", foreground: "#a1cd75" },
-        { token: "keyword.arduino", foreground: "#ce9261", fontStyle: "bold" },
-        { token: "type", foreground: "#4EC9B0" },
-        { token: "string", foreground: "#CE9178" },
-        { token: "number", foreground: "#B5CEA8" },
-        { token: "function", foreground: "#ce9261" },
-      ],
-      colors: {
-        "editor.background": "#020617",
-        "editor.lineHighlightBackground": "#020617",
-        "editorLineNumber.foreground": "#6b7280",
-        "editorCursor.foreground": "#ffffff",
-        "editor.selectionBackground": "#264F78",
-      },
-    });
-
-    monaco.languages.setMonarchTokensProvider("cpp", {
-      tokenizer: {
-        root: [
-          [
-            /[a-zA-Z_]\w*/,
-            {
-              cases: {
-                "@keywords": "keyword",
-                "@default": "identifier",
-              },
-            },
-          ],
-          [/\d+/, "number"],
-          [/".*?"/, "string"],
-          [/\/\/.*$/, "comment"],
-        ],
-      },
-      keywords: ARDUINO_FUNCS,
-    });
-
-    monaco.languages.registerCompletionItemProvider("cpp", {
-      provideCompletionItems: () => ({
-        suggestions: ARDUINO_FUNCS.map((label) => ({
-          label,
-          kind: monaco.languages.CompletionItemKind.Function,
-          insertText: label,
-        })),
-      }),
-    });
-  };
-
-  const onMount: OnMount = (editor, monaco) => {
-    monaco.editor.setTheme("arduino-dark");
-    editorRef.current = editor;
-    monacoRef.current = monaco;
-    setStatus("Ready.");
-  };
-
-  /* ------------------------------------------------------------
-     Toolbar actions
-  ------------------------------------------------------------ */
-  const handleVerify = async () => {
-    setStatus("Verifying...");
+  const clearOutput = () => {
     setCompilerOutput("");
     setLastErrors([]);
-    setAiHelpMap({});
+    setStatus("Ready.");
+    setAiHelp("");
+  };
+
+  const resetToDefault = () => {
+    if (hasWindow) {
+      const ok = window.confirm("Reset editor to the default sketch?");
+      if (!ok) return;
+    }
+    setValue(DEFAULT_SKETCH);
+    setStatus("Reset to default.");
+    setCompilerOutput("");
+    setLastErrors([]);
+    setAiHelp("");
+  };
+
+  const parseErrors = (raw: string): string[] => {
+    const lines = (raw || "").split("\n").map((l) => l.trimEnd());
+    // Arduino CLI errors often contain "error:" or "fatal error:"
+    return lines.filter((l) => /\berror:|\bfatal error:/i.test(l));
+  };
+
+  const compile = async () => {
+    if (!apiBaseUrl) return;
+
+    setIsCompiling(true);
+    setStatus("Compiling...");
+    setAiHelp("");
 
     try {
-      const res = await fetch(`${apiBaseUrl}/verify-arduino`, {
+      const res = await fetch(`${apiBaseUrl}/api/arduino/compile`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code: value }),
       });
-      const data = await res.json();
 
-      if (data.ok) {
-        setStatus("Verification passed.");
-        return;
+      const text = await res.text();
+      setCompilerOutput(text);
+
+      const errors = parseErrors(text);
+      setLastErrors(errors);
+
+      if (res.ok && errors.length === 0) {
+        setStatus("✅ Verified. No compile errors.");
+      } else {
+        setStatus(
+          `❌ Compile failed (${errors.length} error${errors.length === 1 ? "" : "s"}).`
+        );
       }
-
-      setLastErrors(data.errors || []);
-      setCompilerOutput(
-        (data.errors || [])
-          .map((e: any) => `Line ${e.line}: ${e.message}`)
-          .join("\n")
-      );
-      setStatus("Errors found.");
-    } catch {
-      setCompilerOutput("Server error.");
-      setStatus("Verification failed.");
+    } catch (e: any) {
+      const msg = String(e?.message || e || "Unknown error");
+      setCompilerOutput(msg);
+      setLastErrors([msg]);
+      setStatus("❌ Compile request failed.");
+    } finally {
+      setIsCompiling(false);
+      setShowOutput(true);
     }
   };
 
-  const explainErrorsWithAI = async () => {
-    if (!lastErrors.length) return;
+  const explainErrors = async () => {
+    if (!apiBaseUrl) return;
+    if (!compilerOutput.trim()) return;
+
     setIsExplaining(true);
-    setStatus("Asking AI...");
+    setAiHelp("");
 
     try {
-      const res = await fetch(`${apiBaseUrl}/ai/help`, {
+      const res = await fetch(`${apiBaseUrl}/api/arduino/explain`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: value, errors: lastErrors }),
+        body: JSON.stringify({
+          code: value,
+          compilerOutput,
+        }),
       });
+
+      if (!res.ok) throw new Error("Explain request failed");
       const data = await res.json();
-      setCompilerOutput(data.explanation ?? "No explanation.");
+      setAiHelp(String(data?.explanation || ""));
       setStatus("AI explanation ready.");
-    } catch {
-      setCompilerOutput("AI error.");
-      setStatus("AI failed.");
+    } catch (e: any) {
+      setAiHelp("I couldn't generate an explanation right now. Try compiling again.");
+      setStatus("Explain failed.");
     } finally {
       setIsExplaining(false);
+      setShowOutput(true);
     }
   };
 
-  const handleReset = () => {
-    setValue(DEFAULT_SKETCH);
-    setCompilerOutput("");
-    setLastErrors([]);
-    window.localStorage.setItem(STORAGE_KEY, DEFAULT_SKETCH);
-    setStatus("Reset.");
+  const saveNow = () => {
+    if (!storage) return;
+    try {
+      storage.setItem(STORAGE_KEY, value);
+      setLastSaved(Date.now());
+      setStatus("Saved.");
+    } catch {
+      setStatus("Save failed.");
+    }
   };
 
-  /* ------------------------------------------------------------
-     Bottom resize handlers
-  ------------------------------------------------------------ */
-  const handleDragStart = (e: React.MouseEvent) => {
-    e.preventDefault();
-    setIsResizing(true);
-    dragStartYRef.current = e.clientY;
-    dragStartHeightRef.current = bottomHeight;
-
-    window.addEventListener("mousemove", handleDragMove);
-    window.addEventListener("mouseup", handleDragEnd);
+  const prettyTime = (ts: number | null) => {
+    if (!ts) return "";
+    try {
+      return new Date(ts).toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } catch {
+      return "";
+    }
   };
 
-  const handleDragMove = (e: MouseEvent) => {
-    const delta = dragStartYRef.current - e.clientY;
-    const next = Math.min(500, Math.max(40, dragStartHeightRef.current + delta));
-    setBottomHeight(next);
+  // ✅ Make Monaco background match your desired #020617 without changing wrapper CSS
+  const beforeMount: BeforeMount = (monaco) => {
+    monaco.editor.defineTheme("curio-dark", {
+      base: "vs-dark",
+      inherit: true,
+      rules: [],
+      colors: {
+        "editor.background": "#020617",
+        "editorGutter.background": "#020617",
+        "editorLineNumber.foreground": "#64748b",
+        "editorCursor.foreground": "#ffffff",
+        "editor.lineHighlightBackground": "#0b1220",
+        "editor.selectionBackground": "#1e3a8a55",
+      },
+    });
   };
 
-  const handleDragEnd = () => {
-    setIsResizing(false);
-    window.removeEventListener("mousemove", handleDragMove);
-    window.removeEventListener("mouseup", handleDragEnd);
+  const onMount: OnMount = (editor, monaco) => {
+    editorRef.current = editor;
+    monacoRef.current = monaco;
+    try {
+      monaco.editor.setTheme("curio-dark");
+    } catch {
+      // ignore
+    }
   };
 
-  /* ------------------------------------------------------------
-     Render
-  ------------------------------------------------------------ */
   return (
     <div
       style={{
         width,
         height,
+        minWidth: 260,
         display: "flex",
         flexDirection: "column",
-        background: "#020617",
-        border: "1px solid #1f2937",
         borderRadius: 8,
         overflow: "hidden",
-        userSelect: isResizing ? "none" : "auto",
+        border: "1px solid #1f2937",
+        background: "#020617",
+
+        // IMPORTANT: ensure this component never becomes the page scroll container
+        // The lesson page should control its own scroll; the editor + output handle theirs.
+        minHeight: 0,
       }}
     >
-      {/* Toolbar */}
-      <div style={{ padding: "6px 10px", display: "flex", gap: 8 }}>
-        <button onClick={handleVerify}>Verify</button>
-        <button onClick={explainErrorsWithAI} disabled={!lastErrors.length}>
-          Explain Error
-        </button>
-        <button onClick={handleReset}>Reset</button>
-      </div>
-
-      {/* Editor */}
-      <div style={{ flex: "1 1 auto", minHeight: 0 }}>
-        <Editor
-          value={value}
-          onChange={onChange}
-          beforeMount={beforeMount}
-          onMount={onMount}
-          language="cpp"
-          options={{
-            fontSize: 14,
-            minimap: { enabled: false },
-            automaticLayout: true,
-          }}
-        />
-      </div>
-
-      {/* Resize handle */}
+      {/* Top bar */}
       <div
-        onMouseDown={handleDragStart}
-        style={{ height: 6, cursor: "row-resize", background: "#020617" }}
-      />
+        style={{
+          background: "#020617",
+          borderBottom: "1px solid #1f2937",
+          padding: "6px 10px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          fontFamily:
+            "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+          fontSize: 12,
+          color: "#e5e7eb",
+          flexShrink: 0,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: "999px",
+                background: isCompiling ? "#f59e0b" : "#10b981",
+              }}
+            />
+            <span>{screenTitle}</span>
+          </div>
 
-      {/* Output */}
-      <div style={{ height: bottomHeight, padding: 8, color: "#fca5a5" }}>
-        <pre style={{ margin: 0, whiteSpace: "pre-wrap" }}>{compilerOutput}</pre>
+          <span style={{ color: "#94a3b8", fontSize: 11 }}>
+            {lastSaved ? `Saved ${prettyTime(lastSaved)}` : "Not saved yet"}
+          </span>
+        </div>
+
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <button
+            type="button"
+            onClick={compile}
+            style={toolbarButtonStyle}
+            disabled={isCompiling}
+          >
+            {isCompiling ? "Verifying…" : "Verify"}
+          </button>
+
+          <button
+            type="button"
+            onClick={explainErrors}
+            style={toolbarButtonStyle}
+            disabled={isExplaining}
+          >
+            {isExplaining ? "Explaining…" : "AI Explain"}
+          </button>
+
+          <button type="button" onClick={saveNow} style={toolbarButtonStyle}>
+            Save
+          </button>
+
+          <button type="button" onClick={resetToDefault} style={toolbarButtonStyle}>
+            Reset
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setShowOutput((v) => !v)}
+            style={toolbarButtonStyle}
+          >
+            {showOutput ? "Hide Output" : "Show Output"}
+          </button>
+        </div>
+      </div>
+
+      {/* Editor + Output region (fixed column; internal scrolling only) */}
+      <div
+        style={{
+          flex: 1,
+          minHeight: 0, // CRITICAL for separate scrolling in flex layouts
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
+        {/* Editor (Monaco handles its own scroll) */}
+        <div style={{ flex: 1, minHeight: 0 }}>
+          <Editor
+            height="100%"
+            width="100%"
+            language="cpp"
+            theme="curio-dark"
+            value={value}
+            onChange={(v) => setValue(v ?? "")}
+            beforeMount={beforeMount}
+            onMount={onMount}
+            options={{
+              fontSize: 13,
+              minimap: { enabled: false },
+              wordWrap: "on",
+              scrollBeyondLastLine: false,
+              automaticLayout: true,
+
+              // Helps ensure Monaco scroll stays inside editor region
+              scrollbar: {
+                vertical: "auto",
+                horizontal: "auto",
+              },
+            }}
+          />
+        </div>
+
+        {/* Output panel (its own scroll; never forces editor to scroll) */}
+        {showOutput ? (
+          <div
+            style={{
+              borderTop: "1px solid #1f2937",
+              background: "#0b1220",
+              color: "#e5e7eb",
+              fontFamily:
+                "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+              fontSize: 12,
+              flexShrink: 0, // keep it pinned; do not let it shrink weirdly
+            }}
+          >
+            <div
+              style={{
+                padding: "8px 10px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                borderBottom: "1px solid #1f2937",
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ fontWeight: 700 }}>Output</span>
+                <span style={{ color: "#94a3b8" }}>{status}</span>
+              </div>
+
+              <button type="button" onClick={clearOutput} style={toolbarButtonStyle}>
+                Clear
+              </button>
+            </div>
+
+            <div style={{ padding: "10px 10px", maxHeight: 220, overflow: "auto" }}>
+              {lastErrors.length ? (
+                <div style={{ marginBottom: 10 }}>
+                  <div
+                    style={{
+                      color: "#fca5a5",
+                      fontWeight: 700,
+                      marginBottom: 6,
+                    }}
+                  >
+                    Errors ({lastErrors.length})
+                  </div>
+                  <ul style={{ margin: 0, paddingLeft: 18, color: "#fecaca" }}>
+                    {lastErrors.slice(0, 10).map((e, i) => (
+                      <li key={i} style={{ marginBottom: 4 }}>
+                        {e}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+
+              {compilerOutput.trim() ? (
+                <>
+                  <div
+                    style={{
+                      color: "#cbd5e1",
+                      fontWeight: 700,
+                      marginBottom: 6,
+                    }}
+                  >
+                    Compiler output
+                  </div>
+                  <pre style={{ margin: 0, whiteSpace: "pre-wrap" }}>
+                    {compilerOutput}
+                  </pre>
+                </>
+              ) : (
+                <div style={{ color: "#94a3b8" }}>
+                  Run Verify to see compiler output here.
+                </div>
+              )}
+
+              {aiHelp.trim() ? (
+                <>
+                  <div style={{ borderTop: "1px solid #1f2937", margin: "12px 0" }} />
+                  <div
+                    style={{
+                      color: "#cbd5e1",
+                      fontWeight: 700,
+                      marginBottom: 6,
+                    }}
+                  >
+                    AI explanation
+                  </div>
+                  <div style={{ whiteSpace: "pre-wrap", color: "#e5e7eb" }}>{aiHelp}</div>
+                </>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
       </div>
     </div>
   );
 }
+
+const toolbarButtonStyle: React.CSSProperties = {
+  fontSize: 11,
+  padding: "4px 10px",
+  borderRadius: 999,
+  border: "1px solid #374151",
+  background: "#111827",
+  color: "#e5e7eb",
+  cursor: "pointer",
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 4,
+  lineHeight: "16px",
+};

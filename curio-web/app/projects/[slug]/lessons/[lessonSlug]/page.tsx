@@ -158,12 +158,31 @@ export default async function LessonSlugPage({ params }: PageProps) {
     );
   }
 
-  return (
-    <div style={{ minHeight: "100vh", background: "white" }}>
-      {Header}
-      <main style={{ maxWidth: 1600, margin: "0 auto", padding: "16px" }}>
-        <Lesson />
-      </main>
-    </div>
-  );
+return (
+  <div
+    style={{
+      height: "100vh",
+      background: "white",
+      display: "flex",
+      flexDirection: "column",
+      overflow: "hidden",
+    }}
+  >
+    {Header}
+
+    <main
+      style={{
+        flex: 1,
+        minHeight: 0, // critical for nested scrolling
+        overflow: "hidden", // prevents the document from scrolling
+        maxWidth: 1600,
+        margin: "0 auto",
+        width: "100%",
+        padding: "0px", // let CodeLessonBase handle padding
+      }}
+    >
+      <Lesson />
+    </main>
+  </div>
+);
 }

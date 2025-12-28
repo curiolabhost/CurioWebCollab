@@ -11,11 +11,6 @@ import CodeLessonBase from "@/src/lesson-core/CodeLessonBase";
  * - The lesson now renders through `lesson-core/CodeLessonBase`.
  */
 
-export const CODE_BEG_META = {
-  title: "Focus Board",
-  subtitle: "Basic Functions",
-  description: "Learn the fundamentals of coding Focus Board with Arduino.",
-};
 
 export const LESSON_STEPS_BEGINNER: Record<number, any[]> = {
   1: [
@@ -26,7 +21,7 @@ export const LESSON_STEPS_BEGINNER: Record<number, any[]> = {
         "Arduino is an open-source electronics platform used to create interactive projects. Every Arduino sketch has two main functions: setup() runs once when the board is powered on or reset, loop() runs continuously as long as the board has power.",
       hint: "pinMode() configures a pin as INPUT or OUTPUT",
 
-      // ✅ NEW: all visual content goes through imageGrid, inside codes blocks
+      // NEW: all visual content goes through imageGrid, inside codes blocks
       codes: [
         {
           // this used to be step.gif
