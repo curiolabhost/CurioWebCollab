@@ -1,63 +1,9 @@
-import type { ComponentType } from "react";
+import { ESB_LESSONS } from "./projects/electric-status-board/lessons";
 
-// One lesson entry
-export type LessonEntry = {
-  slug: string;
-  title: string;
-  component: ComponentType<any>;
-};
+// Add other projects later, e.g.
+// import { ARDUINO_BASICS_LESSONS } from "./arduino-basics/lessons";
 
-// One project registry
-export type ProjectLessonRegistry = {
-  projectSlug: string;
-  projectTitle: string;
-  lessons: Record<string, LessonEntry>; // key = lessonSlug
-};
-
-// -------------------
-// Import your lessons
-// -------------------
-import ElectricLearn from "./projects/electric-status-board/lessons/index";
-import ElectricCircuit from "./projects/electric-status-board/lessons/circuit";
-import ElectricCodeBeg from "./projects/electric-status-board/lessons/codeBeg";
-import ElectricCodeAdv from "./projects/electric-status-board/lessons/codeAdv";
-
-// -------------------
-// Registry object
-// -------------------
-export const LESSON_REGISTRY: Record<string, ProjectLessonRegistry> = {
-  "electric-status-board": {
-    projectSlug: "electric-status-board",
-    projectTitle: "Focus Board",
-    lessons: {
-      learn: {
-        slug: "learn",
-        title: "Start Learning",
-        component: ElectricLearn,
-      },
-      circuit: {
-        slug: "circuit",
-        title: "Circuit",
-        component: ElectricCircuit,
-      },
-      codeBeg: {
-        slug: "codeBeg",
-        title: "Beginner Coding",
-        component: ElectricCodeBeg,
-      },
-      codeAdv: {
-        slug: "codeAdv",
-        title: "Advanced Coding",
-        component: ElectricCodeAdv,
-      },
-    },
-  },
-};
-
-export function getLessonComponent(projectSlug: string, lessonSlug: string) {
-  const project = LESSON_REGISTRY[projectSlug];
-  if (!project) return null;
-  const lesson = project.lessons[lessonSlug];
-  if (!lesson) return null;
-  return lesson;
-}
+export const PROJECT_LESSONS = {
+  "electric-status-board": ESB_LESSONS,
+  // "arduino-basics": ARDUINO_BASICS_LESSONS,
+} as const;

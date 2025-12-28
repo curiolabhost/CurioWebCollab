@@ -105,7 +105,7 @@ export default async function ProjectDetailPage({
 
               <div className="flex flex-wrap gap-3">
                 {project.available ? (
-                <Link href={`/lesson-apps/${project.slug}`}>
+                <Link href={`/projects/${project.slug}/lessons/code-beg`}>
                   <Button
                     size="lg"
                     variant="outline"
@@ -319,7 +319,7 @@ export default async function ProjectDetailPage({
                 Join thousands of students building amazing projects.
               </p>
               {project.available ? (
-                <Link href={`/lesson-apps/${project.slug}`}>
+                <Link href={`/projects/${project.slug}/lessons/code-beg`}>
                   <Button
                     variant="outline"
                     className="w-full bg-white text-indigo-600 hover:bg-gray-100"

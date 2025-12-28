@@ -208,11 +208,11 @@ Step 1: Inside wokwi, add 3 push buttons to your breadboard and place them acros
 Step 2: Wire each button:
 @Choose one side of the button and connect it to one of the pin (D2/D3/D4) for all 3 buttons
 @Opposite side goes to GND for all three buttons
-Step 3: add the resistors to each button to prevent short circuit:
-@Connect a 10k ohm resistor from the button leg connected to the pin to 5V for all three buttons
+Step 3: Configure pins in code as INPUT_PULLUP:
+@ pinMode(buttonPin, INPUT_PULLUP);
 
-Press = LOW, Release = HIGH (via pull-up).
-We will use INPUT_PULLUP so the button reads LOW when pressed.
+Button State Logic:
+@Press = LOW, Release = HIGH (via pull-up).
 
 2-leg button wiring (similar to 4-leg button):
 @One leg → Arduino D2 / D3 / D4
