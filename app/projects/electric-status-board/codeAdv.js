@@ -1196,8 +1196,8 @@ void showClockStatus() {
   },
 
   {
-    id: 9,
-    title: "Step 9: Display the Clock on Screen",
+    id: 6,
+    title: "Step 6: Display the Clock on Screen",
     codes: [
       {
         topicTitle: "Draw Time",
