@@ -165,10 +165,10 @@ const localStyles = StyleSheet.create({
 
   codeBlankInput: {
     minWidth: 20,
-    paddingHorizontal: 0,
+    paddingHorizontal: 2,
     paddingVertical: 0.5,
     marginHorizontal: 0,
-    marginRight: 0,
+    marginRight: 2,
     borderBottomWidth: 1,
     borderBottomColor: "#5e6d8b6a",
     fontSize: 14,
@@ -871,7 +871,7 @@ export default function GuidedCodeBlock({
                         status === true && S.blankCorrect,
                         status === false && S.blankIncorrect,
 
-                        // ✅ syntax color when FULL word matches special token
+                        // syntax color when FULL word matches special token
                         getCompletedBlankSyntaxStyle(val),
 
                         { width },
