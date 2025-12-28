@@ -30,7 +30,7 @@ const LESSON_STEPS_BEGINNER = {
           },
 
           // this used to be descAfterCircuit
-          descBetweenBeforeAndCode: `The LED’s positive leg (anode) connects to \`pin 13\`, and the negative leg (cathode) connects to \`GND\`. When the LED is connected to pin 13 on an Arduino, it blinks because pin 13 is set as digital output pin programmed to switch between HIGH (5 V) and LOW (0 V) states in the code.`,
+          descBetweenBeforeAndCode: `The LED’s yellow positive leg (anode) connects to \`pin 13\`, and the brown negative leg (cathode) connects to \`GND\`. When the LED is connected to pin 13 on an Arduino, it blinks because pin 13 is set as digital output pin programmed to switch between HIGH (5 V) and LOW (0 V) states in the code.`,
 
           code: `// Arduino Blink Example
 ^^void setup() {  // This runs once
@@ -141,7 +141,7 @@ void loop(){
             HEIGHT2: "easy",
           },
 
-          descAfterCode: `Here’s what the blanks represent:
+          descAfterCode: `Here’s what the blanks represent (see lesson 4 if you need more help understanding variables!):
 - The first blank is for the **variable name** for height and the second blank describes the **screen’s height** (in pixels).
 - The **value you fill in** should match your OLED module’s actual pixel height.
 - The **same height variable** must be used again inside the \`display()\` constructor.`,
@@ -1055,11 +1055,11 @@ However, if a pin is not connected to anything, it can "float" and randomly jump
 
 With \`INPUT_PULLUP\`:
 
-- The Arduino turns on an internal resistor that pulls the pin **up to HIGH** when the button is not pressed.
+- The Arduino turns on an internal resistor that pulls the pin **up to HIGH** when the button is not pressed. In other words, when the button isn’t pressed, the built-in resistor gives the pin a clear signal to read HIGH, instead of letting it float and randomly change values.
 - We wire the button from the pin to **GND**.
 - When the button is pressed, it connects the pin to GND, so the pin reads \`LOW\`.
 
-So the logic becomes:
+So, the logic becomes:
 
 - **Not pressed → \`digitalRead(pin)\` is** __BLANK[INPUTHIGHLOW1]__
 - **Pressed → \`digitalRead(pin)\` is** __BLANK[INPUTHIGHLOW]__

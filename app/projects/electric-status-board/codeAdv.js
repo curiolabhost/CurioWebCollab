@@ -1,4 +1,5 @@
 // WOKWI: https://wokwi.com/projects/450650715926197249
+// WOKWI with wiring: https://wokwi.com/projects/451185542346916865
 
 import React from "react";
 import CodeLessonBase from "./components/CodeLessonBase";

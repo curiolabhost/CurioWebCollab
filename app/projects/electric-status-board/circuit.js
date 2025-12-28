@@ -223,13 +223,27 @@ Press = LOW, Release = HIGH (via pull-up).
         {
           topicTitle: "Adding a Clock Component",
           descBeforeCode: processDesc(`
-If you feel ready to add a clock component to your wiring, you will need a
-component called RTC DS3231. This piece, when connected to the arduino, can
-store the time from your computer, allowing your status board to display
-the real time.
+If you feel ready to add a clock component to your wiring, you will need a component called RTC DS3231. 
 
-Installing the libraries: Search and Install RTClib.h
+This piece, when connected to the arduino, can store the time from your computer, allowing your status board to display the real time. It communicates with the Arduino via the I²C protocol, using the SDA (data) and SCL (clock) pins. The Arduino sends commands over I²C to read or set the time. The DS3231 keeps the current time using its onboard crystal and battery, allowing your status board to display the correct time continuously.
+
+To set it up, you’ll need (in addition to the previous materials):
+@RTC DS3231 module
+@Breadboard (optional)
+@Installed RTClib library for Arduino
+
+Installing the libraries: Search and Install RTClib.h; look for this module, specifically:
           `),
+        imageGridAfterCode: {
+            columns: 1,
+            items: [
+              {
+                label: "Library to look for",
+                image:
+                  "https://dummyimage.com/1200x700/ddd/000.png&text=Correct+Library",
+              },
+            ],
+          },
         },
       ],
     },
@@ -240,11 +254,33 @@ Installing the libraries: Search and Install RTClib.h
         {
           topicTitle: "Where to Wire the RTC",
           descBeforeCode: processDesc(`
-Set the wiring up like so:
+Set the wiring up as seen in the image below; as you wire, try to understand why each component wires where it does:
 @GND → GND
 @5V → 5V
-@SDA → A4
-@SCL → A5
+@SDA → A4 (Connects the data line for I²C communication between the Arduino and the RTC)
+@SCL → A5 (Connects the clock line for I²C communication, synchronizing data transfer)
+          `),
+          imageGridAfterCode: {
+            columns: 1,
+            items: [
+              {
+                label: "Expected Wiring",
+                image:
+                  "https://dummyimage.com/1200x700/ddd/000.png&text=Wiring+Setup",
+              },
+            ],
+          },
+          descAfterImage: processDesc(`
+**Testing the RTC:**  
+1. Upload a simple sketch to the Arduino that reads the time from the RTC and prints it to the Serial Monitor.  
+2. Open the Serial Monitor and check that the time is displayed correctly.
+Make sure this compnent works as you'd like it to as you complete the Advanced Coding module!
+
+**Sanity check:**  
+If the RTC isn’t showing the correct time, make sure:
+@the wiring matches exactly
+@the module has a battery
+@the correct RTClib library is installed.
           `),
         },
       ],
