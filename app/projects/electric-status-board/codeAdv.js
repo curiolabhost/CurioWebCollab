@@ -1,4 +1,5 @@
 // WOKWI: https://wokwi.com/projects/450650715926197249
+// UPDATED WOKWI (splits showStatusWithClock()): https://wokwi.com/projects/451542451754712065
 
 import React from "react";
 import CodeLessonBase from "./components/CodeLessonBase";
@@ -13,20 +14,23 @@ const LESSON_STEPS_ADVANCED = {
         {
           topicTitle: "Include Libraries",
           descBeforeCode:
-            "We include the right libraries to talk to the SSD1306 OLED over I²C and draw text/shapes.",
+            "We include the right libraries to talk to the SSD1306 OLED and the Real-Time Clock (RTC) module over I²C and draw text/shapes.",
           imageGridBeforeCode: null,
           descBetweenBeforeAndCode: null,
           code: `^^#include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h> 
-(ADD CLOCK MODULE HERE - ANUSHKA)     
+#include <RTClib.h> 
+
+
+
 ^^
 void setup(){
 }
 
 void loop(){
 }`,
-          descAfterCode: `This step adds three important libraries used for communicating with the OLED screen:
+          descAfterCode: `This step adds the core libraries needed to communicate with the OLED screen and the RTC:
 
 \`#include <Wire.h>\`  
 Enables I²C communication so the Arduino can talk to devices using just two wires: **SDA** (data) and **SCL** (clock).  
@@ -38,14 +42,15 @@ Loads Adafruit’s graphics library. This provides the drawing tools you’ll us
 \`#include <Adafruit_SSD1306.h>\`  
 Loads the driver for the SSD1306 OLED controller. It knows how to send pixel-level commands so the display can show what you draw.
 
-\`#include CLOCK MODULE HERE - ANUSHKA\` 
-ADD EXPLANATION FOR CLOCK MODULE HERE - ANUSHKA
+\`#include <RTClib.h> \` 
+This allows the Arduino to coomunicate with the **Real-Time Clock (RTC)** module.
+The library makes it easy to retrieve the current **hours, minutes, and seconds**, which will be used to display a live clock on the OLED.
 
-**Together, these libraries allow the Arduino to communicate with the OLED and render text and graphics on the screen.**`,
+**Together, these libraries allow the Arduino to communicate with the OLED display and clock module, enabling a real-time status screen with time, text, and graphics. **`,
           imageGridAfterCode: null,
           descAfterImage: null,
           hint:
-            "Adafruit_GFX provides drawing; Adafruit_SSD1306 is the OLED driver.",
+            "Wire handles communication, Adafruit_GFX provides drawing, Adafruit_SSD1306 is the OLED driver, and RTClib provides access to real-time clock data.",
         },
       ],
     },
@@ -991,29 +996,258 @@ Feel free to change how you want the menu to show. You do not need to stick to i
       ],
     },
   ],
+ 5: [
+  
+  {
+    id: 1,
+    title: "Step 1: Creating the RTC Object",
 
-  5: [
-    {
-      id: 1,
-      title: "Step 1: Adding Clock Functionality (ANUSHKA)",
-      codes: [
-        {
-          topicTitle: "Clock Module Placeholder",
-          descBeforeCode: "...",
-          imageGridBeforeCode: null,
-          descBetweenBeforeAndCode: null,
-          code: `^^
-...
-^^`,
-          descAfterCode: `...`,
-          imageGridAfterCode: null,
-          descAfterImage: null,
-          hint: "...",
-        },
-      ],
+    codes: [
+      {
+        topicTitle: "RTC Global Object",
+
+        descBeforeCode: `
+Before we can read the time, we need to create an object that represents the Real-Time Clock (RTC) module.
+This object stands in for the physical RTC module and lets our program communicate with it. 
+By creating it globally, we make sure the clock can be accessed from anywhere in the program.
+`,
+
+        code: `
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h> 
+#include <RTClib.h> 
+
+^^RTC_DS3231 __BLANK[RTC_NAME]__;^^ // example names: rtc, clock, timeRTC
+
+void setup(){
+}
+
+void loop(){
+}
+
+`,
+
+        descAfterCode: `
+- \`RTC_DS3231\` tells Arduino which type of clock hardware you are using
+- The variable name (like \`rtc\` or \`clock\`) is how your code talks to the RTC. Make sure to name your variable something related to it
+- Global objects are declared outside of \`setup()\` and \`loop()\`; This allows us to use it inside both setup() and loop()
+- The RTC module keeps track of time even when the Arduino is powered off
+`,
+
+        hint: "This object is your program's connection to the clock hardware",
+      },
+    ],
+
+    answerKey: {
+      RTC_NAME: ["rtc", "clock", "timeRTC"],
     },
-  ],
 
+    blankExplanations: {
+      RTC_NAME: "This is the name you'll use whenever your code needs to read the current time.",
+    },
+  },
+
+  {
+    id: 2,
+    title: "Step 2: Initializing Hardware in setup()",
+
+    codes: [
+      {
+        topicTitle: "Starting the RTC",
+
+        descBeforeCode: `
+When the Arduino first powers in, it needs time to get all of its hardware ready.
+This is what the \`setup()\` function is for - it runs once at the start and is the right place to initialize things like displays, sensors, and clocks.
+
+Before we can ask the RTC for the current time, we need to start communication with it here.
+`,
+
+        code: `
+void setup() {
+
+// Start communcation with the RTC hardware
+// This prepares the clock so we can read the time later
+
+  ^^__BLANK[RTC_OBJ]__.__BLANK[BEGIN_FUNC]__();^^ 
+
+// The first blank is the RTC object you created earlier (usually "rtc")
+// The second blank is the function that starts the clock (begin)
+
+  }
+`,
+
+        descAfterCode: `
+- \`rtc.begin()\` tells the Arduino to connect to the RTC module
+- Because it is in \`void setup()\`, this line will only run once when the board first turns on
+- If the RTC is not initialized, calls like \`rtc.now()\` will not work
+`,
+
+        hint: "setup() runs once at startup.",
+      },
+    ],
+
+    answerKey: {
+      RTC_OBJ: ["rtc", "clock", "timeRTC"],
+      BEGIN_FUNC: ["begin"],
+    },
+
+    blankExplanations: {
+      RTC_OBJ: "This is the RTC object created earlier in the program.",
+      BEGIN_FUNC: "begin() initializes the RTC module.",
+    },
+  },
+
+  {
+    id: 3,
+    title: "Step 3: Create Function Skeleton",
+    codes: [
+      {
+        topicTitle: "Define showClockStatus()",
+        descBeforeCode: `
+We start by creating a custom function that will handle displaying the status and clock.
+Using a function keeps our code organized and lets us call it whenever we need.
+        `,
+        code: `
+void setup(){
+}
+
+void loop(){
+}
+
+^^void __BLANK[FUNC_NAME]() ^^{
+  // Function body will be filled in later
+}
+        `,
+        descAfterCode: `
+- This defines the function but leaves it empty for now.
+- A clear function name (like 'showClockStatus') indicates its purpose.
+- Later steps will add logic for reading time and drawing the display.
+        `,
+        hint: "Functions group related actions together.",
+      }
+    ],
+    answerKey: { FUNC_NAME: ["showClockStatus"] },
+    blankExplanations: { FUNC_NAME: "The name of the function that will display status and clock." }
+  },
+ {
+    id: 4,
+    title: "Step 4: Read Time and Extract Components",
+    codes: [
+      {
+        topicTitle: "Get Time from RTC and Split",
+        descBeforeCode: `
+First, we ask the RTC for the current time and store it in a variable (like 'now').
+This variable is a snapshot of the current time we can use to get hours, minutes, and seconds.
+  `,
+        code: `
+void showClockStatus() {
+  ^^DateTime __BLANK[TIME_VAR]__ = __BLANK[RTC_OBJ]__.now();  // rtc must match the object created earlier
+                                                          // The first blank stores this DateTime object
+
+  int hour   = __BLANK[TIME_VAR]__.hour();    // apply .hour() to your DateTime object 
+  int __BLANK[MIN_VAR1]__ = __BLANK[TIME_VAR]__.minute(); 
+  int __BLANK[SEC_VAR1]__ = __BLANK[TIME_VAR]__.second(); ^^
+}
+        `,
+        descAfterCode: `
+- \`rtc.now()\` returns the current date and time in real time (DateTime object) by reading the RTC.
+- The DateTime object allows access to individual pieces of time:
+  - \`.hour()\` → current hour (example: 14)
+  - \`.minute()\` → current minute (example: 37)
+  - \`.second()\` → current second (example: 05)
+- Storing hour, minute, and second separately makes it easy to format and display them.
+- Every time the function runs, the RTC provides the updated current time.
+        `,
+        hint: "Use the DateTime object to access hour, minute, and second.",
+      }
+    ],
+    answerKey: {RTC_OBJ: [" "], TIME_VAR: ["now"], MIN_VAR1: ["minute"], SEC_VAR1: ["second"] },
+    blankExplanations: {
+      TIME_VAR: "Variable storing the current date and time from the RTC.",
+      MIN_VAR1: "Variable for the current minute.",
+      SEC_VAR1: "Variable for the current second."
+    }
+  },
+
+  {
+    id: 5,
+    title: "Step 5: Call the Generic Status Display",
+    codes: [
+      {
+        topicTitle: "Draw Status Text",
+        descBeforeCode: `
+Before we draw the clock, we display the main status text using a separate function.
+This keeps the screen organized and separates text from the clock.
+        `,
+        code: `
+void showClockStatus() {
+    ^^showStatus();^^
+}
+        `,
+        descAfterCode: `
+- Calling \`showStatus()\` draws the status text at the top of the OLED.
+ `,
+        hint: "Call the function that draws the main status area.",
+      }
+    ],
+    answerKey: {},
+    blankExplanations: {}
+  },
+
+  {
+    id: 9,
+    title: "Step 9: Display the Clock on Screen",
+    codes: [
+      {
+        topicTitle: "Draw Time",
+        descBeforeCode: `
+Finally, we display the current time at the bottom of the screen.
+We format it with leading zeros so single-digit numbers look neat.
+        `,
+        code: `
+void showClockStatus() {
+^^// sets cursor and text size        
+  display.setTextSize(1);
+  display.setCursor(0, 52);
+
+  // Display hours 
+  if (hour < 10) display.print("0");
+  display.print(hour);
+  display.print(":");
+
+  // Display minutes 
+  if (__BLANK[MIN_VAR1]__ < 10) __BLANK[MIN_FUNC1]__;
+  display.print(__BLANK[MIN_VAR2]__);
+  display.print(":");
+
+  // Display seconds 
+  if (__BLANK[SEC_VAR1]__ < 10) __BLANK[SEC_FUNC1]__;
+  display.print(__BLANK[SEC_VAR2]__);
+
+  // Update the OLED display
+  display.display();^^
+}
+        `,
+        descAfterCode: `
+- The current time shows up at the bottom of the OLED in HH:MM:SS format, just like a digital clock.
+- Leading zeros make sure single-digit hours, minutes, or seconds (like 9 or 7) line up neatly, so the display looks tidy (e.g., 09:07:05 instead of 9:7:5).
+- Finally, calling \`display.display()\` actually updates the screen, sending all the text and graphics you’ve drawn so they appear on the OLED.
+ `,
+        hint: "Use hour lines as reference; fill in minutes and seconds as blanks.",
+      }
+    ],
+    answerKey: { MIN_VAR1: ["minute"], MIN_FUNC1: ["display.print(\"0\")"], MIN_VAR2: ["minute"], SEC_VAR1: ["second"], SEC_FUNC1: ["display.print(\"0\")"], SEC_VAR2: ["second"] },
+    blankExplanations: {
+      MIN_VAR1: "Variable storing the current minute from RTC.",
+      MIN_FUNC1: "Function printing leading zero for minutes if <10.",
+      MIN_VAR2: "Variable storing the current minute again for display.",
+      SEC_VAR1: "Variable storing the current second from RTC.",
+      SEC_FUNC1: "Function printing leading zero for seconds if <10.",
+      SEC_VAR2: "Variable storing the current second again for display."
+    }
+  }
+],
   6: [
     {
       id: 1,
