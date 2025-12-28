@@ -106,7 +106,7 @@ export const PROJECTS: Project[] = [
 
   withCompat({
   id: 2,
-  slug: "focus-board",
+  slug: "electric-status-board",
   title: "FocusBoard",
   description:
     "Build a FocusBoard — a programmable productivity device that helps users manage focus with clock, timer, and Pomodoro modes.",

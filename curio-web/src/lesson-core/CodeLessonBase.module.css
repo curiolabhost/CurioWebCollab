@@ -1,0 +1,222 @@
+/* Auto-converted from your RN StyleSheet keys
+   Note: Some RN-only props (like "elevation") were approximated via box-shadow.
+*/
+
+.screen {
+  flex: 1 1 0%;
+  background-color: #fafafa;
+}
+
+.headerRow {
+  display: flex;
+  padding-left: 20px;
+  padding-right: 20px;
+  padding-top: 10px;
+  padding-bottom: 0;
+  flex-direction: row;
+  align-items: center;
+}
+
+.backBtn {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  background-color: white;
+  border-width: 2px;
+  border-color: #c05454;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  padding-left: 14px;
+  padding-right: 14px;
+  border-radius: 10px;
+  border-style: solid;
+}
+
+.h1 {
+  font-size: 22px;
+  font-weight: 800;
+  color: #111827;
+}
+
+.h2 {
+  font-size: 18px;
+  font-weight: 800;
+  color: #111827;
+}
+
+.p {
+  color: #374151;
+}
+
+.richTextLine {
+  line-height: 22px;
+  margin-bottom: 6px;
+}
+
+.inlineCode {
+  background-color: #e2e6f1;
+  padding-top: 2px;
+  padding-bottom: 2px;
+  padding-left: 4px;
+  padding-right: 4px;
+  border-radius: 6px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace;
+  font-size: 13px;
+}
+
+.boldGeneral {
+  font-weight: 800;
+  color: #111827;
+}
+
+.containerScroll {
+  padding-left: 18px;
+  padding-right: 18px;
+  padding-top: 14px;
+  padding-bottom: 14px;
+}
+
+.stepOuter {
+  background-color: #ffe4e6;
+  border-radius: 16px;
+  padding: 5px;
+  width: 100%;
+  margin-left: 10px;
+}
+
+.stepCard {
+  background-color: #fff;
+  border-radius: 12px;
+  padding: 15px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.12);
+}
+
+.inlineBlankInput {
+  min-width: 50px;
+  border-width: 2px;
+  border-color: #e5e7eb;
+  border-radius: 10px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  padding-left: 10px;
+  padding-right: 10px;
+  text-align: center;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace;
+  border-style: solid;
+}
+
+/* ---- Extra classes from your original StyleSheet ----
+   We'll start using these as we convert GuidedCodeBlock / SplitView next.
+*/
+
+.progressGroup {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+}
+
+.progressHalf {
+  flex: 1 1 0%;
+}
+
+.progressHeader {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 8px;
+}
+
+.progressLabel {
+  color: #374151;
+  font-weight: 700;
+}
+
+.progressBarWrap {
+  background-color: #e5e7eb;
+  border-radius: 999px;
+  overflow: hidden;
+  height: 10px;
+}
+
+.progressBarFill {
+  height: 10px;
+  border-radius: 999px;
+  background-color: #c05454;
+}
+
+.progressBarFillSecondary {
+  height: 10px;
+  border-radius: 999px;
+  background-color: #374151;
+}
+
+/* image grid */
+.imageGridWrap {
+  margin-top: 10px;
+}
+
+.imageGrid {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.imageGridItem {
+  background-color: #ffffff;
+  border-width: 1px;
+  border-color: #e5e7eb;
+  border-radius: 14px;
+  padding: 10px;
+  border-style: solid;
+}
+
+.imageGridImgWrap {
+  width: 100%;
+  overflow: hidden;
+  border-radius: 12px;
+}
+
+.imageGridImg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.imageGridLabel {
+  margin-top: 8px;
+  color: #111827;
+  font-weight: 700;
+  font-size: 13px;
+}
+
+/* hint box */
+.hintBox {
+  margin-top: 12px;
+  background-color: #fef2f2;
+  border-width: 1px;
+  border-color: #fecaca;
+  border-radius: 12px;
+  padding: 10px;
+  border-style: solid;
+}
+
+.hintText {
+  color: #7f1d1d;
+  font-size: 13px;
+  line-height: 18px;
+}
+
+/* sidebar (if used) */
+.sidebarExpanded {
+  width: 340px;
+}
+
+/* ---- You have many more keys in the original StyleSheet.
+   As we convert the rest of lesson-core files, we’ll keep adding/using them.
+   If you want the FULL 1:1 dump (all ~80 classes) right now, say so and I’ll paste it in one go.
+*/

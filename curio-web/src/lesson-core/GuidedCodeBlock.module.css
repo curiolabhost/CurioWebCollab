@@ -1,0 +1,123 @@
+.codeCard {
+  background: #0f172a;
+  border-radius: 12px;
+  overflow: hidden;
+  margin-top: 12px;
+}
+
+.codeRow {
+  display: flex;
+  width: 100%;
+}
+
+.codeLeft {
+  flex-shrink: 0;
+}
+
+.codeRight {
+  flex: 1;
+  margin-left: 12px;
+  min-width: 220px;
+}
+
+.codeCardHeader {
+  height: 44px;
+  padding: 0 12px;
+  background: #0b1223;
+  border-bottom: 1px solid #1f2a44;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.codeCardTitle {
+  color: #cbd5e1;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.codeHeaderButtons {
+  display: flex;
+  gap: 8px;
+}
+
+.copyBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: rgba(255,255,255,0.06);
+  color: #cbd5e1;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.codeBox {
+  padding: 14px;
+}
+
+.codeLineRow {
+  display: flex;
+  align-items: flex-start;
+}
+
+.codeNormal {
+  color: #a3a5a3;
+  font-family: monospace;
+  font-size: 14px;
+  line-height: 20px;
+  white-space: pre;
+}
+
+.codeHighlight {
+  color: #cdced1;
+  font-family: monospace;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.syntaxComment { color: #82a8ab; }
+.syntaxString { color: #fca5a5; }
+.syntaxNumber { color: #93c5fd; }
+.syntaxType { color: #f9a8d4; }
+.syntaxControl { color: #c4b5fd; }
+.syntaxArduinoFunc { color: #fcd34d; }
+
+.codeBlankInput {
+  min-width: 40px;
+  border: none;
+  border-bottom: 1px solid #5e6d8b6a;
+  background: transparent;
+  color: #a3a5a3;
+  font-family: monospace;
+  font-size: 14px;
+  line-height: 20px;
+  text-align: center;
+  outline: none;
+}
+
+.blankCorrect { border-bottom-color: #16a34a; }
+.blankIncorrect { border-bottom-color: #dc2626; }
+
+.blankHintBox {
+  display: flex;
+  gap: 8px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  padding: 10px 12px;
+  border-radius: 10px;
+  margin-top: 10px;
+}
+
+.blankHintText {
+  font-size: 13px;
+  color: #4b5563;
+  line-height: 20px;
+}
+
+.aiHintDivider {
+  height: 1px;
+  background: #e5e7eb;
+  margin: 8px 0;
+}

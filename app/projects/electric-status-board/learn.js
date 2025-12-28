@@ -91,10 +91,10 @@ export default function ElectricStatusBoard() {
       if (router?.canGoBack?.()) {
         router.back();
       } else {
-        router.replace("/second");
+        router.back()
       }
     } catch {
-      router.replace("/second");
+      router.back();
     }
   };
 
