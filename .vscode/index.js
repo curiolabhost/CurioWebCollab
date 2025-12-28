@@ -21,7 +21,7 @@ export default function ElectricStatusBoard() {
       <View style={styles.headerRow}>
         <TouchableOpacity
           style={styles.backBtn}
-          onPress={() => router.replace("/second")} // ← go to list every time
+          onPress={() => router.replace("/index")} // ← go to list every time
         >
           <Ionicons name="arrow-back" size={18} color="#c05454" />
           <Text style={styles.backText}>Back</Text>
