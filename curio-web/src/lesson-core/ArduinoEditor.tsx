@@ -272,7 +272,7 @@ export default function ArduinoEditor({
       </div>
 
       {/* Editor */}
-      <div style={{ flex: 1 }}>
+      <div style={{ flex: "1 1 auto", minHeight: 0 }}>
         <Editor
           value={value}
           onChange={onChange}

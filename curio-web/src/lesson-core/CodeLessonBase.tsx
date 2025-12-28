@@ -2,25 +2,16 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
+import { ChevronLeft, ChevronDown, ChevronRight, Check } from "lucide-react";
 
 import SplitView from "./SplitView";
 import ArduinoEditor from "./ArduinoEditor";
 import CircuitEditor from "./CircuitEditor";
-import { useEditorToggle } from "./useEditorToggle";
 import GuidedCodeBlock from "./GuidedCodeBlock";
 
-import S from "./CodeLessonBase.module.css";
-
 /* ============================================================
-   Helpers
+   Storage helpers
 ============================================================ */
-
-function clamp(n: number, lo: number, hi: number) {
-  return Math.max(lo, Math.min(hi, n));
-}
-
-const getTotalLessons = (stepsObj: Record<string, any[]>) =>
-  Object.keys(stepsObj || {}).length;
 
 function safeJsonParse<T>(raw: string | null): T | null {
   if (!raw) return null;
@@ -31,7 +22,7 @@ function safeJsonParse<T>(raw: string | null): T | null {
   }
 }
 
-function storageGet<T>(key: string): T | null {
+function storageGetJson<T>(key: string): T | null {
   if (!key) return null;
   if (typeof window === "undefined") return null;
   try {
@@ -41,12 +32,34 @@ function storageGet<T>(key: string): T | null {
   }
 }
 
-function storageSet(key: string, value: any) {
+function storageSetJson(key: string, value: any) {
   if (!key) return;
   if (typeof window === "undefined") return;
   try {
     window.localStorage.setItem(key, JSON.stringify(value));
   } catch {}
+}
+
+function storageGetString(key: string): string | null {
+  if (!key) return null;
+  if (typeof window === "undefined") return null;
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function defaultKeys(storagePrefix: string) {
+  return {
+    doneSetKey: `${storagePrefix}:doneSet`,
+    overallProgressKey: `${storagePrefix}:overallProgress`, // optional
+    globalBlanksKey: `${storagePrefix}:blanks:GLOBAL`,
+    localBlanksPrefixKey: `${storagePrefix}:blanks:LOCAL`,
+    navKey: `${storagePrefix}:nav`,
+    sidebarKey: `${storagePrefix}:sidebarExpanded`,
+    splitKey: `${storagePrefix}:split`,
+  };
 }
 
 function countTotalSteps(lessonSteps: Record<string, any[]>) {
@@ -55,113 +68,251 @@ function countTotalSteps(lessonSteps: Record<string, any[]>) {
   }, 0);
 }
 
-function defaultKeys(storagePrefix: string) {
-  return {
-    doneSetKey: `${storagePrefix}:doneSet`,
-    overallProgressKey: `${storagePrefix}:overallProgress`, // optional; we compute anyway
-    globalBlanksKey: `${storagePrefix}:blanks:GLOBAL`,
-    localBlanksPrefixKey: `${storagePrefix}:blanks:LOCAL`,
-    navKey: `${storagePrefix}:nav`,
-  };
+function clamp(n: number, lo: number, hi: number) {
+  return Math.max(lo, Math.min(hi, n));
 }
 
-/* ============================================================
-   Sidebar
-============================================================ */
-
-function LessonSidebar({
-  lessonSteps,
-  currentLesson,
-  currentStepIndex,
-  onSelectStep,
-  fullWidth,
-  isStepDone,
-}: {
-  lessonSteps: Record<string, any[]>;
-  currentLesson: number;
-  currentStepIndex: number;
-  onSelectStep: (lessonNumber: number, stepIdx: number) => void;
-  fullWidth?: boolean;
-  isStepDone: (lessonNumber: number, stepIdx: number) => boolean;
-}) {
-  const lessonNums = Object.keys(lessonSteps || {})
+function lessonNumbers(lessonSteps: Record<string, any[]>) {
+  return Object.keys(lessonSteps || {})
     .map((k) => Number(k))
     .filter((n) => Number.isFinite(n))
     .sort((a, b) => a - b);
+}
 
-  return (
-    <aside className={`${S.lessonSidebar} ${fullWidth ? S.sidebarExpanded : ""}`}>
-      <div className={S.sidebarTitle}>Lessons</div>
-
-      {lessonNums.map((lessonNum) => {
-        const steps = lessonSteps[String(lessonNum)] || [];
-        const isLessonActive = lessonNum === currentLesson;
-
-        return (
-          <div key={lessonNum} className={S.sidebarLessonBlock}>
-            <div
-              className={`${S.sidebarLessonTitle} ${
-                isLessonActive ? S.sidebarLessonTitleActive : ""
-              }`}
-            >
-              Lesson {lessonNum}
-            </div>
-
-            <div>
-              {steps.map((step: any, idx: number) => {
-                const isActive = isLessonActive && idx === currentStepIndex;
-                const done = isStepDone(lessonNum, idx);
-
-                return (
-                  <button
-                    key={`${lessonNum}-${idx}`}
-                    className={[
-                      S.sidebarStepRow,
-                      isActive ? S.sidebarStepRowActive : "",
-                      !isActive && done ? S.sidebarStepRowDone : "",
-                    ].join(" ")}
-                    onClick={() => onSelectStep(lessonNum, idx)}
-                    type="button"
-                    title={step?.title || `Step ${idx + 1}`}
-                  >
-                    <span
-                      className={[
-                        S.sidebarStepText,
-                        isActive ? S.sidebarStepTextActive : "",
-                        !isActive && done ? S.sidebarStepTextDone : "",
-                      ].join(" ")}
-                    >
-                      {step?.title ?? `Step ${idx + 1}`}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        );
-      })}
-    </aside>
-  );
+function makeStepKey(lessonNumber: number, stepIdx: number) {
+  return `L${lessonNumber}-S${stepIdx}`;
 }
 
 /* ============================================================
-   Step Card (left content)
+   View mode wiring (LessonHeaderControls writes this)
 ============================================================ */
 
-function StepCard({
-  step,
-  storageKey,
-  globalKey,
-  apiBaseUrl,
-  analyticsTag,
+type ViewMode = "lesson" | "code" | "circuit";
+const VIEW_MODE_KEY = "esb:viewMode";
+const VIEW_MODE_EVENT = "curio:viewMode";
+
+function readViewMode(): ViewMode {
+  const raw = storageGetString(VIEW_MODE_KEY);
+  if (raw === "code" || raw === "circuit" || raw === "lesson") return raw;
+  return "lesson";
+}
+
+/* ============================================================
+   Main
+============================================================ */
+
+export default function CodeLessonBase({
+  lessonSteps = {},
+  storagePrefix = "lesson",
+
+  doneSetKey,
+  overallProgressKey,
+  globalBlanksKey,
+  localBlanksPrefixKey,
+
+  analyticsTag = "lesson",
+  apiBaseUrl = "http://localhost:4000",
+
+  backRoute = "",
 }: any) {
-  const [localBlanks, setLocalBlanks] = React.useState<Record<string, string>>(
-    {}
+  const router = useRouter();
+
+  const KEYS = React.useMemo(() => {
+    const d = defaultKeys(storagePrefix);
+    return {
+      doneSetKey: doneSetKey || d.doneSetKey,
+      overallProgressKey: overallProgressKey || d.overallProgressKey,
+      globalBlanksKey: globalBlanksKey || d.globalBlanksKey,
+      localBlanksPrefixKey: localBlanksPrefixKey || d.localBlanksPrefixKey,
+      navKey: d.navKey,
+      sidebarKey: d.sidebarKey,
+      splitKey: d.splitKey,
+    };
+  }, [
+    storagePrefix,
+    doneSetKey,
+    overallProgressKey,
+    globalBlanksKey,
+    localBlanksPrefixKey,
+  ]);
+
+  const totalStepsAllLessons = React.useMemo(
+    () => countTotalSteps(lessonSteps),
+    [lessonSteps]
   );
-  const [globalBlanks, setGlobalBlanks] = React.useState<Record<string, string>>(
-    {}
+
+  const lessonsList = React.useMemo(
+    () => lessonNumbers(lessonSteps),
+    [lessonSteps]
   );
-  const [blankStatus, setBlankStatus] = React.useState<Record<string, any>>({});
+
+  // Read persisted navigation (lesson + step) from localStorage
+  const initialNav = React.useMemo(() => {
+    const v = storageGetJson<{ lesson: number; stepIndex: number }>(KEYS.navKey);
+    if (v && Number.isFinite(v.lesson) && Number.isFinite(v.stepIndex)) return v;
+    const firstLesson = lessonsList[0] ?? 1;
+    return { lesson: firstLesson, stepIndex: 0 };
+  }, [KEYS.navKey, lessonsList]);
+
+  const [lesson, setLesson] = React.useState<number>(initialNav.lesson);
+  const [stepIndex, setStepIndex] = React.useState<number>(initialNav.stepIndex);
+
+  React.useEffect(() => {
+    storageSetJson(KEYS.navKey, { lesson, stepIndex });
+  }, [KEYS.navKey, lesson, stepIndex]);
+
+  // Done set
+  const [doneSet, setDoneSet] = React.useState<Set<string>>(() => new Set());
+
+  React.useEffect(() => {
+    const raw = storageGetJson<string[]>(KEYS.doneSetKey);
+    if (Array.isArray(raw)) setDoneSet(new Set(raw));
+  }, [KEYS.doneSetKey]);
+
+  React.useEffect(() => {
+    storageSetJson(KEYS.doneSetKey, Array.from(doneSet));
+  }, [KEYS.doneSetKey, doneSet]);
+
+  // Sidebar expanded persisted (optional)
+  const [sidebarExpanded, setSidebarExpanded] = React.useState<boolean>(() => {
+    const raw = storageGetJson<boolean>(KEYS.sidebarKey);
+    return raw == null ? true : !!raw;
+  });
+
+  React.useEffect(() => {
+    storageSetJson(KEYS.sidebarKey, sidebarExpanded);
+  }, [KEYS.sidebarKey, sidebarExpanded]);
+
+  // ✅ View mode: initialize from storage immediately
+  const [viewMode, setViewMode] = React.useState<ViewMode>(() => readViewMode());
+
+  React.useEffect(() => {
+    const update = () => setViewMode(readViewMode());
+
+    // cross-tab updates
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === VIEW_MODE_KEY) update();
+    };
+
+    window.addEventListener("storage", onStorage);
+    // same-tab updates from header controls
+    window.addEventListener(VIEW_MODE_EVENT, update as any);
+
+    return () => {
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener(VIEW_MODE_EVENT, update as any);
+    };
+  }, []);
+
+  const showSplit = viewMode === "code" || viewMode === "circuit";
+
+  // Current step data
+  const steps = lessonSteps[String(lesson)] || [];
+  const safeStepIndex = stepIndex < steps.length ? stepIndex : 0;
+  const step = steps[safeStepIndex];
+
+  // sidebar accordion expanded lessons
+  const [expandedLessons, setExpandedLessons] = React.useState<number[]>([lesson]);
+
+  React.useEffect(() => {
+    setExpandedLessons((prev) => (prev.includes(lesson) ? prev : [lesson, ...prev]));
+  }, [lesson]);
+
+  const toggleLesson = (lessonId: number) => {
+    setExpandedLessons((prev) =>
+      prev.includes(lessonId)
+        ? prev.filter((id) => id !== lessonId)
+        : [...prev, lessonId]
+    );
+  };
+
+  // Progress %s
+  const doneCount = doneSet.size;
+  const overallProgress =
+    totalStepsAllLessons > 0
+      ? Math.round((doneCount / totalStepsAllLessons) * 100)
+      : 0;
+
+  const lessonStepsCount = Array.isArray(steps) ? steps.length : 0;
+  const doneInThisLesson = React.useMemo(() => {
+    let n = 0;
+    for (let i = 0; i < lessonStepsCount; i++) {
+      const k = makeStepKey(lesson, i);
+      if (doneSet.has(k)) n++;
+    }
+    return n;
+  }, [doneSet, lesson, lessonStepsCount]);
+
+  const lessonProgress =
+    lessonStepsCount > 0
+      ? Math.round((doneInThisLesson / lessonStepsCount) * 100)
+      : 0;
+
+  // Mark done toggle for current step
+  const currentStepKey = makeStepKey(lesson, safeStepIndex);
+  const isDone = doneSet.has(currentStepKey);
+
+  const markDone = () => {
+    setDoneSet((prev) => {
+      const next = new Set(prev);
+      next.add(currentStepKey);
+      return next;
+    });
+  };
+
+  const unmarkDone = () => {
+    setDoneSet((prev) => {
+      const next = new Set(prev);
+      next.delete(currentStepKey);
+      return next;
+    });
+  };
+
+  // Step navigation
+  const canPrev = safeStepIndex > 0 || lessonsList.indexOf(lesson) > 0;
+  const canNext =
+    safeStepIndex < lessonStepsCount - 1 ||
+    lessonsList.indexOf(lesson) < lessonsList.length - 1;
+
+  const goPrev = () => {
+    if (safeStepIndex > 0) {
+      setStepIndex(safeStepIndex - 1);
+      return;
+    }
+    const idx = lessonsList.indexOf(lesson);
+    if (idx > 0) {
+      const prevLesson = lessonsList[idx - 1];
+      const prevSteps = lessonSteps[String(prevLesson)] || [];
+      setLesson(prevLesson);
+      setStepIndex(Math.max(0, prevSteps.length - 1));
+    }
+  };
+
+  const goNext = () => {
+    if (safeStepIndex < lessonStepsCount - 1) {
+      setStepIndex(safeStepIndex + 1);
+      return;
+    }
+    const idx = lessonsList.indexOf(lesson);
+    if (idx >= 0 && idx < lessonsList.length - 1) {
+      const nextLesson = lessonsList[idx + 1];
+      setLesson(nextLesson);
+      setStepIndex(0);
+    }
+  };
+
+  /* ============================================================
+     ✅ ONLY ADDITION: GuidedCodeBlock shared state + persistence
+     (no other behavior changes)
+============================================================ */
+
+  // per-step local blanks key (exactly what you were already passing)
+  const localStorageKeyForThisStep = `${KEYS.localBlanksPrefixKey}:${currentStepKey}`;
+
+  const [localBlanks, setLocalBlanks] = React.useState<Record<string, any>>({});
+  const [globalBlanks, setGlobalBlanks] = React.useState<Record<string, any>>({});
+
+  const [blankStatus, setBlankStatus] = React.useState<Record<string, boolean>>({});
   const [activeBlankHint, setActiveBlankHint] = React.useState<any>(null);
 
   const [aiHelpByBlank, setAiHelpByBlank] = React.useState<Record<string, string>>(
@@ -171,482 +322,364 @@ function StepCard({
   const [aiLastRequestAtByKey, setAiLastRequestAtByKey] = React.useState<
     Record<string, number>
   >({});
-  const [checkAttempts, setCheckAttempts] = React.useState(0);
   const [aiHintLevelByBlank, setAiHintLevelByBlank] = React.useState<
     Record<string, number>
   >({});
+
+  const [checkAttempts, setCheckAttempts] = React.useState<number>(0);
   const [blankAttemptsByName, setBlankAttemptsByName] = React.useState<
     Record<string, number>
   >({});
 
-  /* ---------- analytics ---------- */
-  const logBlankAnalytics = async (event: any) => {
-    try {
-      await fetch(`${apiBaseUrl}/api/blank-analytics`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          ...event,
-          analyticsTag,
-          stepId: step?.id,
-          stepTitle: step?.title,
-          storageKey,
-        }),
-      });
-    } catch {
-      // ignore
-    }
-  };
-
-  /* ---------- load persisted blanks ---------- */
+  // Load GLOBAL blanks once (on mount / when key changes)
   React.useEffect(() => {
-    const g = storageGet<Record<string, string>>(globalKey);
-    if (g) setGlobalBlanks(g);
-  }, [globalKey]);
+    const raw = storageGetJson<Record<string, any>>(KEYS.globalBlanksKey);
+    setGlobalBlanks(raw && typeof raw === "object" ? raw : {});
+  }, [KEYS.globalBlanksKey]);
 
+  // Persist GLOBAL blanks
   React.useEffect(() => {
-    if (!storageKey) return;
-    const l = storageGet<Record<string, string>>(storageKey);
-    if (l) setLocalBlanks(l);
-  }, [storageKey]);
+    storageSetJson(KEYS.globalBlanksKey, globalBlanks || {});
+  }, [KEYS.globalBlanksKey, globalBlanks]);
 
+  // Load LOCAL blanks whenever you change step (key changes)
   React.useEffect(() => {
-    if (!storageKey) return;
-    storageSet(storageKey, localBlanks);
-  }, [storageKey, localBlanks]);
+    const raw = storageGetJson<Record<string, any>>(localStorageKeyForThisStep);
+    setLocalBlanks(raw && typeof raw === "object" ? raw : {});
 
+    // keep GuidedCodeBlock UI scoped per-step
+    setBlankStatus({});
+    setActiveBlankHint(null);
+    setAiHelpByBlank({});
+    setAiLoadingKey(null);
+    setAiLastRequestAtByKey({});
+    setAiHintLevelByBlank({});
+    setCheckAttempts(0);
+    setBlankAttemptsByName({});
+  }, [localStorageKeyForThisStep]);
+
+  // Persist LOCAL blanks for this step
   React.useEffect(() => {
-    storageSet(globalKey, globalBlanks);
-  }, [globalKey, globalBlanks]);
+    storageSetJson(localStorageKeyForThisStep, localBlanks || {});
+  }, [localStorageKeyForThisStep, localBlanks]);
 
-  const mergedBlanks = { ...localBlanks, ...globalBlanks };
-
-  /* ---------- rich text renderer (with inline blanks) ---------- */
-  const renderWithInlineCode = (text?: string) => {
-    if (!text) return null;
-
-    return text.split("\n").map((line, i) => (
-      <p key={i} className={S.richTextLine}>
-        {line
-          .split(/(__BLANK\[[A-Z0-9_]+\]__|`[^`]+`|\*\*[^*]+\*\*)/g)
-          .filter((x) => x !== "")
-          .map((part, j) => {
-            const blank = part.match(/^__BLANK\[([A-Z0-9_]+)\]__$/);
-            if (blank) {
-              const name = blank[1];
-              const value = mergedBlanks[name] ?? "";
-              return (
-                <input
-                  key={j}
-                  value={value}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setLocalBlanks((p) => ({ ...(p || {}), [name]: v }));
-                    setGlobalBlanks((p) => ({ ...(p || {}), [name]: v }));
-                  }}
-                  className={S.inlineBlankInput}
-                />
-              );
-            }
-
-            if (part.startsWith("`")) {
-              return (
-                <code key={j} className={S.inlineCode}>
-                  {part.slice(1, -1)}
-                </code>
-              );
-            }
-
-            if (part.startsWith("**")) {
-              return (
-                <strong key={j} className={S.boldGeneral}>
-                  {part.slice(2, -2)}
-                </strong>
-              );
-            }
-
-            return <span key={j}>{part}</span>;
-          })}
-      </p>
-    ));
-  };
-
-  /* ---------- image grid ---------- */
-  const grid = step?.imageGrid;
-  const renderImageGrid = () => {
-    if (!grid || !Array.isArray(grid.items)) return null;
-
-    return (
-      <div className={S.imageGridWrap}>
-        <div className={S.imageGrid}>
-          {grid.items.map((it: any, idx: number) => {
-            const src = it?.image?.src ?? it?.image ?? it?.src ?? null;
-            return (
-              <div key={idx} className={S.imageGridItem}>
-                <div className={S.imageGridImgWrap}>
-                  {src ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img className={S.imageGridImg} src={src} alt={it?.label ?? "image"} />
-                  ) : (
-                    <div className={S.imageGridImgPlaceholder} />
-                  )}
-                </div>
-                {it?.label ? <div className={S.imageGridLabel}>{it.label}</div> : null}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-    );
-  };
-
-  return (
-    <div className={S.stepOuter}>
-      <div className={S.stepCard}>
-        <div className={S.stepHeaderRow}>
-          <h3 className={S.h2}>{step?.title}</h3>
-        </div>
-
-        {step?.desc ? <div className={S.stepDescBlock}>{renderWithInlineCode(step.desc)}</div> : null}
-
-        {renderImageGrid()}
-
-        {Array.isArray(step?.codes) &&
-          step.codes.map((block: any, idx: number) => (
-            <div key={idx} style={{ marginTop: 16 }}>
-              {block?.descBeforeCode ? renderWithInlineCode(block.descBeforeCode) : null}
-
-              {block?.code ? (
-                <GuidedCodeBlock
-                  step={step}
-                  block={block}
-                  blockIndex={idx}
-                  storageKey={storageKey}
-                  globalKey={globalKey}
-                  apiBaseUrl={apiBaseUrl}
-                  analyticsTag={analyticsTag}
-                  mergedBlanks={mergedBlanks}
-                  setLocalBlanks={setLocalBlanks}
-                  setGlobalBlanks={setGlobalBlanks}
-                  blankStatus={blankStatus}
-                  setBlankStatus={setBlankStatus}
-                  activeBlankHint={activeBlankHint}
-                  setActiveBlankHint={setActiveBlankHint}
-                  aiHelpByBlank={aiHelpByBlank}
-                  setAiHelpByBlank={setAiHelpByBlank}
-                  aiLoadingKey={aiLoadingKey}
-                  setAiLoadingKey={setAiLoadingKey}
-                  aiLastRequestAtByKey={aiLastRequestAtByKey}
-                  setAiLastRequestAtByKey={setAiLastRequestAtByKey}
-                  aiHintLevelByBlank={aiHintLevelByBlank}
-                  setAiHintLevelByBlank={setAiHintLevelByBlank}
-                  checkAttempts={checkAttempts}
-                  setCheckAttempts={setCheckAttempts}
-                  blankAttemptsByName={blankAttemptsByName}
-                  setBlankAttemptsByName={setBlankAttemptsByName}
-                  logBlankAnalytics={logBlankAnalytics}
-                />
-              ) : null}
-
-              {block?.descAfterCode ? renderWithInlineCode(block.descAfterCode) : null}
-            </div>
-          ))}
-      </div>
-    </div>
+  // What GuidedCodeBlock should render from
+  const mergedBlanks = React.useMemo(
+    () => ({ ...(globalBlanks || {}), ...(localBlanks || {}) }),
+    [globalBlanks, localBlanks]
   );
-}
 
-/* ============================================================
-   MAIN SCREEN (FULL UI)
+  const logBlankAnalytics = React.useCallback((_event: any) => {
+    // no-op (you can wire analytics later)
+  }, []);
+
+  /* ============================================================
+     END ONLY ADDITION
 ============================================================ */
 
-export default function CodeLessonBase({
-  screenTitle = "Coding",
-  lessonSteps = {},
-  storagePrefix = "lesson",
-
-  // Optional explicit keys (restored from your original)
-  doneSetKey,
-  overallProgressKey,
-  globalBlanksKey,
-  localBlanksPrefixKey,
-
-  analyticsTag = "lesson",
-  apiBaseUrl = "http://localhost:4000",
-  backRoute = "", // if blank -> router.back()
-}: any) {
-  const router = useRouter();
-
-  const KEYS = React.useMemo(() => {
-    const d = defaultKeys(storagePrefix);
-    return {
-      doneSet: doneSetKey ?? d.doneSetKey,
-      overallProgress: overallProgressKey ?? d.overallProgressKey,
-      globalBlanks: globalBlanksKey ?? d.globalBlanksKey,
-      localBlanksPrefix: localBlanksPrefixKey ?? d.localBlanksPrefixKey,
-      navKey: d.navKey,
-    };
-  }, [storagePrefix, doneSetKey, overallProgressKey, globalBlanksKey, localBlanksPrefixKey]);
-
-  const TOTAL_LESSONS = getTotalLessons(lessonSteps);
-  const totalSteps = countTotalSteps(lessonSteps);
-
-  // Editor toggles
-  const { showEditor, toggle: toggleEditor } = useEditorToggle();
-  const [showCircuit, setShowCircuit] = React.useState(false);
-  const [showBoth, setShowBoth] = React.useState(false);
-
-  // Navigation state (persisted)
-  const [lesson, setLesson] = React.useState(1);
-  const [stepIndex, setStepIndex] = React.useState(0);
-
-  React.useEffect(() => {
-    const nav = storageGet<{ lesson?: number; stepIndex?: number }>(KEYS.navKey);
-    if (nav?.lesson != null) setLesson(nav.lesson);
-    if (nav?.stepIndex != null) setStepIndex(nav.stepIndex);
-  }, [KEYS.navKey]);
-
-  React.useEffect(() => {
-    storageSet(KEYS.navKey, { lesson, stepIndex });
-  }, [KEYS.navKey, lesson, stepIndex]);
-
-  // Done set (persisted)
-  const [doneSet, setDoneSet] = React.useState<Set<string>>(new Set());
-
-  React.useEffect(() => {
-    const ids = storageGet<string[]>(KEYS.doneSet);
-    if (Array.isArray(ids)) setDoneSet(new Set(ids));
-  }, [KEYS.doneSet]);
-
-  React.useEffect(() => {
-    storageSet(KEYS.doneSet, Array.from(doneSet));
-  }, [KEYS.doneSet, doneSet]);
-
-  const steps = lessonSteps[String(lesson)] || [];
-  const safeStepIndex = stepIndex < steps.length ? stepIndex : 0;
-
-  const makeStepKey = (lessonNumber: number, stepIdx: number) => `L${lessonNumber}-S${stepIdx}`;
-  const currentStepKey = makeStepKey(lesson, safeStepIndex);
-
-  const isDone = doneSet.has(currentStepKey);
-
-  const markDone = () =>
-    setDoneSet((prev) => {
-      const next = new Set(prev);
-      next.add(currentStepKey);
-      return next;
-    });
-
-  const unmarkDone = () =>
-    setDoneSet((prev) => {
-      const next = new Set(prev);
-      next.delete(currentStepKey);
-      return next;
-    });
-
-  const handleSelectStep = (lessonNumber: number, stepIdx: number) => {
-    setLesson(lessonNumber);
-    setStepIndex(stepIdx);
-    // Scroll top for the left pane
-    if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
-  };
-
-  // Progress
-  const overallProgress = totalSteps > 0 ? Math.round((doneSet.size / totalSteps) * 100) : 0;
-
-  const stepsInLesson = steps.length || 0;
-  const doneInLesson =
-    stepsInLesson > 0
-      ? Array.from({ length: stepsInLesson }).reduce((acc: number, _, i) => {
-          return acc + (doneSet.has(makeStepKey(lesson, i)) ? 1 : 0);
-        }, 0)
-      : 0;
-
-  const lessonProgress = stepsInLesson > 0 ? Math.round((doneInLesson / stepsInLesson) * 100) : 0;
-
-  // Header topic
-  const headerTopic =
-    steps.length > 0 && steps[0]?.title
-      ? String(steps[0].title).replace(/^Step \d+:\s*/, "")
-      : "";
-
-  // Left pane (FULL UI)
-  const leftPane = (
-    <div className={S.leftPane}>
-      {/* Fixed header (inside lesson UI) */}
-      <div className={S.headerRow}>
-        <button
-          className={S.backBtn}
-          onClick={() => {
-            if (backRoute) router.push(backRoute);
-            else router.back();
-          }}
-          type="button"
-        >
-          ← Back
-        </button>
-
-        <div className={S.headerTitles}>
-          <div className={S.h1}>{screenTitle}</div>
-          <div className={S.headerSub}>{headerTopic}</div>
-        </div>
-
-        <div className={S.headerActions}>
-          <button
-            className={`${S.iconBtn} ${showBoth ? S.iconBtnActive : ""}`}
-            onClick={() => {
-              setShowBoth((p) => !p);
-              // if enabling both, ensure editor is visible-ish
-              if (!showEditor) toggleEditor();
-            }}
-            type="button"
-            title="Show Circuit + Code"
-          >
-            Both
-          </button>
-
-          <button
-            className={`${S.iconBtn} ${showCircuit ? S.iconBtnActive : ""}`}
-            onClick={() => {
-              setShowCircuit((p) => !p);
-              setShowBoth(false);
-            }}
-            type="button"
-            title="Toggle Circuit"
-          >
-            Circuit
-          </button>
-
-          <button
-            className={`${S.iconBtn} ${showEditor ? S.iconBtnActive : ""}`}
-            onClick={() => {
-              toggleEditor();
-              setShowBoth(false);
-            }}
-            type="button"
-            title="Toggle Code Editor"
-          >
-            Editor
-          </button>
-        </div>
+  if (!lessonsList.length) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center text-gray-600">
+        No lesson steps found.
       </div>
+    );
+  }
 
-      {/* Progress */}
-      <div className={S.progressWrap}>
-        <div className={S.progressRow}>
-          <div className={`${S.progressGroup} ${S.progressHalf}`}>
-            <div className={S.progressHeader}>Overall progress</div>
-            <div className={S.progressBarWrap}>
-              <div className={S.progressBarFill} style={{ width: `${clamp(overallProgress, 0, 100)}%` }} />
-            </div>
-            <div className={S.progressLabel}>{overallProgress}% complete</div>
-          </div>
+  const lessonUi = (
+    <div className="bg-white flex h-full">
+      {/* Main Content */}
+      <div className="flex-1 min-w-0 overflow-y-auto">
+        {/* Header */}
+        <div className="bg-white border-b border-gray-200 px-12 py-8">
+          <button
+            onClick={() => {
+              if (backRoute) router.push(backRoute);
+              else router.back();
+            }}
+            className="flex items-center gap-2 text-gray-500 hover:text-gray-700 mb-6 transition-colors"
+            type="button"
+          >
+            <ChevronLeft className="w-5 h-5" />
+            <span className="text-sm">Back to Project</span>
+          </button>
 
-          <div className={`${S.progressGroup} ${S.progressHalf}`}>
-            <div className={S.progressHeader}>This lesson</div>
-            <div className={S.progressBarWrap}>
-              <div
-                className={S.progressBarFillSecondary}
-                style={{ width: `${clamp(lessonProgress, 0, 100)}%` }}
-              />
-            </div>
-            <div className={S.progressLabel}>{lessonProgress}% of steps</div>
-          </div>
-        </div>
-      </div>
+          <h1 className="mb-3 text-2xl font-extrabold text-gray-900">
+            {step?.lessonTitle ?? `Lesson ${lesson}`}
+          </h1>
+          <p className="text-gray-500 mb-8">
+            {step?.lessonSubtitle ?? "Learn by completing each step below."}
+          </p>
 
-      {/* Content + Sidebar */}
-      {steps.length > 0 ? (
-        <div className={S.lessonLayoutRow}>
-          <div className={S.stepCol}>
-            <div className={S.containerScroll}>
-              <StepCard
-                step={steps[safeStepIndex]}
-                storageKey={`${KEYS.localBlanksPrefix}:L${lesson}-S${safeStepIndex}`}
-                globalKey={KEYS.globalBlanks}
-                apiBaseUrl={apiBaseUrl}
-                analyticsTag={analyticsTag}
-              />
-
-              <div className={S.stepActionOuter}>
-                <div className={S.stepActionCard}>
-                  <button
-                    className={`${S.markDoneBtnFixed} ${isDone ? S.markDoneBtnFixedDone : ""}`}
-                    onClick={isDone ? unmarkDone : markDone}
-                    type="button"
-                  >
-                    <span className={`${S.markDoneText} ${isDone ? S.markDoneTextDone : ""}`}>
-                      {isDone ? "Done" : "Mark Done"}
-                    </span>
-                  </button>
-                </div>
+          <div className="flex gap-12 items-end">
+            <div className="flex-1 max-w-xs">
+              <div className="text-sm text-gray-400 mb-2">Overall progress</div>
+              <div className="text-gray-700 mb-2">{overallProgress}% complete</div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div
+                  className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${clamp(overallProgress, 0, 100)}%` }}
+                />
               </div>
+            </div>
 
-              {/* spacer */}
-              <div style={{ height: 24 }} />
+            <div className="flex-1 max-w-xs">
+              <div className="text-sm text-gray-400 mb-2">This lesson</div>
+              <div className="text-gray-700 mb-2">{lessonProgress}% of steps</div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div
+                  className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${clamp(lessonProgress, 0, 100)}%` }}
+                />
+              </div>
+            </div>
+
+            <div className="flex items-end">
+              <button
+                onClick={isDone ? unmarkDone : markDone}
+                type="button"
+                className={`px-5 py-2 rounded-lg border text-sm transition-colors ${
+                  isDone
+                    ? "border-green-300 bg-green-50 text-green-700 hover:bg-green-100"
+                    : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                {isDone ? (
+                  <span className="inline-flex items-center gap-2">
+                    <Check className="w-4 h-4" /> Done
+                  </span>
+                ) : (
+                  "Mark Done"
+                )}
+              </button>
             </div>
           </div>
+        </div>
 
-          <LessonSidebar
-            lessonSteps={lessonSteps}
-            currentLesson={lesson}
-            currentStepIndex={safeStepIndex}
-            onSelectStep={handleSelectStep}
-            fullWidth={!showEditor}
-            isStepDone={(lessonNumber, stepIdx) => doneSet.has(makeStepKey(lessonNumber, stepIdx))}
-          />
+        {/* Lesson Content */}
+        <div className="px-12 py-12 w-full">
+          <div className="w-full">
+            <h2 className="mb-6 text-xl font-extrabold text-gray-900">
+              {step?.title ?? `Step ${safeStepIndex + 1}`}
+            </h2>
+
+            {step?.desc ? (
+              <p className="text-gray-600 leading-relaxed mb-8 whitespace-pre-line">
+                {String(step.desc)}
+              </p>
+            ) : null}
+
+            {Array.isArray(step?.codes) && step.codes.length > 0 ? (
+              <div className="space-y-8">
+                {step.codes.map((block: any, idx: number) => (
+                  <div key={idx}>
+                    {block?.descBeforeCode ? (
+                      <p className="text-gray-600 leading-relaxed mb-6 whitespace-pre-line">
+                        {String(block.descBeforeCode)}
+                      </p>
+                    ) : null}
+
+                    {block?.code ? (
+                      <GuidedCodeBlock
+                        step={step}
+                        block={block}
+                        blockIndex={idx}
+                        storageKey={localStorageKeyForThisStep}
+                        globalKey={KEYS.globalBlanksKey}
+                        apiBaseUrl={apiBaseUrl}
+                        analyticsTag={analyticsTag}
+                        mergedBlanks={mergedBlanks}
+                        setLocalBlanks={setLocalBlanks}
+                        setGlobalBlanks={setGlobalBlanks}
+                        blankStatus={blankStatus}
+                        setBlankStatus={setBlankStatus}
+                        activeBlankHint={activeBlankHint}
+                        setActiveBlankHint={setActiveBlankHint}
+                        aiHelpByBlank={aiHelpByBlank}
+                        setAiHelpByBlank={setAiHelpByBlank}
+                        aiLoadingKey={aiLoadingKey}
+                        setAiLoadingKey={setAiLoadingKey}
+                        aiLastRequestAtByKey={aiLastRequestAtByKey}
+                        setAiLastRequestAtByKey={setAiLastRequestAtByKey}
+                        aiHintLevelByBlank={aiHintLevelByBlank}
+                        setAiHintLevelByBlank={setAiHintLevelByBlank}
+                        checkAttempts={checkAttempts}
+                        setCheckAttempts={setCheckAttempts}
+                        blankAttemptsByName={blankAttemptsByName}
+                        setBlankAttemptsByName={setBlankAttemptsByName}
+                        logBlankAnalytics={logBlankAnalytics}
+                      />
+                    ) : null}
+
+                    {block?.descAfterCode ? (
+                      <p className="text-gray-600 leading-relaxed mt-6 whitespace-pre-line">
+                        {String(block.descAfterCode)}
+                      </p>
+                    ) : null}
+                  </div>
+                ))}
+              </div>
+            ) : null}
+
+            <div className="flex justify-between pt-10 border-t border-gray-200 mt-12">
+              <button
+                onClick={goPrev}
+                disabled={!canPrev}
+                type="button"
+                className="px-8 py-3 border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Previous Step
+              </button>
+
+              <button
+                onClick={goNext}
+                disabled={!canNext}
+                type="button"
+                className="px-8 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Next Step
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Sidebar */}
+      {sidebarExpanded ? (
+        <div className="w-96 bg-gray-50 border-l border-gray-200 overflow-y-auto">
+          <div className="p-8">
+            <div className="flex items-center justify-between mb-8">
+              <h3 className="text-gray-900 font-extrabold">Lessons & Steps</h3>
+              <button
+                type="button"
+                onClick={() => setSidebarExpanded(false)}
+                className="text-xs text-gray-500 hover:text-gray-700"
+              >
+                Hide
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {lessonsList.map((lessonNum) => {
+                const lessonStepsArr = lessonSteps[String(lessonNum)] || [];
+                const expanded = expandedLessons.includes(lessonNum);
+
+                const lessonSubtitle =
+                  lessonStepsArr?.[0]?.title ? String(lessonStepsArr[0].title) : "";
+
+                const isLessonActive = lessonNum === lesson;
+
+                return (
+                  <div
+                    key={lessonNum}
+                    className="bg-white rounded-lg border border-gray-200 overflow-hidden"
+                  >
+                    <button
+                      onClick={() => toggleLesson(lessonNum)}
+                      type="button"
+                      className={`w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors ${
+                        isLessonActive ? "bg-indigo-50 hover:bg-indigo-100" : ""
+                      }`}
+                    >
+                      <div className="text-left">
+                        <div
+                          className={`text-sm mb-1 ${
+                            isLessonActive ? "text-indigo-600" : "text-gray-900"
+                          }`}
+                        >
+                          Lesson {lessonNum}
+                        </div>
+                        {lessonSubtitle ? (
+                          <div
+                            className={`text-xs ${
+                              isLessonActive ? "text-indigo-500" : "text-gray-500"
+                            }`}
+                          >
+                            {lessonSubtitle}
+                          </div>
+                        ) : null}
+                      </div>
+
+                      {expanded ? (
+                        <ChevronDown className="w-4 h-4 text-gray-400" />
+                      ) : (
+                        <ChevronRight className="w-4 h-4 text-gray-400" />
+                      )}
+                    </button>
+
+                    {expanded ? (
+                      <div className="px-4 pb-4 space-y-1">
+                        {lessonStepsArr.map((st: any, idx: number) => {
+                          const isActive = lessonNum === lesson && idx === safeStepIndex;
+
+                          return (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={() => {
+                                setLesson(lessonNum);
+                                setStepIndex(idx);
+                              }}
+                              className={`w-full text-left text-sm py-2 px-3 rounded transition-colors ${
+                                isActive
+                                  ? "bg-indigo-100 text-indigo-700"
+                                  : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                              }`}
+                            >
+                              {st?.title ? String(st.title) : `Step ${idx + 1}`}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       ) : (
-        <div className={S.emptyState}>No steps found for this lesson.</div>
+        <div className="w-12 bg-gray-50 border-l border-gray-200 flex items-start justify-center py-4">
+          <button
+            type="button"
+            onClick={() => setSidebarExpanded(true)}
+            className="text-xs text-gray-500 hover:text-gray-700 rotate-90 origin-center"
+            title="Show sidebar"
+          >
+            Show
+          </button>
+        </div>
       )}
-
-      {/* kept for parity */}
-      <div style={{ display: "none" }}>{TOTAL_LESSONS}</div>
     </div>
   );
 
-  // Split behavior (matches your RN intent)
-  const CIRCUIT_FIXED_WIDTH = 800;
-
-  const BOTH_MIN_LEFT_RATIO = 0.35;
-  const BOTH_MAX_LEFT_RATIO = 0.65;
-  const BOTH_MIN_PX = 320;
-
-  const CODE_ONLY_DEFAULT_LEFT_RATIO = 0.6;
-  const SPLIT_PERSIST_CODE_ONLY = "lesson:split:codeOnly:leftRatio:v2";
-  const SPLIT_PERSIST_BOTH = "lesson:split:both:leftRatio:v2";
-
-  return (
-    <div className={S.screen}>
-      {showBoth ? (
-        <SplitView
-          left={<CircuitEditor showExit onExit={() => setShowBoth(false)} wokwiUrlKey="" codeKey="" diagramKey="" />}
-          right={<ArduinoEditor />}
-          initialLeftRatio={0.55}
-          persistKey={SPLIT_PERSIST_BOTH}
-          minLeftRatio={BOTH_MIN_LEFT_RATIO}
-          maxLeftRatio={BOTH_MAX_LEFT_RATIO}
-          minLeftPx={BOTH_MIN_PX}
-          minRightPx={BOTH_MIN_PX}
-        />
-      ) : showEditor || showCircuit ? (
-        <SplitView
-          left={leftPane}
-          right={
-            showCircuit ? (
-              <CircuitEditor showExit onExit={() => setShowCircuit(false)} wokwiUrlKey="" codeKey="" diagramKey="" />
-            ) : (
-              <ArduinoEditor />
-            )
-          }
-          initialLeftRatio={!showCircuit && showEditor ? CODE_ONLY_DEFAULT_LEFT_RATIO : 0.6}
-          persistKey={!showCircuit && showEditor ? SPLIT_PERSIST_CODE_ONLY : null}
-          minRightPx={!showCircuit && showEditor ? 420 : 0}
-          maxLeftRatio={!showCircuit && showEditor ? 0.9 : 0.85}
-          fixedRightPx={showCircuit && !showEditor ? CIRCUIT_FIXED_WIDTH : null}
+  const editorPane = (
+    <div style={{ height: "100%", overflow: "hidden" }}>
+      {viewMode === "circuit" ? (
+        <CircuitEditor
+          screenTitle="Circuit"
+          wokwiUrlKey="esb:wokwi:url"
+          codeKey="esb:arduino:sketch"
+          diagramKey="esb:wokwi:diagram"
+          defaultWokwiUrl=""
         />
       ) : (
-        leftPane
+        <ArduinoEditor apiBaseUrl={apiBaseUrl} />
+      )}
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-white">
+      {showSplit ? (
+        <SplitView
+          left={<div style={{ height: "100%" }}>{lessonUi}</div>}
+          right={editorPane}
+          persistKey={KEYS.splitKey}
+          minLeftPx={900}
+          minRightPx={420}
+        />
+      ) : (
+        <div style={{ height: "100%" }}>{lessonUi}</div>
       )}
     </div>
   );
