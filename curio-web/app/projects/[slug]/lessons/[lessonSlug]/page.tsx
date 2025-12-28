@@ -64,7 +64,7 @@ export default async function LessonSlugPage({ params }: PageProps) {
 
   const projectTitle = titleizeSlug(slug);
 
-  // ✅ Use meta.title + meta.subtitle for header, fallback to slug titleization
+  // Use meta.title + meta.subtitle for header, fallback to slug titleization
   const lessonTitle = meta?.title ?? titleizeSlug(lessonSlug);
   const lessonSubtitle = meta?.subtitle ?? "";
 
@@ -82,20 +82,20 @@ export default async function LessonSlugPage({ params }: PageProps) {
         style={{
           maxWidth: 1600,
           margin: "0 auto",
-          padding: "12px 16px",
+          padding: "5px 12px",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
           gap: 12,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
           <Link
             href={`/projects/${slug}`}
             style={{
               border: "1px solid #e5e7eb",
               borderRadius: 10,
-              padding: "8px 12px",
+              padding: "px 12px",
               fontSize: 14,
               background: "white",
               display: "inline-block",
@@ -106,7 +106,7 @@ export default async function LessonSlugPage({ params }: PageProps) {
             Back
           </Link>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          <div style={{ display: "flex", flexDirection: "row", gap: 13 }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>
               {lessonTitle}
             </div>
