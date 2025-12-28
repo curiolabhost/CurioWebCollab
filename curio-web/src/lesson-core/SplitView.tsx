@@ -302,62 +302,92 @@ export default function SplitView({
     userSelect: "none",
   };
 
-  return (
+return (
+  <div
+    ref={containerRef}
+    style={{
+      display: "flex",
+      flexDirection: "row",
+      height: "100%",
+      minHeight: 0, // ✅ critical for nested scrolling
+      width: "100%",
+      position: "relative",
+      overflow: "hidden", // ✅ prevent the document/page from scrolling
+    }}
+  >
+    {/* LEFT */}
     <div
-      ref={containerRef}
-      style={{ display: "flex", height: "100%", position: "relative" }}
+      style={{
+        width: leftWidth,
+        minWidth: constraints.minLeft,
+        minHeight: 0, // ✅ critical
+        overflow: "hidden", // ✅ let the LEFT child decide scroll
+        display: "flex", // ✅ keeps child stretch-friendly
+        flexDirection: "column",
+      }}
     >
-      {/* LEFT */}
-      <div style={{ width: leftWidth, minWidth: constraints.minLeft, overflow: "hidden" }}>
-        {left}
-      </div>
-
-      {/* HANDLE */}
-      <div
-        onMouseDown={(e) => {
-          e.preventDefault();
-          startDrag(e.clientX);
-        }}
-        onTouchStart={(e) => {
-          const t = e.touches?.[0];
-          if (!t) return;
-          startDrag(t.clientX);
-        }}
-        style={{
-          width: handleWidth,
-          background: "rgba(0,0,0,0.08)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          zIndex: 10,
-          opacity: locked || fixedRightPx != null ? 0.3 : 1,
-          ...handleCursor,
-        }}
-      >
-        <div
-          style={{
-            width: 2,
-            height: 30,
-            borderRadius: 2,
-            background: "rgba(0,0,0,0.32)",
-            pointerEvents: "none",
-          }}
-        />
-      </div>
-
-      {/* RIGHT */}
-      <div style={rightStyle}>{right}</div>
-
-      {/* overlay while dragging */}
-      {dragging && (
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            zIndex: 999,
-          }}
-        />
-      )}
+      {left}
     </div>
-  );
+
+    {/* HANDLE */}
+    <div
+      onMouseDown={(e) => {
+        e.preventDefault();
+        startDrag(e.clientX);
+      }}
+      onTouchStart={(e) => {
+        const t = e.touches?.[0];
+        if (!t) return;
+        startDrag(t.clientX);
+      }}
+      style={{
+        width: handleWidth,
+        background: "rgba(0,0,0,0.08)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 10,
+        opacity: locked || fixedRightPx != null ? 0.3 : 1,
+        flex: "0 0 auto",
+        ...handleCursor,
+      }}
+      aria-hidden={locked || fixedRightPx != null}
+    >
+      <div
+        style={{
+          width: 2,
+          height: 30,
+          borderRadius: 2,
+          background: "rgba(0,0,0,0.32)",
+          pointerEvents: "none",
+        }}
+      />
+    </div>
+
+    {/* RIGHT */}
+    <div
+      style={{
+        ...rightStyle,
+        minHeight: 0, // ✅ critical
+        overflow: "hidden", // ✅ let the RIGHT child decide scroll
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
+      {right}
+    </div>
+
+    {/* overlay while dragging */}
+    {dragging && (
+      <div
+        style={{
+          position: "absolute",
+          inset: 0,
+          zIndex: 999,
+        }}
+      />
+    )}
+  </div>
+);
+
 }
