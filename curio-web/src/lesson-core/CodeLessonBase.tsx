@@ -514,13 +514,16 @@ export default function CodeLessonBase({
       <div className="flex-1 min-w-0 overflow-y-auto">
         {/* Header */}
         <div className="bg-white border-b border-gray-200 px-12 py-8">
-          <h1 className="mb-3 text-2xl font-extrabold text-gray-900">
+          <h1 className="mb-2 text-s font-bold text-sky-600">
             {step?.lessonTitle ?? `Lesson ${lesson}`}
           </h1>
+            <h2 className="mb-4 text-2xl font-bold text-sky-900">
+              {step?.title ?? `Step ${safeStepIndex + 1}`}
+            </h2>
 
           <div className="flex gap-12 items-end">
             <div className="flex-1 max-w-xs">
-              <div className="text-sm text-gray-400 mb-2">Overall progress</div>
+              <div className="text-sm text-gray-400 mb-2">Overall</div>
               <div className="text-gray-700 mb-2">{overallProgress}% complete</div>
               <div className="w-full bg-gray-200 rounded-full h-2">
                 <div
@@ -566,9 +569,6 @@ export default function CodeLessonBase({
         {/* Lesson Content */}
         <div className="px-12 py-6 w-full">
           <div className="w-full">
-            <h2 className="mb-6 text-xl font-extrabold text-gray-900">
-              {step?.title ?? `Step ${safeStepIndex + 1}`}
-            </h2>
         {step?.desc ? (
         <div className={styles.stepDescBlock}>
             {renderWithInlineCode(step.desc, {
@@ -700,7 +700,7 @@ export default function CodeLessonBase({
                 onClick={goNext}
                 disabled={!canNext}
                 type="button"
-                className="px-8 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-8 py-3 bg-sky-800 text-white rounded-lg hover:bg-sky-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Next Step
               </button>
@@ -711,10 +711,10 @@ export default function CodeLessonBase({
 
       {/* Sidebar */}
       {sidebarExpanded ? (
-        <div className="w-96 bg-gray-50 border-l border-gray-200 overflow-y-auto">
-          <div className="p-8">
-            <div className="flex items-center justify-between mb-8">
-              <h3 className="text-gray-900 font-extrabold">Lessons & Steps</h3>
+        <div className={`w-96 bg-gray-50 border-l border-gray-200 overflow-y-auto ${styles.hideScrollbar}`}>
+          <div className="p-5">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-gray-900 font-bold">Lessons & Steps</h3>
               <button
                 type="button"
                 onClick={() => setSidebarExpanded(false)}
@@ -803,7 +803,11 @@ export default function CodeLessonBase({
                                      : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                               }`}
                             >
-                              {st?.title ? String(st.title) : `Step ${idx + 1}`}
+                                <span className="mr-2 text-s text-gray-600">{idx + 1}.</span>
+                                <span>
+                                {String(st.title).replace(/^(Step\s*)?\d+\s*:\s*/i, "")}
+                                </span>
+
                             </button>
                           );
                         })}
