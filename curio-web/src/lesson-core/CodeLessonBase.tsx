@@ -8,7 +8,7 @@ import SplitView from "./SplitView";
 import ArduinoEditor from "./ArduinoEditor";
 import CircuitEditor from "./CircuitEditor";
 import GuidedCodeBlock from "./GuidedCodeBlock";
-
+import styles from "./CodeLessonBase.module.css";
 /* ============================================================
    Storage helpers
 ============================================================ */
@@ -82,6 +82,97 @@ function lessonNumbers(lessonSteps: Record<string, any[]>) {
 function makeStepKey(lessonNumber: number, stepIdx: number) {
   return `L${lessonNumber}-S${stepIdx}`;
 }
+
+function renderWithInlineCode(
+  text: string | null | undefined,
+  opts: {
+    mergedBlanks: Record<string, any>;
+    onChangeBlank: (name: string, value: string) => void;
+  }
+) {
+  if (!text) return null;
+
+  const lines = String(text).split(/\n/);
+
+  return lines.map((line, lineIdx) => {
+    // keep blank lines
+    if (line === "") {
+      return (
+        <div key={`rtl-${lineIdx}`} className={styles.richTextLine}>
+          <span className={styles.stepDescText}>&nbsp;</span>
+        </div>
+      );
+    }
+
+    const parts = line
+      .split(/(__BLANK\[[A-Z0-9_]+\]__|`[^`]+`|\*\*[^*]+\*\*)/g)
+      .filter(Boolean);
+
+    return (
+      <div key={`rtl-${lineIdx}`} className={styles.richTextLine}>
+        {parts.map((part, idx) => {
+          // __BLANK[NAME]__
+          const blankMatch = part.match(/^__BLANK\[([A-Z0-9_]+)\]__$/);
+          if (blankMatch) {
+            const name = blankMatch[1];
+            const value = opts.mergedBlanks?.[name] ?? "";
+
+            return (
+              <input
+                key={`blank-${lineIdx}-${idx}`}
+                value={value}
+                onChange={(e) => opts.onChangeBlank(name, e.target.value)}
+                className={styles.inlineBlankInput}
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+              />
+            );
+          }
+
+          // `inline code`
+          if (part.startsWith("`") && part.endsWith("`")) {
+            const code = part.slice(1, -1);
+
+            // `***strong***` inside backticks (your old behavior)
+            if (code.startsWith("***") && code.endsWith("***")) {
+              const strong = code.slice(3, -3);
+              return (
+                <span key={`code-strong-${lineIdx}-${idx}`} className={styles.inlineCodeStrong}>
+                  {strong}
+                </span>
+              );
+            }
+
+            return (
+              <span key={`code-${lineIdx}-${idx}`} className={styles.inlineCode}>
+                {code}
+              </span>
+            );
+          }
+
+          // **bold**
+          if (part.startsWith("**") && part.endsWith("**")) {
+            const boldText = part.slice(2, -2);
+            return (
+              <span key={`bold-${lineIdx}-${idx}`} className={styles.boldGeneral}>
+                {boldText}
+              </span>
+            );
+          }
+
+          // normal text
+          return (
+            <span key={`txt-${lineIdx}-${idx}`} className={styles.stepDescText}>
+              {part}
+            </span>
+          );
+        })}
+      </div>
+    );
+  });
+}
+
 
 /* ============================================================
    View mode wiring (LessonHeaderControls writes this)
@@ -302,7 +393,7 @@ export default function CodeLessonBase({
   };
 
   /* ============================================================
-     ✅ ONLY ADDITION: GuidedCodeBlock shared state + persistence
+    ONLY ADDITION: GuidedCodeBlock shared state + persistence
      (no other behavior changes)
 ============================================================ */
 
@@ -373,7 +464,8 @@ export default function CodeLessonBase({
     // no-op (you can wire analytics later)
   }, []);
 
-  /* ============================================================
+
+/* ============================================================
      END ONLY ADDITION
 ============================================================ */
 
@@ -461,22 +553,33 @@ export default function CodeLessonBase({
             <h2 className="mb-6 text-xl font-extrabold text-gray-900">
               {step?.title ?? `Step ${safeStepIndex + 1}`}
             </h2>
-
-            {step?.desc ? (
-              <p className="text-gray-600 leading-relaxed mb-8 whitespace-pre-line">
-                {String(step.desc)}
-              </p>
-            ) : null}
+        {step?.desc ? (
+        <div className={styles.stepDescBlock}>
+            {renderWithInlineCode(step.desc, {
+            mergedBlanks,
+            onChangeBlank: (name, txt) => {
+                setLocalBlanks((prev: any) => ({ ...(prev || {}), [name]: txt }));
+                setGlobalBlanks((prev: any) => ({ ...(prev || {}), [name]: txt }));
+            },
+            })}
+        </div>
+        ) : null}
 
             {Array.isArray(step?.codes) && step.codes.length > 0 ? (
               <div className="space-y-8">
                 {step.codes.map((block: any, idx: number) => (
                   <div key={idx}>
-                    {block?.descBeforeCode ? (
-                      <p className="text-gray-600 leading-relaxed mb-6 whitespace-pre-line">
-                        {String(block.descBeforeCode)}
-                      </p>
-                    ) : null}
+                {block?.descBeforeCode ? (
+                <div className={styles.stepDescBlock}>
+                    {renderWithInlineCode(block.descBeforeCode, {
+                    mergedBlanks,
+                    onChangeBlank: (name, txt) => {
+                        setLocalBlanks((prev: any) => ({ ...(prev || {}), [name]: txt }));
+                        setGlobalBlanks((prev: any) => ({ ...(prev || {}), [name]: txt }));
+                    },
+                    })}
+                </div>
+                ) : null}
 
                     {block?.code ? (
                       <GuidedCodeBlock
@@ -511,9 +614,15 @@ export default function CodeLessonBase({
                     ) : null}
 
                     {block?.descAfterCode ? (
-                      <p className="text-gray-600 leading-relaxed mt-6 whitespace-pre-line">
-                        {String(block.descAfterCode)}
-                      </p>
+                    <div className={styles.stepDescBlock}>
+                        {renderWithInlineCode(block.descAfterCode, {
+                        mergedBlanks,
+                        onChangeBlank: (name, txt) => {
+                            setLocalBlanks((prev: any) => ({ ...(prev || {}), [name]: txt }));
+                            setGlobalBlanks((prev: any) => ({ ...(prev || {}), [name]: txt }));
+                        },
+                        })}
+                    </div>
                     ) : null}
                   </div>
                 ))}
