@@ -1014,7 +1014,256 @@ Feel free to change how you want the menu to show. You do not need to stick to i
     },
   ],
 
-  6: [
+6: [
+    {
+      id: 1,
+      title: "Step 1: Adding Timer Functionality",
+      codes: [
+        {
+          topicTitle: "Understanding the Timer Logic",
+          descBeforeCode: "In previous lessons, you learned how to store related pieces of information inside an array and access them using an index. In this lesson, the timer feature uses that same idea to store preset time values.",
+          imageGridBeforeCode: {
+            columns: 1,
+            items: [
+              {
+                image: require("../../../assets/welcomeFunc.png"), // Update this path if needed
+                label: "Timer Logic Flow",
+              },
+            ],
+          },
+          descBetweenBeforeAndCode: null,
+          code: `^^// No code for this step. 
+// Review the logic below before moving to Step 2.^^`,
+          descAfterCode: `**We want to let the user:**
+1. Choose a timer duration from a preset list
+2. Start the timer
+3. See the countdown update automatically
+4. Be notified when time runs out
+
+**How will this work logically?**
+- The timer durations are stored in an array:
+  \`int TIMER_PRESETS_MIN[] = {10, 20, 30, 45, 60};\`
+- A variable called \`timerPresetIndex\` keeps track of which preset is currently selected.
+- The **NEXT** and **PREV** buttons change the index.
+- The **SEL** button confirms the choice and starts the timer.`,
+          imageGridAfterCode: null,
+          descAfterImage: null,
+          hint: "This is very similar to how the status menu worked earlier — instead of statuses, we are scrolling through timer durations.",
+        },
+      ],
+    },
+
+    {
+      id: 2,
+      title: "Step 2: NEXT/PREV Input Handling",
+
+      answerKey: {
+        NEXT: ["NEXT"],
+        PREV: ["PREV"],
+        IDX: ["timerPresetIndex"],
+        LIMIT: ["totalTimerPresets"],
+        RESET_ZERO: ["0"]
+      },
+
+      blankExplanations: {
+        NEXT: "The button pin constant for moving forward (NEXT).",
+        PREV: "The button pin constant for moving backward (PREV).",
+        IDX: "The variable tracking the current position in the menu (timerPresetIndex).",
+        LIMIT: "The total number of items in the preset array (totalTimerPresets).",
+        RESET_ZERO: "The first index of an array is always 0."
+      },
+
+      codes: [
+        {
+          topicTitle: "Timer Selection Function",
+          descBeforeCode: "Each timer preset represents a number of minutes. The program allows the user to scroll through these preset values. We use bounds checking to make sure the index stays within the list.",
+          imageGridBeforeCode: null,
+          descBetweenBeforeAndCode: null,
+          code: `void handleTimerSelectMode() { 
+  // 1. Handle NEXT Button (Increment Index)
+  if (isPressed(__BLANK[NEXT]__) == true) {
+    __BLANK[IDX]__ = __BLANK[IDX]__ + 1;
+    
+    // Bounds check: If we go past the end, loop back to start
+    if (__BLANK[IDX]__ >= __BLANK[LIMIT]__) {
+      __BLANK[IDX]__ = __BLANK[RESET_ZERO]__;
+      }
+      delay(200);
+  }
+
+  // 2. Handle PREV Button (Decrement Index)
+  if (isPressed(__BLANK[PREV]__) == true) {
+    __BLANK[IDX]__ = __BLANK[IDX]__ - 1;
+    
+    // Bounds check: If we go below zero, loop to the end
+    if (__BLANK[IDX]__ < __BLANK[RESET_ZERO]__) {
+      __BLANK[IDX]__ = __BLANK[LIMIT]__ - 1;
+    }
+    delay(200);
+  }`,
+          descAfterCode: `This logic creates a "carousel" effect. 
+- If you go past the last item, it wraps around to the start (0).
+- If you go before the first item, it wraps around to the end.`,
+          imageGridAfterCode: null,
+          descAfterImage: null,
+          hint: "Use 'totalTimerPresets' to know the limit of the list.",
+        },
+      ],
+    },
+
+    {
+      id: 3,
+      title: "Step 3: SEL Input Handling",
+
+      answerKey: {
+        SEL: ["SEL"],
+        RTC_NOW: ["rtc.now()"],
+        MIN_ARRAY: ["TIMER_PRESETS_MIN"],
+        IDX: ["timerPresetIndex"],
+        TIME_ADD: ["TimeSpan"],
+        MODE_COUNT: ["3"]
+      },
+
+      blankExplanations: {
+        SEL: "The constant for the Select button.",
+        RTC_NOW: "The RTC library function to get the current time.",
+        MIN_ARRAY: "The array containing the preset minute values (TIMER_PRESETS_MIN).",
+        IDX: "The index variable used to pick the correct minutes.",
+        TIME_ADD: "The object type added to 'now' to create a future timestamp (TimeSpan).",
+        MODE_COUNT: "Screen mode 3 corresponds to the Countdown Running screen."
+      },
+
+      codes: [
+        {
+          topicTitle: "Starting the Timer",
+          descBeforeCode: "When **SEL** is pressed, the program must calculate exactly when the timer should end. We do this by taking the current time (`now`) and adding the selected number of minutes.",
+          imageGridBeforeCode: null,
+          descBetweenBeforeAndCode: null,
+          code: `  // ... previous NEXT/PREV code ...
+
+  // 3. Handle SELECT Button (Start Timer)
+  if (isPressed(__BLANK[SEL]__) == true) {
+    DateTime now = __BLANK[RTC_NOW]__;
+    
+    // Get the minutes from the array based on current index
+    int minutes = __BLANK[MIN_ARRAY]__[__BLANK[IDX]__];
+    
+    // MATH: End Time = Current Time + (0 days, minutes, 0 seconds)
+    timerEndTime = now + __BLANK[TIME_ADD]__(0, minutes, 0); 
+    
+    // Switch to Countdown Mode (Mode 3)
+    screenMode = __BLANK[MODE_COUNT]__;
+    delay(200);
+  }
+    
+  int presetMinutes = TIMER_PRESETS_MIN[timerPresetIndex];
+  showTimerScreen("Select timer:", presetMinutes, 0);
+}`,
+          descAfterCode: `**Key Concept: TimeSpan**
+\`timerEndTime = now + TimeSpan(0, minutes, 0);\`
+This line adds the selected minutes to the current clock time to calculate the exact moment the timer should finish.`,
+          imageGridAfterCode: null,
+          descAfterImage: null,
+          hint: "We add a TimeSpan to the current time to get the future end time.",
+        },
+      ],
+    },
+
+    {
+      id: 4,
+      title: "Step 4: Countdown Display Function",
+
+      answerKey: {
+        RTC_NOW: ["rtc.now()"],
+        END_TIME: ["timerEndTime"],
+        CURR_TIME: ["now"],
+        TO_SEC: ["totalseconds()"]
+      },
+
+      blankExplanations: {
+        RTC_NOW: "Call the RTC function to get the current time.",
+        END_TIME: "The variable storing the calculated finish time.",
+        CURR_TIME: "The variable storing the current moment (now).",
+        TO_SEC: "A helper function that converts a TimeSpan object into a total number of seconds."
+      },
+
+      codes: [
+        {
+          topicTitle: "Calculating Remaining Time",
+          descBeforeCode: "While the timer is running, the program constantly checks: *Is the current time past the end time?* It calculates the difference between `timerEndTime` and `now`.",
+          imageGridBeforeCode: null,
+          descBetweenBeforeAndCode: null,
+          code: `void handleTimerCountdownMode() {
+  DateTime now = __BLANK[RTC_NOW]__;
+  
+  // LOGIC: Remaining time is the difference between Future and Now
+  TimeSpan remaining = __BLANK[END_TIME]__ - __BLANK[CURR_TIME]__;
+  
+  // Convert the complex TimeSpan into simple total seconds for math
+  long secLeft = remaining.__BLANK[TO_SEC]__;`,
+          descAfterCode: `We convert everything to **total seconds** (\`secLeft\`) because it is much easier to check if \`secLeft <= 0\` than to compare hours, minutes, and seconds separately.`,
+          imageGridAfterCode: null,
+          descAfterImage: null,
+          hint: "Subtract 'now' from 'timerEndTime' to find the remaining duration.",
+        },
+      ],
+    },
+
+    {
+      id: 5,
+      title: "Step 5: Finalizing Countdown Function",
+
+      answerKey: {
+        PREV: ["PREV"],
+        MATH_60: ["60"]
+      },
+
+      blankExplanations: {
+        PREV: "The Previous button allows the user to cancel.",
+        MATH_60: "Used to convert seconds to minutes (division) or find remainder seconds (modulo)."
+      },
+
+      codes: [
+        {
+          topicTitle: "Countdown Logic",
+          descBeforeCode: "Finally, we handle the three states of the countdown: Canceling (User presses PREV), Finishing (Time runs out), or Running (Show the time).",
+          imageGridBeforeCode: null,
+          descBetweenBeforeAndCode: null,
+          code: `  // ... previous calculation code ...
+
+  // 1. Allow Cancel with PREV
+  if (isPressed(__BLANK[PREV]__) == true) {   
+    screenMode = 2; // Return to selection
+    delay(200);
+  }
+
+  // 2. Check if Time is Up
+  if (secLeft <= 0) {    
+    screenMode = 4; // Go to "Time's Up" screen
+    delay(200);
+  } else {
+    // 3. Convert Seconds back to Min:Sec for display
+    int minsLeft = secLeft / __BLANK[MATH_60]__;
+    
+    // Calculate remainder seconds (Logic: Total - (Mins * 60))
+    int secsLeft = secLeft - (minsLeft * __BLANK[MATH_60]__);
+    
+    showTimerScreen("Timer running:", minsLeft, secsLeft);
+  }
+}`,
+          descAfterCode: `**Math Check:**
+If you have 65 seconds left:
+- \`minsLeft = 65 / 60\` which is **1**.
+- \`secsLeft = 65 - (1 * 60)\` which is **5**.
+So the screen displays **1:05**.`,
+          imageGridAfterCode: null,
+          descAfterImage: null,
+          hint: "To find seconds remaining after extracting minutes, we subtract (minutes * 60).",
+        },
+      ],
+    },
+  ],
+ /* 6: [
     {
       id: 1,
       title: "Step 1: Adding Timer Functionality",
@@ -1179,7 +1428,7 @@ Feel free to change how you want the menu to show. You do not need to stick to i
         },
       ],
     },
-  ],
+  ],*/
 
   7: [
     {
