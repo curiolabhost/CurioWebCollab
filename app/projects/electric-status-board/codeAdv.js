@@ -1017,20 +1017,26 @@ Feel free to change how you want the menu to show. You do not need to stick to i
   6: [
     {
       id: 1,
-      title: "Step 1: Adding Timer Functionality (Lance)",
+      title: "Step 1: Adding Timer Functionality",
       codes: [
         {
-          topicTitle: "Outlining Logical Process",
-          descBeforeCode: "...",
-          imageGridBeforeCode: null,
+          topicTitle: "Understanding the Timer Logic",
+          descBeforeCode: "In previous lessons, you learned how to store related pieces of information inside an array and access them using an index. In this lesson, the timer feature uses that same idea to store preset time values.",
+          imageGridBeforeCode:{
+            columns: 1,
+            items: [
+              {
+                image: require("../../../assets/welcomeFunc.png"),
+                label: "Placeholder for gif",
+              },
+            ],
+          },          
+          descAfterImage: "**We want to let the user:**\n**1.** Choose a timer duration from a preset list\n**2.** Start the timer\n**3.** See the countdown update automatically\n**4.** Be notified when time runs out\n\n **How will this work logically?**\n- The timer durations are stored in an array:\n\`int TIMER_PRESETS_MIN[] = {10, 20, 30, 45, 60};\`\n- A variable called \`timerPresetIndex\` keeps track of which preset is currently selected\n- The **NEXT** and **PREV** buttons change the index\n- The **SEL** button confirms the choice and starts the timer",
           descBetweenBeforeAndCode: null,
-          code: `^^
-...
-^^`,
-          descAfterCode: `...`,
+          code: null,
+          descAfterCode: null,
           imageGridAfterCode: null,
-          descAfterImage: null,
-          hint: "...",
+          hint: "This is very similar to how the status menu worked earlier — instead of statuses, we are scrolling through timer durations.",
         },
       ],
     },
@@ -1038,25 +1044,26 @@ Feel free to change how you want the menu to show. You do not need to stick to i
     {
       id: 2,
       title: "Step 2: NEXT/PREV Input Handling",
+      answers: ["totalTimerPresets"],
       codes: [
         {
           topicTitle: "Timer Selection Function",
-          descBeforeCode: "Recall how we indexed through arrays in the showMenu() function from Lesson 4, Step 5 and the \"Loop Through Array\" practice. We will now add a new function that handles the timer selection process using the same techniques.",
+          descBeforeCode: "In previous lessons, you learned how to store related pieces of information inside an array and access them using an index.\n\nIn this lesson, the timer feature uses that same idea to store preset time values. Each timer preset represents a number of minutes. Instead of typing a time manually, the program allows the user to scroll through these preset values and select one. A separate variable is used to track which preset is currently selected. This variable stores a number that points to one position in the preset array.",
           imageGridBeforeCode: null,
           descBetweenBeforeAndCode: null,
           code: `^^void handleTimerSelectMode() { // NEXT / PREV choose preset^^
-^^  if (isPressed(NEXT) == true) {^^
+^^  if (isPressed(__BLANK[NEXT]__) == true) {^^
 ^^    timerPresetIndex = timerPresetIndex + 1;^^
-^^    if (timerPresetIndex >= totalTimerPresets) {^^
+^^    if (timerPresetIndex >= __BLANK[totalTimerPresets]__) {^^
 ^^      timerPresetIndex = 0;^^
 ^^      }^^
 ^^      delay(200);^^
 ^^  }^^
 
-^^  if (isPressed(PREV) == true) {^^
+^^  if (isPressed(__BLANK[PREV]__) == true) {^^
 ^^    timerPresetIndex = timerPresetIndex - 1;^^
-^^    if (timerPresetIndex < 0) {^^
-^^      timerPresetIndex = totalTimerPresets - 1;^^
+^^    if (timerPresetIndex < __BLANK[0]__) {^^
+^^      timerPresetIndex = __BLANK[totalTimerPresets]__ - 1;^^
 ^^    }^^
 ^^    delay(200);^^
 ^^  }^^`,
@@ -1074,34 +1081,38 @@ Feel free to change how you want the menu to show. You do not need to stick to i
       codes: [
         {
           topicTitle: "Wrapping Up Timer Selection Function",
-          descBeforeCode: "Recall how we indexed through arrays in the showMenu() function from Lesson 4, Step 5 and the \"Loop Through Array\" practice. We will now add a new function that handles the timer selection process using the same techniques.",
+          descBeforeCode: "In Lesson 5, you learned how the program switches between different behaviors using conditional logic. In this step, you will use the **SEL** button to select and begin the timer countdown.\n\nWhen **SEL** is pressed, the program must determine which preset was chosen and calculate when the timer should end. This is done by reading the current time and adding the selected number of minutes. The program then switches to a new screen mode where the countdown will be displayed.",
           imageGridBeforeCode: null,
           descBetweenBeforeAndCode: null,
-          code: `^^void handleTimerSelectMode() { // NEXT / PREV choose preset^^
-^^  if (isPressed(NEXT) == true) {^^
-^^    timerPresetIndex = timerPresetIndex + 1;^^
-^^    if (timerPresetIndex >= totalTimerPresets) {^^
-^^      timerPresetIndex = 0;^^
-^^      }^^
-^^      delay(200);^^
-^^  }^^
+          code: `void handleTimerSelectMode() { // NEXT / PREV choose preset
+  if (isPressed(__BLANK[NEXT]__) == true) {
+    timerPresetIndex = timerPresetIndex + 1;
+    if (timerPresetIndex >= __BLANK[totalTimerPresets]__) {
+      timerPresetIndex = 0;
+      }
+      delay(200);
+  }
 
-^^  if (isPressed(PREV) == true) {^^
-^^    timerPresetIndex = timerPresetIndex - 1;^^
-^^    if (timerPresetIndex < 0) {^^
-^^      timerPresetIndex = totalTimerPresets - 1;^^
-^^    }^^
-^^    delay(200);^^
-^^  }^^
+  if (isPressed(__BLANK[PREV]__) == true) {
+    timerPresetIndex = timerPresetIndex - 1;
+    if (timerPresetIndex < __BLANK[0]__) {
+      timerPresetIndex = __BLANK[totalTimerPresets]__ - 1;
+    }
+    delay(200);
+  }
 
-^^// SELECT → start countdown^^
-^^  if (isPressed(SEL) == true) {^^
-^^    DateTime now = rtc.now();^^
-^^    int minutes = TIMER_PRESETS_MIN[timerPresetIndex];^^
-^^    timerEndTime = now + TimeSpan(0, minutes, 0);  // 0 hours, minutes, 0 seconds^^
-^^    screenMode = 3;^^
-^^    delay(200);^^
-^^  }^^`,
+^^// SELECT → start countdown
+  if (isPressed(__BLANK[SEL]__) == true) {
+    DateTime now = rtc.__BLANK[now()]__;
+    int minutes = TIMER_PRESETS_MIN[__BLANK[timerPresetIndex]__];
+    timerEndTime = now + TimeSpan(0, __BLANK[minutes]__, 0);  // 0 hours, minutes, 0 seconds
+    screenMode = __BLANK[3]__;
+    delay(200);
+  }
+    
+  int presetMinutes = TIMER_PRESETS_MIN[timerPresetIndex];
+  showTimerScreen("Select timer:", presetMinutes, 0);
+}^^`,
           descAfterCode: `...`,
           imageGridAfterCode: null,
           descAfterImage: null,
@@ -1112,16 +1123,17 @@ Feel free to change how you want the menu to show. You do not need to stick to i
 
     {
       id: 4,
-      title: "Step 4: ",
+      title: "Step 4: Countdown Display Function",
       codes: [
         {
-          topicTitle: "Clock Module Placeholder",
-          descBeforeCode: "...",
+          topicTitle: "Establishing Local Variables in Countdown Mode",
+          descBeforeCode: "While the timer is running, the program must determine how much time remains. Instead of counting down manually, the program compares the current time to the previously calculated end time. The difference between these two values represents the remaining time. This difference is converted into seconds so it can be used for display and decision-making.",
           imageGridBeforeCode: null,
           descBetweenBeforeAndCode: null,
-          code: `^^
-...
-^^`,
+          code: `^^void handleTimerCountdownMode() {
+  DateTime now = rtc.__BLANK[now()]__;
+  TimeSpan remaining = timerEndTime - __BLANK[now]__;
+  long secLeft = remaining.totalseconds();^^`,
           descAfterCode: `...`,
           imageGridAfterCode: null,
           descAfterImage: null,
@@ -1132,36 +1144,34 @@ Feel free to change how you want the menu to show. You do not need to stick to i
 
     {
       id: 5,
-      title: "Step 5: ",
+      title: "Step 5: Finalizing Countdown Function",
       codes: [
         {
-          topicTitle: "Clock Module Placeholder",
-          descBeforeCode: "...",
+          topicTitle: "Countdown Logic, Canceling, and Completion",
+          descBeforeCode: "If the PREV button is pressed while the timer is running, the timer should stop and return to the timer selection screen. If the remaining time reaches zero, the program should switch to a screen that indicates the timer has finished. If time remains, the program displays the remaining minutes and seconds on the screen.",
           imageGridBeforeCode: null,
           descBetweenBeforeAndCode: null,
-          code: `^^
-...
-^^`,
-          descAfterCode: `...`,
-          imageGridAfterCode: null,
-          descAfterImage: null,
-          hint: "...",
-        },
-      ],
-    },
+          code: `void handleTimerCountdownMode() {
+  DateTime now = rtc.__BLANK[now()]__;
+  TimeSpan remaining = timerEndTime - __BLANK[now]__;
+  long secLeft = remaining.totalseconds();
 
-    {
-      id: 6,
-      title: "Step 6: ",
-      codes: [
-        {
-          topicTitle: "Clock Module Placeholder",
-          descBeforeCode: "...",
-          imageGridBeforeCode: null,
-          descBetweenBeforeAndCode: null,
-          code: `^^
-...
-^^`,
+  ^^if (isPressed(__BLANK[PREV]__) == true) {   // PREV cancels timer and returns to TIMER SELECT
+    screenMode = __BLANK[2]__;
+    delay(200);
+  }
+
+  if (secLeft <= __BLANK[0]__) {    // Time's up
+    screenMode = __BLANK[4]__;
+    delay(200);
+  }
+
+  else {
+    int minsLeft = secLeft / __BLANK[60]__;
+    int secsLeft = secLeft - (minsLeft * __BLANK[60]__);
+    showTimerScreen("Timer running:", __BLANK[minsLeft]__, __BLANK[secsLeft);
+  }
+}^^`,
           descAfterCode: `...`,
           imageGridAfterCode: null,
           descAfterImage: null,
