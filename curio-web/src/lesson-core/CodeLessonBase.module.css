@@ -203,6 +203,7 @@
 .boldGeneral {
   font-weight: 700;
   color: #111827;
+    font-family: "Inter", sans-serif;
 }
 
 .inlineBlankInput {
@@ -435,4 +436,14 @@ font-size: 14px;
   color: #78350f;
   line-height: 1.5;
 }
+
+/* Hide scrollbar but keep scrolling */
+.hideScrollbar {
+  -ms-overflow-style: none; /* IE/Edge */
+  scrollbar-width: none; /* Firefox */
+}
+.hideScrollbar::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
+}
+
 
