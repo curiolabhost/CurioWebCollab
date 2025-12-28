@@ -464,6 +464,37 @@ export default function CodeLessonBase({
     // no-op (you can wire analytics later)
   }, []);
 
+  function renderImageGrid(images: any, keyPrefix: string) {
+  if (!images) return null;
+
+  const items = Array.isArray(images) ? images : [images];
+
+  return (
+    <div className={styles.imageGrid}>
+      {items.map((img: any, idx: number) => {
+        const src =
+          typeof img === "string"
+            ? img
+            : img?.src || img?.uri || img?.url || "";
+
+        const caption =
+          typeof img === "string" ? "" : String(img?.caption ?? "");
+
+        if (!src) return null;
+
+        return (
+          <div key={`${keyPrefix}-${idx}`} className={styles.imageGridItem}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={src} alt={caption || `img-${idx}`} className={styles.imageGridImg} />
+            {caption ? <div className={styles.imageGridCaption}>{caption}</div> : null}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+
 
 /* ============================================================
      END ONLY ADDITION
@@ -483,24 +514,9 @@ export default function CodeLessonBase({
       <div className="flex-1 min-w-0 overflow-y-auto">
         {/* Header */}
         <div className="bg-white border-b border-gray-200 px-12 py-8">
-          <button
-            onClick={() => {
-              if (backRoute) router.push(backRoute);
-              else router.back();
-            }}
-            className="flex items-center gap-2 text-gray-500 hover:text-gray-700 mb-6 transition-colors"
-            type="button"
-          >
-            <ChevronLeft className="w-5 h-5" />
-            <span className="text-sm">Back to Project</span>
-          </button>
-
           <h1 className="mb-3 text-2xl font-extrabold text-gray-900">
             {step?.lessonTitle ?? `Lesson ${lesson}`}
           </h1>
-          <p className="text-gray-500 mb-8">
-            {step?.lessonSubtitle ?? "Learn by completing each step below."}
-          </p>
 
           <div className="flex gap-12 items-end">
             <div className="flex-1 max-w-xs">
@@ -548,7 +564,7 @@ export default function CodeLessonBase({
         </div>
 
         {/* Lesson Content */}
-        <div className="px-12 py-12 w-full">
+        <div className="px-12 py-6 w-full">
           <div className="w-full">
             <h2 className="mb-6 text-xl font-extrabold text-gray-900">
               {step?.title ?? `Step ${safeStepIndex + 1}`}
@@ -580,6 +596,25 @@ export default function CodeLessonBase({
                     })}
                 </div>
                 ) : null}
+
+                {block?.topicTitle ? (
+                    <h3 className={styles.blockTopicTitle}>{String(block.topicTitle)}</h3>
+                    ) : null}
+
+                    {block?.descBetweenBeforeAndCode ? (
+                    <div className={styles.stepDescBlock}>
+                        {renderWithInlineCode(block.descBetweenBeforeAndCode, {
+                        mergedBlanks,
+                        onChangeBlank: (name, txt) => {
+                            setLocalBlanks((prev: any) => ({ ...(prev || {}), [name]: txt }));
+                            setGlobalBlanks((prev: any) => ({ ...(prev || {}), [name]: txt }));
+                        },
+                        })}
+                    </div>
+                    ) : null}
+
+                    {block?.imageGridBeforeCode ? renderImageGrid(block.imageGridBeforeCode, `b-${idx}-before`) : null}
+
 
                     {block?.code ? (
                       <GuidedCodeBlock
@@ -624,6 +659,28 @@ export default function CodeLessonBase({
                         })}
                     </div>
                     ) : null}
+
+                    {block?.imageGridAfterCode ? renderImageGrid(block.imageGridAfterCode, `b-${idx}-after`) : null}
+
+                    {block?.descAfterImage ? (
+                    <div className={styles.stepDescBlock}>
+                        {renderWithInlineCode(block.descAfterImage, {
+                        mergedBlanks,
+                        onChangeBlank: (name, txt) => {
+                            setLocalBlanks((prev: any) => ({ ...(prev || {}), [name]: txt }));
+                            setGlobalBlanks((prev: any) => ({ ...(prev || {}), [name]: txt }));
+                        },
+                        })}
+                    </div>
+                    ) : null}
+
+                    {block?.hint ? (
+                    <div className={styles.hintBox}>
+                        <div className={styles.hintTitle}>Hint</div>
+                        <div className={styles.hintText}>{String(block.hint)}</div>
+                    </div>
+                    ) : null}
+
                   </div>
                 ))}
               </div>
