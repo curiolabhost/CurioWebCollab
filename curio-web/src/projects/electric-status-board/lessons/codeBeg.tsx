@@ -2,9 +2,6 @@
 
 import * as React from "react";
 import CodeLessonBase from "@/src/lesson-core/CodeLessonBase";
-import type { ComponentType } from "react";
-
-type CodeLessonBaseProps = React.ComponentProps<typeof CodeLessonBase>;
 
 /**
  * Auto-converted from your original Expo/RN file (codeBeg.js) for Next.js.
@@ -13,6 +10,12 @@ type CodeLessonBaseProps = React.ComponentProps<typeof CodeLessonBase>;
  * - `blankexplanations` was normalized to `blankExplanations`.
  * - The lesson now renders through `lesson-core/CodeLessonBase`.
  */
+
+export const CODE_BEG_META = {
+  title: "Focus Board",
+  subtitle: "Basic Functions",
+  description: "Learn the fundamentals of coding Focus Board with Arduino.",
+};
 
 export const LESSON_STEPS_BEGINNER: Record<number, any[]> = {
   1: [
@@ -1630,7 +1633,7 @@ export default function CodeBegLesson() {
       lessonSteps={LESSON_STEPS_BEGINNER}
       storagePrefix="esb:coding:beginner"
       analyticsTag="coding_beginner"
-      apiBaseUrl={process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:4000"}
+      apiBaseUrl={process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:4000"}
     />
   );
 }
