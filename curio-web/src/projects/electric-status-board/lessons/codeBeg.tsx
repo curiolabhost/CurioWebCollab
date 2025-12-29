@@ -11,9 +11,10 @@ import CodeLessonBase from "@/src/lesson-core/CodeLessonBase";
  * - The lesson now renders through `lesson-core/CodeLessonBase`.
  */
 
-
-export const LESSON_STEPS_BEGINNER: Record<number, any[]> = {
-  1: [
+export const LESSON_STEPS_BEGINNER: Record<number, { phrase: string; steps: any[] }> = {
+  1: {
+    phrase: "Arduino basics: setup(), loop(), and your first blink",
+    steps: [
     {
       id: 1,
       title: "Step 1: Understanding Arduino Basics",
@@ -65,9 +66,12 @@ This continuous on/off cycle makes the LED blink once per second.`,
         },
       ],
     },
-  ],
+    ],
+  },
 
-  2: [
+  2: {
+    phrase: "OLED setup: libraries, screen dimensions, and button pins",
+    steps: [
     {
       id: 1,
       title: "Step 1: Setting Libraries",
@@ -351,9 +355,12 @@ Configures the button pins as inputs with internal pull-up resistors.
         },
       ],
     },
-  ],
+    ],
+  },
 
-  3: [
+  3: {
+    phrase: "Build your first screens: welcome + status functions",
+    steps: [
     {
       id: 1,
       title: "Step 1: Draw First (Welcome) Page",
@@ -440,9 +447,12 @@ void __BLANK[STATUSFUNCTION]__{
         },
       ],
     },
-  ],
+    ],
+  },
 
-  4: [
+  4: {
+    phrase: "Variables + arrays: storing menu options and tracking state",
+    steps: [
     {
       id: 1,
       title: "Step 1: What Is a Variable?",
@@ -564,11 +574,11 @@ __BLANK[VARRAYTYPE]__  __BLANK[VARRAYNAME]__ = __BLANK[CALL]__;^^`,
   - \`numbers[1]\` gives the second item → \`2\`  
   - \`numbers[3]\` gives the last item → \`4\`
 
-Arrays are extremely useful when you want your code to handle lots of similar values without writing dozens of separate variables.`
+Arrays are extremely useful when you want your code to handle lots of similar values without writing dozens of separate variables.`,
         },
         {
-title: `More Practice:`,
-code: `String days[] = {"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"};
+          title: `More Practice:`,
+          code: `String days[] = {"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"};
 
 Fill in the blanks:
 days[3] =  __BLANK[DAY]__
@@ -581,16 +591,13 @@ days[__BLANK[DAY4]__] = Sunday`,
             DAY2: ["Tuesday"],
             DAY3: ["0"],
             DAY4: ["6"],
-        },
-        blankExplanations:{
-          DAY: "day at the 3rd index in list",
-          DAY2: "day at the 1st index in list",
-          DAY3: "index of Monday in list",
-          DAY4: "index of Sunday in list",
-
-        },
-
-
+          },
+          blankExplanations: {
+            DAY: "day at the 3rd index in list",
+            DAY2: "day at the 1st index in list",
+            DAY3: "index of Monday in list",
+            DAY4: "index of Sunday in list",
+          },
         },
       ],
     },
@@ -741,9 +748,12 @@ Feel free to change how you want the menu to show. You do not need to stick to i
         },
       ],
     },
-  ],
+    ],
+  },
 
-  5: [
+  5: {
+    phrase: "Loops: while loops and iterating through arrays",
+    steps: [
     {
       id: 1,
       title: "Step 1: What is a Loop?",
@@ -951,8 +961,7 @@ See that there are some spaces at the front of each status when there is no arro
     {
       id: 5,
       title: "Step 5: Create a Function that Draws the Menu on the OLED",
-      desc:
-        "Combining everything and creating the showMenu function.",
+      desc: "Combining everything and creating the showMenu function.",
 
       codes: [
         {
@@ -1050,9 +1059,12 @@ Feel free to change how you want the menu to show. You do not need to stick to i
         },
       ],
     },
-  ],
+    ],
+  },
 
-  6: [
+  6: {
+    phrase: "Buttons: INPUT_PULLUP, reading presses, and debouncing",
+    steps: [
     {
       id: 1,
       title: "Step 1: How Buttons Work & INPUT_PULLUP",
@@ -1359,9 +1371,12 @@ bool __BLANK[HELPER1]__(int pin) {^^    // the function returns true or false, s
         },
       ],
     },
-  ],
+    ],
+  },
 
-  7: [
+  7: {
+    phrase: "Navigation logic: scrolling the menu and selecting statuses",
+    steps: [
     {
       id: 1,
       title: "Step 1: Using button to toggle around the menu",
@@ -1474,160 +1489,19 @@ Then we add a condition so PREV checks \`showingStatus\` and decides **which beh
   ^^if (__BLANK[HELPER1]__(PREV) == true) {^^    // If the PREV button is pressed. Use the Debouncing function you created.
     ^^__BLANK[VL1]__ = __BLANK[VL1]__ - 1;^^      // Decrease the index by 1
     ^^if (__BLANK[VL1]__ < __BLANK[VL2]__) {^^    // If we went before the first item in array of status
-      ^^__BLANK[VL3]__ = __BLANK[VL4]__ - 1;^^    // Let index wrap around to the last item in the array
-    ^^}^^
-  ^^}^^
-  ^^else if (showingStatus == __BLANK[STATUSTF]__) {^^
-    ^^showingStatus = __BLANK[MENU_MODE]__;^^     // switch screen state to menu mode
-    ^^__BLANK[SHOWMENU]__();^^                    // call function to show the menu screen
-    ^^__BLANK[VLDELAY]__;^^                       // add a delay to prevent repeats
-  ^^}^^
-^^}^^`,
+      ^^__BLANK[VL3]__ = __BLANK[VL4]__ - 1;^^    // Let index wrap around to`,
         },
       ],
     },
-
-    {
-      id: 3,
-      title: "Step 3: Putting it All Together",
-      desc: `Combining all the functions, variables, setup, and loop, your code should look like this:`,
-
-      codes: [
-        {
-          code: `^^#include <Wire.h>
-#include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
-
-#define WIDTH  __BLANK[WIDTH]__
-#define HEIGHT __BLANK[HEIGHT]__
-#define RESET  -1
-Adafruit_SSD1306 display(WIDTH, __BLANK[HEIGHT2]__, &Wire, RESET);
-
-#define PREV __BLANK[PREVN]__
-#define NEXT __BLANK[NEXTN]__
-#define __BLANK[SEL]__  __BLANK[SELN]__   
-
-__BLANK[STATUSTYPE]__  __BLANK[STATUSNAME]__ = {
-  __BLANK[STATUSLIST1]__, 
-  __BLANK[STATUSLIST2]__,
-  __BLANK[STATUSLIST3]__,
-  __BLANK[STATUSLIST4]__,
-};
-
-__BLANK[TOTTYPE]__   __BLANK[TOTNAME]__   = __BLANK[TOTNUM]__;
-__BLANK[TRACKTYPE]__ __BLANK[TRACKNAME]__ = __BLANK[TRACKNUM]__;
-
-bool showingStatus = false;   // menu mode (false) vs status mode (true)
-
-void setup() {
-  Wire.begin();
-  display.__BLANK[BEGIN]__(__BLANK[BEGINA]__, 0x3C);
-  display.__BLANK[CLEAR]__;        // to clear display
-  display.__BLANK[SETTEXTSIZE]__;  // to select text size
-  display.__BLANK[SETTEXTCOLOR]__; // to select text color
-  display.__BLANK[SETCURSOR]__(0, 0); // to set cursor location
-  display.__BLANK[DISPLAY]__();    // to update the screen to display 
-
-  // set the modes for the buttons you are using 
-  pinMode(PREV, INPUT_PULLUP); // PREV button is an input, not output
-  pinMode(__BLANK[NEXT]__, __BLANK[INPUT1]__);
-  __BLANK[PINMODE]__(__BLANK[SELECT]__, __BLANK[INPUT2]__);
-}
-
-void loop() {
-  if (showingStatus == false) {
-    __BLANK[SHOWMENU]__();
-
-    if (__BLANK[HELPER1]__(PREV) == true) {    // If the PREV button is pressed. Use the Debouncing function you created.
-      __BLANK[VL1]__ = __BLANK[VL1]__ - 1;     // Decrease the index by 1
-      if (__BLANK[VL1]__ < __BLANK[VL2]__) {   // If we went before the first item in array of status
-        __BLANK[VL3]__ = __BLANK[VL4]__ - 1;   // Let index wrap around to the last item in the array
-      }
-    }
-
-    if (__BLANK[HELPER0]__(__BLANK[VL5]__) == true) {   // If the NEXT button is pressed. Use the Debouncing function you created.
-      __BLANK[VL6]__ = __BLANK[VL7]__;                  // Increase the index by 1
-      if (__BLANK[VL8]__ > __BLANK[VL9]__) {            // If we went after the last item in array of status
-        __BLANK[VL10]__;                                // Let index wrap around to the first item in the array
-      }
-    }
-
-    if (__BLANK[HELPER00]__ == true) {       // If the SELECT button is pressed
-      showingStatus = true;                  // Mark that the current status is confirmed
-      __BLANK[STATUSFUNCTION]__();           // Show the confirmed status on the screen
-    }
-  }  // end of showingStatus == false
-
-  else if (showingStatus == __BLANK[STATUSTF]__) {
-    showingStatus = __BLANK[MENU_MODE]__;    // switch screen state to menu mode
-    __BLANK[SHOWMENU]__();                   // call function to show the menu screen
-    __BLANK[VLDELAY]__;                      // add a delay to prevent repeats
-  }
-}   // end loop()
-
-void __BLANK[WELCOMEFUNCTION]__() {
-  __BLANK[DISPLAY1]__; //clear display
-  __BLANK[DISPLAY2]__; //text size
-  __BLANK[DISPLAY3]__; //text color
-  __BLANK[DISPLAY4]__; //print line
-  __BLANK[DISPLAY5]__; //text size
-  __BLANK[DISPLAY6]__; //text cursor
-  __BLANK[DISPLAY7]__; //print line
-  __BLANK[DISPLAY8]__; //display
-}
-
-void __BLANK[STATUSFUNCTION]__() {
-  __BLANK[STATUSCODE1]__;
-  __BLANK[STATUSCODE2]__;
-  __BLANK[STATUSCODE3]__;
-  __BLANK[STATUSCODE4]__; 
-  display.__BLANK[DISPLAY9]__; 
-}
-
-void __BLANK[SHOWMENU]__() {
-  display.__BLANK[SHOW1]__;      // clear display
-  __BLANK[SHOW2]__;              // set text size
-  __BLANK[SHOW3]__;              // set cursor location
-  display.println(__BLANK[SHOW4]__);       // print your header
-  display.println("-------------------");  
-
-  int i = 0;
-  while (i < __BLANK[TOTNAME]__) {
-
-    if (i == __BLANK[TRACKNAME]__) {
-      display.print(__BLANK[HIGHLIGHT]__);     // highlight the current status
-    } else {
-      display.print(__BLANK[NONHIGH]__);       // keep spacing for non-selected
-    }
-
-    display.println(__BLANK[STATUSARRAY]__);   // print the status text
-    __BLANK[INCREMENT]__;                      // move to the next item
-  }
-  display.display();              // push everything to the screen
-}
-
-bool __BLANK[HELPER1]__(int pin) {    // the function returns true or false, so it's a bool type function
-  if (__BLANK[HELPER2]__) {           // if the button is pressed
-    __BLANK[HELPER3]__;               // short delay for mechanical bounce
-    if (__BLANK[HELPER2]__) {         // if the button is still pressed
-      return true;
-    }
-    return false;
-  }
-  return false;
-}^^`,
-        },
-      ],
-    },
-  ],
+    ],
+  },
 };
 
 export default function CodeBegLesson() {
   return (
     <CodeLessonBase
       lessonSteps={LESSON_STEPS_BEGINNER}
-      storagePrefix="esb:coding:beginner"
-      analyticsTag="coding_beginner"
+      storagePrefix="esb:codeBeg"
       apiBaseUrl={process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:4000"}
     />
   );

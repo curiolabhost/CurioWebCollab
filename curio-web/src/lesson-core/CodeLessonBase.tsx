@@ -208,6 +208,24 @@ export default function CodeLessonBase({
 }: any) {
   const router = useRouter();
 
+  const getLessonStepsArray = React.useCallback(
+  (lessonNum: number) => {
+    const entry = (lessonSteps as any)?.[lessonNum];
+    if (Array.isArray(entry)) return entry; // backward compatibility
+    return Array.isArray(entry?.steps) ? entry.steps : [];
+  },
+  [lessonSteps]
+);
+
+const getLessonPhrase = React.useCallback(
+  (lessonNum: number) => {
+    const entry = (lessonSteps as any)?.[lessonNum];
+    return typeof entry?.phrase === "string" ? entry.phrase : "";
+  },
+  [lessonSteps]
+);
+
+
   const KEYS = React.useMemo(() => {
     const d = defaultKeys(storagePrefix);
     return {
@@ -298,7 +316,7 @@ export default function CodeLessonBase({
   const showSplit = viewMode === "code" || viewMode === "circuit";
 
   // Current step data
-  const steps = lessonSteps[String(lesson)] || [];
+  const steps = getLessonStepsArray(lesson);
   const safeStepIndex = stepIndex < steps.length ? stepIndex : 0;
   const step = steps[safeStepIndex];
 
@@ -725,12 +743,12 @@ export default function CodeLessonBase({
             </div>
 
             <div className="space-y-4">
-              {lessonsList.map((lessonNum) => {
-                const lessonStepsArr = lessonSteps[String(lessonNum)] || [];
+                {lessonsList.map((lessonNum) => {
+                const lessonStepsArr = getLessonStepsArray(lessonNum);
                 const expanded = expandedLessons.includes(lessonNum);
 
-                const lessonSubtitle =
-                  lessonStepsArr?.[0]?.title ? String(lessonStepsArr[0].title) : "";
+                const lessonSubtitle = getLessonPhrase(lessonNum);
+
 
                 const isLessonActive = lessonNum === lesson;
                 const allStepsDone =

@@ -91,11 +91,11 @@ export default async function LessonSlugPage({ params }: PageProps) {
       >
         <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
           <Link
-            href={`/projects/${slug}`}
+            href={`/projects/${slug}/intro`}
             style={{
               border: "1px solid #e5e7eb",
               borderRadius: 10,
-              padding: "px 12px",
+              padding: "6px 12px",
               fontSize: 14,
               background: "white",
               display: "inline-block",
