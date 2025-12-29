@@ -1497,11 +1497,17 @@ Then we add a condition so PREV checks \`showingStatus\` and decides **which beh
   },
 };
 
-export default function CodeBegLesson() {
+export default function CodeBegLesson({
+  slug,
+  lessonSlug,
+}: {
+  slug: string;
+  lessonSlug: string;
+}) {
   return (
     <CodeLessonBase
       lessonSteps={LESSON_STEPS_BEGINNER}
-      storagePrefix="esb:codeBeg"
+      storagePrefix={`curio:${slug}:${lessonSlug}`}
       apiBaseUrl={process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:4000"}
     />
   );

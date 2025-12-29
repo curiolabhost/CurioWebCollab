@@ -9,6 +9,7 @@ import ArduinoEditor from "./ArduinoEditor";
 import CircuitEditor from "./CircuitEditor";
 import GuidedCodeBlock from "./GuidedCodeBlock";
 import styles from "./CodeLessonBase.module.css";
+
 /* ============================================================
    Storage helpers
 ============================================================ */
@@ -50,6 +51,14 @@ function storageGetString(key: string): string | null {
   }
 }
 
+function storageSetString(key: string, value: string) {
+  if (!key) return;
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(key, value);
+  } catch {}
+}
+
 function defaultKeys(storagePrefix: string) {
   return {
     doneSetKey: `${storagePrefix}:doneSet`,
@@ -62,17 +71,25 @@ function defaultKeys(storagePrefix: string) {
   };
 }
 
-function countTotalSteps(lessonSteps: Record<string, any[]>) {
-  return Object.values(lessonSteps || {}).reduce((sum, arr) => {
-    return sum + (Array.isArray(arr) ? arr.length : 0);
-  }, 0);
+/** Supports both:
+ *  lessonSteps = { 1: Step[], 2: Step[] }
+ *  lessonSteps = { 1: { phrase, steps: Step[] }, 2: { phrase, steps: Step[] } }
+ */
+function countTotalStepsFlexible(lessonSteps: Record<string, any>) {
+  const vals = Object.values(lessonSteps || {});
+  let total = 0;
+  for (const v of vals) {
+    if (Array.isArray(v)) total += v.length;
+    else if (Array.isArray(v?.steps)) total += v.steps.length;
+  }
+  return total;
 }
 
 function clamp(n: number, lo: number, hi: number) {
   return Math.max(lo, Math.min(hi, n));
 }
 
-function lessonNumbers(lessonSteps: Record<string, any[]>) {
+function lessonNumbers(lessonSteps: Record<string, any>) {
   return Object.keys(lessonSteps || {})
     .map((k) => Number(k))
     .filter((n) => Number.isFinite(n))
@@ -138,7 +155,10 @@ function renderWithInlineCode(
             if (code.startsWith("***") && code.endsWith("***")) {
               const strong = code.slice(3, -3);
               return (
-                <span key={`code-strong-${lineIdx}-${idx}`} className={styles.inlineCodeStrong}>
+                <span
+                  key={`code-strong-${lineIdx}-${idx}`}
+                  className={styles.inlineCodeStrong}
+                >
                   {strong}
                 </span>
               );
@@ -173,17 +193,14 @@ function renderWithInlineCode(
   });
 }
 
-
 /* ============================================================
-   View mode wiring (LessonHeaderControls writes this)
+   View mode wiring
 ============================================================ */
 
 type ViewMode = "lesson" | "code" | "circuit";
-const VIEW_MODE_KEY = "esb:viewMode";
 const VIEW_MODE_EVENT = "curio:viewMode";
 
-function readViewMode(): ViewMode {
-  const raw = storageGetString(VIEW_MODE_KEY);
+function coerceViewMode(raw: string | null): ViewMode {
   if (raw === "code" || raw === "circuit" || raw === "lesson") return raw;
   return "lesson";
 }
@@ -209,22 +226,21 @@ export default function CodeLessonBase({
   const router = useRouter();
 
   const getLessonStepsArray = React.useCallback(
-  (lessonNum: number) => {
-    const entry = (lessonSteps as any)?.[lessonNum];
-    if (Array.isArray(entry)) return entry; // backward compatibility
-    return Array.isArray(entry?.steps) ? entry.steps : [];
-  },
-  [lessonSteps]
-);
+    (lessonNum: number) => {
+      const entry = (lessonSteps as any)?.[lessonNum];
+      if (Array.isArray(entry)) return entry; // backward compatibility
+      return Array.isArray(entry?.steps) ? entry.steps : [];
+    },
+    [lessonSteps]
+  );
 
-const getLessonPhrase = React.useCallback(
-  (lessonNum: number) => {
-    const entry = (lessonSteps as any)?.[lessonNum];
-    return typeof entry?.phrase === "string" ? entry.phrase : "";
-  },
-  [lessonSteps]
-);
-
+  const getLessonPhrase = React.useCallback(
+    (lessonNum: number) => {
+      const entry = (lessonSteps as any)?.[lessonNum];
+      return typeof entry?.phrase === "string" ? entry.phrase : "";
+    },
+    [lessonSteps]
+  );
 
   const KEYS = React.useMemo(() => {
     const d = defaultKeys(storagePrefix);
@@ -236,6 +252,7 @@ const getLessonPhrase = React.useCallback(
       navKey: d.navKey,
       sidebarKey: d.sidebarKey,
       splitKey: d.splitKey,
+      viewModeKey: `${storagePrefix}:viewMode`,
     };
   }, [
     storagePrefix,
@@ -245,44 +262,61 @@ const getLessonPhrase = React.useCallback(
     localBlanksPrefixKey,
   ]);
 
+  const EDITOR_KEYS = React.useMemo(() => {
+    const prefix = storagePrefix || "lesson";
+    return {
+      arduinoSketchKey: `${prefix}:editor:arduino:sketch`,
+      wokwiUrlKey: `${prefix}:editor:wokwi:url`,
+      wokwiDiagramKey: `${prefix}:editor:wokwi:diagram`,
+    };
+  }, [storagePrefix]);
+
   const totalStepsAllLessons = React.useMemo(
-    () => countTotalSteps(lessonSteps),
+    () => countTotalStepsFlexible(lessonSteps),
     [lessonSteps]
   );
 
-  const lessonsList = React.useMemo(
-    () => lessonNumbers(lessonSteps),
-    [lessonSteps]
-  );
+  const lessonsList = React.useMemo(() => lessonNumbers(lessonSteps), [lessonSteps]);
 
   // Read persisted navigation (lesson + step) from localStorage
-  const initialNav = React.useMemo(() => {
-    const v = storageGetJson<{ lesson: number; stepIndex: number }>(KEYS.navKey);
-    if (v && Number.isFinite(v.lesson) && Number.isFinite(v.stepIndex)) return v;
-    const firstLesson = lessonsList[0] ?? 1;
-    return { lesson: firstLesson, stepIndex: 0 };
-  }, [KEYS.navKey, lessonsList]);
+  
+const firstLesson = lessonsList[0] ?? 1;
 
-  const [lesson, setLesson] = React.useState<number>(initialNav.lesson);
-  const [stepIndex, setStepIndex] = React.useState<number>(initialNav.stepIndex);
+// deterministic initial render (server + client match)
+const [lesson, setLesson] = React.useState<number>(firstLesson);
+const [stepIndex, setStepIndex] = React.useState<number>(0);
+
+// after mount, load persisted nav (client only)
+React.useEffect(() => {
+  const v = storageGetJson<{ lesson: number; stepIndex: number }>(KEYS.navKey);
+  if (v && Number.isFinite(v.lesson) && Number.isFinite(v.stepIndex)) {
+    setLesson(v.lesson);
+    setStepIndex(v.stepIndex);
+  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [KEYS.navKey]);
+
 
   React.useEffect(() => {
     storageSetJson(KEYS.navKey, { lesson, stepIndex });
   }, [KEYS.navKey, lesson, stepIndex]);
 
   // Done set
-  const [doneSet, setDoneSet] = React.useState<Set<string>>(() => new Set());
+const [doneSet, setDoneSet] = React.useState<Set<string>>(() => new Set());
+const [doneSetLoaded, setDoneSetLoaded] = React.useState(false);
 
-  React.useEffect(() => {
-    const raw = storageGetJson<string[]>(KEYS.doneSetKey);
-    if (Array.isArray(raw)) setDoneSet(new Set(raw));
-  }, [KEYS.doneSetKey]);
+React.useEffect(() => {
+  const raw = storageGetJson<string[]>(KEYS.doneSetKey);
+  if (Array.isArray(raw)) setDoneSet(new Set(raw));
+  setDoneSetLoaded(true);
+}, [KEYS.doneSetKey]);
 
-  React.useEffect(() => {
-    storageSetJson(KEYS.doneSetKey, Array.from(doneSet));
-  }, [KEYS.doneSetKey, doneSet]);
+React.useEffect(() => {
+  if (!doneSetLoaded) return; // IMPORTANT: prevent wiping storage on mount
+  storageSetJson(KEYS.doneSetKey, Array.from(doneSet));
+}, [KEYS.doneSetKey, doneSet, doneSetLoaded]);
 
-  // Sidebar expanded persisted (optional)
+  // Sidebar expanded persisted
   const [sidebarExpanded, setSidebarExpanded] = React.useState<boolean>(() => {
     const raw = storageGetJson<boolean>(KEYS.sidebarKey);
     return raw == null ? true : !!raw;
@@ -292,26 +326,31 @@ const getLessonPhrase = React.useCallback(
     storageSetJson(KEYS.sidebarKey, sidebarExpanded);
   }, [KEYS.sidebarKey, sidebarExpanded]);
 
-  // ✅ View mode: initialize from storage immediately
+  // View mode (scoped by storagePrefix)
+  const readViewMode = React.useCallback((): ViewMode => {
+    return coerceViewMode(storageGetString(KEYS.viewModeKey));
+  }, [KEYS.viewModeKey]);
+
   const [viewMode, setViewMode] = React.useState<ViewMode>(() => readViewMode());
 
   React.useEffect(() => {
     const update = () => setViewMode(readViewMode());
 
-    // cross-tab updates
     const onStorage = (e: StorageEvent) => {
-      if (e.key === VIEW_MODE_KEY) update();
+      if (e.key === KEYS.viewModeKey) update();
     };
 
     window.addEventListener("storage", onStorage);
-    // same-tab updates from header controls
     window.addEventListener(VIEW_MODE_EVENT, update as any);
+
+    // keep state in sync if KEY changes
+    update();
 
     return () => {
       window.removeEventListener("storage", onStorage);
       window.removeEventListener(VIEW_MODE_EVENT, update as any);
     };
-  }, []);
+  }, [KEYS.viewModeKey, readViewMode]);
 
   const showSplit = viewMode === "code" || viewMode === "circuit";
 
@@ -329,18 +368,14 @@ const getLessonPhrase = React.useCallback(
 
   const toggleLesson = (lessonId: number) => {
     setExpandedLessons((prev) =>
-      prev.includes(lessonId)
-        ? prev.filter((id) => id !== lessonId)
-        : [...prev, lessonId]
+      prev.includes(lessonId) ? prev.filter((id) => id !== lessonId) : [...prev, lessonId]
     );
   };
 
   // Progress %s
   const doneCount = doneSet.size;
   const overallProgress =
-    totalStepsAllLessons > 0
-      ? Math.round((doneCount / totalStepsAllLessons) * 100)
-      : 0;
+    totalStepsAllLessons > 0 ? Math.round((doneCount / totalStepsAllLessons) * 100) : 0;
 
   const lessonStepsCount = Array.isArray(steps) ? steps.length : 0;
   const doneInThisLesson = React.useMemo(() => {
@@ -353,9 +388,7 @@ const getLessonPhrase = React.useCallback(
   }, [doneSet, lesson, lessonStepsCount]);
 
   const lessonProgress =
-    lessonStepsCount > 0
-      ? Math.round((doneInThisLesson / lessonStepsCount) * 100)
-      : 0;
+    lessonStepsCount > 0 ? Math.round((doneInThisLesson / lessonStepsCount) * 100) : 0;
 
   // Mark done toggle for current step
   const currentStepKey = makeStepKey(lesson, safeStepIndex);
@@ -380,8 +413,7 @@ const getLessonPhrase = React.useCallback(
   // Step navigation
   const canPrev = safeStepIndex > 0 || lessonsList.indexOf(lesson) > 0;
   const canNext =
-    safeStepIndex < lessonStepsCount - 1 ||
-    lessonsList.indexOf(lesson) < lessonsList.length - 1;
+    safeStepIndex < lessonStepsCount - 1 || lessonsList.indexOf(lesson) < lessonsList.length - 1;
 
   const goPrev = () => {
     if (safeStepIndex > 0) {
@@ -391,7 +423,7 @@ const getLessonPhrase = React.useCallback(
     const idx = lessonsList.indexOf(lesson);
     if (idx > 0) {
       const prevLesson = lessonsList[idx - 1];
-      const prevSteps = lessonSteps[String(prevLesson)] || [];
+      const prevSteps = getLessonStepsArray(prevLesson);
       setLesson(prevLesson);
       setStepIndex(Math.max(0, prevSteps.length - 1));
     }
@@ -411,12 +443,14 @@ const getLessonPhrase = React.useCallback(
   };
 
   /* ============================================================
-    ONLY ADDITION: GuidedCodeBlock shared state + persistence
-     (no other behavior changes)
-============================================================ */
+     GuidedCodeBlock shared state + persistence (per step)
+  ============================================================ */
 
-  // per-step local blanks key (exactly what you were already passing)
+  // per-step local blanks key
   const localStorageKeyForThisStep = `${KEYS.localBlanksPrefixKey}:${currentStepKey}`;
+
+  // per-step guided UI state key
+  const guidedUiKeyForThisStep = `${KEYS.localBlanksPrefixKey}:UI:${currentStepKey}`;
 
   const [localBlanks, setLocalBlanks] = React.useState<Record<string, any>>({});
   const [globalBlanks, setGlobalBlanks] = React.useState<Record<string, any>>({});
@@ -424,23 +458,17 @@ const getLessonPhrase = React.useCallback(
   const [blankStatus, setBlankStatus] = React.useState<Record<string, boolean>>({});
   const [activeBlankHint, setActiveBlankHint] = React.useState<any>(null);
 
-  const [aiHelpByBlank, setAiHelpByBlank] = React.useState<Record<string, string>>(
+  const [aiHelpByBlank, setAiHelpByBlank] = React.useState<Record<string, string>>({});
+  const [aiLoadingKey, setAiLoadingKey] = React.useState<string | null>(null);
+  const [aiLastRequestAtByKey, setAiLastRequestAtByKey] = React.useState<Record<string, number>>(
     {}
   );
-  const [aiLoadingKey, setAiLoadingKey] = React.useState<string | null>(null);
-  const [aiLastRequestAtByKey, setAiLastRequestAtByKey] = React.useState<
-    Record<string, number>
-  >({});
-  const [aiHintLevelByBlank, setAiHintLevelByBlank] = React.useState<
-    Record<string, number>
-  >({});
+  const [aiHintLevelByBlank, setAiHintLevelByBlank] = React.useState<Record<string, number>>({});
 
   const [checkAttempts, setCheckAttempts] = React.useState<number>(0);
-  const [blankAttemptsByName, setBlankAttemptsByName] = React.useState<
-    Record<string, number>
-  >({});
+  const [blankAttemptsByName, setBlankAttemptsByName] = React.useState<Record<string, number>>({});
 
-  // Load GLOBAL blanks once (on mount / when key changes)
+  // Load GLOBAL blanks once
   React.useEffect(() => {
     const raw = storageGetJson<Record<string, any>>(KEYS.globalBlanksKey);
     setGlobalBlanks(raw && typeof raw === "object" ? raw : {});
@@ -451,26 +479,59 @@ const getLessonPhrase = React.useCallback(
     storageSetJson(KEYS.globalBlanksKey, globalBlanks || {});
   }, [KEYS.globalBlanksKey, globalBlanks]);
 
-  // Load LOCAL blanks whenever you change step (key changes)
+  // Load LOCAL blanks + GUIDED UI whenever step changes (key changes)
   React.useEffect(() => {
     const raw = storageGetJson<Record<string, any>>(localStorageKeyForThisStep);
     setLocalBlanks(raw && typeof raw === "object" ? raw : {});
 
-    // keep GuidedCodeBlock UI scoped per-step
-    setBlankStatus({});
-    setActiveBlankHint(null);
-    setAiHelpByBlank({});
+    const ui = storageGetJson<any>(guidedUiKeyForThisStep);
+
+    setBlankStatus(ui?.blankStatus && typeof ui.blankStatus === "object" ? ui.blankStatus : {});
+    setActiveBlankHint(ui?.activeBlankHint ?? null);
+    setAiHelpByBlank(ui?.aiHelpByBlank && typeof ui.aiHelpByBlank === "object" ? ui.aiHelpByBlank : {});
+    setAiHintLevelByBlank(
+      ui?.aiHintLevelByBlank && typeof ui.aiHintLevelByBlank === "object" ? ui.aiHintLevelByBlank : {}
+    );
+    setCheckAttempts(Number.isFinite(ui?.checkAttempts) ? ui.checkAttempts : 0);
+    setBlankAttemptsByName(
+      ui?.blankAttemptsByName && typeof ui.blankAttemptsByName === "object" ? ui.blankAttemptsByName : {}
+    );
+
+    // ephemeral (do not persist)
     setAiLoadingKey(null);
     setAiLastRequestAtByKey({});
-    setAiHintLevelByBlank({});
-    setCheckAttempts(0);
-    setBlankAttemptsByName({});
-  }, [localStorageKeyForThisStep]);
+  }, [localStorageKeyForThisStep, guidedUiKeyForThisStep]);
 
   // Persist LOCAL blanks for this step
   React.useEffect(() => {
     storageSetJson(localStorageKeyForThisStep, localBlanks || {});
   }, [localStorageKeyForThisStep, localBlanks]);
+
+  // Persist GUIDED UI state for this step (debounced)
+  React.useEffect(() => {
+    const payload = {
+      blankStatus: blankStatus || {},
+      activeBlankHint: activeBlankHint ?? null,
+      aiHelpByBlank: aiHelpByBlank || {},
+      aiHintLevelByBlank: aiHintLevelByBlank || {},
+      checkAttempts: checkAttempts || 0,
+      blankAttemptsByName: blankAttemptsByName || {},
+    };
+
+    const t = window.setTimeout(() => {
+      storageSetJson(guidedUiKeyForThisStep, payload);
+    }, 150);
+
+    return () => window.clearTimeout(t);
+  }, [
+    guidedUiKeyForThisStep,
+    blankStatus,
+    activeBlankHint,
+    aiHelpByBlank,
+    aiHintLevelByBlank,
+    checkAttempts,
+    blankAttemptsByName,
+  ]);
 
   // What GuidedCodeBlock should render from
   const mergedBlanks = React.useMemo(
@@ -479,44 +540,35 @@ const getLessonPhrase = React.useCallback(
   );
 
   const logBlankAnalytics = React.useCallback((_event: any) => {
-    // no-op (you can wire analytics later)
+    // no-op (wire later)
   }, []);
 
   function renderImageGrid(images: any, keyPrefix: string) {
-  if (!images) return null;
+    if (!images) return null;
 
-  const items = Array.isArray(images) ? images : [images];
+    const items = Array.isArray(images) ? images : [images];
 
-  return (
-    <div className={styles.imageGrid}>
-      {items.map((img: any, idx: number) => {
-        const src =
-          typeof img === "string"
-            ? img
-            : img?.src || img?.uri || img?.url || "";
+    return (
+      <div className={styles.imageGrid}>
+        {items.map((img: any, idx: number) => {
+          const src =
+            typeof img === "string" ? img : img?.src || img?.uri || img?.url || "";
 
-        const caption =
-          typeof img === "string" ? "" : String(img?.caption ?? "");
+          const caption = typeof img === "string" ? "" : String(img?.caption ?? "");
 
-        if (!src) return null;
+          if (!src) return null;
 
-        return (
-          <div key={`${keyPrefix}-${idx}`} className={styles.imageGridItem}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={src} alt={caption || `img-${idx}`} className={styles.imageGridImg} />
-            {caption ? <div className={styles.imageGridCaption}>{caption}</div> : null}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-
-
-/* ============================================================
-     END ONLY ADDITION
-============================================================ */
+          return (
+            <div key={`${keyPrefix}-${idx}`} className={styles.imageGridItem}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={src} alt={caption || `img-${idx}`} className={styles.imageGridImg} />
+              {caption ? <div className={styles.imageGridCaption}>{caption}</div> : null}
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
 
   if (!lessonsList.length) {
     return (
@@ -535,29 +587,33 @@ const getLessonPhrase = React.useCallback(
           <h1 className="mb-2 text-s font-bold text-sky-600">
             {step?.lessonTitle ?? `Lesson ${lesson}`}
           </h1>
-            <h2 className="mb-4 text-2xl font-bold text-sky-900">
-              {step?.title ?? `Step ${safeStepIndex + 1}`}
-            </h2>
+          <h2 className="mb-4 text-2xl font-bold text-sky-900">
+            {step?.title ?? `Step ${safeStepIndex + 1}`}
+          </h2>
 
           <div className="flex gap-12 items-end">
             <div className="flex-1 max-w-xs">
               <div className="text-sm text-gray-400 mb-2">Overall</div>
-              <div className="text-gray-700 mb-2">{overallProgress}% complete</div>
+              <div className="text-gray-700 mb-2">
+                  {doneSetLoaded ? `${overallProgress}% complete` : "Loading progress..."}
+                </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
                 <div
                   className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${clamp(overallProgress, 0, 100)}%` }}
+                  style={{ width: `${doneSetLoaded ? clamp(overallProgress, 0, 100) : 0}%` }}
                 />
               </div>
             </div>
 
             <div className="flex-1 max-w-xs">
               <div className="text-sm text-gray-400 mb-2">This lesson</div>
-              <div className="text-gray-700 mb-2">{lessonProgress}% of steps</div>
+              <div className="text-gray-700 mb-2">
+                {doneSetLoaded ? `${lessonProgress}% of steps` : "Loading progress..."}
+                </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
                 <div
                   className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${clamp(lessonProgress, 0, 100)}%` }}
+                  style={{ width: `${doneSetLoaded ? clamp(lessonProgress, 0, 100) : 0}%` }}
                 />
               </div>
             </div>
@@ -587,52 +643,53 @@ const getLessonPhrase = React.useCallback(
         {/* Lesson Content */}
         <div className="px-12 py-6 w-full">
           <div className="w-full">
-        {step?.desc ? (
-        <div className={styles.stepDescBlock}>
-            {renderWithInlineCode(step.desc, {
-            mergedBlanks,
-            onChangeBlank: (name, txt) => {
-                setLocalBlanks((prev: any) => ({ ...(prev || {}), [name]: txt }));
-                setGlobalBlanks((prev: any) => ({ ...(prev || {}), [name]: txt }));
-            },
-            })}
-        </div>
-        ) : null}
+            {step?.desc ? (
+              <div className={styles.stepDescBlock}>
+                {renderWithInlineCode(step.desc, {
+                  mergedBlanks,
+                  onChangeBlank: (name, txt) => {
+                    setLocalBlanks((prev: any) => ({ ...(prev || {}), [name]: txt }));
+                    setGlobalBlanks((prev: any) => ({ ...(prev || {}), [name]: txt }));
+                  },
+                })}
+              </div>
+            ) : null}
 
             {Array.isArray(step?.codes) && step.codes.length > 0 ? (
               <div className="space-y-8">
                 {step.codes.map((block: any, idx: number) => (
                   <div key={idx}>
-                {block?.descBeforeCode ? (
-                <div className={styles.stepDescBlock}>
-                    {renderWithInlineCode(block.descBeforeCode, {
-                    mergedBlanks,
-                    onChangeBlank: (name, txt) => {
-                        setLocalBlanks((prev: any) => ({ ...(prev || {}), [name]: txt }));
-                        setGlobalBlanks((prev: any) => ({ ...(prev || {}), [name]: txt }));
-                    },
-                    })}
-                </div>
-                ) : null}
+                    {block?.descBeforeCode ? (
+                      <div className={styles.stepDescBlock}>
+                        {renderWithInlineCode(block.descBeforeCode, {
+                          mergedBlanks,
+                          onChangeBlank: (name, txt) => {
+                            setLocalBlanks((prev: any) => ({ ...(prev || {}), [name]: txt }));
+                            setGlobalBlanks((prev: any) => ({ ...(prev || {}), [name]: txt }));
+                          },
+                        })}
+                      </div>
+                    ) : null}
 
-                {block?.topicTitle ? (
-                    <h3 className={styles.blockTopicTitle}>{String(block.topicTitle)}</h3>
+                    {block?.topicTitle ? (
+                      <h3 className={styles.blockTopicTitle}>{String(block.topicTitle)}</h3>
                     ) : null}
 
                     {block?.descBetweenBeforeAndCode ? (
-                    <div className={styles.stepDescBlock}>
+                      <div className={styles.stepDescBlock}>
                         {renderWithInlineCode(block.descBetweenBeforeAndCode, {
-                        mergedBlanks,
-                        onChangeBlank: (name, txt) => {
+                          mergedBlanks,
+                          onChangeBlank: (name, txt) => {
                             setLocalBlanks((prev: any) => ({ ...(prev || {}), [name]: txt }));
                             setGlobalBlanks((prev: any) => ({ ...(prev || {}), [name]: txt }));
-                        },
+                          },
                         })}
-                    </div>
+                      </div>
                     ) : null}
 
-                    {block?.imageGridBeforeCode ? renderImageGrid(block.imageGridBeforeCode, `b-${idx}-before`) : null}
-
+                    {block?.imageGridBeforeCode
+                      ? renderImageGrid(block.imageGridBeforeCode, `b-${idx}-before`)
+                      : null}
 
                     {block?.code ? (
                       <GuidedCodeBlock
@@ -667,38 +724,39 @@ const getLessonPhrase = React.useCallback(
                     ) : null}
 
                     {block?.descAfterCode ? (
-                    <div className={styles.stepDescBlock}>
+                      <div className={styles.stepDescBlock}>
                         {renderWithInlineCode(block.descAfterCode, {
-                        mergedBlanks,
-                        onChangeBlank: (name, txt) => {
+                          mergedBlanks,
+                          onChangeBlank: (name, txt) => {
                             setLocalBlanks((prev: any) => ({ ...(prev || {}), [name]: txt }));
                             setGlobalBlanks((prev: any) => ({ ...(prev || {}), [name]: txt }));
-                        },
+                          },
                         })}
-                    </div>
+                      </div>
                     ) : null}
 
-                    {block?.imageGridAfterCode ? renderImageGrid(block.imageGridAfterCode, `b-${idx}-after`) : null}
+                    {block?.imageGridAfterCode
+                      ? renderImageGrid(block.imageGridAfterCode, `b-${idx}-after`)
+                      : null}
 
                     {block?.descAfterImage ? (
-                    <div className={styles.stepDescBlock}>
+                      <div className={styles.stepDescBlock}>
                         {renderWithInlineCode(block.descAfterImage, {
-                        mergedBlanks,
-                        onChangeBlank: (name, txt) => {
+                          mergedBlanks,
+                          onChangeBlank: (name, txt) => {
                             setLocalBlanks((prev: any) => ({ ...(prev || {}), [name]: txt }));
                             setGlobalBlanks((prev: any) => ({ ...(prev || {}), [name]: txt }));
-                        },
+                          },
                         })}
-                    </div>
+                      </div>
                     ) : null}
 
                     {block?.hint ? (
-                    <div className={styles.hintBox}>
+                      <div className={styles.hintBox}>
                         <div className={styles.hintTitle}>Hint</div>
                         <div className={styles.hintText}>{String(block.hint)}</div>
-                    </div>
+                      </div>
                     ) : null}
-
                   </div>
                 ))}
               </div>
@@ -743,19 +801,16 @@ const getLessonPhrase = React.useCallback(
             </div>
 
             <div className="space-y-4">
-                {lessonsList.map((lessonNum) => {
+              {lessonsList.map((lessonNum) => {
                 const lessonStepsArr = getLessonStepsArray(lessonNum);
                 const expanded = expandedLessons.includes(lessonNum);
 
                 const lessonSubtitle = getLessonPhrase(lessonNum);
 
-
                 const isLessonActive = lessonNum === lesson;
                 const allStepsDone =
-                    lessonStepsArr.length > 0 &&
-                    lessonStepsArr.every((_, idx) =>
-                        doneSet.has(makeStepKey(lessonNum, idx))
-  );
+                  lessonStepsArr.length > 0 &&
+                  lessonStepsArr.every((_: any, idx: number) => doneSet.has(makeStepKey(lessonNum, idx)));
 
                 return (
                   <div
@@ -766,11 +821,11 @@ const getLessonPhrase = React.useCallback(
                       onClick={() => toggleLesson(lessonNum)}
                       type="button"
                       className={`w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors ${
-                        isLessonActive ? 
-                         "bg-indigo-50 hover:bg-indigo-100"
-                        :allStepsDone
-                         ? "bg-green-50 hover:bg-green-100"
-                         : "bg-white"
+                        isLessonActive
+                          ? "bg-indigo-50 hover:bg-indigo-100"
+                          : allStepsDone
+                          ? "bg-green-50 hover:bg-green-100"
+                          : "bg-white"
                       }`}
                     >
                       <div className="text-left">
@@ -805,6 +860,7 @@ const getLessonPhrase = React.useCallback(
                           const isActive = lessonNum === lesson && idx === safeStepIndex;
                           const stepKey = makeStepKey(lessonNum, idx);
                           const isStepDone = doneSet.has(stepKey);
+
                           return (
                             <button
                               key={idx}
@@ -815,17 +871,16 @@ const getLessonPhrase = React.useCallback(
                               }}
                               className={`w-full text-left text-sm py-1 px-3 rounded transition-colors ${
                                 isActive
-                                    ? "bg-indigo-100 text-indigo-700"
-                                    : isStepDone
-                                     ? "bg-transparent text-green-700 hover:bg-gray-100 hover: text-green-800"
-                                     : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                                  ? "bg-indigo-100 text-indigo-700"
+                                  : isStepDone
+                                  ? "bg-transparent text-green-700 hover:bg-gray-100 hover:text-green-800"
+                                  : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                               }`}
                             >
-                                <span className="mr-2 text-s text-gray-600">{idx + 1}.</span>
-                                <span>
+                              <span className="mr-2 text-s text-gray-600">{idx + 1}.</span>
+                              <span>
                                 {String(st.title).replace(/^(Step\s*)?\d+\s*:\s*/i, "")}
-                                </span>
-
+                              </span>
                             </button>
                           );
                         })}
@@ -857,35 +912,34 @@ const getLessonPhrase = React.useCallback(
       {viewMode === "circuit" ? (
         <CircuitEditor
           screenTitle="Circuit"
-          wokwiUrlKey="esb:wokwi:url"
-          codeKey="esb:arduino:sketch"
-          diagramKey="esb:wokwi:diagram"
+          wokwiUrlKey={EDITOR_KEYS.wokwiUrlKey}
+          codeKey={EDITOR_KEYS.arduinoSketchKey}
+          diagramKey={EDITOR_KEYS.wokwiDiagramKey}
           defaultWokwiUrl=""
         />
       ) : (
-        <ArduinoEditor apiBaseUrl={apiBaseUrl} />
+        <ArduinoEditor apiBaseUrl={apiBaseUrl} storageKey={EDITOR_KEYS.arduinoSketchKey} />
       )}
     </div>
   );
 
-return (
-  <div className="h-full w-full bg-white overflow-hidden">
-    {viewMode === "lesson" ? (
-      lessonUi
-    ) : (
-      <SplitView
-        persistKey={KEYS.splitPersistKey ?? null}
-        initialLeftRatio={0.62}
-        minLeftRatio={0.45}
-        maxLeftRatio={0.78}
-        minLeftPx={520}
-        minRightPx={420}
-        handleWidth={12}
-        left={lessonUi}
-        right={editorPane}
-      />
-    )}
-  </div>
-);
-
+  return (
+    <div className="h-full w-full bg-white overflow-hidden">
+      {viewMode === "lesson" ? (
+        lessonUi
+      ) : (
+        <SplitView
+          persistKey={KEYS.splitKey}
+          initialLeftRatio={0.62}
+          minLeftRatio={0.45}
+          maxLeftRatio={0.78}
+          minLeftPx={520}
+          minRightPx={420}
+          handleWidth={12}
+          left={lessonUi}
+          right={editorPane}
+        />
+      )}
+    </div>
+  );
 }

@@ -5,31 +5,33 @@ import { Code2, CircuitBoard, BookOpen } from "lucide-react";
 
 type ViewMode = "lesson" | "code" | "circuit";
 
-const VIEW_MODE_KEY = "esb:viewMode";
 const VIEW_MODE_EVENT = "curio:viewMode";
 
-function safeSetViewMode(mode: ViewMode) {
+type LessonHeaderControlsProps = {
+  viewModeKey: string; // must match CodeLessonBase's `${storagePrefix}:viewMode`
+};
+
+function safeSetViewMode(viewModeKey: string, mode: ViewMode) {
   try {
-    window.localStorage.setItem(VIEW_MODE_KEY, mode);
-    // same-tab update (storage event won't fire in same tab)
+    window.localStorage.setItem(viewModeKey, mode);
     window.dispatchEvent(new Event(VIEW_MODE_EVENT));
   } catch {}
 }
 
-function safeReadViewMode(): ViewMode {
+function safeReadViewMode(viewModeKey: string): ViewMode {
   try {
-    const raw = window.localStorage.getItem(VIEW_MODE_KEY);
+    const raw = window.localStorage.getItem(viewModeKey);
     if (raw === "lesson" || raw === "code" || raw === "circuit") return raw;
   } catch {}
   return "lesson";
 }
 
-export default function LessonHeaderControls() {
+export default function LessonHeaderControls({ viewModeKey }: LessonHeaderControlsProps) {
   const [active, setActive] = React.useState<ViewMode>("lesson");
 
   React.useEffect(() => {
-    setActive(safeReadViewMode());
-  }, []);
+    setActive(safeReadViewMode(viewModeKey));
+  }, [viewModeKey]);
 
   const baseBtn: React.CSSProperties = {
     display: "inline-flex",
@@ -61,7 +63,7 @@ export default function LessonHeaderControls() {
       <button
         type="button"
         onClick={() => {
-          safeSetViewMode("lesson");
+          safeSetViewMode(viewModeKey,"lesson");
           setActive("lesson");
         }}
         style={{ ...baseBtn, ...(active === "lesson" ? activeBtn : {}) }}
@@ -74,7 +76,7 @@ export default function LessonHeaderControls() {
       <button
         type="button"
         onClick={() => {
-          safeSetViewMode("code");
+          safeSetViewMode(viewModeKey,"code");
           setActive("code");
         }}
         style={{ ...baseBtn, ...(active === "code" ? activeBtn : {}) }}
@@ -87,7 +89,7 @@ export default function LessonHeaderControls() {
       <button
         type="button"
         onClick={() => {
-          safeSetViewMode("circuit");
+          safeSetViewMode(viewModeKey,"circuit");
           setActive("circuit");
         }}
         style={{ ...baseBtn, ...(active === "circuit" ? activeBtn : {}) }}
