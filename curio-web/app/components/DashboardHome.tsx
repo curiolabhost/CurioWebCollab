@@ -44,8 +44,33 @@ type CompletedProject = {
 };
 
 type ActivePtr = { slug: string; lessonSlug: string };
-
 type NavState = { lesson: number; stepIndex: number };
+
+/** Monday-based start-of-week date (local time) */
+function startOfWeekDate(d = new Date()) {
+  const date = new Date(d);
+  const day = date.getDay(); // 0 Sun ... 6 Sat
+  const diffToMonday = (day + 6) % 7; // Mon=0 ... Sun=6
+  date.setDate(date.getDate() - diffToMonday);
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+
+function startOfWeekKey(d = new Date()) {
+  const date = startOfWeekDate(d);
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const dd = String(date.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`; // ex: "2025-12-29"
+}
+
+function endOfWeekDate(d = new Date()) {
+  const start = startOfWeekDate(d);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6); // Mon + 6 = Sun
+  end.setHours(23, 59, 59, 999);
+  return end;
+}
 
 function readJson<T>(key: string): T | null {
   try {
@@ -78,7 +103,6 @@ function parseHoursToNumber(
   const nums = hoursText.match(/\d+(\.\d+)?/g)?.map((n) => parseFloat(n)) ?? [];
   if (nums.length === 0) return 10;
 
-  // single number
   if (nums.length === 1) return nums[0];
 
   const min = Math.min(...nums);
@@ -91,7 +115,6 @@ function parseHoursToNumber(
   if (level.includes("beg")) return min;
   if (level.includes("adv")) return max;
 
-  // Intermediate (or anything else)
   if (hasAdvanced) return (min + max) / 2;
   return max;
 }
@@ -102,7 +125,6 @@ function daysBetween(a: Date, b: Date) {
 }
 
 function labelizeLessonSlug(lessonSlug: string) {
-  // "code-beg" -> "Code Beg", "levels/beginner" -> "Beginner"
   const last = (lessonSlug || "").split("/").pop() || "";
   return last
     .replace(/[-_]+/g, " ")
@@ -125,15 +147,31 @@ export function DashboardHome() {
   const [activeTotalSteps, setActiveTotalSteps] = useState<number>(0);
   const [activeDoneCount, setActiveDoneCount] = useState<number>(0);
 
+  // Track totals (Coding + Circuits)
+  const CODING_SLUG = "code-beg";
+  const CIRCUITS_SLUG = "circuit-beg";
+
+  const [codeTotalSteps, setCodeTotalSteps] = useState<number>(0);
+  const [codeDoneCount, setCodeDoneCount] = useState<number>(0);
+  const [circuitTotalSteps, setCircuitTotalSteps] = useState<number>(0);
+  const [circuitDoneCount, setCircuitDoneCount] = useState<number>(0);
+
   // --- UI state ---
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [activeTab, setActiveTab] = useState<"current" | "completed">("current");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
 
+  // weekly snapshot
+  const [weekStartDoneStepsAll, setWeekStartDoneStepsAll] = useState<number>(0);
+  const [weekKey, setWeekKey] = useState<string>(() => startOfWeekKey());
+
   // --- Per-project schedule stored locally ---
   const [schedule, setSchedule] = useState<ProjectSchedule>({ daysPerWeek: 3, hoursPerDay: 2 });
-  const [tempSchedule, setTempSchedule] = useState<ProjectSchedule>({ daysPerWeek: 3, hoursPerDay: 2 });
+  const [tempSchedule, setTempSchedule] = useState<ProjectSchedule>({
+    daysPerWeek: 3,
+    hoursPerDay: 2,
+  });
 
   // Load pointer + progress + nav on mount, and refresh on custom events/storage
   useEffect(() => {
@@ -154,6 +192,10 @@ export function DashboardHome() {
         setActiveNav(null);
         setActiveTotalSteps(0);
         setActiveDoneCount(0);
+        setCodeTotalSteps(0);
+        setCodeDoneCount(0);
+        setCircuitTotalSteps(0);
+        setCircuitDoneCount(0);
         return;
       }
 
@@ -176,9 +218,7 @@ export function DashboardHome() {
         const lessonNum =
           typeof nav?.lesson === "number" ? nav.lesson : parseInt(nav?.lesson, 10);
         const stepNum =
-          typeof nav?.stepIndex === "number"
-            ? nav.stepIndex
-            : parseInt(nav?.stepIndex, 10);
+          typeof nav?.stepIndex === "number" ? nav.stepIndex : parseInt(nav?.stepIndex, 10);
 
         setActiveNav(
           Number.isFinite(lessonNum) && Number.isFinite(stepNum)
@@ -189,7 +229,7 @@ export function DashboardHome() {
         setActiveNav(null);
       }
 
-      // ✅ NEW: total step count persisted by CodeLessonBase
+      // Totals/done for the currently active lessonSlug (used for "Continue" context)
       const totalStepsKey = `curio:${ptr.slug}:${ptr.lessonSlug}:totalStepsAllLessons`;
       try {
         const raw = localStorage.getItem(totalStepsKey);
@@ -199,7 +239,6 @@ export function DashboardHome() {
         setActiveTotalSteps(0);
       }
 
-      // ✅ NEW: doneSet array length
       const doneSetKey = `curio:${ptr.slug}:${ptr.lessonSlug}:doneSet`;
       try {
         const raw = localStorage.getItem(doneSetKey);
@@ -208,6 +247,42 @@ export function DashboardHome() {
       } catch {
         setActiveDoneCount(0);
       }
+
+      // Totals/done for BOTH tracks (used for overall progress + time estimates)
+      function readTotalsFor(lessonSlug: string) {
+        const totalKey = `curio:${ptr.slug}:${lessonSlug}:totalStepsAllLessons`;
+        const doneKey = `curio:${ptr.slug}:${lessonSlug}:doneSet`;
+
+        let total = 0;
+        let done = 0;
+
+        try {
+          const raw = localStorage.getItem(totalKey);
+          const n = raw ? JSON.parse(raw) : 0;
+          total = typeof n === "number" && Number.isFinite(n) ? n : 0;
+        } catch {
+          total = 0;
+        }
+
+        try {
+          const raw = localStorage.getItem(doneKey);
+          const arr = raw ? JSON.parse(raw) : [];
+          done = Array.isArray(arr) ? arr.length : 0;
+        } catch {
+          done = 0;
+        }
+
+        return { total, done };
+      }
+
+      const coding = readTotalsFor(CODING_SLUG);
+      const circuits = readTotalsFor(CIRCUITS_SLUG);
+
+      setCodeTotalSteps(coding.total);
+      setCodeDoneCount(coding.done);
+
+      setCircuitTotalSteps(circuits.total);
+      setCircuitDoneCount(circuits.done);
     }
 
     refreshActive();
@@ -239,17 +314,16 @@ export function DashboardHome() {
   }, []);
 
   useEffect(() => {
-  if (!activePtr?.slug) return;
+    if (!activePtr?.slug) return;
 
-  const key = `curio:dashboard:schedule:${activePtr.slug}`;
-  const saved = readJson<ProjectSchedule>(key);
+    const key = `curio:dashboard:schedule:${activePtr.slug}`;
+    const saved = readJson<ProjectSchedule>(key);
 
-  if (saved?.daysPerWeek && saved?.hoursPerDay) {
-    setSchedule(saved);
-    setTempSchedule(saved);
-  }
-}, [activePtr?.slug]);
-
+    if (saved?.daysPerWeek && saved?.hoursPerDay) {
+      setSchedule(saved);
+      setTempSchedule(saved);
+    }
+  }, [activePtr?.slug]);
 
   const currentProject = useMemo(() => {
     if (!activePtr?.slug) return null;
@@ -260,10 +334,39 @@ export function DashboardHome() {
     return activePtr?.lessonSlug ? labelizeLessonSlug(activePtr.lessonSlug) : "";
   }, [activePtr]);
 
-  // Use the real persisted % (0..100)
+  // Overall progress across Coding + Circuits (falls back to activeProgress if we don't have totals yet)
+  const totalStepsAll = useMemo(() => {
+    return Math.max(0, codeTotalSteps + circuitTotalSteps);
+  }, [codeTotalSteps, circuitTotalSteps]);
+
+  const doneStepsAll = useMemo(() => {
+    return Math.max(0, codeDoneCount + circuitDoneCount);
+  }, [codeDoneCount, circuitDoneCount]);
+
+  // weekly snapshot init/reset
+  useEffect(() => {
+    if (!activePtr?.slug) return;
+
+    const wk = startOfWeekKey();
+    setWeekKey(wk);
+
+    const storageKey = `curio:${activePtr.slug}:week:${wk}:doneStart`;
+    const stored = readJson<number>(storageKey);
+
+    if (typeof stored === "number" && Number.isFinite(stored)) {
+      setWeekStartDoneStepsAll(stored);
+    } else {
+      writeJson(storageKey, doneStepsAll);
+      setWeekStartDoneStepsAll(doneStepsAll);
+    }
+  }, [activePtr?.slug, doneStepsAll]);
+
   const progressPercent = useMemo(() => {
+    if (totalStepsAll > 0) {
+      return Math.min(100, Math.max(0, Math.round((doneStepsAll / totalStepsAll) * 100)));
+    }
     return Math.min(100, Math.max(0, Math.round(activeProgress)));
-  }, [activeProgress]);
+  }, [totalStepsAll, doneStepsAll, activeProgress]);
 
   // Total hours chosen based on range + level label + whether project has Advanced
   const estimatedHoursNumber = useMemo(() => {
@@ -275,31 +378,52 @@ export function DashboardHome() {
     );
   }, [currentProject, currentLevelLabel]);
 
-  // ✅ NEW: Step-based time remaining (preferred when we have step counts)
-  const stepsRemaining = useMemo(() => {
-    if (activeTotalSteps <= 0) return 0;
-    return Math.max(0, activeTotalSteps - activeDoneCount);
-  }, [activeTotalSteps, activeDoneCount]);
+  // Step-based time remaining (preferred when we have step counts)
+  const stepsRemainingAll = useMemo(() => {
+    if (totalStepsAll <= 0) return 0;
+    return Math.max(0, totalStepsAll - doneStepsAll);
+  }, [totalStepsAll, doneStepsAll]);
 
   const hoursPerStep = useMemo(() => {
-    if (activeTotalSteps <= 0) return 0;
-    return estimatedHoursNumber / activeTotalSteps;
-  }, [estimatedHoursNumber, activeTotalSteps]);
+    if (totalStepsAll <= 0) return 0;
+    return estimatedHoursNumber / totalStepsAll;
+  }, [estimatedHoursNumber, totalStepsAll]);
+
+  const codeStepsRemaining = useMemo(() => {
+    return codeTotalSteps > 0 ? Math.max(0, codeTotalSteps - codeDoneCount) : 0;
+  }, [codeTotalSteps, codeDoneCount]);
+
+  const circuitStepsRemaining = useMemo(() => {
+    return circuitTotalSteps > 0 ? Math.max(0, circuitTotalSteps - circuitDoneCount) : 0;
+  }, [circuitTotalSteps, circuitDoneCount]);
 
   const hoursRemaining = useMemo(() => {
-    if (hoursPerStep <= 0) return Math.max(0, estimatedHoursNumber - Math.round((estimatedHoursNumber * progressPercent) / 100));
-    return stepsRemaining * hoursPerStep;
-  }, [hoursPerStep, stepsRemaining, estimatedHoursNumber, progressPercent]);
+    if (hoursPerStep <= 0) {
+      return Math.max(
+        0,
+        estimatedHoursNumber - Math.round((estimatedHoursNumber * progressPercent) / 100)
+      );
+    }
+    return stepsRemainingAll * hoursPerStep;
+  }, [hoursPerStep, stepsRemainingAll, estimatedHoursNumber, progressPercent]);
+
+  const codeHoursRemaining = useMemo(() => {
+    if (hoursPerStep <= 0) return 0;
+    return codeStepsRemaining * hoursPerStep;
+  }, [codeStepsRemaining, hoursPerStep]);
+
+  const circuitHoursRemaining = useMemo(() => {
+    if (hoursPerStep <= 0) return 0;
+    return circuitStepsRemaining * hoursPerStep;
+  }, [circuitStepsRemaining, hoursPerStep]);
 
   // Approx hours completed for display
   const hoursCompletedApprox = useMemo(() => {
-    // If we have step-based remaining, derive completed from that.
-    if (activeTotalSteps > 0 && hoursPerStep > 0) {
+    if (totalStepsAll > 0 && hoursPerStep > 0) {
       return Math.round(Math.max(0, estimatedHoursNumber - hoursRemaining));
     }
-    // fallback to percent-based
     return Math.round((estimatedHoursNumber * progressPercent) / 100);
-  }, [activeTotalSteps, hoursPerStep, estimatedHoursNumber, hoursRemaining, progressPercent]);
+  }, [totalStepsAll, hoursPerStep, estimatedHoursNumber, hoursRemaining, progressPercent]);
 
   const calculateCompletionDate = () => {
     const remainingHours = Math.max(0, hoursRemaining);
@@ -311,18 +435,36 @@ export function DashboardHome() {
     return completionDate.toLocaleDateString();
   };
 
-  const calculateHoursDue = () => {
-    // Without a real startedDate, we approximate “due” as 0 (safe),
-    // or you can store a started date when first beginning.
-    // If you want: writeJson(`curio:dashboard:started:${slug}`, new Date().toISOString())
-    // For now, keep it simple but non-crashy.
+  const calculateStepsDue = () => {
+    const end = endOfWeekDate(new Date());
 
-    const hoursDue = 0;
-    const now = new Date();
-    const endOfWeek = new Date(now);
-    endOfWeek.setDate(now.getDate() + (7 - now.getDay()));
-    return { hours: hoursDue, dueDate: endOfWeek.toLocaleDateString() };
+    const hoursPerWeek = Math.max(0, schedule.daysPerWeek * schedule.hoursPerDay);
+
+    const stepsTargetThisWeek =
+      hoursPerStep > 0 ? Math.max(0, Math.round(hoursPerWeek / hoursPerStep)) : 0;
+
+    const stepsDoneThisWeek = Math.max(0, doneStepsAll - weekStartDoneStepsAll);
+
+    const remainingTarget = Math.max(0, stepsTargetThisWeek - stepsDoneThisWeek);
+
+    const stepsDue = Math.min(stepsRemainingAll, remainingTarget);
+
+    return {
+      stepsDue,
+      stepsTargetThisWeek,
+      stepsDoneThisWeek,
+      dueDate: end.toLocaleDateString(),
+    };
   };
+
+  const due = useMemo(() => calculateStepsDue(), [
+    schedule.daysPerWeek,
+    schedule.hoursPerDay,
+    hoursPerStep,
+    doneStepsAll,
+    weekStartDoneStepsAll,
+    stepsRemainingAll,
+  ]);
 
   const handleSaveSchedule = () => {
     if (activePtr?.slug) {
@@ -342,15 +484,15 @@ export function DashboardHome() {
     router.push(`/projects/${activePtr.slug}/lessons/${activePtr.lessonSlug}`);
   };
 
+  // IMPORTANT: CodeLessonBase stores "lesson" as the actual lesson number (1,2,3..), not 0-based.
   const lastWatchedText = useMemo(() => {
     if (!activeNav) return "—";
-    return `Lesson ${activeNav.lesson + 1}, Step ${activeNav.stepIndex + 1}`;
+    return `Lesson ${activeNav.lesson}, Step ${activeNav.stepIndex + 1}`;
   }, [activeNav]);
 
   const upNextText = useMemo(() => {
     if (!activeNav) return "—";
-    // naive “next step” display
-    return `Lesson ${activeNav.lesson + 1}, Step ${activeNav.stepIndex + 2}`;
+    return `Lesson ${activeNav.lesson}, Step ${activeNav.stepIndex + 2}`;
   }, [activeNav]);
 
   return (
@@ -579,20 +721,21 @@ export function DashboardHome() {
                     <div className="space-y-3">
                       <div className="bg-sky-50 rounded-lg p-4">
                         <div className="text-sm text-sky-600 mb-1">Current Level</div>
-                        <div className="text-gray-900 font-medium">
-                          {currentLevelLabel || "—"}
-                        </div>
+                        <div className="text-gray-900 font-medium">{currentLevelLabel || "—"}</div>
                       </div>
 
                       <div className="bg-sky-50 rounded-lg p-4">
                         <div className="text-sm text-sky-600 mb-1">Last Seen</div>
                         <div className="text-gray-900 font-medium">{lastWatchedText}</div>
+                        <div className="text-xs text-gray-500 mt-1">Up next: {upNextText}</div>
                       </div>
 
                       <div className="bg-orange-50 rounded-lg p-4 border-l-4 border-orange-500">
                         <div className="text-sm text-orange-700">
-                          <strong>{calculateHoursDue().hours} hours due</strong> by{" "}
-                          {calculateHoursDue().dueDate}
+                          <strong>{due.stepsDue} steps due</strong> by {due.dueDate}
+                          <div className="text-xs text-orange-700/80 mt-1">
+                            This week: {due.stepsDoneThisWeek}/{due.stepsTargetThisWeek} steps
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -634,13 +777,25 @@ export function DashboardHome() {
                           <Clock className="w-5 h-5 text-sky-600" />
                           <span className="text-sm text-gray-600">Estimated Time</span>
                         </div>
+
                         <div className="text-xl">
                           {hoursCompletedApprox}h{" "}
                           <span className="text-gray-500">/ ~{estimatedHoursNumber}h</span>
                         </div>
-                        {activeTotalSteps > 0 ? (
-                          <div className="text-sm text-gray-600 mt-1">
-                            ~{Math.ceil(hoursRemaining)}h left ({stepsRemaining} steps)
+
+                        {totalStepsAll > 0 ? (
+                          <div className="text-sm text-gray-600 mt-1 space-y-1">
+                            <div>
+                              ~{Math.ceil(hoursRemaining)}h left ({stepsRemainingAll} steps)
+                            </div>
+                            <div className="text-gray-500">
+                              Coding: ~{Math.ceil(codeHoursRemaining)}h left ({codeStepsRemaining}{" "}
+                              steps)
+                            </div>
+                            <div className="text-gray-500">
+                              Circuits: ~{Math.ceil(circuitHoursRemaining)}h left (
+                              {circuitStepsRemaining} steps)
+                            </div>
                           </div>
                         ) : null}
                       </div>
@@ -898,7 +1053,7 @@ export function DashboardHome() {
                       daysPerWeek: parseInt(e.target.value || "1", 10),
                     })
                   }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg"
                 />
               </div>
 
@@ -912,44 +1067,31 @@ export function DashboardHome() {
                   onChange={(e) =>
                     setTempSchedule({
                       ...tempSchedule,
-                      hoursPerDay: parseFloat(e.target.value || "0.5"),
+                      hoursPerDay: parseFloat(e.target.value || "1"),
                     })
                   }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-sky-500"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg"
                 />
-              </div>
-
-              <div className="bg-sky-50 p-4 rounded-lg">
-                <div className="text-sm text-sky-700">
-                  With this schedule, you’ll complete the project by approximately{" "}
-                  <strong>
-                    {(() => {
-                      const remaining = Math.max(0, hoursRemaining);
-                      const perWeek = Math.max(0.5, tempSchedule.daysPerWeek * tempSchedule.hoursPerDay);
-                      const weeks = Math.ceil(remaining / perWeek);
-                      const d = new Date();
-                      d.setDate(d.getDate() + weeks * 7);
-                      return d.toLocaleDateString();
-                    })()}
-                  </strong>
-                </div>
               </div>
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex items-center justify-end gap-3">
               <button
                 onClick={() => setShowScheduleModal(false)}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                className="px-4 py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSaveSchedule}
-                className="flex-1 px-4 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700 transition-colors"
+                className="px-4 py-2 rounded-lg bg-sky-700 text-white hover:bg-sky-800"
               >
-                Save Schedule
+                Save
               </button>
             </div>
+
+            {/* (Optional) tiny debug line — remove whenever */}
+            <div className="text-xs text-gray-400 mt-4">Week key: {weekKey}</div>
           </div>
         </div>
       )}
