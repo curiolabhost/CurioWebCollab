@@ -351,7 +351,20 @@ Configures the button pins as inputs with internal pull-up resistors.
       title: "Step 1: Draw First (Welcome) Page",
       desc: "**Clear the screen, print a big greeting.**",
       hint: "Call display() after drawing to push the buffer to the screen.",
-
+      answerKey: {
+        WELCOMEFUNCTION: {
+          type: "string",
+          regex: "^[A-Za-z_][A-Za-z0-9_]*\\s*\\(\\s*\\)$",
+        },
+        DISPLAY1: ["display.clearDisplay()"],
+        DISPLAY2: { type: "string", regex: "^display\\.setTextSize\\(\\s*[1-5]\\s*\\)$" },
+        DISPLAY3: ["display.setTextColor(SSD1306_WHITE)"],
+        DISPLAY4: { type: "string", regex: "^display\\.(print|println)\\(.+\\)$" },
+        DISPLAY5: { type: "string", regex: "^display\\.setTextSize\\(\\s*[1-5]\\s*\\)$" },
+        DISPLAY6: { type: "string", regex: "^display\\.setCursor\\(\\s*\\d+\\s*,\\s*\\d+\\s*\\)$" },
+        DISPLAY7: { type: "string", regex: "^display\\.(print|println)\\(.+\\)$" },
+        DISPLAY8: ["display.display()"],
+      },
       codes: [
         {
           imageGridBeforeCode: {
@@ -402,7 +415,29 @@ But, **rename the function as something else and have it display a different mes
       id: 2,
       title: "Step 2: Display Chosen Status",
       desc: "In order to display the status that we want we need to clear the screen then print the status chosen from the menu screen",
-
+      answerKey: {
+        WELCOMEFUNCTION: {
+            type: "string",
+            regex: "^[A-Za-z_][A-Za-z0-9_]*\\s*\\(\\s*\\)$",
+          },
+          STATUSFUNCTION: {
+            type: "string",
+            regex: "^[A-Za-z_][A-Za-z0-9_]*\\s*\\(\\s*\\)$",
+          },
+          DISPLAY1: ["display.clearDisplay()"],
+          DISPLAY2: { type: "string", regex: "^display\\.setTextSize\\(\\s*[1-5]\\s*\\)$" },
+          DISPLAY3: ["display.setTextColor(SSD1306_WHITE)"],
+          DISPLAY4: { type: "string", regex: "^display\\.(print|println)\\(.+\\)$" },
+          DISPLAY5: { type: "string", regex: "^display\\.setTextSize\\(\\s*[1-5]\\s*\\)$" },
+          DISPLAY6: { type: "string", regex: "^display\\.setCursor\\(\\s*\\d+\\s*,\\s*\\d+\\s*\\)$" },
+          DISPLAY7: { type: "string", regex: "^display\\.(print|println)\\(.+\\)$" },
+          DISPLAY8: ["display.display()"],
+          STATUSCODE1: ["display.clearDisplay()"],
+          STATUSCODE2: { type: "string", regex: "^display\\.setTextSize\\(\\s*[1-5]\\s*\\)$" },
+          STATUSCODE3: { type: "string", regex: "^display\\.setCursor\\(\\s*\\d+\\s*,\\s*\\d+\\s*\\)$" },
+          STATUSCODE4: { type: "string", regex: "^display\\.(print|println)\\(.+\\)$" },
+          DISPLAY9: ["display()"],
+      },
       codes: [
         {
           code: `void __BLANK[WELCOMEFUNCTION]__{
@@ -479,7 +514,17 @@ Variables let the Arduino remember things like button states, menu positions, or
       id: 2,
       title: "Step 2: Practice with Variables",
       desc: "Fill in the blanks to practice different variable types.",
-
+      answerKey: {
+        NAMETYPE: ["String"],
+        NAME1: { type: "string" },
+        YEAR: { type: "range", min: 1900, max: 2100 },
+        MONTH: { type: "string" },
+        READY: ["true", "false"],
+        TEMP: { type: "number" },
+        DATETYPE: ["String"],
+        BUTTONTYPE: ["bool"],
+        NAME2: { type: "identifier" },
+      },
       codes: [
         {
           descBeforeCode: `**Naming Variables**:
@@ -569,8 +614,15 @@ days[__BLANK[DAY3]__] = Monday
 days[__BLANK[DAY4]__] = Sunday`,
 
           answerKey: {
-            DAY: ["Thursday"],
-            DAY2: ["Tuesday"],
+            ARRAYTYPE: ["String"],
+            ARRAYNAME: { type: "string", regex: "^[A-Za-z_][A-Za-z0-9_]*\\s*\\[\\s*\\]$" },
+            ARRAY: { type: "string", regex: "^\\{.*\\}$" },
+            VARRAYTYPE: ["String"],
+            VARRAYNAME: { type: "identifier" },
+            CALL: { type: "string", regex: "^[A-Za-z_][A-Za-z0-9_]*\\s*\\[\\s*\\d+\\s*\\]$" },
+
+            DAY: ['"Thursday"', "Thursday"],
+            DAY2: ['"Monday"', "Monday"],
             DAY3: ["0"],
             DAY4: ["6"],
         },
@@ -595,7 +647,14 @@ days[__BLANK[DAY4]__] = Sunday`,
 Think of at least four status that relates to your daily acitivity, like studying, working, playing, etc.
 Place those status in an array. Create a name for that array.`,
       hint: "This is the same structure used in your favoriteColor array.",
-
+      answerKey: {
+        STATUSTYPE: ["String", "const String"],
+        STATUSNAME: { type: "identifier" },
+        STATUSLIST1: { type: "string", regex: '^".+"$' },
+        STATUSLIST2: { type: "string", regex: '^".+"$' },
+        STATUSLIST3: { type: "string", regex: '^".+"$' },
+        STATUSLIST4: { type: "string", regex: '^".+"$' },
+      },
       codes: [
         {
           code: `^^// List of menu status messages
@@ -622,7 +681,23 @@ __BLANK[STATUSTYPE]__  __BLANK[STATUSNAME]__ = {
       desc: `Arrays don’t automatically know how many items they contain, so we store the total count in a variable.
 Create a variable that stores the total **number** of status in the array.`,
       hint: "We use this to handle scrolling and wrap-around behavior.",
+      answerKey: {
+        STATUSTYPE: ["String", "const String"],
+        STATUSNAME: { type: "identifier" },
+        STATUSLIST1: { type: "string", regex: '^".+"$' },
+        STATUSLIST2: { type: "string", regex: '^".+"$' },
+        STATUSLIST3: { type: "string", regex: '^".+"$' },
+        STATUSLIST4: { type: "string", regex: '^".+"$' },
+        TOTTYPE: ["int"],
+        TOTNAME: { type: "identifier" },
+        TOTNUM: ["4"],
+        TRACKTYPE: ["int"],
+        TRACKNAME: { type: "identifier" },
+        TRACKNUM: ["0"],
 
+        // depends on the list
+        OPTION: { type: "string" },
+      },
       codes: [
         {
           imageGridBeforeCode: {
@@ -665,7 +740,49 @@ What would the String option read?   __BLANK[OPTION]__`,
       title: "Step 6: Function for Menu Page",
       desc:
         "Now we create a menu page, where pressing Next or Previous button allows the user to toggle around the status options",
+      answerKey: {
+        STATUSTYPE: ["String", "const String"],
+        STATUSNAME: { type: "identifier" },
 
+        STATUSLIST1: { type: "string", regex: '^".+"$' },
+        STATUSLIST2: { type: "string", regex: '^".+"$' },
+        STATUSLIST3: { type: "string", regex: '^".+"$' },
+        STATUSLIST4: { type: "string", regex: '^".+"$' },
+
+        TOTTYPE: ["int"],
+        TOTNAME: { type: "identifier" },
+        TOTNUM: ["4"],
+
+        TRACKTYPE: ["int"],
+        TRACKNAME: { type: "identifier" },
+        TRACKNUM: ["0"],
+
+        WELCOMEFUNCTION: {
+          type: "string",
+          regex: "^[A-Za-z_][A-Za-z0-9_]*\\s*\\(\\s*\\)$",
+        },
+
+        STATUSFUNCTION: {
+          type: "string",
+          regex: "^[A-Za-z_][A-Za-z0-9_]*\\s*\\(\\s*\\)$",
+        },
+
+        DISPLAY1: ["display.clearDisplay()"],
+        DISPLAY2: { type: "string", regex: "^display\\.setTextSize\\(\\s*[1-5]\\s*\\)$" },
+        DISPLAY3: ["display.setTextColor(SSD1306_WHITE)"],
+        DISPLAY4: { type: "string", regex: "^display\\.(print|println)\\(.+\\)$" },
+        DISPLAY5: { type: "string", regex: "^display\\.setTextSize\\(\\s*[1-5]\\s*\\)$" },
+        DISPLAY6: { type: "string", regex: "^display\\.setCursor\\(\\s*\\d+\\s*,\\s*\\d+\\s*\\)$" },
+        DISPLAY7: { type: "string", regex: "^display\\.(print|println)\\(.+\\)$" },
+        DISPLAY8: ["display.display()"],
+
+        STATUSCODE1: ["display.clearDisplay()"],
+        STATUSCODE2: { type: "string", regex: "^display\\.setTextSize\\(\\s*[1-5]\\s*\\)$" },
+        STATUSCODE3: { type: "string", regex: "^display\\.setCursor\\(\\s*\\d+\\s*,\\s*\\d+\\s*\\)$" },
+        STATUSCODE4: { type: "string", regex: "^display\\.(print|println)\\(.+\\)$" },
+        STATUSNAME2: { type: "sameAs", target: "STATUSNAME" },
+        TRACKNAME2: { type: "sameAs", target: "TRACKNAME" },
+      },
       codes: [
         {
           code: `__BLANK[STATUSTYPE]__  __BLANK[STATUSNAME]__ = {
@@ -699,6 +816,22 @@ void __BLANK[STATUSFUNCTION]__{
         {
           descBeforeCode:
             "Now we use the same while loop idea, and we draw everything on the OLED screen inside a function.",
+            answerKey: {
+              SHOWMENU: { type: "identifier" },
+              SHOW1: ["clearDisplay()"],
+              SHOW2: { type: "string", regex: "^display\\.setTextSize\\(\\s*[1-5]\\s*\\)$" },
+              SHOW3: { type: "string", regex: "^display\\.setCursor\\(\\s*\\d+\\s*,\\s*\\d+\\s*\\)$" },
+              SHOW4: { type: "string", regex: '^".+"$' },
+
+              TOTNAME: { type: "identifier" },
+              TRACKNAME: { type: "identifier" },
+              HIGHLIGHT: { type: "string", regex: '^(\".*\"|\'.*\')$' },
+              NONHIGH: { type: "string", regex: '^(\".*\"|\'.*\')$' },
+
+              // should be something like options[]
+              STATUSARRAY: { type: "string" },
+              INCREMENT: { type: "string" }, 
+            },
           code: `^^void __BLANK[SHOWMENU]__() {
   display.__BLANK[SHOW1]__;           // clear display
   __BLANK[SHOW2]__;                   // set text size
@@ -766,7 +899,11 @@ Loops fix this problem by repeating the same code for each index in the array. I
       desc:
         "A while loop repeats a block of code as long as its condition is true. Here is a simple example that prints numbers.",
       hint: "Focus on the three parts: start value, condition, and update.",
-
+      answerKey: {
+        LOOP1: ["12"],   
+        LOOP2: ["num"],
+        LOOP3: ["2"],
+      },
       codes: [
         {
           title: "Practice: How While Loops are used",
@@ -789,6 +926,13 @@ What does the \`i\` read after while loop ends?    __BLANK[ANSWER]__`,
           title: "Loop Practice 1: Print Even Numbers",
           descBeforeCode:
             "Write a while loop that prints only the even numbers from 2 to 10. Start at 2 and increase by 2 at each loop.",
+            answerKey: {
+              LOOP5: ["3"],
+              LOOP6: ["x"],
+              LOOP7: ["30"],   
+              LOOP8: ["x"],
+              LOOP9: ["x + 3"],
+            },
           code: `^^int num = 2;
 while (num < __BLANK[LOOP1]__){
   Serial.println(__BLANK[LOOP2]__);
@@ -809,6 +953,14 @@ while (__BLANK[LOOP6]__ < __BLANK[LOOP7]__){
           title: "Loop Practice 3: Stop when a Number Reaches a Limit",
           descBeforeCode:
             "Write a while loop that multiplies the number by 2 each loop and stop when the number is greater than 100.",
+            answerKey: {
+              LOOP10: ["n"],
+              LOOP11: ["n"],
+              LOOP12: ["101"],
+              LOOP13: ["n"],
+              LOOP14: ["n"],
+              LOOP15: ["n * 2"],
+            },
           code: `^^int __BLANK[LOOP10]__ = 5;
 while (__BLANK[LOOP11]__ < __BLANK[LOOP12]__){
   Serial.println(__BLANK[LOOP13]__);
@@ -819,6 +971,12 @@ while (__BLANK[LOOP11]__ < __BLANK[LOOP12]__){
           title: "Loop Practice 4: Loop Until Botton Press",
           descBeforeCode:
             'Simulate a loop that keeps printing "Waiting..." until `ready` becomes `true`.',
+            answerKey: {
+              LOOP16: ["bool"],
+              LOOP17: ["false"],
+              LOOP11: ["ready"],
+              LOOP13: ['"Waiting..."'],
+            },
           code: `^^__BLANK[LOOP16]__ ready = __BLANK[LOOP17]__;
 while (__BLANK[LOOP11]__ == false){
   Serial.println(__BLANK[LOOP13]__);
@@ -828,6 +986,11 @@ while (__BLANK[LOOP11]__ == false){
           title: "Loop Practice 5: Loop through Array 1",
           descBeforeCode:
             "Loop through an array of integers and display the desired number.",
+            answerKey: {
+              LOOP14: ["6"],
+              LOOP15: ["11"],          
+              LOOP16: ["desiredNum"],  
+            },
           code: `^^int nums[] = {2, 4, 7, 9, 11, 14};
 int total = __BLANK[LOOP14]__;   ^^// total number of items in the array^^
 int desiredNum = __BLANK[LOOP15]__;
@@ -846,6 +1009,18 @@ j = j + 1 ^^ // increment to the next index^^
           title: "Loop Practice 6: Loop through Array 2",
           descBeforeCode:
             'Loop through an array of integers and display "Here is the number:" followed by the desired number.',
+            answerKey: {
+              LOOP17: ["nums[]"],
+              LOOP18: ["6"],
+              LOOP19: ["desiredNum"],
+              LOOP20: ["10"],
+              LOOP21: ["j"],
+              LOOP22: ["0"],
+              LOOP23: ["nums[j]"],
+              LOOP24: ["desiredNum"],
+              LOOP25: ["desiredNum"],
+              LOOP26: ["j"],
+            },
           code: `^^int __BLANK[LOOP17]__ = {4, 3, 2, 10, 1, 6};
 int total = __BLANK[LOOP18]__;   ^^// total number of items in the array^^
 int __BLANK[LOOP19]__ = __BLANK[LOOP20]__;   ^^// desired number to display^^
@@ -868,7 +1043,12 @@ while (__BLANK[LOOP21]__ < total) {
       title: "Step 3: While Loop for the Status Menu",
       desc: `Now we use a while loop to go through each item in the options array. Instead of printing numbers, we print status messages.
  This code will be very similar to how you did in the "Loop Through Array" practice.`,
-
+      answerKey: {
+        SL1: ["totalOptions"],
+        SL2: ["totalOptions"],
+        SL3: ["options[i]"],
+        SL4: ["i = i + 1"],
+      },
       codes: [
         {
           code: `^^const String options[] = {
@@ -901,7 +1081,11 @@ The loop stops when \`i\` becomes equal to \`totalOptions\`. This makes the code
       desc:
         "We want the menu to show which status is currently selected by displaying a symbol like > next to the status. We do this by checking if the loop index i matches a desired index number.",
       hint: "Use an if statement inside the while loop to decide when to draw the arrow.",
-
+      answerKey: {
+        SL1: ["totalOptions"],
+        SL5: ["0"],
+        SL6: ["totalOptions"],
+      },
       codes: [
         {
           code: `^^int indexChosen = 1;    ^^// example: 'Studying' is selected^^
@@ -945,7 +1129,70 @@ See that there are some spaces at the front of each status when there is no arro
       title: "Step 5: Create a Function that Draws the Menu on the OLED",
       desc:
         "Combining everything and creating the showMenu function.",
-
+      answerKey: {
+        WIDTH: ["128"],
+        HEIGHT: ["64", "32"],
+        HEIGHT2: ["HEIGHT"],
+        PREVN: { type: "range", min: 0, max: 13 },
+        NEXTN: { type: "range", min: 0, max: 13 },
+        SEL: { type: "identifier" },
+        SELN: { type: "range", min: 0, max: 13 },
+        BEGIN: ["begin"],
+        BEGINA: ["SSD1306_SWITCHCAPVCC"],
+        CLEAR: ["clearDisplay()"],
+        SETTEXTSIZE: [
+          "setTextSize(1)",
+          "setTextSize(2)",
+          "setTextSize(3)",
+          "setTextSize(4)",
+          "setTextSize(5)",
+        ],
+        SETTEXTCOLOR: [
+          "setTextColor(SSD1306_WHITE)",
+          "setTextColor(SSD1306_BLACK)",
+          "setTextColor(SSD1306_INVERSE)",
+        ],
+        SETCURSOR: ["setCursor"],
+        DISPLAY: ["display"],
+        NEXT: ["NEXT"],
+        INPUT1: ["INPUT_PULLUP"],
+        PINMODE: ["pinMode"],
+        SELECT: { type: "sameAs", target: "SEL" },
+        INPUT2: ["INPUT_PULLUP"],
+        STATUSTYPE: ["String", "const String"],
+        STATUSNAME: { type: "identifier" },
+        STATUSLIST1: { type: "string", regex: '^".+"$' },
+        STATUSLIST2: { type: "string", regex: '^".+"$' },
+        STATUSLIST3: { type: "string", regex: '^".+"$' },
+        STATUSLIST4: { type: "string", regex: '^".+"$' },
+        TOTTYPE: ["int"],
+        TOTNAME: { type: "identifier" },
+        TOTNUM: ["4"],
+        TRACKTYPE: ["int"],
+        TRACKNAME: { type: "identifier" },
+        TRACKNUM: ["0"],
+        WELCOMEFUNCTION: {
+          type: "string",
+          regex: "^[A-Za-z_][A-Za-z0-9_]*\\s*\\(\\s*\\)$",
+        },
+        STATUSFUNCTION: {
+          type: "string",
+          regex: "^[A-Za-z_][A-Za-z0-9_]*\\s*\\(\\s*\\)$",
+        },
+        DISPLAY1: ["display.clearDisplay()"],
+        DISPLAY2: { type: "string", regex: "^display\\.setTextSize\\(\\s*[1-5]\\s*\\)$" },
+        DISPLAY3: ["display.setTextColor(SSD1306_WHITE)"],
+        DISPLAY4: { type: "string", regex: "^display\\.(print|println)\\(.+\\)$" },
+        DISPLAY5: { type: "string", regex: "^display\\.setTextSize\\(\\s*[1-5]\\s*\\)$" },
+        DISPLAY6: { type: "string", regex: "^display\\.setCursor\\(\\s*\\d+\\s*,\\s*\\d+\\s*\\)$" },
+        DISPLAY7: { type: "string", regex: "^display\\.(print|println)\\(.+\\)$" },
+        DISPLAY8: ["display.display()"],
+        STATUSCODE1: ["display.clearDisplay()"],
+        STATUSCODE2: { type: "string", regex: "^display\\.setTextSize\\(\\s*[1-5]\\s*\\)$" },
+        STATUSCODE3: { type: "string", regex: "^display\\.setCursor\\(\\s*\\d+\\s*,\\s*\\d+\\s*\\)$" },
+        STATUSCODE4: { type: "string", regex: "^display\\.(print|println)\\(.+\\)$" },
+        DISPLAY9: ["display()"],
+      },
       codes: [
         {
           descBeforeCode: `This is what you should have so far. You will add the new function that shows menu with the other functions you have already made.`,
@@ -1009,6 +1256,21 @@ void __BLANK[STATUSFUNCTION]__{
         {
           descBeforeCode:
             "Now we use the same while loop idea, and we draw everything on the OLED screen inside a function.",
+            answerKey: {
+              SHOWMENU: { type: "identifier" },
+              SHOW1: ["clearDisplay()"],
+              SHOW2: { type: "string", regex: "^display\\.setTextSize\\(\\s*[1-5]\\s*\\)$" },
+              SHOW3: { type: "string", regex: "^display\\.setCursor\\(\\s*\\d+\\s*,\\s*\\d+\\s*\\)$" },
+              SHOW4: { type: "string", regex: '^".+"$' },
+              TOTNAME: { type: "identifier" },
+              TRACKNAME: { type: "identifier" },
+              HIGHLIGHT: { type: "string", regex: '^(\".*\"|\'.*\')$' },
+              NONHIGH: { type: "string", regex: '^(\".*\"|\'.*\')$' },
+
+              STATUSARRAY: { type: "string" }, 
+              INCREMENT: { type: "string" },   
+            },
+
           code: `^^void __BLANK[SHOWMENU]__() {
   display.__BLANK[SHOW1]__;      // clear display
   __BLANK[SHOW2]__;              // set text size
@@ -1120,6 +1382,11 @@ We'll use this pattern for all the buttons in the status board project.`,
           title: "Practice 1: Count Button Presses",
           descBeforeCode:
             "Each time you press the button, increase a counter by 1 and print it to the Serial Monitor.",
+      answerKey: {
+        BUTTON1: ["INPUT_PULLUP"],
+        BUTTON2: ["LOW"],
+        BUTTON3: ["1"],
+      },
           code: `^^#define BUTTON 2^^
 ^^int counter = 0;^^
 
@@ -1142,6 +1409,13 @@ We'll use this pattern for all the buttons in the status board project.`,
           title: "Practice 2: Toggle an LED On/Off",
           descBeforeCode:
             "Use the button to turn an LED on and off, switching state each time you press.",
+            answerKey: {
+              BUTTON4: ["#define"   ],
+              BUTTON5: ["BUTTON"],
+              BUTTON6: ["INPUT_PULLUP"],
+              BUTTON7: ["digitalRead(BUTTON)"],
+              BUTTON8: ["LOW"],
+            },
           code: `^^__BLANK[BUTTON4]__ BUTTON 2^^
 ^^#define LED 13^^
 
@@ -1166,6 +1440,13 @@ We'll use this pattern for all the buttons in the status board project.`,
           title: "Practice 3: Cycle Through Options in an Array",
           descBeforeCode:
             "This practice is similar to your menu page. Each press moves to the next item in the list and wraps around when it reaches the end.",
+            answerKey: {
+              BUTTON9: ["int"],
+              BUTTON10: ["BUTTON"],
+              BUTTON11: ["10"],
+              BUTTON12: ["digitalRead(BUTTON)"],
+              BUTTON13: ["LOW"],
+            },
           code: `^^#define BUTTON 2^^
 
 ^^String options[] = {"Red", "Blue", "Green", "Yellow"};^^
