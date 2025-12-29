@@ -8,9 +8,18 @@ type Props = {
   width?: string | number;
   apiBaseUrl?: string;
   screenTitle?: string;
+
+  /**
+   * Optional override for persistence.
+   * Pass something like: `${storagePrefix}:editor:arduino`
+   * so this editor persists per project + level.
+   *
+   * If omitted, falls back to the legacy key.
+   */
+  storageKey?: string;
 };
 
-const STORAGE_KEY = "esb:arduino:sketch";
+const LEGACY_STORAGE_KEY = "esb:arduino:sketch";
 
 /* Default contents + gray header comment */
 const DEFAULT_SKETCH = `/* Electric Board Code Editor */
@@ -28,12 +37,16 @@ export default function ArduinoEditor({
   width = "100%",
   apiBaseUrl = "http://localhost:4000",
   screenTitle = "Arduino",
+  storageKey,
 }: Props) {
   const hasWindow = typeof window !== "undefined";
   const storage = React.useMemo(
     () => (hasWindow ? window.localStorage : null),
     [hasWindow]
   );
+
+  // ✅ use scoped key if provided; otherwise fallback
+  const STORAGE_KEY = storageKey?.trim() ? storageKey.trim() : LEGACY_STORAGE_KEY;
 
   const [value, setValue] = React.useState<string>(DEFAULT_SKETCH);
   const [status, setStatus] = React.useState<string>("Ready.");
@@ -52,12 +65,12 @@ export default function ArduinoEditor({
   const editorRef = React.useRef<any>(null);
   const monacoRef = React.useRef<any>(null);
 
-  // Load initial from localStorage once
+  // Load initial from localStorage once (and when STORAGE_KEY changes)
   React.useEffect(() => {
     if (!storage) return;
     const saved = storage.getItem(STORAGE_KEY);
     if (saved && saved.trim()) setValue(saved);
-  }, [storage]);
+  }, [storage, STORAGE_KEY]);
 
   // Autosave (debounced)
   React.useEffect(() => {
@@ -71,7 +84,7 @@ export default function ArduinoEditor({
       }
     }, 350);
     return () => window.clearTimeout(t);
-  }, [value, storage]);
+  }, [value, storage, STORAGE_KEY]);
 
   const clearOutput = () => {
     setCompilerOutput("");
@@ -122,7 +135,9 @@ export default function ArduinoEditor({
         setStatus("✅ Verified. No compile errors.");
       } else {
         setStatus(
-          `❌ Compile failed (${errors.length} error${errors.length === 1 ? "" : "s"}).`
+          `❌ Compile failed (${errors.length} error${
+            errors.length === 1 ? "" : "s"
+          }).`
         );
       }
     } catch (e: any) {
@@ -428,7 +443,9 @@ export default function ArduinoEditor({
                   >
                     AI explanation
                   </div>
-                  <div style={{ whiteSpace: "pre-wrap", color: "#e5e7eb" }}>{aiHelp}</div>
+                  <div style={{ whiteSpace: "pre-wrap", color: "#e5e7eb" }}>
+                    {aiHelp}
+                  </div>
                 </>
               ) : null}
             </div>

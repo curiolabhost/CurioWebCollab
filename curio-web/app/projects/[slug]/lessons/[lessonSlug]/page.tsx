@@ -118,7 +118,9 @@ export default async function LessonSlugPage({ params }: PageProps) {
           </div>
         </div>
 
-        <LessonHeaderControls />
+        <LessonHeaderControls
+  viewModeKey={`curio:${slug}:${lessonSlug}:viewMode`}
+/>
       </div>
     </div>
   );
@@ -181,7 +183,7 @@ return (
         padding: "0px", // let CodeLessonBase handle padding
       }}
     >
-      <Lesson />
+      <Lesson slug={slug} lessonSlug={lessonSlug}/>
     </main>
   </div>
 );
