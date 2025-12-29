@@ -91,7 +91,7 @@ export default async function LessonSlugPage({ params }: PageProps) {
       >
         <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
           <Link
-            href={`/projects/${slug}/intro`}
+            href={`/dashboard`}
             style={{
               border: "1px solid #e5e7eb",
               borderRadius: 10,
@@ -183,7 +183,7 @@ return (
         padding: "0px", // let CodeLessonBase handle padding
       }}
     >
-      <Lesson slug={slug} lessonSlug={lessonSlug}/>
+      <Lesson slug={slug} lessonSlug={lessonSlug} />
     </main>
   </div>
 );
