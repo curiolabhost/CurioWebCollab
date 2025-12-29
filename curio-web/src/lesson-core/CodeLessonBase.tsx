@@ -209,6 +209,18 @@ function coerceViewMode(raw: string | null): ViewMode {
    Main
 ============================================================ */
 
+function parseCurioPtr(storagePrefix: string): { slug: string; lessonSlug: string } | null {
+  // expects: curio:<slug>:<lessonSlug>
+  if (!storagePrefix) return null;
+  const parts = storagePrefix.split(":");
+  if (parts.length < 3) return null;
+  if (parts[0] !== "curio") return null;
+  const slug = parts[1];
+  const lessonSlug = parts.slice(2).join(":");
+  if (!slug || !lessonSlug) return null;
+  return { slug, lessonSlug };
+}
+
 export default function CodeLessonBase({
   lessonSteps = {},
   storagePrefix = "lesson",
@@ -261,6 +273,19 @@ export default function CodeLessonBase({
     globalBlanksKey,
     localBlanksPrefixKey,
   ]);
+
+  // Tell dashboard which lesson is "currently active"
+React.useEffect(() => {
+  const ptr = parseCurioPtr(storagePrefix);
+  if (!ptr) return;
+
+  try {
+    window.localStorage.setItem("curio:activeLesson", JSON.stringify(ptr));
+    // Same-tab notification (storage event does NOT fire in the same tab)
+    window.dispatchEvent(new Event("curio:activeLesson"));
+  } catch {}
+}, [storagePrefix]);
+
 
   const EDITOR_KEYS = React.useMemo(() => {
     const prefix = storagePrefix || "lesson";
@@ -389,6 +414,34 @@ React.useEffect(() => {
 
   const lessonProgress =
     lessonStepsCount > 0 ? Math.round((doneInThisLesson / lessonStepsCount) * 100) : 0;
+
+React.useEffect(() => {
+  // Only persist after doneSet has loaded so we don't write a bogus 0%
+  if (!doneSetLoaded) return;
+
+  // 1) Persist total steps so the Dashboard can compute steps remaining + time remaining
+  try {
+    window.localStorage.setItem(
+      `${storagePrefix}:totalStepsAllLessons`,
+      JSON.stringify(totalStepsAllLessons)
+    );
+  } catch {}
+
+  // 2) Persist overall percent (your existing behavior)
+  storageSetJson(KEYS.overallProgressKey, overallProgress);
+
+  // 3) Dashboard updates instantly without refresh
+  try {
+    window.dispatchEvent(new Event("curio:progress"));
+  } catch {}
+}, [
+  doneSetLoaded,
+  storagePrefix,
+  totalStepsAllLessons,
+  KEYS.overallProgressKey,
+  overallProgress,
+]);
+
 
   // Mark done toggle for current step
   const currentStepKey = makeStepKey(lesson, safeStepIndex);

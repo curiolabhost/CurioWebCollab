@@ -1,7 +1,7 @@
 // app/components/DashboardHome.tsx
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { completedProjects } from "@/app/data/completedProjects";
@@ -36,15 +36,6 @@ type ProjectSchedule = {
   targetDate?: Date;
 };
 
-type ActiveProject = {
-  project: Project;
-  hoursCompleted: number; // numeric time logged by the user
-  schedule: ProjectSchedule;
-  startedDate: Date;
-  currentLesson: string;
-  nextLesson: string;
-};
-
 type CompletedProject = {
   project: Project;
   totalHours: number;
@@ -52,19 +43,57 @@ type CompletedProject = {
   completedDate: Date;
 };
 
+type ActivePtr = { slug: string; lessonSlug: string };
+
+type NavState = { lesson: number; stepIndex: number };
+
+function readJson<T>(key: string): T | null {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? (JSON.parse(raw) as T) : null;
+  } catch {
+    return null;
+  }
+}
+
+function writeJson(key: string, value: any) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+  } catch {}
+}
+
 /**
  * Your Project.hours is a string like "8-10 hours" or "15-20 hours".
- * For calculations, convert to a single number.
- * Strategy: midpoint for ranges; otherwise first number found.
+ * Beginner = first number in range
+ * Advanced = last number in range (if Advanced exists)
+ * Intermediate = average of ends (if Advanced exists), otherwise use last number
+ * If no range, use the single number.
  */
-function parseHoursToNumber(hoursText: string): number {
+function parseHoursToNumber(
+  hoursText: string,
+  opts?: { levelLabel?: string; difficulties?: string[] }
+): number {
   if (!hoursText) return 10;
+
   const nums = hoursText.match(/\d+(\.\d+)?/g)?.map((n) => parseFloat(n)) ?? [];
   if (nums.length === 0) return 10;
+
+  // single number
   if (nums.length === 1) return nums[0];
+
   const min = Math.min(...nums);
   const max = Math.max(...nums);
-  return (min + max) / 2;
+
+  const level = (opts?.levelLabel ?? "").toLowerCase();
+  const diffs = opts?.difficulties ?? [];
+  const hasAdvanced = diffs.includes("Advanced");
+
+  if (level.includes("beg")) return min;
+  if (level.includes("adv")) return max;
+
+  // Intermediate (or anything else)
+  if (hasAdvanced) return (min + max) / 2;
+  return max;
 }
 
 function daysBetween(a: Date, b: Date) {
@@ -72,44 +101,209 @@ function daysBetween(a: Date, b: Date) {
   return Math.ceil((b.getTime() - a.getTime()) / msPerDay);
 }
 
+function labelizeLessonSlug(lessonSlug: string) {
+  // "code-beg" -> "Code Beg", "levels/beginner" -> "Beginner"
+  const last = (lessonSlug || "").split("/").pop() || "";
+  return last
+    .replace(/[-_]+/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+    .trim();
+}
+
 export function DashboardHome() {
   const router = useRouter();
   const projects = PROJECTS;
+
   const availableProjects = projects.filter((p) => p.available);
   const unavailableProjects = projects.filter((p) => !p.available);
 
+  // --- REAL current project pointer + real progress ---
+  const [activePtr, setActivePtr] = useState<ActivePtr | null>(null);
+  const [activeProgress, setActiveProgress] = useState<number>(0);
+  const [activeNav, setActiveNav] = useState<NavState | null>(null);
 
-  const [activeProject, setActiveProject] = useState<ActiveProject>({
-    project: projects[0],
-    hoursCompleted: 8,
-    schedule: {
-      daysPerWeek: 3,
-      hoursPerDay: 2,
-      targetDate: new Date("2026-01-15"),
-    },
-    startedDate: new Date("2025-12-20"),
-    currentLesson: "Lesson 4: Sensor Calibration",
-    nextLesson: "Lesson 5: Motor Control Programming",
-  });
+  const [activeTotalSteps, setActiveTotalSteps] = useState<number>(0);
+  const [activeDoneCount, setActiveDoneCount] = useState<number>(0);
 
+  // --- UI state ---
   const [showScheduleModal, setShowScheduleModal] = useState(false);
-  const [tempSchedule, setTempSchedule] = useState<ProjectSchedule>(activeProject.schedule);
-
   const [activeTab, setActiveTab] = useState<"current" | "completed">("current");
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
 
-  const estimatedHoursNumber = useMemo(() => {
-    return Math.max(1, parseHoursToNumber(activeProject.project.hours));
-  }, [activeProject.project.hours]);
+  // --- Per-project schedule stored locally ---
+  const [schedule, setSchedule] = useState<ProjectSchedule>({ daysPerWeek: 3, hoursPerDay: 2 });
+  const [tempSchedule, setTempSchedule] = useState<ProjectSchedule>({ daysPerWeek: 3, hoursPerDay: 2 });
 
+  // Load pointer + progress + nav on mount, and refresh on custom events/storage
+  useEffect(() => {
+    function refreshActive() {
+      let ptr: { slug: string; lessonSlug: string } | null = null;
+
+      try {
+        const raw = localStorage.getItem("curio:activeLesson");
+        ptr = raw ? JSON.parse(raw) : null;
+      } catch {
+        ptr = null;
+      }
+
+      setActivePtr(ptr);
+
+      if (!ptr?.slug || !ptr?.lessonSlug) {
+        setActiveProgress(0);
+        setActiveNav(null);
+        setActiveTotalSteps(0);
+        setActiveDoneCount(0);
+        return;
+      }
+
+      const progressKey = `curio:${ptr.slug}:${ptr.lessonSlug}:overallProgress`;
+
+      try {
+        const raw = localStorage.getItem(progressKey);
+        const n = raw ? JSON.parse(raw) : 0;
+        setActiveProgress(typeof n === "number" ? n : 0);
+      } catch {
+        setActiveProgress(0);
+      }
+
+      const navKey = `curio:${ptr.slug}:${ptr.lessonSlug}:nav`;
+
+      try {
+        const raw = localStorage.getItem(navKey);
+        const nav = raw ? JSON.parse(raw) : null;
+
+        const lessonNum =
+          typeof nav?.lesson === "number" ? nav.lesson : parseInt(nav?.lesson, 10);
+        const stepNum =
+          typeof nav?.stepIndex === "number"
+            ? nav.stepIndex
+            : parseInt(nav?.stepIndex, 10);
+
+        setActiveNav(
+          Number.isFinite(lessonNum) && Number.isFinite(stepNum)
+            ? { lesson: lessonNum, stepIndex: stepNum }
+            : null
+        );
+      } catch {
+        setActiveNav(null);
+      }
+
+      // ✅ NEW: total step count persisted by CodeLessonBase
+      const totalStepsKey = `curio:${ptr.slug}:${ptr.lessonSlug}:totalStepsAllLessons`;
+      try {
+        const raw = localStorage.getItem(totalStepsKey);
+        const n = raw ? JSON.parse(raw) : 0;
+        setActiveTotalSteps(typeof n === "number" && Number.isFinite(n) ? n : 0);
+      } catch {
+        setActiveTotalSteps(0);
+      }
+
+      // ✅ NEW: doneSet array length
+      const doneSetKey = `curio:${ptr.slug}:${ptr.lessonSlug}:doneSet`;
+      try {
+        const raw = localStorage.getItem(doneSetKey);
+        const arr = raw ? JSON.parse(raw) : [];
+        setActiveDoneCount(Array.isArray(arr) ? arr.length : 0);
+      } catch {
+        setActiveDoneCount(0);
+      }
+    }
+
+    refreshActive();
+
+    const onActive = () => refreshActive();
+
+    const onStorage = (e: StorageEvent) => {
+      if (
+        e.key === "curio:activeLesson" ||
+        (e.key &&
+          (e.key.endsWith(":overallProgress") ||
+            e.key.endsWith(":nav") ||
+            e.key.endsWith(":totalStepsAllLessons") ||
+            e.key.endsWith(":doneSet")))
+      ) {
+        refreshActive();
+      }
+    };
+
+    window.addEventListener("curio:activeLesson", onActive as any);
+    window.addEventListener("curio:progress", onActive as any);
+    window.addEventListener("storage", onStorage);
+
+    return () => {
+      window.removeEventListener("curio:activeLesson", onActive as any);
+      window.removeEventListener("curio:progress", onActive as any);
+      window.removeEventListener("storage", onStorage);
+    };
+  }, []);
+
+  useEffect(() => {
+  if (!activePtr?.slug) return;
+
+  const key = `curio:dashboard:schedule:${activePtr.slug}`;
+  const saved = readJson<ProjectSchedule>(key);
+
+  if (saved?.daysPerWeek && saved?.hoursPerDay) {
+    setSchedule(saved);
+    setTempSchedule(saved);
+  }
+}, [activePtr?.slug]);
+
+
+  const currentProject = useMemo(() => {
+    if (!activePtr?.slug) return null;
+    return PROJECTS.find((p) => p.slug === activePtr.slug) ?? null;
+  }, [activePtr]);
+
+  const currentLevelLabel = useMemo(() => {
+    return activePtr?.lessonSlug ? labelizeLessonSlug(activePtr.lessonSlug) : "";
+  }, [activePtr]);
+
+  // Use the real persisted % (0..100)
   const progressPercent = useMemo(() => {
-    return Math.min(100, Math.max(0, (activeProject.hoursCompleted / estimatedHoursNumber) * 100));
-  }, [activeProject.hoursCompleted, estimatedHoursNumber]);
+    return Math.min(100, Math.max(0, Math.round(activeProgress)));
+  }, [activeProgress]);
+
+  // Total hours chosen based on range + level label + whether project has Advanced
+  const estimatedHoursNumber = useMemo(() => {
+    const hoursText = currentProject?.hours ?? "";
+    const diffs = currentProject?.difficulties ?? [];
+    return Math.max(
+      1,
+      parseHoursToNumber(hoursText, { levelLabel: currentLevelLabel, difficulties: diffs as any })
+    );
+  }, [currentProject, currentLevelLabel]);
+
+  // ✅ NEW: Step-based time remaining (preferred when we have step counts)
+  const stepsRemaining = useMemo(() => {
+    if (activeTotalSteps <= 0) return 0;
+    return Math.max(0, activeTotalSteps - activeDoneCount);
+  }, [activeTotalSteps, activeDoneCount]);
+
+  const hoursPerStep = useMemo(() => {
+    if (activeTotalSteps <= 0) return 0;
+    return estimatedHoursNumber / activeTotalSteps;
+  }, [estimatedHoursNumber, activeTotalSteps]);
+
+  const hoursRemaining = useMemo(() => {
+    if (hoursPerStep <= 0) return Math.max(0, estimatedHoursNumber - Math.round((estimatedHoursNumber * progressPercent) / 100));
+    return stepsRemaining * hoursPerStep;
+  }, [hoursPerStep, stepsRemaining, estimatedHoursNumber, progressPercent]);
+
+  // Approx hours completed for display
+  const hoursCompletedApprox = useMemo(() => {
+    // If we have step-based remaining, derive completed from that.
+    if (activeTotalSteps > 0 && hoursPerStep > 0) {
+      return Math.round(Math.max(0, estimatedHoursNumber - hoursRemaining));
+    }
+    // fallback to percent-based
+    return Math.round((estimatedHoursNumber * progressPercent) / 100);
+  }, [activeTotalSteps, hoursPerStep, estimatedHoursNumber, hoursRemaining, progressPercent]);
 
   const calculateCompletionDate = () => {
-    const remainingHours = Math.max(0, estimatedHoursNumber - activeProject.hoursCompleted);
-    const hoursPerWeek = Math.max(0.5, activeProject.schedule.daysPerWeek * activeProject.schedule.hoursPerDay);
+    const remainingHours = Math.max(0, hoursRemaining);
+    const hoursPerWeek = Math.max(0.5, schedule.daysPerWeek * schedule.hoursPerDay);
     const weeksNeeded = Math.ceil(remainingHours / hoursPerWeek);
 
     const completionDate = new Date();
@@ -118,44 +312,46 @@ export function DashboardHome() {
   };
 
   const calculateHoursDue = () => {
+    // Without a real startedDate, we approximate “due” as 0 (safe),
+    // or you can store a started date when first beginning.
+    // If you want: writeJson(`curio:dashboard:started:${slug}`, new Date().toISOString())
+    // For now, keep it simple but non-crashy.
+
+    const hoursDue = 0;
     const now = new Date();
-    const msPerDay = 1000 * 60 * 60 * 24;
-
-    const daysSinceStart = Math.floor((now.getTime() - activeProject.startedDate.getTime()) / msPerDay);
-    const weeksSinceStart = Math.max(0, daysSinceStart / 7);
-
-    const expectedHours =
-      weeksSinceStart * activeProject.schedule.daysPerWeek * activeProject.schedule.hoursPerDay;
-
-    const hoursDue = Math.max(0, Math.round(expectedHours - activeProject.hoursCompleted));
-
     const endOfWeek = new Date(now);
     endOfWeek.setDate(now.getDate() + (7 - now.getDay()));
-
     return { hours: hoursDue, dueDate: endOfWeek.toLocaleDateString() };
   };
 
   const handleSaveSchedule = () => {
-    setActiveProject((prev) => ({ ...prev, schedule: tempSchedule }));
+    if (activePtr?.slug) {
+      writeJson(`curio:dashboard:schedule:${activePtr.slug}`, tempSchedule);
+      setSchedule(tempSchedule);
+    }
     setShowScheduleModal(false);
-  };
-
-  const handleStartProject = (project: Project) => {
-    setActiveProject({
-      project,
-      hoursCompleted: 0,
-      schedule: { daysPerWeek: 3, hoursPerDay: 2 },
-      startedDate: new Date(),
-      currentLesson: "Lesson 1: Getting Started",
-      nextLesson: "Lesson 2: Build & Test",
-    });
-    setActiveTab("current");
   };
 
   const handleLogout = () => {
     localStorage.removeItem("currentUser");
     router.push("/account-setup/login");
   };
+
+  const handleContinue = () => {
+    if (!activePtr?.slug || !activePtr?.lessonSlug) return;
+    router.push(`/projects/${activePtr.slug}/lessons/${activePtr.lessonSlug}`);
+  };
+
+  const lastWatchedText = useMemo(() => {
+    if (!activeNav) return "—";
+    return `Lesson ${activeNav.lesson + 1}, Step ${activeNav.stepIndex + 1}`;
+  }, [activeNav]);
+
+  const upNextText = useMemo(() => {
+    if (!activeNav) return "—";
+    // naive “next step” display
+    return `Lesson ${activeNav.lesson + 1}, Step ${activeNav.stepIndex + 2}`;
+  }, [activeNav]);
 
   return (
     <div className="min-h-screen bg-white">
@@ -197,10 +393,7 @@ export function DashboardHome() {
             </button>
 
             <button
-              onClick={() => {
-                // placeholder for future route
-                setSidebarOpen(false);
-              }}
+              onClick={() => setSidebarOpen(false)}
               className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 text-gray-700 rounded-lg transition-colors"
             >
               <Compass className="w-5 h-5" />
@@ -208,10 +401,7 @@ export function DashboardHome() {
             </button>
 
             <button
-              onClick={() => {
-                // placeholder for future route
-                setSidebarOpen(false);
-              }}
+              onClick={() => setSidebarOpen(false)}
               className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 text-gray-700 rounded-lg transition-colors"
             >
               <BarChart className="w-5 h-5" />
@@ -219,10 +409,7 @@ export function DashboardHome() {
             </button>
 
             <button
-              onClick={() => {
-                // placeholder for future route
-                setSidebarOpen(false);
-              }}
+              onClick={() => setSidebarOpen(false)}
               className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 text-gray-700 rounded-lg transition-colors"
             >
               <FileText className="w-5 h-5" />
@@ -230,10 +417,7 @@ export function DashboardHome() {
             </button>
 
             <button
-              onClick={() => {
-                // placeholder for future route
-                setSidebarOpen(false);
-              }}
+              onClick={() => setSidebarOpen(false)}
               className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 text-gray-700 rounded-lg transition-colors"
             >
               <MessageSquare className="w-5 h-5" />
@@ -364,122 +548,140 @@ export function DashboardHome() {
           {/* CURRENT TAB */}
           {activeTab === "current" ? (
             <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                {/* Left Side */}
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Continue Learning</h3>
-
-                  <div className="relative mb-4 rounded-xl overflow-hidden group cursor-pointer">
-                    <img
-                      src={activeProject.project.image}
-                      alt={activeProject.project.title}
-                      className="w-full h-64 object-cover"
-                    />
-                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center group-hover:bg-black/50 transition-all">
-                      <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
-                        <Play className="w-8 h-8 text-sky-600 ml-1" />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-3">
-                    <div className="bg-sky-50 rounded-lg p-4">
-                      <div className="text-sm text-sky-600 mb-1">Last Watched</div>
-                      <div className="text-gray-900 font-medium">{activeProject.currentLesson}</div>
-                    </div>
-
-                    <div className="bg-blue-50 rounded-lg p-4">
-                      <div className="text-sm text-blue-600 mb-1">Up Next</div>
-                      <div className="text-gray-900 font-medium">{activeProject.nextLesson}</div>
-                    </div>
-
-                    <div className="bg-orange-50 rounded-lg p-4 border-l-4 border-orange-500">
-                      <div className="text-sm text-orange-700">
-                        <strong>{calculateHoursDue().hours} hours due</strong> by{" "}
-                        {calculateHoursDue().dueDate}
-                      </div>
-                    </div>
-                  </div>
+              {!currentProject ? (
+                <div className="text-gray-700">
+                  No active project yet. Open a project and start a lesson — then come back here.
                 </div>
+              ) : (
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                  {/* Left Side */}
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Continue Learning</h3>
 
-                {/* Right Side */}
-                <div>
-                  <div className="flex items-start justify-between mb-4 gap-4">
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                        {activeProject.project.title}
-                      </h3>
-                      <p className="text-gray-600">{activeProject.project.description}</p>
-                    </div>
-
-                    <span className="px-3 py-1 bg-sky-100 text-sky-700 rounded-full text-sm whitespace-nowrap">
-                      {activeProject.project.category}
-                    </span>
-                  </div>
-
-                  {/* Progress Bar */}
-                  <div className="mb-6">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm text-gray-600">Overall Progress</span>
-                      <span className="text-sm">{Math.round(progressPercent)}%</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-3">
-                      <div
-                        className="bg-gradient-to-r from-sky-800 to-sky-600 h-3 rounded-full transition-all"
-                        style={{ width: `${progressPercent}%` }}
+                    <div
+                      className="relative mb-4 rounded-xl overflow-hidden group cursor-pointer"
+                      onClick={handleContinue}
+                      role="button"
+                      aria-label="Continue current lesson"
+                    >
+                      <img
+                        src={currentProject.image}
+                        alt={currentProject.title}
+                        className="w-full h-64 object-cover"
                       />
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center group-hover:bg-black/50 transition-all">
+                        <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+                          <Play className="w-8 h-8 text-sky-600 ml-1" />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <div className="bg-sky-50 rounded-lg p-4">
+                        <div className="text-sm text-sky-600 mb-1">Current Level</div>
+                        <div className="text-gray-900 font-medium">
+                          {currentLevelLabel || "—"}
+                        </div>
+                      </div>
+
+                      <div className="bg-sky-50 rounded-lg p-4">
+                        <div className="text-sm text-sky-600 mb-1">Last Seen</div>
+                        <div className="text-gray-900 font-medium">{lastWatchedText}</div>
+                      </div>
+
+                      <div className="bg-orange-50 rounded-lg p-4 border-l-4 border-orange-500">
+                        <div className="text-sm text-orange-700">
+                          <strong>{calculateHoursDue().hours} hours due</strong> by{" "}
+                          {calculateHoursDue().dueDate}
+                        </div>
+                      </div>
                     </div>
                   </div>
 
-                  {/* Stats Grid */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Clock className="w-5 h-5 text-sky-600" />
-                        <span className="text-sm text-gray-600">Time Logged</span>
+                  {/* Right Side */}
+                  <div>
+                    <div className="flex items-start justify-between mb-4 gap-4">
+                      <div>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                          {currentProject.title}
+                        </h3>
+                        <p className="text-gray-600">{currentProject.description}</p>
                       </div>
-                      <div className="text-xl">
-                        {activeProject.hoursCompleted}h{" "}
-                        <span className="text-gray-500">/ {activeProject.project.estimatedHours}</span>
+
+                      <span className="px-3 py-1 bg-sky-100 text-sky-700 rounded-full text-sm whitespace-nowrap">
+                        {currentProject.category}
+                      </span>
+                    </div>
+
+                    {/* Progress Bar */}
+                    <div className="mb-6">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm text-gray-600">Overall Progress</span>
+                        <span className="text-sm">{progressPercent}%</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-3">
+                        <div
+                          className="bg-gradient-to-r from-sky-800 to-sky-600 h-3 rounded-full transition-all"
+                          style={{ width: `${progressPercent}%` }}
+                        />
                       </div>
                     </div>
 
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Calendar className="w-5 h-5 text-sky-600" />
-                        <span className="text-sm text-gray-600">Study Schedule</span>
+                    {/* Stats Grid */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                      <div className="bg-gray-50 rounded-lg p-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Clock className="w-5 h-5 text-sky-600" />
+                          <span className="text-sm text-gray-600">Estimated Time</span>
+                        </div>
+                        <div className="text-xl">
+                          {hoursCompletedApprox}h{" "}
+                          <span className="text-gray-500">/ ~{estimatedHoursNumber}h</span>
+                        </div>
+                        {activeTotalSteps > 0 ? (
+                          <div className="text-sm text-gray-600 mt-1">
+                            ~{Math.ceil(hoursRemaining)}h left ({stepsRemaining} steps)
+                          </div>
+                        ) : null}
                       </div>
-                      <div className="text-xl">{activeProject.schedule.daysPerWeek} days/week</div>
+
+                      <div className="bg-gray-50 rounded-lg p-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Calendar className="w-5 h-5 text-sky-600" />
+                          <span className="text-sm text-gray-600">Study Schedule</span>
+                        </div>
+                        <div className="text-xl">{schedule.daysPerWeek} days/week</div>
+                      </div>
+
+                      <div className="bg-gray-50 rounded-lg p-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Target className="w-5 h-5 text-sky-600" />
+                          <span className="text-sm text-gray-600">Est. Finish</span>
+                        </div>
+                        <div className="text-sm">{calculateCompletionDate()}</div>
+                      </div>
+
+                      <div className="bg-gray-50 rounded-lg p-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <TrendingUp className="w-5 h-5 text-sky-600" />
+                          <span className="text-sm text-gray-600">Daily Hours</span>
+                        </div>
+                        <div className="text-xl">{schedule.hoursPerDay}h/day</div>
+                      </div>
                     </div>
 
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Target className="w-5 h-5 text-sky-600" />
-                        <span className="text-sm text-gray-600">Target Date</span>
-                      </div>
-                      <div className="text-sm">{calculateCompletionDate()}</div>
-                    </div>
-
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <div className="flex items-center gap-2 mb-2">
-                        <TrendingUp className="w-5 h-5 text-sky-600" />
-                        <span className="text-sm text-gray-600">Daily Hours</span>
-                      </div>
-                      <div className="text-xl">{activeProject.schedule.hoursPerDay}h/day</div>
-                    </div>
+                    <button
+                      onClick={() => {
+                        setTempSchedule(schedule);
+                        setShowScheduleModal(true);
+                      }}
+                      className="w-full px-4 py-2 bg-sky-300 text-white rounded-lg hover:bg-sky-700 transition-colors"
+                    >
+                      Edit Schedule
+                    </button>
                   </div>
-
-                  <button
-                    onClick={() => {
-                      setTempSchedule(activeProject.schedule);
-                      setShowScheduleModal(true);
-                    }}
-                    className="w-full px-4 py-2 bg-sky-300 text-white rounded-lg hover:bg-sky-700 transition-colors"
-                  >
-                    Edit Schedule
-                  </button>
                 </div>
-              </div>
+              )}
             </div>
           ) : (
             /* COMPLETED TAB */
@@ -488,7 +690,7 @@ export function DashboardHome() {
                 {completedProjects.length === 0 ? (
                   <div className="text-gray-600">No completed projects yet.</div>
                 ) : (
-                  completedProjects.map((completed, index) => {
+                  completedProjects.map((completed: CompletedProject, index: number) => {
                     const daysTaken = daysBetween(completed.startedDate, completed.completedDate);
 
                     return (
@@ -504,25 +706,27 @@ export function DashboardHome() {
 
                         <div className="flex-1 w-full">
                           <div className="flex items-start justify-between mb-2 gap-3">
-                            <h3 className="text-lg font-semibold text-gray-900">{completed.project.title}</h3>
+                            <h3 className="text-lg font-semibold text-gray-900">
+                              {completed.project.title}
+                            </h3>
 
                             <div className="flex flex-wrap gap-2 justify-end">
-                                {(completed.project.difficulties ?? []).map((level) => (
-                                    <span
-                                    key={level}
-                                    className={[
-                                        "px-3 py-1 rounded-full text-sm whitespace-nowrap",
-                                        level === "Beginner"
-                                        ? "bg-green-100 text-green-700"
-                                        : level === "Intermediate"
-                                        ? "bg-yellow-100 text-yellow-700"
-                                        : "bg-red-100 text-red-700",
-                                    ].join(" ")}
-                                    >
-                                    {level}
-                                    </span>
-                                ))}
-                                </div>
+                              {(completed.project.difficulties ?? []).map((level) => (
+                                <span
+                                  key={level}
+                                  className={[
+                                    "px-3 py-1 rounded-full text-sm whitespace-nowrap",
+                                    level === "Beginner"
+                                      ? "bg-green-100 text-green-700"
+                                      : level === "Intermediate"
+                                      ? "bg-yellow-100 text-yellow-700"
+                                      : "bg-red-100 text-red-700",
+                                  ].join(" ")}
+                                >
+                                  {level}
+                                </span>
+                              ))}
+                            </div>
                           </div>
 
                           <p className="text-gray-600 text-sm mb-4">{completed.project.description}</p>
@@ -538,11 +742,15 @@ export function DashboardHome() {
                             </div>
                             <div>
                               <div className="text-sm text-gray-500 mb-1">Started</div>
-                              <div className="text-sm">{completed.startedDate.toLocaleDateString()}</div>
+                              <div className="text-sm">
+                                {completed.startedDate.toLocaleDateString()}
+                              </div>
                             </div>
                             <div>
                               <div className="text-sm text-gray-500 mb-1">Completed</div>
-                              <div className="text-sm">{completed.completedDate.toLocaleDateString()}</div>
+                              <div className="text-sm">
+                                {completed.completedDate.toLocaleDateString()}
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -572,22 +780,22 @@ export function DashboardHome() {
                     <h3 className="flex-1 text-gray-900 font-semibold">{project.title}</h3>
 
                     <div className="flex flex-wrap gap-1 justify-end">
-                        {(project.difficulties ?? []).map((level) => (
-                            <span
-                            key={level}
-                            className={[
-                                "px-2 py-1 rounded text-xs whitespace-nowrap",
-                                level === "Beginner"
-                                ? "bg-green-100 text-green-700"
-                                : level === "Intermediate"
-                                ? "bg-yellow-100 text-yellow-700"
-                                : "bg-red-100 text-red-700",
-                            ].join(" ")}
-                            >
-                            {level}
-                            </span>
-                        ))}
-                        </div>
+                      {(project.difficulties ?? []).map((level) => (
+                        <span
+                          key={level}
+                          className={[
+                            "px-2 py-1 rounded text-xs whitespace-nowrap",
+                            level === "Beginner"
+                              ? "bg-green-100 text-green-700"
+                              : level === "Intermediate"
+                              ? "bg-yellow-100 text-yellow-700"
+                              : "bg-red-100 text-red-700",
+                          ].join(" ")}
+                        >
+                          {level}
+                        </span>
+                      ))}
+                    </div>
                   </div>
 
                   <p className="text-gray-600 text-sm mb-4 line-clamp-2">{project.description}</p>
@@ -599,89 +807,75 @@ export function DashboardHome() {
                     </div>
 
                     <Link
-                    href={`/projects/${project.slug}`}
-                    onClick={(e) => e.stopPropagation()}
-                    className="px-4 py-2 bg-sky-50 text-sky-700 rounded-lg hover:bg-sky-100 transition-colors inline-flex items-center"
+                      href={`/projects/${project.slug}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="px-4 py-2 bg-sky-50 text-sky-700 rounded-lg hover:bg-sky-100 transition-colors inline-flex items-center"
                     >
-                    Learn more
+                      Learn more
                     </Link>
-
                   </div>
                 </div>
               </div>
             ))}
           </div>
         </div>
- <div className="mt-12">
-  <h2 className="text-xl font-semibold text-gray-900 mb-4">
-    Projects Coming Soon
-  </h2>
 
-  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-    {unavailableProjects.map((project) => (
-      <div
-        key={project.id}
-        className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100 hover:shadow-lg transition-shadow cursor-pointer"
-      >
-        <img
-          src={project.image}
-          alt={project.title}
-          className="w-full h-48 object-cover"
-        />
+        {/* Coming soon */}
+        <div className="mt-12">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Projects Coming Soon</h2>
 
-        <div className="p-5">
-          <div className="flex items-start justify-between mb-2 gap-3">
-            <h3 className="flex-1 text-gray-900 font-semibold">
-              {project.title}
-            </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {unavailableProjects.map((project) => (
+              <div
+                key={project.id}
+                className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100 hover:shadow-lg transition-shadow cursor-pointer"
+              >
+                <img src={project.image} alt={project.title} className="w-full h-48 object-cover" />
 
-            <div className="flex flex-wrap gap-1 justify-end">
-              {(project.difficulties ?? []).map((level) => (
-                <span
-                  key={level}
-                  className={[
-                    "px-2 py-1 rounded text-xs whitespace-nowrap",
-                    level === "Beginner"
-                      ? "bg-green-100 text-green-700"
-                      : level === "Intermediate"
-                      ? "bg-yellow-100 text-yellow-700"
-                      : "bg-red-100 text-red-700",
-                  ].join(" ")}
-                >
-                  {level}
-                </span>
-              ))}
-            </div>
-          </div>
+                <div className="p-5">
+                  <div className="flex items-start justify-between mb-2 gap-3">
+                    <h3 className="flex-1 text-gray-900 font-semibold">{project.title}</h3>
 
-          <p className="text-gray-600 text-sm mb-4 line-clamp-2">
-            {project.description}
-          </p>
+                    <div className="flex flex-wrap gap-1 justify-end">
+                      {(project.difficulties ?? []).map((level) => (
+                        <span
+                          key={level}
+                          className={[
+                            "px-2 py-1 rounded text-xs whitespace-nowrap",
+                            level === "Beginner"
+                              ? "bg-green-100 text-green-700"
+                              : level === "Intermediate"
+                              ? "bg-yellow-100 text-yellow-700"
+                              : "bg-red-100 text-red-700",
+                          ].join(" ")}
+                        >
+                          {level}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
 
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-gray-500">
-              <Clock className="w-4 h-4" />
-              <span className="text-sm">{project.hours}</span>
-            </div>
+                  <p className="text-gray-600 text-sm mb-4 line-clamp-2">{project.description}</p>
 
-            <Link
-              href={`/projects/${project.slug}`}
-              onClick={(e) => e.stopPropagation()}
-              className="px-4 py-2 bg-sky-50 text-sky-700 rounded-lg hover:bg-sky-100 transition-colors inline-flex items-center"
-            >
-              Learn more
-            </Link>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-gray-500">
+                      <Clock className="w-4 h-4" />
+                      <span className="text-sm">{project.hours}</span>
+                    </div>
+
+                    <Link
+                      href={`/projects/${project.slug}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="px-4 py-2 bg-sky-50 text-sky-700 rounded-lg hover:bg-sky-100 transition-colors inline-flex items-center"
+                    >
+                      Learn more
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
-      </div>
-    ))}
-  </div>
-</div>
-
-
-
-
-
       </div>
 
       {/* Schedule Modal */}
@@ -730,7 +924,7 @@ export function DashboardHome() {
                   With this schedule, you’ll complete the project by approximately{" "}
                   <strong>
                     {(() => {
-                      const remaining = Math.max(0, estimatedHoursNumber - activeProject.hoursCompleted);
+                      const remaining = Math.max(0, hoursRemaining);
                       const perWeek = Math.max(0.5, tempSchedule.daysPerWeek * tempSchedule.hoursPerDay);
                       const weeks = Math.ceil(remaining / perWeek);
                       const d = new Date();
