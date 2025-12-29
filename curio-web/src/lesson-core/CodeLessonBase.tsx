@@ -112,7 +112,6 @@ function renderWithInlineCode(
   const lines = String(text).split(/\n/);
 
   return lines.map((line, lineIdx) => {
-    // keep blank lines
     if (line === "") {
       return (
         <div key={`rtl-${lineIdx}`} className={styles.richTextLine}>
@@ -128,7 +127,6 @@ function renderWithInlineCode(
     return (
       <div key={`rtl-${lineIdx}`} className={styles.richTextLine}>
         {parts.map((part, idx) => {
-          // __BLANK[NAME]__
           const blankMatch = part.match(/^__BLANK\[([A-Z0-9_]+)\]__$/);
           if (blankMatch) {
             const name = blankMatch[1];
@@ -147,11 +145,9 @@ function renderWithInlineCode(
             );
           }
 
-          // `inline code`
           if (part.startsWith("`") && part.endsWith("`")) {
             const code = part.slice(1, -1);
 
-            // `***strong***` inside backticks (your old behavior)
             if (code.startsWith("***") && code.endsWith("***")) {
               const strong = code.slice(3, -3);
               return (
@@ -171,7 +167,6 @@ function renderWithInlineCode(
             );
           }
 
-          // **bold**
           if (part.startsWith("**") && part.endsWith("**")) {
             const boldText = part.slice(2, -2);
             return (
@@ -181,7 +176,6 @@ function renderWithInlineCode(
             );
           }
 
-          // normal text
           return (
             <span key={`txt-${lineIdx}-${idx}`} className={styles.stepDescText}>
               {part}
@@ -221,8 +215,14 @@ function parseCurioPtr(storagePrefix: string): { slug: string; lessonSlug: strin
   return { slug, lessonSlug };
 }
 
+function hasAnySteps(obj: any) {
+  if (!obj || typeof obj !== "object") return false;
+  return Object.keys(obj).length > 0;
+}
+
 export default function CodeLessonBase({
   lessonSteps = {},
+  circuitLessonSteps = {}, // optional “single-page track switch” mode
   storagePrefix = "lesson",
 
   doneSetKey,
@@ -234,28 +234,98 @@ export default function CodeLessonBase({
   apiBaseUrl = "http://localhost:4000",
 
   backRoute = "",
+
+  // ✅ NEW: route targets for your “separate pages” setup
+  codingLessonSlug = "code-beg",
+  circuitsLessonSlug = "circuit-beg",
 }: any) {
   const router = useRouter();
 
+  /* ============================================================
+     Coding | Circuits toggle
+  ============================================================ */
+
+  type LessonType = "coding" | "circuits";
+  const LESSON_TYPE_KEY = `${storagePrefix}:lessonType`;
+
+  // “Single-page track switch” only makes sense if BOTH tracks exist as props
+  const supportsInlineTracks = hasAnySteps(circuitLessonSteps);
+
+  const [lessonType, setLessonType] = React.useState<LessonType>("coding");
+
+  // Only read persisted track if inline-tracks mode is actually enabled
+  React.useEffect(() => {
+    if (!supportsInlineTracks) return;
+    const raw = storageGetString(LESSON_TYPE_KEY);
+    const next: LessonType = raw === "circuits" ? "circuits" : "coding";
+    setLessonType(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [supportsInlineTracks, LESSON_TYPE_KEY]);
+
+  // Persist track selection (only meaningful in inline-tracks mode)
+  React.useEffect(() => {
+    if (!supportsInlineTracks) return;
+    storageSetString(LESSON_TYPE_KEY, lessonType);
+  }, [supportsInlineTracks, LESSON_TYPE_KEY, lessonType]);
+
+  // ✅ Route-based switching when circuits are separate lesson pages
+  const onSelectCircuits = React.useCallback(() => {
+    if (supportsInlineTracks) {
+      setLessonType("circuits");
+      return;
+    }
+    const ptr = parseCurioPtr(storagePrefix);
+    if (!ptr) return;
+    if (ptr.lessonSlug === circuitsLessonSlug) return;
+    router.push(`/projects/${ptr.slug}/lessons/${circuitsLessonSlug}`);
+  }, [supportsInlineTracks, storagePrefix, circuitsLessonSlug, router]);
+
+  const onSelectCoding = React.useCallback(() => {
+    if (supportsInlineTracks) {
+      setLessonType("coding");
+      return;
+    }
+    const ptr = parseCurioPtr(storagePrefix);
+    if (!ptr) return;
+    if (ptr.lessonSlug === codingLessonSlug) return;
+    router.push(`/projects/${ptr.slug}/lessons/${codingLessonSlug}`);
+  }, [supportsInlineTracks, storagePrefix, codingLessonSlug, router]);
+
+  // Use a per-track prefix so Coding and Circuits don't overwrite each other
+  const trackPrefix = React.useMemo(() => {
+    // in “separate page” mode, trackPrefix should NOT change,
+    // because each page already has its own storagePrefix (curio:slug:lessonSlug)
+    if (!supportsInlineTracks) return storagePrefix;
+    return `${storagePrefix}:${lessonType}`;
+  }, [supportsInlineTracks, storagePrefix, lessonType]);
+
+  // Choose steps:
+  // - inline-tracks mode: switch between lessonSteps and circuitLessonSteps
+  // - separate-page mode: always use lessonSteps (because circuit page passes its own lessonSteps)
+  const activeLessonSteps = React.useMemo(() => {
+    if (!supportsInlineTracks) return lessonSteps || {};
+    return lessonType === "circuits" ? (circuitLessonSteps || {}) : (lessonSteps || {});
+  }, [supportsInlineTracks, lessonType, lessonSteps, circuitLessonSteps]);
+
   const getLessonStepsArray = React.useCallback(
     (lessonNum: number) => {
-      const entry = (lessonSteps as any)?.[lessonNum];
+      const entry = (activeLessonSteps as any)?.[lessonNum];
       if (Array.isArray(entry)) return entry; // backward compatibility
       return Array.isArray(entry?.steps) ? entry.steps : [];
     },
-    [lessonSteps]
+    [activeLessonSteps]
   );
 
   const getLessonPhrase = React.useCallback(
     (lessonNum: number) => {
-      const entry = (lessonSteps as any)?.[lessonNum];
+      const entry = (activeLessonSteps as any)?.[lessonNum];
       return typeof entry?.phrase === "string" ? entry.phrase : "";
     },
-    [lessonSteps]
+    [activeLessonSteps]
   );
 
   const KEYS = React.useMemo(() => {
-    const d = defaultKeys(storagePrefix);
+    const d = defaultKeys(trackPrefix);
     return {
       doneSetKey: doneSetKey || d.doneSetKey,
       overallProgressKey: overallProgressKey || d.overallProgressKey,
@@ -264,82 +334,85 @@ export default function CodeLessonBase({
       navKey: d.navKey,
       sidebarKey: d.sidebarKey,
       splitKey: d.splitKey,
-      viewModeKey: `${storagePrefix}:viewMode`,
+      viewModeKey: `${trackPrefix}:viewMode`,
     };
   }, [
-    storagePrefix,
+    trackPrefix,
     doneSetKey,
     overallProgressKey,
     globalBlanksKey,
     localBlanksPrefixKey,
   ]);
 
-  // Tell dashboard which lesson is "currently active"
-React.useEffect(() => {
-  const ptr = parseCurioPtr(storagePrefix);
-  if (!ptr) return;
+  // Tell dashboard which lesson is "currently active" (keep base storagePrefix)
+  React.useEffect(() => {
+    const ptr = parseCurioPtr(storagePrefix);
+    if (!ptr) return;
 
-  try {
-    window.localStorage.setItem("curio:activeLesson", JSON.stringify(ptr));
-    // Same-tab notification (storage event does NOT fire in the same tab)
-    window.dispatchEvent(new Event("curio:activeLesson"));
-  } catch {}
-}, [storagePrefix]);
-
+    try {
+      window.localStorage.setItem("curio:activeLesson", JSON.stringify(ptr));
+      window.dispatchEvent(new Event("curio:activeLesson"));
+    } catch {}
+  }, [storagePrefix]);
 
   const EDITOR_KEYS = React.useMemo(() => {
-    const prefix = storagePrefix || "lesson";
+    const prefix = trackPrefix || "lesson";
     return {
       arduinoSketchKey: `${prefix}:editor:arduino:sketch`,
       wokwiUrlKey: `${prefix}:editor:wokwi:url`,
       wokwiDiagramKey: `${prefix}:editor:wokwi:diagram`,
     };
-  }, [storagePrefix]);
+  }, [trackPrefix]);
 
   const totalStepsAllLessons = React.useMemo(
-    () => countTotalStepsFlexible(lessonSteps),
-    [lessonSteps]
+    () => countTotalStepsFlexible(activeLessonSteps),
+    [activeLessonSteps]
   );
 
-  const lessonsList = React.useMemo(() => lessonNumbers(lessonSteps), [lessonSteps]);
+  const lessonsList = React.useMemo(() => lessonNumbers(activeLessonSteps), [activeLessonSteps]);
 
-  // Read persisted navigation (lesson + step) from localStorage
-  
-const firstLesson = lessonsList[0] ?? 1;
+  const firstLesson = lessonsList[0] ?? 1;
+  const [lesson, setLesson] = React.useState<number>(firstLesson);
+  const [stepIndex, setStepIndex] = React.useState<number>(0);
 
-// deterministic initial render (server + client match)
-const [lesson, setLesson] = React.useState<number>(firstLesson);
-const [stepIndex, setStepIndex] = React.useState<number>(0);
+  // When inline-tracks toggle changes, reset navigation inside the page
+  React.useEffect(() => {
+    if (!supportsInlineTracks) return;
+    const fl = lessonsList[0] ?? 1;
+    setLesson(fl);
+    setStepIndex(0);
+    setExpandedLessons([fl]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [supportsInlineTracks, lessonType]);
 
-// after mount, load persisted nav (client only)
-React.useEffect(() => {
-  const v = storageGetJson<{ lesson: number; stepIndex: number }>(KEYS.navKey);
-  if (v && Number.isFinite(v.lesson) && Number.isFinite(v.stepIndex)) {
-    setLesson(v.lesson);
-    setStepIndex(v.stepIndex);
-  }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [KEYS.navKey]);
-
+  // after mount, load persisted nav (client only)
+  React.useEffect(() => {
+    const v = storageGetJson<{ lesson: number; stepIndex: number }>(KEYS.navKey);
+    if (v && Number.isFinite(v.lesson) && Number.isFinite(v.stepIndex)) {
+      setLesson(v.lesson);
+      setStepIndex(v.stepIndex);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [KEYS.navKey]);
 
   React.useEffect(() => {
     storageSetJson(KEYS.navKey, { lesson, stepIndex });
   }, [KEYS.navKey, lesson, stepIndex]);
 
   // Done set
-const [doneSet, setDoneSet] = React.useState<Set<string>>(() => new Set());
-const [doneSetLoaded, setDoneSetLoaded] = React.useState(false);
+  const [doneSet, setDoneSet] = React.useState<Set<string>>(() => new Set());
+  const [doneSetLoaded, setDoneSetLoaded] = React.useState(false);
 
-React.useEffect(() => {
-  const raw = storageGetJson<string[]>(KEYS.doneSetKey);
-  if (Array.isArray(raw)) setDoneSet(new Set(raw));
-  setDoneSetLoaded(true);
-}, [KEYS.doneSetKey]);
+  React.useEffect(() => {
+    const raw = storageGetJson<string[]>(KEYS.doneSetKey);
+    if (Array.isArray(raw)) setDoneSet(new Set(raw));
+    setDoneSetLoaded(true);
+  }, [KEYS.doneSetKey]);
 
-React.useEffect(() => {
-  if (!doneSetLoaded) return; // IMPORTANT: prevent wiping storage on mount
-  storageSetJson(KEYS.doneSetKey, Array.from(doneSet));
-}, [KEYS.doneSetKey, doneSet, doneSetLoaded]);
+  React.useEffect(() => {
+    if (!doneSetLoaded) return;
+    storageSetJson(KEYS.doneSetKey, Array.from(doneSet));
+  }, [KEYS.doneSetKey, doneSet, doneSetLoaded]);
 
   // Sidebar expanded persisted
   const [sidebarExpanded, setSidebarExpanded] = React.useState<boolean>(() => {
@@ -351,7 +424,7 @@ React.useEffect(() => {
     storageSetJson(KEYS.sidebarKey, sidebarExpanded);
   }, [KEYS.sidebarKey, sidebarExpanded]);
 
-  // View mode (scoped by storagePrefix)
+  // View mode (scoped by trackPrefix)
   const readViewMode = React.useCallback((): ViewMode => {
     return coerceViewMode(storageGetString(KEYS.viewModeKey));
   }, [KEYS.viewModeKey]);
@@ -368,7 +441,6 @@ React.useEffect(() => {
     window.addEventListener("storage", onStorage);
     window.addEventListener(VIEW_MODE_EVENT, update as any);
 
-    // keep state in sync if KEY changes
     update();
 
     return () => {
@@ -376,8 +448,6 @@ React.useEffect(() => {
       window.removeEventListener(VIEW_MODE_EVENT, update as any);
     };
   }, [KEYS.viewModeKey, readViewMode]);
-
-  const showSplit = viewMode === "code" || viewMode === "circuit";
 
   // Current step data
   const steps = getLessonStepsArray(lesson);
@@ -416,31 +486,73 @@ React.useEffect(() => {
     lessonStepsCount > 0 ? Math.round((doneInThisLesson / lessonStepsCount) * 100) : 0;
 
 React.useEffect(() => {
-  // Only persist after doneSet has loaded so we don't write a bogus 0%
   if (!doneSetLoaded) return;
 
-  // 1) Persist total steps so the Dashboard can compute steps remaining + time remaining
+  // 1) Always persist THIS page’s total steps
   try {
     window.localStorage.setItem(
-      `${storagePrefix}:totalStepsAllLessons`,
+      `${trackPrefix}:totalStepsAllLessons`,
       JSON.stringify(totalStepsAllLessons)
     );
   } catch {}
 
-  // 2) Persist overall percent (your existing behavior)
+  // 2) Persist canonical totals
+  const ptr = parseCurioPtr(storagePrefix);
+  if (ptr) {
+    const codingPrefix = `curio:${ptr.slug}:${codingLessonSlug}`;
+    const circuitsPrefix = `curio:${ptr.slug}:${circuitsLessonSlug}`;
+
+    const isCodingPage = ptr.lessonSlug === codingLessonSlug;
+    const isCircuitsPage = ptr.lessonSlug === circuitsLessonSlug;
+
+    try {
+      if (isCodingPage) {
+        window.localStorage.setItem(
+          `${codingPrefix}:totalStepsAllLessons`,
+          JSON.stringify(totalStepsAllLessons)
+        );
+      } else if (isCircuitsPage) {
+        window.localStorage.setItem(
+          `${circuitsPrefix}:totalStepsAllLessons`,
+          JSON.stringify(totalStepsAllLessons)
+        );
+      }
+
+      const codingTotal =
+        safeJsonParse<number>(
+          window.localStorage.getItem(`${codingPrefix}:totalStepsAllLessons`)
+        ) ?? 0;
+
+      const circuitsTotal =
+        safeJsonParse<number>(
+          window.localStorage.getItem(`${circuitsPrefix}:totalStepsAllLessons`)
+        ) ?? 0;
+
+      window.localStorage.setItem(
+        `curio:${ptr.slug}:totalStepsAllLessons:ALL`,
+        JSON.stringify(codingTotal + circuitsTotal)
+      );
+    } catch {}
+  }
+
+  // 3) Persist overall percent for THIS page
   storageSetJson(KEYS.overallProgressKey, overallProgress);
 
-  // 3) Dashboard updates instantly without refresh
+  // 4) Notify dashboard
   try {
     window.dispatchEvent(new Event("curio:progress"));
   } catch {}
 }, [
   doneSetLoaded,
-  storagePrefix,
+  trackPrefix,
   totalStepsAllLessons,
   KEYS.overallProgressKey,
   overallProgress,
+  storagePrefix,
+  codingLessonSlug,
+  circuitsLessonSlug,
 ]);
+
 
 
   // Mark done toggle for current step
@@ -499,10 +611,7 @@ React.useEffect(() => {
      GuidedCodeBlock shared state + persistence (per step)
   ============================================================ */
 
-  // per-step local blanks key
   const localStorageKeyForThisStep = `${KEYS.localBlanksPrefixKey}:${currentStepKey}`;
-
-  // per-step guided UI state key
   const guidedUiKeyForThisStep = `${KEYS.localBlanksPrefixKey}:UI:${currentStepKey}`;
 
   const [localBlanks, setLocalBlanks] = React.useState<Record<string, any>>({});
@@ -521,18 +630,15 @@ React.useEffect(() => {
   const [checkAttempts, setCheckAttempts] = React.useState<number>(0);
   const [blankAttemptsByName, setBlankAttemptsByName] = React.useState<Record<string, number>>({});
 
-  // Load GLOBAL blanks once
   React.useEffect(() => {
     const raw = storageGetJson<Record<string, any>>(KEYS.globalBlanksKey);
     setGlobalBlanks(raw && typeof raw === "object" ? raw : {});
   }, [KEYS.globalBlanksKey]);
 
-  // Persist GLOBAL blanks
   React.useEffect(() => {
     storageSetJson(KEYS.globalBlanksKey, globalBlanks || {});
   }, [KEYS.globalBlanksKey, globalBlanks]);
 
-  // Load LOCAL blanks + GUIDED UI whenever step changes (key changes)
   React.useEffect(() => {
     const raw = storageGetJson<Record<string, any>>(localStorageKeyForThisStep);
     setLocalBlanks(raw && typeof raw === "object" ? raw : {});
@@ -541,26 +647,29 @@ React.useEffect(() => {
 
     setBlankStatus(ui?.blankStatus && typeof ui.blankStatus === "object" ? ui.blankStatus : {});
     setActiveBlankHint(ui?.activeBlankHint ?? null);
-    setAiHelpByBlank(ui?.aiHelpByBlank && typeof ui.aiHelpByBlank === "object" ? ui.aiHelpByBlank : {});
+    setAiHelpByBlank(
+      ui?.aiHelpByBlank && typeof ui.aiHelpByBlank === "object" ? ui.aiHelpByBlank : {}
+    );
     setAiHintLevelByBlank(
-      ui?.aiHintLevelByBlank && typeof ui.aiHintLevelByBlank === "object" ? ui.aiHintLevelByBlank : {}
+      ui?.aiHintLevelByBlank && typeof ui.aiHintLevelByBlank === "object"
+        ? ui.aiHintLevelByBlank
+        : {}
     );
     setCheckAttempts(Number.isFinite(ui?.checkAttempts) ? ui.checkAttempts : 0);
     setBlankAttemptsByName(
-      ui?.blankAttemptsByName && typeof ui.blankAttemptsByName === "object" ? ui.blankAttemptsByName : {}
+      ui?.blankAttemptsByName && typeof ui.blankAttemptsByName === "object"
+        ? ui.blankAttemptsByName
+        : {}
     );
 
-    // ephemeral (do not persist)
     setAiLoadingKey(null);
     setAiLastRequestAtByKey({});
   }, [localStorageKeyForThisStep, guidedUiKeyForThisStep]);
 
-  // Persist LOCAL blanks for this step
   React.useEffect(() => {
     storageSetJson(localStorageKeyForThisStep, localBlanks || {});
   }, [localStorageKeyForThisStep, localBlanks]);
 
-  // Persist GUIDED UI state for this step (debounced)
   React.useEffect(() => {
     const payload = {
       blankStatus: blankStatus || {},
@@ -586,7 +695,6 @@ React.useEffect(() => {
     blankAttemptsByName,
   ]);
 
-  // What GuidedCodeBlock should render from
   const mergedBlanks = React.useMemo(
     () => ({ ...(globalBlanks || {}), ...(localBlanks || {}) }),
     [globalBlanks, localBlanks]
@@ -604,9 +712,7 @@ React.useEffect(() => {
     return (
       <div className={styles.imageGrid}>
         {items.map((img: any, idx: number) => {
-          const src =
-            typeof img === "string" ? img : img?.src || img?.uri || img?.url || "";
-
+          const src = typeof img === "string" ? img : img?.src || img?.uri || img?.url || "";
           const caption = typeof img === "string" ? "" : String(img?.caption ?? "");
 
           if (!src) return null;
@@ -648,8 +754,8 @@ React.useEffect(() => {
             <div className="flex-1 max-w-xs">
               <div className="text-sm text-gray-400 mb-2">Overall</div>
               <div className="text-gray-700 mb-2">
-                  {doneSetLoaded ? `${overallProgress}% complete` : "Loading progress..."}
-                </div>
+                {doneSetLoaded ? `${overallProgress}% complete` : "Loading progress..."}
+              </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
                 <div
                   className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
@@ -662,7 +768,7 @@ React.useEffect(() => {
               <div className="text-sm text-gray-400 mb-2">This lesson</div>
               <div className="text-gray-700 mb-2">
                 {doneSetLoaded ? `${lessonProgress}% of steps` : "Loading progress..."}
-                </div>
+              </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
                 <div
                   className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
@@ -843,7 +949,43 @@ React.useEffect(() => {
         <div className={`w-96 bg-gray-50 border-l border-gray-200 overflow-y-auto ${styles.hideScrollbar}`}>
           <div className="p-5">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-gray-900 font-bold">Lessons & Steps</h3>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={onSelectCircuits}
+                  className={[
+                    "px-3 py-1 rounded-full text-sm border transition-colors",
+                    // highlight based on either inline toggle OR route
+                    (() => {
+                      if (supportsInlineTracks) return lessonType === "circuits";
+                      const ptr = parseCurioPtr(storagePrefix);
+                      return ptr?.lessonSlug === circuitsLessonSlug;
+                    })()
+                      ? "bg-sky-700 text-white border-sky-700"
+                      : "bg-white text-gray-700 border-gray-200 hover:bg-gray-100",
+                  ].join(" ")}
+                >
+                  Circuits
+                </button>
+
+                <button
+                  type="button"
+                  onClick={onSelectCoding}
+                  className={[
+                    "px-3 py-1 rounded-full text-sm border transition-colors",
+                    (() => {
+                      if (supportsInlineTracks) return lessonType === "coding";
+                      const ptr = parseCurioPtr(storagePrefix);
+                      return ptr?.lessonSlug === codingLessonSlug;
+                    })()
+                      ? "bg-sky-700 text-white border-sky-700"
+                      : "bg-white text-gray-700 border-gray-200 hover:bg-gray-100",
+                  ].join(" ")}
+                >
+                  Coding
+                </button>
+              </div>
+
               <button
                 type="button"
                 onClick={() => setSidebarExpanded(false)}
@@ -857,19 +999,17 @@ React.useEffect(() => {
               {lessonsList.map((lessonNum) => {
                 const lessonStepsArr = getLessonStepsArray(lessonNum);
                 const expanded = expandedLessons.includes(lessonNum);
-
                 const lessonSubtitle = getLessonPhrase(lessonNum);
 
                 const isLessonActive = lessonNum === lesson;
                 const allStepsDone =
                   lessonStepsArr.length > 0 &&
-                  lessonStepsArr.every((_: any, idx: number) => doneSet.has(makeStepKey(lessonNum, idx)));
+                  lessonStepsArr.every((_: any, idx: number) =>
+                    doneSet.has(makeStepKey(lessonNum, idx))
+                  );
 
                 return (
-                  <div
-                    key={lessonNum}
-                    className="bg-white rounded-lg border border-gray-200 overflow-hidden"
-                  >
+                  <div key={lessonNum} className="bg-white rounded-lg border border-gray-200 overflow-hidden">
                     <button
                       onClick={() => toggleLesson(lessonNum)}
                       type="button"
@@ -882,19 +1022,11 @@ React.useEffect(() => {
                       }`}
                     >
                       <div className="text-left">
-                        <div
-                          className={`text-sm mb-1 ${
-                            isLessonActive ? "text-indigo-600" : "text-gray-900"
-                          }`}
-                        >
+                        <div className={`text-sm mb-1 ${isLessonActive ? "text-indigo-600" : "text-gray-900"}`}>
                           Lesson {lessonNum}
                         </div>
                         {lessonSubtitle ? (
-                          <div
-                            className={`text-xs ${
-                              isLessonActive ? "text-indigo-500" : "text-gray-500"
-                            }`}
-                          >
+                          <div className={`text-xs ${isLessonActive ? "text-indigo-500" : "text-gray-500"}`}>
                             {lessonSubtitle}
                           </div>
                         ) : null}
@@ -931,9 +1063,7 @@ React.useEffect(() => {
                               }`}
                             >
                               <span className="mr-2 text-s text-gray-600">{idx + 1}.</span>
-                              <span>
-                                {String(st.title).replace(/^(Step\s*)?\d+\s*:\s*/i, "")}
-                              </span>
+                              <span>{String(st.title).replace(/^(Step\s*)?\d+\s*:\s*/i, "")}</span>
                             </button>
                           );
                         })}
