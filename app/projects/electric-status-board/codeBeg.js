@@ -1478,7 +1478,14 @@ We'll use this pattern for all the buttons in the status board project.`,
           title: "Practice 4: Only React to a Long Press",
           descBeforeCode:
             "Make your code respond only if the button is held down for about 2 seconds, not just tapped.",
-          code: `^^__BLANK[BUTTON14]__  __BLANK[BUTTON15]__  =  __BLANK[BUTTON16]__^^   // define button, connected to pin 10
+            answerKey: {
+              BUTTON14: ["#define"],
+              BUTTON15: ["BUTTON"],
+              BUTTON16: ["10"],
+              BUTTON17: ["LOW"],
+              BUTTON18: ["LOW"],
+            },
+          code: `^^__BLANK[BUTTON14]__  __BLANK[BUTTON15]__  __BLANK[BUTTON16]__^^   // define button, connected to pin 10
 
 ^^void setup() {^^
 ^^  pinMode(BUTTON, INPUT_PULLUP);^^
@@ -1486,7 +1493,7 @@ We'll use this pattern for all the buttons in the status board project.`,
 ^^}^^
 
 ^^void loop() {^^
-^^  if (__BLANK[BUTTON16]__ == __BLANK[BUTTON17]__) {^^   // if button is pressed
+^^  if (digitalRead(BUTTON) == __BLANK[BUTTON17]__) {^^   // if button is pressed
 ^^    delay(2000);^^                                      // wait 2 seconds. This prevents the flickering of buttons!!
 
 ^^    if (digitalRead(BUTTON) == __BLANK[BUTTON18]__) {^^  // still pressed?
@@ -1507,7 +1514,11 @@ We'll use this pattern for all the buttons in the status board project.`,
       desc:
         "Real buttons can be noisy. When you press them, they may rapidly flicker between HIGH and LOW for a few milliseconds. This is called 'bouncing'. A **debounce helper function** makes sure we only react to a clean, stable press.",
       hint: "The helper checks the pin, waits a bit, and checks again to confirm the press. Make sure variable names match what you have declared previously.",
-
+      answerKey: {
+        HELPER1: ["isPressed"],
+        HELPER2: ["digitalRead(pin) == LOW"],
+        HELPER3: ["delay(20)"],
+      },
       codes: [
         {
           title: `Example Code: Debouncing Function`,
@@ -1541,6 +1552,70 @@ We'll use this pattern for all the buttons in the status board project.`,
         {
           descBeforeCode: `This is what you have done so far including the most recent function for debouncing with buttons.`,
           title: `Up to date full code`,
+          answerKey: {
+            WIDTH: ["128"],
+            HEIGHT: ["64", "32"],
+            HEIGHT2: ["HEIGHT"],
+            PREVN: { type: "range", min: 0, max: 13 },
+            NEXTN: { type: "range", min: 0, max: 13 },
+            SEL: { type: "identifier" },
+            SELN: { type: "range", min: 0, max: 13 },
+            STATUSTYPE: ["String", "const String"],
+            STATUSNAME: { type: "identifier" },
+            STATUSLIST1: { type: "string", regex: '^".+"$' },
+            STATUSLIST2: { type: "string", regex: '^".+"$' },
+            STATUSLIST3: { type: "string", regex: '^".+"$' },
+            STATUSLIST4: { type: "string", regex: '^".+"$' },
+            TOTTYPE: ["int"],
+            TOTNAME: { type: "identifier" },
+            TOTNUM: ["4"],
+            TRACKTYPE: ["int"],
+            TRACKNAME: { type: "identifier" },
+            TRACKNUM: ["0"],
+            BEGIN: ["begin"],
+            BEGINA: ["SSD1306_SWITCHCAPVCC"],
+            CLEAR: ["clearDisplay()"],
+            SETTEXTSIZE: [
+              "setTextSize(1)",
+              "setTextSize(2)",
+              "setTextSize(3)",
+              "setTextSize(4)",
+              "setTextSize(5)",
+            ],
+            SETTEXTCOLOR: [
+              "setTextColor(SSD1306_WHITE)",
+              "setTextColor(SSD1306_BLACK)",
+              "setTextColor(SSD1306_INVERSE)",
+            ],
+            SETCURSOR: ["setCursor"],
+            DISPLAY: ["display"],
+            NEXT: ["NEXT"],
+            INPUT1: ["INPUT_PULLUP"],
+            PINMODE: ["pinMode"],
+            SELECT: { type: "sameAs", target: "SEL" },
+            INPUT2: ["INPUT_PULLUP"],
+            WELCOMEFUNCTION: {
+              type: "string",
+              regex: "^[A-Za-z_][A-Za-z0-9_]*\\s*\\(\\s*\\)$",
+            },
+            STATUSFUNCTION: {
+              type: "string",
+              regex: "^[A-Za-z_][A-Za-z0-9_]*\\s*\\(\\s*\\)$",
+            },
+            SHOWMENU: { type: "identifier" },
+            SHOW1: ["clearDisplay()"],
+            SHOW2: { type: "string", regex: "^display\\.setTextSize\\(\\s*[1-5]\\s*\\)$" },
+            SHOW3: { type: "string", regex: "^display\\.setCursor\\(\\s*\\d+\\s*,\\s*\\d+\\s*\\)$" },
+            SHOW4: { type: "string", regex: '^".+"$' },
+            HIGHLIGHT: { type: "string", regex: '^(\".*\"|\'.*\')$' },
+            NONHIGH: { type: "string", regex: '^(\".*\"|\'.*\')$' },
+            STATUSARRAY: { type: "string" },
+            INCREMENT: { type: "string" },
+
+            HELPER1: ["isPressed"],
+            HELPER2: ["digitalRead(pin) == LOW"],
+            HELPER3: ["delay(20)"],
+          },
           code: `#include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
@@ -1661,6 +1736,13 @@ For example, let's say your __BLANK[TRACKNAME]__ == 2, and you pressed NEXT, mak
 - If the counter becomes smaller than 0, wrap it around to the **last item** in the array __BLANK[STATUSNAME]__.
 - Call the function __BLANK[SHOWMENU]__ that would give the menu screen to show the newly selected item.
 - Add a small delay so the button doesn't scroll too quickly.`,
+          answerKey: {
+            HELPER1: ["isPressed"],
+            VL1: ["indexChosen"],
+            VL2: ["0"],
+            VL3: ["indexChosen"],
+            VL4: ["totalOptions"],
+          },
           code: `^^if (__BLANK[HELPER1]__(PREV) == true) {^^    // If the PREV button is pressed. Use the Debouncing function you created.
 ^^  __BLANK[VL1]__ = __BLANK[VL1]__ - 1;^^      // Decrease the index by 1
 ^^  if (__BLANK[VL1]__ < __BLANK[VL2]__) {^^    // If we went before the first item in array of status
@@ -1678,6 +1760,15 @@ For example, let's say your __BLANK[TRACKNAME]__ == 2, and you pressed NEXT, mak
 - If the counter becomes equal to the number of items  __BLANK[TOTNAME]__, wrap it around to the **first item** in the array (index 0).
 - Call the function again __BLANK[SHOWMENU]__ to refresh the menu screen to show the newly selected item.
 - Add a small delay so the button doesn’t scroll too fast.`,
+          answerKey: {
+            HELPER0: ["isPressed"],
+            VL5: ["NEXT"],
+            VL6: ["indexChosen"],
+            VL7: ["indexChosen + 1"],
+            VL8: ["indexChosen"],
+            VL9: ["totalOptions - 1"],
+            VL10: ["indexChosen = 0"],
+          },
           code: `^^if (__BLANK[HELPER0]__(__BLANK[VL5]__) == true) {^^        // If the NEXT button is pressed. Use the Debouncing function you created.
 ^^  __BLANK[VL6]__ = __BLANK[VL7]__;^^                  // Increase the index by 1
 ^^  if (__BLANK[VL8]__ > __BLANK[VL9]__) {^^            // If we went after the last item in array of status
@@ -1694,6 +1785,10 @@ For example, let's say your __BLANK[TRACKNAME]__ == 2, and you pressed NEXT, mak
 - If it is pressed, set a variable (\`showingStatus\`) to remember that the status is chosen.
 - Call a function __BLANK[SHOWCONFIRMED]__ that will draw the confirmed status screen on the OLED.
 - Add a small delay so one long press doesn’t count as many presses.`,
+          answerKey: {
+            HELPER00: ["isPressed(SELECT)", "isPressed(SEL)"],
+            STATUSFUNCTION: ["showStatus"],
+          },
           code: `^^if (__BLANK[HELPER00]__  == true) {      ^^// If the SELECT button is pressed^^
   showingStatus = true;    ^^// Mark that the current status is confirmed^^
   __BLANK[STATUSFUNCTION]__();                ^^// Show the confirmed status on the screen^^
@@ -1717,6 +1812,13 @@ To add this behavior, we will use one of the existing buttons, such as the **PRE
 - If it is pressed, set the screen mode variable __BLANK[STATE]__ to switch back to **menu mode**.  
 - Call a function __BLANK[SHOWMENU]__ to redraw the main menu on the OLED screen.  
 - Add a short delay so one long press doesn’t register multiple times.`,
+          answerKey: {
+            HELPER000: ["isPressed(PREV)"],
+            ISHELPER: ["true"],
+            MENU_MODE: ["false"],
+            SHOWMENU: ["showMenu"],
+            VLDELAY: ["delay(200)", "delay(250)", "delay(300)"],
+          },
           code: `
 // If the PREV button is pressed while viewing a status page,
 // go back to the main menu^^
@@ -1743,6 +1845,17 @@ That’s why we use a boolean called **showingStatus**:
 - \`showingStatus = true\` → we are on the **status** page.
 
 Then we add a condition so PREV checks \`showingStatus\` and decides **which behavior** to run.`,
+          answerKey: {
+            HELPER1: ["isPressed"],
+            VL1: ["indexChosen"],
+            VL2: ["0"],
+            VL3: ["indexChosen"],
+            VL4: ["totalOptions"],
+            STATUSTF: ["true"],
+            MENU_MODE: ["false"],
+            SHOWMENU: ["showMenu"],
+            VLDELAY: ["delay(200)", "delay(250)", "delay(300)"],
+          },
           code: `^^if (showingStatus == false) {^^
   ^^if (__BLANK[HELPER1]__(PREV) == true) {^^    // If the PREV button is pressed. Use the Debouncing function you created.
     ^^__BLANK[VL1]__ = __BLANK[VL1]__ - 1;^^      // Decrease the index by 1
@@ -1767,6 +1880,109 @@ Then we add a condition so PREV checks \`showingStatus\` and decides **which beh
 
       codes: [
         {
+          answerKey: {
+            WIDTH: ["128"],
+            HEIGHT: ["64", "32"],
+            HEIGHT2: ["HEIGHT"],
+
+            PREVN: { type: "range", min: 0, max: 13 },
+            NEXTN: { type: "range", min: 0, max: 13 },
+            SEL: { type: "identifier" },
+            SELN: { type: "range", min: 0, max: 13 },
+
+            STATUSTYPE: ["String", "const String"],
+            STATUSNAME: { type: "identifier" },
+            STATUSLIST1: { type: "string", regex: '^".+"$' },
+            STATUSLIST2: { type: "string", regex: '^".+"$' },
+            STATUSLIST3: { type: "string", regex: '^".+"$' },
+            STATUSLIST4: { type: "string", regex: '^".+"$' },
+
+            TOTTYPE: ["int"],
+            TOTNAME: { type: "identifier" },
+            TOTNUM: ["4"],
+
+            TRACKTYPE: ["int"],
+            TRACKNAME: { type: "identifier" },
+            TRACKNUM: ["0"],
+
+            BEGIN: ["begin"],
+            BEGINA: ["SSD1306_SWITCHCAPVCC"],
+            CLEAR: ["clearDisplay()"],
+
+            SETTEXTSIZE: [
+              "setTextSize(1)",
+              "setTextSize(2)",
+              "setTextSize(3)",
+              "setTextSize(4)",
+              "setTextSize(5)",
+            ],
+            SETTEXTCOLOR: [
+              "setTextColor(SSD1306_WHITE)",
+              "setTextColor(SSD1306_BLACK)",
+              "setTextColor(SSD1306_INVERSE)",
+            ],
+
+            SETCURSOR: ["setCursor"],
+            DISPLAY: ["display"],
+
+            NEXT: ["NEXT"],
+            INPUT1: ["INPUT_PULLUP"],
+            PINMODE: ["pinMode"],
+            SELECT: { type: "sameAs", target: "SEL" },
+            INPUT2: ["INPUT_PULLUP"],
+
+            SHOWMENU: ["showMenu"],
+            WELCOMEFUNCTION: { type: "identifier" },
+            STATUSFUNCTION: ["showStatus"],
+
+            HELPER1: ["isPressed"],
+            HELPER0: ["isPressed"],
+
+            VL1: ["indexChosen"],
+            VL2: ["0"],
+            VL3: ["indexChosen"],
+            VL4: ["totalOptions"],
+
+            VL5: ["NEXT"],
+            VL6: ["indexChosen"],
+            VL7: ["indexChosen + 1"],
+            VL8: ["indexChosen"],
+            VL9: ["totalOptions - 1"],
+            VL10: ["indexChosen = 0"],
+
+            HELPER00: ["isPressed(SELECT)", "isPressed(SEL)"],
+
+            STATUSTF: ["true"],
+            MENU_MODE: ["false"],
+            VLDELAY: ["delay(200)", "delay(250)", "delay(300)"],
+
+            DISPLAY1: ["display.clearDisplay()"],
+            DISPLAY2: { type: "string", regex: "^display\\.setTextSize\\(\\s*[1-5]\\s*\\)$" },
+            DISPLAY3: ["display.setTextColor(SSD1306_WHITE)"],
+            DISPLAY4: { type: "string", regex: "^display\\.(print|println)\\(.+\\)$" },
+            DISPLAY5: { type: "string", regex: "^display\\.setTextSize\\(\\s*[1-5]\\s*\\)$" },
+            DISPLAY6: { type: "string", regex: "^display\\.setCursor\\(\\s*\\d+\\s*,\\s*\\d+\\s*\\)$" },
+            DISPLAY7: { type: "string", regex: "^display\\.(print|println)\\(.+\\)$" },
+            DISPLAY8: ["display.display()"],
+
+            STATUSCODE1: ["display.clearDisplay()"],
+            STATUSCODE2: { type: "string", regex: "^display\\.setTextSize\\(\\s*[1-5]\\s*\\)$" },
+            STATUSCODE3: { type: "string", regex: "^display\\.setCursor\\(\\s*\\d+\\s*,\\s*\\d+\\s*\\)$" },
+            STATUSCODE4: { type: "string", regex: "^display\\.(print|println)\\(.+\\)$" },
+            DISPLAY9: ["display()"],
+
+            SHOW1: ["clearDisplay()"],
+            SHOW2: { type: "string", regex: "^display\\.setTextSize\\(\\s*[1-5]\\s*\\)$" },
+            SHOW3: { type: "string", regex: "^display\\.setCursor\\(\\s*\\d+\\s*,\\s*\\d+\\s*\\)$" },
+            SHOW4: { type: "string", regex: '^".+"$' },
+            HIGHLIGHT: ['"> "', '"-> "', '"* "', "'> '"],
+            NONHIGH: ['"  "', '"   "', "'  '"],
+            STATUSARRAY: { type: "string" },
+            INCREMENT: { type: "string" },
+
+            HELPER2: ["digitalRead(pin) == LOW"],
+            HELPER3: ["delay(20)"],
+          },
           code: `^^#include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
