@@ -207,7 +207,7 @@ Press = LOW, Release = HIGH (via pull-up).
 // ------------------------------------------------------------
 // Screen Wrapper
 // ------------------------------------------------------------
-export default function CircuitLesson({
+export default function CircuitBegLesson({
   slug,
   lessonSlug,
 }: {
