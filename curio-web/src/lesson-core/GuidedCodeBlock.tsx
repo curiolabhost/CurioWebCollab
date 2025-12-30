@@ -554,10 +554,19 @@ export default function GuidedCodeBlock({
       results[name] = isCorrect;
     });
 
-    const nextBlankAttempts = { ...(blankAttemptsByName || {}) };
-    Object.entries(results).forEach(([name, ok]) => {
-      if (!ok) nextBlankAttempts[name] = (nextBlankAttempts[name] ?? 0) + 1;
-    });
+const nextBlankAttempts = { ...(blankAttemptsByName || {}) };
+
+Object.entries(results).forEach(([name, ok]) => {
+  const wasCorrectBefore = blankStatus?.[name] === true;
+
+  // Count only if:
+  // - currently wrong
+  // - AND it was not already marked wrong before. Re-clicking Check Code without changes does nothing
+  if (!ok && wasCorrectBefore !== false) {
+    nextBlankAttempts[name] = (nextBlankAttempts[name] ?? 0) + 1;
+  }
+});
+
 
     setBlankAttemptsByName?.(nextBlankAttempts);
     setBlankStatus?.(results);
@@ -870,3 +879,39 @@ export default function GuidedCodeBlock({
     </>
   );
 }
+
+
+/**
+ * ============================================================
+ * What we track right now (GuidedCodeBlock + CodeLessonBase)
+ * ============================================================
+ *
+ * Lesson-wide (persisted):
+ * - doneSetKey: Set of completed step keys (L#-S#) for progress
+ * - overallProgressKey: optional numeric overall progress
+ * - navKey: last seen { lesson, stepIndex }
+ * - sidebarKey / splitKey: UI preferences (sidebar expanded, split view sizes)
+ *
+ * Blank values (persisted):
+ * - GLOBAL blanks (KEYS.globalBlanksKey): blankName -> text (shared across steps)
+ * - LOCAL blanks per-step (KEYS.localBlanksPrefixKey + currentStepKey): blankName -> text
+ *
+ * Guided UI per-step (persisted) under:
+ * - guidedUiKeyForThisStep = `${KEYS.localBlanksPrefixKey}:UI:${currentStepKey}`
+ * Stores:
+ * - blankStatus: blankName -> boolean correctness
+ * - activeBlankHint: which blank is selected in the hint UI
+ * - aiHelpByBlank: blankName -> AI help text
+ * - aiHintLevelByBlank: blankName -> hint level
+ * - checkAttempts: # of times "Check Answer" clicked (per step)
+ * - blankAttemptsByName: blankName -> WRONG attempt count (per step)
+ *
+ * NOTE on blankAttemptsByName:
+ * - It counts "blank was wrong when Check Answer was clicked"
+ * - It does NOT currently require the student to have changed the blank value.
+ *   So repeatedly clicking Check Answer with the same wrong value increments again.
+ *
+ * Ephemeral (NOT persisted, resets on step change):
+ * - aiLoadingKey: which blank is loading AI
+ * - aiLastRequestAtByKey: timestamps for AI cooldown per blank
+ */
