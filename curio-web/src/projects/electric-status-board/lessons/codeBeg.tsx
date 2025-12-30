@@ -11,9 +11,10 @@ import CodeLessonBase from "@/src/lesson-core/CodeLessonBase";
  * - The lesson now renders through `lesson-core/CodeLessonBase`.
  */
 
-export const LESSON_STEPS_BEGINNER: Record<number, { phrase: string; steps: any[] }> = {
+export const LESSON_STEPS_BEGINNER: Record<number, { phrase: string; advanced?: boolean; steps: any[] }> = {
   1: {
     phrase: "Arduino basics: setup(), loop(), and your first blink",
+    advanced: false,
     steps: [
     {
       id: 1,

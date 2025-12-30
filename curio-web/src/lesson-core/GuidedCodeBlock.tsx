@@ -895,7 +895,6 @@ Object.entries(results).forEach(([name, ok]) => {
  * Blank values (persisted):
  * - GLOBAL blanks (KEYS.globalBlanksKey): blankName -> text (shared across steps)
  * - LOCAL blanks per-step (KEYS.localBlanksPrefixKey + currentStepKey): blankName -> text
- *
  * Guided UI per-step (persisted) under:
  * - guidedUiKeyForThisStep = `${KEYS.localBlanksPrefixKey}:UI:${currentStepKey}`
  * Stores:
