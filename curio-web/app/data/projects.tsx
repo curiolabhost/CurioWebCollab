@@ -118,7 +118,7 @@ export const PROJECTS: Project[] = [
   image:
     "https://images.unsplash.com/photo-1518770660439-4636190af475?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080",
   ageRange: "11-18 years",
-  hours: "20-25 hours",
+  hours: "25-35 hours",
   materials: [
     "Arduino Uno or Nano",
     "OLED display (SSD1306)",
