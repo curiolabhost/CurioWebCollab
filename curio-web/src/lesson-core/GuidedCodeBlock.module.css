@@ -1,5 +1,9 @@
 /* src/lesson-core/GuidedCodeBlock.module.css */
 
+/* ============================================================
+   Code card container
+============================================================ */
+
 .codeCard {
   background: #0f172a;
   border-radius: 12px;
@@ -23,7 +27,6 @@
   font-size: 14px;
 }
 
-/* right side header buttons wrapper */
 .codeCardHeaderActions {
   display: flex;
   align-items: center;
@@ -45,18 +48,17 @@
   background: rgba(255, 255, 255, 0.10);
 }
 
-.copyBtnText {
+.copyBtnText,
+.btnIcon {
   color: #cbd5e1;
   font-size: 12px;
   font-weight: 600;
 }
 
-.btnIcon {
-  color: #cbd5e1;
-  font-size: 12px;
-}
+/* ============================================================
+   Code rendering
+============================================================ */
 
-/* scroll wrapper */
 .hScroll {
   overflow-x: auto;
 }
@@ -66,21 +68,16 @@
   overflow: visible;
 }
 
-/* a single rendered line */
 .codeLineRow {
   display: flex;
   align-items: flex-start;
-  flex-wrap: nowrap;
 }
 
-/* left “code” column */
 .codePartCol {
   display: inline-flex;
   align-items: flex-start;
-  flex-wrap: nowrap;
 }
 
-/* right “comment” column */
 .codeCommentCol {
   margin-left: 5px;
   color: #82a8abff;
@@ -91,75 +88,37 @@
   flex-shrink: 0;
 }
 
-/* default / highlighted text */
-.codeNormal {
-  color: #a3a5a3ff;
-  font-weight: 400;
-  font-family: ui-monospace, Menlo, Monaco, Consolas, "Courier New", monospace;
-  font-size: 14px;
-  line-height: 20px;
-  white-space: pre;
-}
+/* ============================================================
+   Syntax text
+============================================================ */
 
-.codeHighlight {
-  color: #cdced1ff;
-  font-weight: 400;
-  font-family: ui-monospace, Menlo, Monaco, Consolas, "Courier New", monospace;
-  font-size: 14px;
-  line-height: 20px;
-  white-space: pre;
-}
-
-/* syntax colors */
-.syntaxComment {
-  color: #82a8abff;
-  font-family: ui-monospace, Menlo, Monaco, Consolas, "Courier New", monospace;
-  font-size: 14px;
-  line-height: 20px;
-  white-space: pre;
-}
-
-.syntaxString {
-  color: #fca5a5;
-  font-family: ui-monospace, Menlo, Monaco, Consolas, "Courier New", monospace;
-  font-size: 14px;
-  line-height: 20px;
-  white-space: pre;
-}
-
-.syntaxNumber {
-  color: #93c5fd;
-  font-family: ui-monospace, Menlo, Monaco, Consolas, "Courier New", monospace;
-  font-size: 14px;
-  line-height: 20px;
-  white-space: pre;
-}
-
-.syntaxType {
-  color: #f9a8d4;
-  font-family: ui-monospace, Menlo, Monaco, Consolas, "Courier New", monospace;
-  font-size: 14px;
-  line-height: 20px;
-  white-space: pre;
-}
-
-.syntaxControl {
-  color: #c4b5fd;
-  font-family: ui-monospace, Menlo, Monaco, Consolas, "Courier New", monospace;
-  font-size: 14px;
-  line-height: 20px;
-  white-space: pre;
-}
-
+.codeNormal,
+.codeHighlight,
+.syntaxComment,
+.syntaxString,
+.syntaxNumber,
+.syntaxType,
+.syntaxControl,
 .syntaxArduinoFunc {
-  color: #fcd34d;
   font-family: ui-monospace, Menlo, Monaco, Consolas, "Courier New", monospace;
   font-size: 14px;
   line-height: 20px;
   white-space: pre;
 }
 
-/* blanks */
+.codeNormal { color: #a3a5a3ff; }
+.codeHighlight { color: #cdced1ff; }
+.syntaxComment { color: #82a8abff; }
+.syntaxString { color: #fca5a5; }
+.syntaxNumber { color: #93c5fd; }
+.syntaxType { color: #f9a8d4; }
+.syntaxControl { color: #c4b5fd; }
+.syntaxArduinoFunc { color: #fcd34d; }
+
+/* ============================================================
+   Code blanks (inside code editor)
+============================================================ */
+
 .codeBlankInput {
   min-width: 40px;
   padding: 0.5px 2px;
@@ -168,32 +127,19 @@
   border-bottom: 1px solid #5e6d8b6a;
   background: transparent;
   color: #a3a5a3ff;
-  font-family: ui-monospace, Menlo, Monaco, Consolas, "Courier New", monospace;
-  font-size: 14px;
-  line-height: 20px;
   text-align: center;
   outline: none;
   flex-shrink: 0;
   display: inline-block;
 }
 
-.codeBlankInputHighlight {
-  color: #cdced1ff;
-  border-bottom-color: #5e6d8b6a;
-}
-
-.blankCorrect {
-  border-bottom-color: #16a34a;
-}
-
-.blankIncorrect {
-  border-bottom-color: #dc2626;
-}
+.codeBlankInputHighlight { color: #cdced1ff; }
+.blankCorrect { border-bottom-color: #16a34a; }
+.blankIncorrect { border-bottom-color: #dc2626; }
 
 .blankWithDot {
   display: inline-flex;
   align-items: center;
-  flex-wrap: nowrap;
 }
 
 .errorDotBtn {
@@ -209,23 +155,20 @@
   height: 10px;
   border-radius: 999px;
   background: #dc2626;
-  display: inline-block;
 }
 
-/* hint box */
+/* ============================================================
+   Hint box
+============================================================ */
+
 .blankHintBox {
   display: flex;
-  align-items: flex-start;
   gap: 8px;
   background: #fef2f2;
   border: 1px solid #fecaca;
   padding: 10px 12px;
   border-radius: 10px;
   margin-top: 10px;
-}
-
-.hintLeftIcon {
-  margin-top: 2px;
 }
 
 .hintContent {
@@ -243,7 +186,6 @@
   font-size: 11px;
   color: #9ca3af;
   margin-top: 4px;
-  line-height: 16px;
 }
 
 .aiHintDivider {
@@ -255,12 +197,10 @@
 .hintThinking {
   font-style: italic;
   color: #6b7280;
-  font-size: 13px;
 }
 
 .hintActions {
   display: flex;
-  align-items: flex-start;
   gap: 8px;
 }
 
@@ -272,70 +212,80 @@
   font-size: 16px;
 }
 
-.hintSpinner {
-  color: #2563eb;
-  font-size: 16px;
-}
-
-/* =========================
-   Rich text (inline code/bold/blanks)
-========================= */
+/* ============================================================
+   Rich text (lesson descriptions)
+============================================================ */
 
 .stepDescBlock {
+  width: 100%;
+  min-width: 0;
   margin-bottom: 16px;
 }
 
+/* CRITICAL: allows inline blanks to wrap */
 .richTextLine {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  line-height: 1.75;
+  align-items: baseline;
+  gap: 6px;
+  white-space: normal;
+  min-width: 0;
 }
 
 .stepDescText {
   color: #4b5563;
   font-size: 16px;
   line-height: 1.75;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
-.inlineCode {
-  background: #e2e8f0;
-  border-radius: 6px;
-  padding: 2px 6px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
-    "Courier New", monospace;
-  font-size: 13px;
-}
-
+.inlineCode,
 .inlineCodeStrong {
   background: #e2e8f0;
   border-radius: 6px;
   padding: 2px 6px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
-    "Courier New", monospace;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
   font-size: 13px;
+}
+
+.inlineCodeStrong {
   font-weight: 800;
 }
 
+/* ============================================================
+   Inline blanks (lesson descriptions)
+============================================================ */
+
 .inlineBlankInput {
-  border: 2px solid #e5e7eb;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
+
+  font-size: 14px;
+  line-height: 1.6;
+
+  padding: 4px 12px;          /* slightly more side padding */
   border-radius: 10px;
-  padding: 4px 10px;
-  text-align: center;
-  outline: none;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
-    "Courier New", monospace;
-  font-size: 13px;
-  line-height: 1.2;
+  border: 2px solid #e5e7eb;
+
+  box-sizing: border-box;
+  display: inline-block;
+  min-width: 40px;
+  max-width: 100%;
 }
+
 
 .inlineBlankInput:focus {
   border-color: #6366f1;
   box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.18);
 }
 
+/* ============================================================
+   Bold helpers
+============================================================ */
+
 .boldGeneral { font-weight: 800; color: #111827; }
 .boldWiring { font-weight: 800; color: #2563eb; }
 .boldSetup { font-weight: 800; color: #7c3aed; }
 .boldLoop { font-weight: 800; color: #0f766e; }
-
