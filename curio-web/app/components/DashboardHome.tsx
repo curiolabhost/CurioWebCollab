@@ -4,7 +4,6 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { completedProjects } from "@/app/data/completedProjects";
 
 import {
   Calendar,
@@ -43,33 +42,31 @@ type CompletedProject = {
   completedDate: Date;
 };
 
+type StoredCompletedProject = {
+  slug: string;
+  totalHours: number;
+  startedDateISO: string;
+  completedDateISO: string;
+};
+
 type ActivePtr = { slug: string; lessonSlug: string };
 type NavState = { lesson: number; stepIndex: number };
 
-/** Monday-based start-of-week date (local time) */
-function startOfWeekDate(d = new Date()) {
-  const date = new Date(d);
-  const day = date.getDay(); // 0 Sun ... 6 Sat
-  const diffToMonday = (day + 6) % 7; // Mon=0 ... Sun=6
-  date.setDate(date.getDate() - diffToMonday);
-  date.setHours(0, 0, 0, 0);
-  return date;
-}
+const COMPLETED_PROJECTS_KEY = "curio:dashboard:completedProjects";
+const STARTED_AT_KEY = (slug: string) => `curio:${slug}:startedAt`;
 
 function startOfWeekKey(d = new Date()) {
-  const date = startOfWeekDate(d);
+  // Monday-based week
+  const date = new Date(d);
+  const day = date.getDay(); // 0 Sun ... 6 Sat
+  const diffToMonday = (day + 6) % 7; // Mon=0, Tue=1 ... Sun=6
+  date.setDate(date.getDate() - diffToMonday);
+  date.setHours(0, 0, 0, 0);
+
   const yyyy = date.getFullYear();
   const mm = String(date.getMonth() + 1).padStart(2, "0");
   const dd = String(date.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`; // ex: "2025-12-29"
-}
-
-function endOfWeekDate(d = new Date()) {
-  const start = startOfWeekDate(d);
-  const end = new Date(start);
-  end.setDate(start.getDate() + 6); // Mon + 6 = Sun
-  end.setHours(23, 59, 59, 999);
-  return end;
+  return `${yyyy}-${mm}-${dd}`;
 }
 
 function readJson<T>(key: string): T | null {
@@ -88,10 +85,10 @@ function writeJson(key: string, value: any) {
 }
 
 /**
- * Your Project.hours is a string like "8-10 hours" or "15-20 hours".
- * Beginner = first number in range
- * Advanced = last number in range (if Advanced exists)
- * Intermediate = average of ends (if Advanced exists), otherwise use last number
+ * Project.hours is like "8-10 hours" or "15-20 hours".
+ * Beginner = min
+ * Advanced = max (if Advanced exists)
+ * Intermediate = average of ends (if Advanced exists), otherwise max
  * If no range, use the single number.
  */
 function parseHoursToNumber(
@@ -125,11 +122,25 @@ function daysBetween(a: Date, b: Date) {
 }
 
 function labelizeLessonSlug(lessonSlug: string) {
+  // "code-beg" -> "Code Beg", "levels/beginner" -> "Beginner"
   const last = (lessonSlug || "").split("/").pop() || "";
   return last
     .replace(/[-_]+/g, " ")
     .replace(/\b\w/g, (c) => c.toUpperCase())
     .trim();
+}
+
+function prettyLevelFromLessonSlug(lessonSlug: string) {
+  const last = (lessonSlug || "").split("/").pop() || "";
+  const parts = last.split(/[-_]/g).filter(Boolean);
+  const suffix = (parts[parts.length - 1] || "").toLowerCase();
+
+  if (suffix === "beg" || suffix === "beginner") return "Beginner";
+  if (suffix === "adv" || suffix === "advanced") return "Advanced";
+  if (suffix === "int" || suffix === "intermediate") return "Intermediate";
+
+  // fallback to original formatting
+  return labelizeLessonSlug(lessonSlug);
 }
 
 export function DashboardHome() {
@@ -162,9 +173,12 @@ export function DashboardHome() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
 
-  // weekly snapshot
+  // Weekly pacing baseline
   const [weekStartDoneStepsAll, setWeekStartDoneStepsAll] = useState<number>(0);
   const [weekKey, setWeekKey] = useState<string>(() => startOfWeekKey());
+
+  // Completed projects (local storage)
+  const [completedList, setCompletedList] = useState<CompletedProject[]>([]);
 
   // --- Per-project schedule stored locally ---
   const [schedule, setSchedule] = useState<ProjectSchedule>({ daysPerWeek: 3, hoursPerDay: 2 });
@@ -172,6 +186,44 @@ export function DashboardHome() {
     daysPerWeek: 3,
     hoursPerDay: 2,
   });
+
+  // Load completed projects once
+  useEffect(() => {
+    const stored = readJson<StoredCompletedProject[]>(COMPLETED_PROJECTS_KEY) ?? [];
+    const rebuilt: CompletedProject[] = [];
+
+    for (const item of stored) {
+      const proj = PROJECTS.find((p) => p.slug === item.slug);
+      if (!proj) continue;
+
+      const started = new Date(item.startedDateISO);
+      const completed = new Date(item.completedDateISO);
+      if (!Number.isFinite(started.getTime()) || !Number.isFinite(completed.getTime())) continue;
+
+      rebuilt.push({
+        project: proj,
+        totalHours: Number.isFinite(item.totalHours) ? item.totalHours : 0,
+        startedDate: started,
+        completedDate: completed,
+      });
+    }
+
+    setCompletedList(rebuilt);
+  }, []);
+
+  // Helper to persist completed list
+  function persistCompleted(next: CompletedProject[]) {
+    setCompletedList(next);
+
+    const stored: StoredCompletedProject[] = next.map((c) => ({
+      slug: c.project.slug,
+      totalHours: c.totalHours,
+      startedDateISO: c.startedDate.toISOString(),
+      completedDateISO: c.completedDate.toISOString(),
+    }));
+
+    writeJson(COMPLETED_PROJECTS_KEY, stored);
+  }
 
   // Load pointer + progress + nav on mount, and refresh on custom events/storage
   useEffect(() => {
@@ -215,8 +267,7 @@ export function DashboardHome() {
         const raw = localStorage.getItem(navKey);
         const nav = raw ? JSON.parse(raw) : null;
 
-        const lessonNum =
-          typeof nav?.lesson === "number" ? nav.lesson : parseInt(nav?.lesson, 10);
+        const lessonNum = typeof nav?.lesson === "number" ? nav.lesson : parseInt(nav?.lesson, 10);
         const stepNum =
           typeof nav?.stepIndex === "number" ? nav.stepIndex : parseInt(nav?.stepIndex, 10);
 
@@ -330,7 +381,13 @@ export function DashboardHome() {
     return PROJECTS.find((p) => p.slug === activePtr.slug) ?? null;
   }, [activePtr]);
 
-  const currentLevelLabel = useMemo(() => {
+  // Use pretty label for display
+  const currentLevelDisplay = useMemo(() => {
+    return activePtr?.lessonSlug ? prettyLevelFromLessonSlug(activePtr.lessonSlug) : "";
+  }, [activePtr]);
+
+  // Keep raw slug label for parseHoursToNumber (beg/adv/int detection)
+  const currentLevelLabelForHours = useMemo(() => {
     return activePtr?.lessonSlug ? labelizeLessonSlug(activePtr.lessonSlug) : "";
   }, [activePtr]);
 
@@ -343,16 +400,16 @@ export function DashboardHome() {
     return Math.max(0, codeDoneCount + circuitDoneCount);
   }, [codeDoneCount, circuitDoneCount]);
 
-  // weekly snapshot init/reset
+  // Week baseline init (local)
   useEffect(() => {
     if (!activePtr?.slug) return;
 
-    const wk = startOfWeekKey();
+    const wk = startOfWeekKey(); // changes automatically when a new week begins
     setWeekKey(wk);
 
     const storageKey = `curio:${activePtr.slug}:week:${wk}:doneStart`;
-    const stored = readJson<number>(storageKey);
 
+    const stored = readJson<number>(storageKey);
     if (typeof stored === "number" && Number.isFinite(stored)) {
       setWeekStartDoneStepsAll(stored);
     } else {
@@ -374,9 +431,12 @@ export function DashboardHome() {
     const diffs = currentProject?.difficulties ?? [];
     return Math.max(
       1,
-      parseHoursToNumber(hoursText, { levelLabel: currentLevelLabel, difficulties: diffs as any })
+      parseHoursToNumber(hoursText, {
+        levelLabel: currentLevelLabelForHours,
+        difficulties: diffs as any,
+      })
     );
-  }, [currentProject, currentLevelLabel]);
+  }, [currentProject, currentLevelLabelForHours]);
 
   // Step-based time remaining (preferred when we have step counts)
   const stepsRemainingAll = useMemo(() => {
@@ -399,10 +459,7 @@ export function DashboardHome() {
 
   const hoursRemaining = useMemo(() => {
     if (hoursPerStep <= 0) {
-      return Math.max(
-        0,
-        estimatedHoursNumber - Math.round((estimatedHoursNumber * progressPercent) / 100)
-      );
+      return Math.max(0, estimatedHoursNumber - Math.round((estimatedHoursNumber * progressPercent) / 100));
     }
     return stepsRemainingAll * hoursPerStep;
   }, [hoursPerStep, stepsRemainingAll, estimatedHoursNumber, progressPercent]);
@@ -425,6 +482,48 @@ export function DashboardHome() {
     return Math.round((estimatedHoursNumber * progressPercent) / 100);
   }, [totalStepsAll, hoursPerStep, estimatedHoursNumber, hoursRemaining, progressPercent]);
 
+  // Ensure "startedAt" exists once a project becomes active
+  useEffect(() => {
+    if (!activePtr?.slug) return;
+
+    const key = STARTED_AT_KEY(activePtr.slug);
+    const existing = readJson<string>(key);
+    if (!existing) {
+      writeJson(key, new Date().toISOString());
+    }
+  }, [activePtr?.slug]);
+
+  // ✅ Auto-move project to Completed when (done/total)=1, AND total>0
+  useEffect(() => {
+    if (!activePtr?.slug) return;
+    if (!currentProject) return;
+
+    if (totalStepsAll > 0 && doneStepsAll >= totalStepsAll) {
+      const already = completedList.some((c) => c.project.slug === activePtr.slug);
+      if (already) return;
+
+      const startedISO = readJson<string>(STARTED_AT_KEY(activePtr.slug));
+      const startedDate = startedISO ? new Date(startedISO) : new Date();
+      const completedDate = new Date();
+
+      const nextEntry: CompletedProject = {
+        project: currentProject,
+        totalHours: Math.max(0, hoursCompletedApprox),
+        startedDate: Number.isFinite(startedDate.getTime()) ? startedDate : new Date(),
+        completedDate,
+      };
+
+      persistCompleted([nextEntry, ...completedList]);
+
+      // Clear current pointer so it no longer shows as active
+      try {
+        localStorage.removeItem("curio:activeLesson");
+        window.dispatchEvent(new Event("curio:activeLesson"));
+      } catch {}
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activePtr?.slug, totalStepsAll, doneStepsAll, currentProject, hoursCompletedApprox]);
+
   const calculateCompletionDate = () => {
     const remainingHours = Math.max(0, hoursRemaining);
     const hoursPerWeek = Math.max(0.5, schedule.daysPerWeek * schedule.hoursPerDay);
@@ -436,7 +535,9 @@ export function DashboardHome() {
   };
 
   const calculateStepsDue = () => {
-    const end = endOfWeekDate(new Date());
+    const now = new Date();
+    const endOfWeek = new Date(now);
+    endOfWeek.setDate(now.getDate() + (7 - now.getDay()));
 
     const hoursPerWeek = Math.max(0, schedule.daysPerWeek * schedule.hoursPerDay);
 
@@ -453,18 +554,10 @@ export function DashboardHome() {
       stepsDue,
       stepsTargetThisWeek,
       stepsDoneThisWeek,
-      dueDate: end.toLocaleDateString(),
+      dueDate: endOfWeek.toLocaleDateString(),
+      weekKey,
     };
   };
-
-  const due = useMemo(() => calculateStepsDue(), [
-    schedule.daysPerWeek,
-    schedule.hoursPerDay,
-    hoursPerStep,
-    doneStepsAll,
-    weekStartDoneStepsAll,
-    stepsRemainingAll,
-  ]);
 
   const handleSaveSchedule = () => {
     if (activePtr?.slug) {
@@ -484,7 +577,6 @@ export function DashboardHome() {
     router.push(`/projects/${activePtr.slug}/lessons/${activePtr.lessonSlug}`);
   };
 
-  // IMPORTANT: CodeLessonBase stores "lesson" as the actual lesson number (1,2,3..), not 0-based.
   const lastWatchedText = useMemo(() => {
     if (!activeNav) return "—";
     return `Lesson ${activeNav.lesson}, Step ${activeNav.stepIndex + 1}`;
@@ -494,6 +586,16 @@ export function DashboardHome() {
     if (!activeNav) return "—";
     return `Lesson ${activeNav.lesson}, Step ${activeNav.stepIndex + 2}`;
   }, [activeNav]);
+
+  const dueInfo = useMemo(() => calculateStepsDue(), [
+    schedule.daysPerWeek,
+    schedule.hoursPerDay,
+    hoursPerStep,
+    doneStepsAll,
+    weekStartDoneStepsAll,
+    stepsRemainingAll,
+    weekKey,
+  ]);
 
   return (
     <div className="min-h-screen bg-white">
@@ -580,7 +682,7 @@ export function DashboardHome() {
           <div className="flex items-center justify-between">
             {/* Left */}
             <div className="flex items-center gap-3">
-              {/* Back button (default for every page) */}
+              {/* Back button */}
               <button
                 onClick={() => router.push("/")}
                 className="flex items-center gap-2 text-sky-600 hover:text-sky-700 transition-colors"
@@ -647,7 +749,7 @@ export function DashboardHome() {
             </div>
           </div>
 
-          {/* Close profile menu when clicking anywhere else in header area */}
+          {/* Close profile menu when clicking anywhere else */}
           {profileMenuOpen && (
             <button
               className="fixed inset-0 z-40 cursor-default"
@@ -721,21 +823,21 @@ export function DashboardHome() {
                     <div className="space-y-3">
                       <div className="bg-sky-50 rounded-lg p-4">
                         <div className="text-sm text-sky-600 mb-1">Current Level</div>
-                        <div className="text-gray-900 font-medium">{currentLevelLabel || "—"}</div>
+                        <div className="text-gray-900 font-medium">{currentLevelDisplay || "—"}</div>
                       </div>
 
                       <div className="bg-sky-50 rounded-lg p-4">
                         <div className="text-sm text-sky-600 mb-1">Last Seen</div>
                         <div className="text-gray-900 font-medium">{lastWatchedText}</div>
-                        <div className="text-xs text-gray-500 mt-1">Up next: {upNextText}</div>
                       </div>
 
                       <div className="bg-orange-50 rounded-lg p-4 border-l-4 border-orange-500">
                         <div className="text-sm text-orange-700">
-                          <strong>{due.stepsDue} steps due</strong> by {due.dueDate}
-                          <div className="text-xs text-orange-700/80 mt-1">
-                            This week: {due.stepsDoneThisWeek}/{due.stepsTargetThisWeek} steps
-                          </div>
+                          <strong>{dueInfo.stepsDue} steps due</strong> by {dueInfo.dueDate}
+                        </div>
+                        <div className="text-xs text-orange-700/80 mt-1">
+                          This week target: {dueInfo.stepsTargetThisWeek} • Done: {dueInfo.stepsDoneThisWeek} • Week:{" "}
+                          {dueInfo.weekKey}
                         </div>
                       </div>
                     </div>
@@ -789,12 +891,10 @@ export function DashboardHome() {
                               ~{Math.ceil(hoursRemaining)}h left ({stepsRemainingAll} steps)
                             </div>
                             <div className="text-gray-500">
-                              Coding: ~{Math.ceil(codeHoursRemaining)}h left ({codeStepsRemaining}{" "}
-                              steps)
+                              Coding: ~{Math.ceil(codeHoursRemaining)}h left ({codeStepsRemaining} steps)
                             </div>
                             <div className="text-gray-500">
-                              Circuits: ~{Math.ceil(circuitHoursRemaining)}h left (
-                              {circuitStepsRemaining} steps)
+                              Circuits: ~{Math.ceil(circuitHoursRemaining)}h left ({circuitStepsRemaining} steps)
                             </div>
                           </div>
                         ) : null}
@@ -842,10 +942,10 @@ export function DashboardHome() {
             /* COMPLETED TAB */
             <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
               <div className="space-y-4">
-                {completedProjects.length === 0 ? (
+                {completedList.length === 0 ? (
                   <div className="text-gray-600">No completed projects yet.</div>
                 ) : (
-                  completedProjects.map((completed: CompletedProject, index: number) => {
+                  completedList.map((completed: CompletedProject, index: number) => {
                     const daysTaken = daysBetween(completed.startedDate, completed.completedDate);
 
                     return (
@@ -897,15 +997,11 @@ export function DashboardHome() {
                             </div>
                             <div>
                               <div className="text-sm text-gray-500 mb-1">Started</div>
-                              <div className="text-sm">
-                                {completed.startedDate.toLocaleDateString()}
-                              </div>
+                              <div className="text-sm">{completed.startedDate.toLocaleDateString()}</div>
                             </div>
                             <div>
                               <div className="text-sm text-gray-500 mb-1">Completed</div>
-                              <div className="text-sm">
-                                {completed.completedDate.toLocaleDateString()}
-                              </div>
+                              <div className="text-sm">{completed.completedDate.toLocaleDateString()}</div>
                             </div>
                           </div>
                         </div>
@@ -1089,9 +1185,6 @@ export function DashboardHome() {
                 Save
               </button>
             </div>
-
-            {/* (Optional) tiny debug line — remove whenever */}
-            <div className="text-xs text-gray-400 mt-4">Week key: {weekKey}</div>
           </div>
         </div>
       )}
