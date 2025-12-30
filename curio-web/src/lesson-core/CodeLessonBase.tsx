@@ -71,6 +71,12 @@ function defaultKeys(storagePrefix: string) {
   };
 }
 
+const INLINE_CHAR_W = 8.6; // match GuidedCodeBlock
+function inlineWidthPx(len: number) {
+  return Math.max(40, Math.max(1, len) * INLINE_CHAR_W);
+}
+
+
 /** Supports both:
  *  lessonSteps = { 1: Step[], 2: Step[] }
  *  lessonSteps = { 1: { phrase, steps: Step[] }, 2: { phrase, steps: Step[] } }
@@ -103,8 +109,9 @@ function makeStepKey(lessonNumber: number, stepIdx: number) {
 function renderWithInlineCode(
   text: string | null | undefined,
   opts: {
-    mergedBlanks: Record<string, any>;
+    values: Record<string, any>;
     onChangeBlank: (name: string, value: string) => void;
+    onBlurBlank?: (name: string) => void;
   }
 ) {
   if (!text) return null;
@@ -130,18 +137,23 @@ function renderWithInlineCode(
           const blankMatch = part.match(/^__BLANK\[([A-Z0-9_]+)\]__$/);
           if (blankMatch) {
             const name = blankMatch[1];
-            const value = opts.mergedBlanks?.[name] ?? "";
+            const value = opts.values?.[name] ?? "";
+
+            const v = String(value ?? "");
+            const width = inlineWidthPx(v.length) + 18;
 
             return (
-              <input
+            <input
                 key={`blank-${lineIdx}-${idx}`}
-                value={value}
+                value={v}
                 onChange={(e) => opts.onChangeBlank(name, e.target.value)}
+                onBlur={() => opts.onBlurBlank?.(name)}
                 className={styles.inlineBlankInput}
+                style={{ width }}
                 autoCapitalize="none"
                 autoCorrect="off"
                 spellCheck={false}
-              />
+            />
             );
           }
 
@@ -700,6 +712,70 @@ React.useEffect(() => {
     [globalBlanks, localBlanks]
   );
 
+  // PERFORMANCE: inline typing should not trigger parent-wide setState on every keypress
+const [inlineLocalValues, setInlineLocalValues] = React.useState<Record<string, any>>(
+  () => (mergedBlanks && typeof mergedBlanks === "object" ? mergedBlanks : {})
+);
+const inlineLocalValuesRef = React.useRef(inlineLocalValues);
+inlineLocalValuesRef.current = inlineLocalValues;
+
+// When mergedBlanks changes (step change / restore), sync but don’t fight typing
+React.useEffect(() => {
+  const safeMerged = mergedBlanks && typeof mergedBlanks === "object" ? mergedBlanks : {};
+  setInlineLocalValues((prev) => ({ ...safeMerged, ...(prev || {}) }));
+}, [mergedBlanks]);
+
+// Optional: throttle parent local updates (NOT global) with rAF
+const inlineRafRef = React.useRef<number | null>(null);
+
+const scheduleInlineParentLocalUpdate = React.useCallback(
+  (name: string, value: string) => {
+    if (inlineRafRef.current) cancelAnimationFrame(inlineRafRef.current);
+    inlineRafRef.current = requestAnimationFrame(() => {
+      setLocalBlanks((prev: any) => ({ ...(prev || {}), [name]: value }));
+    });
+  },
+  [setLocalBlanks]
+);
+
+// Commit to GLOBAL only on blur (same idea as GuidedCodeBlock)
+const commitInlineToGlobal = React.useCallback(
+  (name: string) => {
+    const committed = String((inlineLocalValuesRef.current || {})[name] ?? "");
+    setGlobalBlanks((prev: any) => ({ ...(prev || {}), [name]: committed }));
+  },
+  [setGlobalBlanks]
+);
+
+const renderInline = React.useCallback(
+  (text: string | null | undefined) => {
+    if (!text) return null;
+
+    return renderWithInlineCode(text, {
+      values: inlineLocalValues,
+      onChangeBlank: (name, txt) => {
+        // instant local update (smooth typing)
+        setInlineLocalValues((prev) => ({ ...(prev || {}), [name]: txt }));
+
+        // lightweight per-step persistence
+        scheduleInlineParentLocalUpdate(name, txt);
+      },
+      onBlurBlank: (name) => {
+        // commit to GLOBAL only once
+        commitInlineToGlobal(name);
+      },
+    });
+  },
+  [
+    inlineLocalValues,
+    scheduleInlineParentLocalUpdate,
+    commitInlineToGlobal,
+    setInlineLocalValues,
+  ]
+);
+
+
+
   const logBlankAnalytics = React.useCallback((_event: any) => {
     // no-op (wire later)
   }, []);
@@ -800,149 +876,111 @@ React.useEffect(() => {
         </div>
 
         {/* Lesson Content */}
-        <div className="px-12 py-6 w-full">
-          <div className="w-full">
-            {step?.desc ? (
+<div className="px-12 py-6 w-full">
+  <div className="w-full">
+    {step?.desc ? (
+      <div className={styles.stepDescBlock}>{renderInline(step.desc)}</div>
+    ) : null}
+
+    {Array.isArray(step?.codes) && step.codes.length > 0 ? (
+      <div className="space-y-8">
+        {step.codes.map((block: any, idx: number) => (
+          <div key={idx}>
+            {block?.descBeforeCode ? (
+              <div className={styles.stepDescBlock}>{renderInline(block.descBeforeCode)}</div>
+            ) : null}
+
+            {block?.topicTitle ? (
+              <h3 className={styles.blockTopicTitle}>{String(block.topicTitle)}</h3>
+            ) : null}
+
+            {block?.descBetweenBeforeAndCode ? (
               <div className={styles.stepDescBlock}>
-                {renderWithInlineCode(step.desc, {
-                  mergedBlanks,
-                  onChangeBlank: (name, txt) => {
-                    setLocalBlanks((prev: any) => ({ ...(prev || {}), [name]: txt }));
-                    setGlobalBlanks((prev: any) => ({ ...(prev || {}), [name]: txt }));
-                  },
-                })}
+                {renderInline(block.descBetweenBeforeAndCode)}
               </div>
             ) : null}
 
-            {Array.isArray(step?.codes) && step.codes.length > 0 ? (
-              <div className="space-y-8">
-                {step.codes.map((block: any, idx: number) => (
-                  <div key={idx}>
-                    {block?.descBeforeCode ? (
-                      <div className={styles.stepDescBlock}>
-                        {renderWithInlineCode(block.descBeforeCode, {
-                          mergedBlanks,
-                          onChangeBlank: (name, txt) => {
-                            setLocalBlanks((prev: any) => ({ ...(prev || {}), [name]: txt }));
-                            setGlobalBlanks((prev: any) => ({ ...(prev || {}), [name]: txt }));
-                          },
-                        })}
-                      </div>
-                    ) : null}
+            {block?.imageGridBeforeCode
+              ? renderImageGrid(block.imageGridBeforeCode, `b-${idx}-before`)
+              : null}
 
-                    {block?.topicTitle ? (
-                      <h3 className={styles.blockTopicTitle}>{String(block.topicTitle)}</h3>
-                    ) : null}
-
-                    {block?.descBetweenBeforeAndCode ? (
-                      <div className={styles.stepDescBlock}>
-                        {renderWithInlineCode(block.descBetweenBeforeAndCode, {
-                          mergedBlanks,
-                          onChangeBlank: (name, txt) => {
-                            setLocalBlanks((prev: any) => ({ ...(prev || {}), [name]: txt }));
-                            setGlobalBlanks((prev: any) => ({ ...(prev || {}), [name]: txt }));
-                          },
-                        })}
-                      </div>
-                    ) : null}
-
-                    {block?.imageGridBeforeCode
-                      ? renderImageGrid(block.imageGridBeforeCode, `b-${idx}-before`)
-                      : null}
-
-                    {block?.code ? (
-                      <GuidedCodeBlock
-                        step={step}
-                        block={block}
-                        blockIndex={idx}
-                        storageKey={localStorageKeyForThisStep}
-                        globalKey={KEYS.globalBlanksKey}
-                        apiBaseUrl={apiBaseUrl}
-                        analyticsTag={analyticsTag}
-                        mergedBlanks={mergedBlanks}
-                        setLocalBlanks={setLocalBlanks}
-                        setGlobalBlanks={setGlobalBlanks}
-                        blankStatus={blankStatus}
-                        setBlankStatus={setBlankStatus}
-                        activeBlankHint={activeBlankHint}
-                        setActiveBlankHint={setActiveBlankHint}
-                        aiHelpByBlank={aiHelpByBlank}
-                        setAiHelpByBlank={setAiHelpByBlank}
-                        aiLoadingKey={aiLoadingKey}
-                        setAiLoadingKey={setAiLoadingKey}
-                        aiLastRequestAtByKey={aiLastRequestAtByKey}
-                        setAiLastRequestAtByKey={setAiLastRequestAtByKey}
-                        aiHintLevelByBlank={aiHintLevelByBlank}
-                        setAiHintLevelByBlank={setAiHintLevelByBlank}
-                        checkAttempts={checkAttempts}
-                        setCheckAttempts={setCheckAttempts}
-                        blankAttemptsByName={blankAttemptsByName}
-                        setBlankAttemptsByName={setBlankAttemptsByName}
-                        logBlankAnalytics={logBlankAnalytics}
-                      />
-                    ) : null}
-
-                    {block?.descAfterCode ? (
-                      <div className={styles.stepDescBlock}>
-                        {renderWithInlineCode(block.descAfterCode, {
-                          mergedBlanks,
-                          onChangeBlank: (name, txt) => {
-                            setLocalBlanks((prev: any) => ({ ...(prev || {}), [name]: txt }));
-                            setGlobalBlanks((prev: any) => ({ ...(prev || {}), [name]: txt }));
-                          },
-                        })}
-                      </div>
-                    ) : null}
-
-                    {block?.imageGridAfterCode
-                      ? renderImageGrid(block.imageGridAfterCode, `b-${idx}-after`)
-                      : null}
-
-                    {block?.descAfterImage ? (
-                      <div className={styles.stepDescBlock}>
-                        {renderWithInlineCode(block.descAfterImage, {
-                          mergedBlanks,
-                          onChangeBlank: (name, txt) => {
-                            setLocalBlanks((prev: any) => ({ ...(prev || {}), [name]: txt }));
-                            setGlobalBlanks((prev: any) => ({ ...(prev || {}), [name]: txt }));
-                          },
-                        })}
-                      </div>
-                    ) : null}
-
-                    {block?.hint ? (
-                      <div className={styles.hintBox}>
-                        <div className={styles.hintTitle}>Hint</div>
-                        <div className={styles.hintText}>{String(block.hint)}</div>
-                      </div>
-                    ) : null}
-                  </div>
-                ))}
-              </div>
+            {block?.code ? (
+              <GuidedCodeBlock
+                step={step}
+                block={block}
+                blockIndex={idx}
+                storageKey={localStorageKeyForThisStep}
+                globalKey={KEYS.globalBlanksKey}
+                apiBaseUrl={apiBaseUrl}
+                analyticsTag={analyticsTag}
+                mergedBlanks={mergedBlanks}
+                setLocalBlanks={setLocalBlanks}
+                setGlobalBlanks={setGlobalBlanks}
+                blankStatus={blankStatus}
+                setBlankStatus={setBlankStatus}
+                activeBlankHint={activeBlankHint}
+                setActiveBlankHint={setActiveBlankHint}
+                aiHelpByBlank={aiHelpByBlank}
+                setAiHelpByBlank={setAiHelpByBlank}
+                aiLoadingKey={aiLoadingKey}
+                setAiLoadingKey={setAiLoadingKey}
+                aiLastRequestAtByKey={aiLastRequestAtByKey}
+                setAiLastRequestAtByKey={setAiLastRequestAtByKey}
+                aiHintLevelByBlank={aiHintLevelByBlank}
+                setAiHintLevelByBlank={setAiHintLevelByBlank}
+                checkAttempts={checkAttempts}
+                setCheckAttempts={setCheckAttempts}
+                blankAttemptsByName={blankAttemptsByName}
+                setBlankAttemptsByName={setBlankAttemptsByName}
+                logBlankAnalytics={logBlankAnalytics}
+              />
             ) : null}
 
-            <div className="flex justify-between pt-10 border-t border-gray-200 mt-12">
-              <button
-                onClick={goPrev}
-                disabled={!canPrev}
-                type="button"
-                className="px-8 py-3 border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Previous Step
-              </button>
+            {block?.descAfterCode ? (
+              <div className={styles.stepDescBlock}>{renderInline(block.descAfterCode)}</div>
+            ) : null}
 
-              <button
-                onClick={goNext}
-                disabled={!canNext}
-                type="button"
-                className="px-8 py-3 bg-sky-800 text-white rounded-lg hover:bg-sky-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Next Step
-              </button>
-            </div>
+            {block?.imageGridAfterCode
+              ? renderImageGrid(block.imageGridAfterCode, `b-${idx}-after`)
+              : null}
+
+            {block?.descAfterImage ? (
+              <div className={styles.stepDescBlock}>{renderInline(block.descAfterImage)}</div>
+            ) : null}
+
+            {block?.hint ? (
+              <div className={styles.hintBox}>
+                <div className={styles.hintTitle}>Hint</div>
+                <div className={styles.hintText}>{String(block.hint)}</div>
+              </div>
+            ) : null}
           </div>
-        </div>
+        ))}
       </div>
+    ) : null}
+
+    <div className="flex justify-between pt-10 border-t border-gray-200 mt-12">
+      <button
+        onClick={goPrev}
+        disabled={!canPrev}
+        type="button"
+        className="px-8 py-3 border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        Previous Step
+      </button>
+
+      <button
+        onClick={goNext}
+        disabled={!canNext}
+        type="button"
+        className="px-8 py-3 bg-sky-800 text-white rounded-lg hover:bg-sky-700 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        Next Step
+      </button>
+    </div>
+  </div>
+</div>
+        </div>
 
       {/* Sidebar */}
       {sidebarExpanded ? (
