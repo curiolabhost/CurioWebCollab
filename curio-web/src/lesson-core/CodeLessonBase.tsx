@@ -901,6 +901,10 @@ function renderImageGrid(grid: any, keyPrefix = "grid") {
                 width: useFixedSize ? "auto" : widthPct,
               }}
             >
+
+            {!!label ? (
+                <div className={styles.imageGridLabel}>{label}</div>
+              ) : null}
               <div
                 className={styles.imageGridImgWrap}
                 style={
@@ -939,10 +943,6 @@ function renderImageGrid(grid: any, keyPrefix = "grid") {
                   />
                 ) : null}
               </div>
-
-              {!!label ? (
-                <div className={styles.imageGridLabel}>{label}</div>
-              ) : null}
             </div>
           );
         })}

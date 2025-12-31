@@ -3,14 +3,6 @@
 import * as React from "react";
 import CodeLessonBase from "@/src/lesson-core/CodeLessonBase";
 
-/**
- * Auto-converted from your original Expo/RN file (codeBeg.js) for Next.js.
- * - All `require(...)` image refs were converted to `imageSrc: "/lesson-assets/<filename>"`
- *   Put those files in: `curio-web/public/lesson-assets/`
- * - `blankexplanations` was normalized to `blankExplanations`.
- * - The lesson now renders through `lesson-core/CodeLessonBase`.
- */
-
 export const LESSON_STEPS_BEGINNER: Record<number, { phrase: string; advanced?: boolean; steps: any[] }> = {
   1: {
     phrase: "Arduino basics: setup(), loop(), and your first blink",
@@ -33,7 +25,7 @@ export const LESSON_STEPS_BEGINNER: Record<number, { phrase: string; advanced?: 
             height: 300,
             items: [
               {
-                imageSrc: "/lesson-assets/CurioLabL1S1.gif",
+                imageSrc: "/electric-status-board/videos/CurioLabL1S1.gif",
                 label: "Blink example",
               },
             ],
@@ -375,7 +367,7 @@ Configures the button pins as inputs with internal pull-up resistors.
             rows: 1,
             items: [
               {
-                imageSrc: "/lesson-assets/welcomeFunc.png",
+                imageSrc: "/electric-status-board/welcomeFunc.png",
                 label: "Welcome function example",
               },
             ],
@@ -551,7 +543,7 @@ level = level + 2;`,
           imageGridBeforeCode: {
             columns: 1,
             rows: 1,
-            items: [{ imageSrc: "/lesson-assets/array.png", label: "Array example" }],
+            items: [{ imageSrc: "/electric-status-board/array.png", label: "Array example" }],
           },
           descBetweenBeforeAndCode: `Here we practice creating arrays of strings and accessing items by index. Fill the blanks below to complete the examples.`,
 
@@ -646,7 +638,7 @@ Create a variable that stores the total **number** of status in the array.`,
             rows: 1,
             items: [
               {
-                imageSrc: "/lesson-assets/CurioLabL4.gif",
+                imageSrc: "/electric-status-board/CurioLabL4.gif",
                 label: "Status Board menu",
               },
             ],
@@ -1492,6 +1484,140 @@ Then we add a condition so PREV checks \`showingStatus\` and decides **which beh
     ^^__BLANK[VL1]__ = __BLANK[VL1]__ - 1;^^      // Decrease the index by 1
     ^^if (__BLANK[VL1]__ < __BLANK[VL2]__) {^^    // If we went before the first item in array of status
       ^^__BLANK[VL3]__ = __BLANK[VL4]__ - 1;^^    // Let index wrap around to`,
+        },
+      ],
+    },
+
+        {
+      id: 3,
+      title: "Step 3: Putting it All Together",
+      desc: `Combining all the functions, variables, setup, and loop, your code should look like this:`,
+
+      codes: [
+        {
+          code: `^^ 
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+
+#define WIDTH  __BLANK[WIDTH]__
+#define HEIGHT __BLANK[HEIGHT]__
+#define RESET  -1
+Adafruit_SSD1306 display(WIDTH, __BLANK[HEIGHT2]__, &Wire, RESET);
+
+#define PREV __BLANK[PREVN]__
+#define NEXT __BLANK[NEXTN]__
+#define __BLANK[SEL]__  __BLANK[SELN]__   
+
+__BLANK[STATUSTYPE]__  __BLANK[STATUSNAME]__ = {
+  __BLANK[STATUSLIST1]__, 
+  __BLANK[STATUSLIST2]__,
+  __BLANK[STATUSLIST3]__,
+  __BLANK[STATUSLIST4]__,
+};
+
+__BLANK[TOTTYPE]__   __BLANK[TOTNAME]__   = __BLANK[TOTNUM]__;
+__BLANK[TRACKTYPE]__ __BLANK[TRACKNAME]__ = __BLANK[TRACKNUM]__;
+
+bool showingStatus = false;   // menu mode (false) vs status mode (true)
+
+void setup() {
+  Wire.begin();
+  display.__BLANK[BEGIN]__(__BLANK[BEGINA]__, 0x3C);
+  display.__BLANK[CLEAR]__;        // to clear display
+  display.__BLANK[SETTEXTSIZE]__;  // to select text size
+  display.__BLANK[SETTEXTCOLOR]__; // to select text color
+  display.__BLANK[SETCURSOR]__(0, 0); // to set cursor location
+  display.__BLANK[DISPLAY]__();    // to update the screen to display 
+
+  // set the modes for the buttons you are using 
+  pinMode(PREV, INPUT_PULLUP); // PREV button is an input, not output
+  pinMode(__BLANK[NEXT]__, __BLANK[INPUT1]__);
+  __BLANK[PINMODE]__(__BLANK[SELECT]__, __BLANK[INPUT2]__);
+}
+
+void loop() {
+  if (showingStatus == false) {
+    __BLANK[SHOWMENU]__();
+
+    if (__BLANK[HELPER1]__(PREV) == true) {    // If the PREV button is pressed. Use the Debouncing function you created.
+      __BLANK[VL1]__ = __BLANK[VL1]__ - 1;     // Decrease the index by 1
+      if (__BLANK[VL1]__ < __BLANK[VL2]__) {   // If we went before the first item in array of status
+        __BLANK[VL3]__ = __BLANK[VL4]__ - 1;   // Let index wrap around to the last item in the array
+      }
+    }
+
+    if (__BLANK[HELPER0]__(__BLANK[VL5]__) == true) {   // If the NEXT button is pressed. Use the Debouncing function you created.
+      __BLANK[VL6]__ = __BLANK[VL7]__;                  // Increase the index by 1
+      if (__BLANK[VL8]__ > __BLANK[VL9]__) {            // If we went after the last item in array of status
+        __BLANK[VL10]__;                                // Let index wrap around to the first item in the array
+      }
+    }
+
+    if (__BLANK[HELPER00]__ == true) {       // If the SELECT button is pressed
+      showingStatus = true;                  // Mark that the current status is confirmed
+      __BLANK[STATUSFUNCTION]__();           // Show the confirmed status on the screen
+    }
+  }  // end of showingStatus == false
+
+  else if (showingStatus == __BLANK[STATUSTF]__) {
+    showingStatus = __BLANK[MENU_MODE]__;    // switch screen state to menu mode
+    __BLANK[SHOWMENU]__();                   // call function to show the menu screen
+    __BLANK[VLDELAY]__;                      // add a delay to prevent repeats
+  }
+}   // end loop()
+
+void __BLANK[WELCOMEFUNCTION]__() {
+  __BLANK[DISPLAY1]__; //clear display
+  __BLANK[DISPLAY2]__; //text size
+  __BLANK[DISPLAY3]__; //text color
+  __BLANK[DISPLAY4]__; //print line
+  __BLANK[DISPLAY5]__; //text size
+  __BLANK[DISPLAY6]__; //text cursor
+  __BLANK[DISPLAY7]__; //print line
+  __BLANK[DISPLAY8]__; //display
+}
+
+void __BLANK[STATUSFUNCTION]__() {
+  __BLANK[STATUSCODE1]__;
+  __BLANK[STATUSCODE2]__;
+  __BLANK[STATUSCODE3]__;
+  __BLANK[STATUSCODE4]__; 
+  display.__BLANK[DISPLAY9]__; 
+}
+
+void __BLANK[SHOWMENU]__() {
+  display.__BLANK[SHOW1]__;      // clear display
+  __BLANK[SHOW2]__;              // set text size
+  __BLANK[SHOW3]__;              // set cursor location
+  display.println(__BLANK[SHOW4]__);       // print your header
+  display.println("-------------------");  
+
+  int i = 0;
+  while (i < __BLANK[TOTNAME]__) {
+
+    if (i == __BLANK[TRACKNAME]__) {
+      display.print(__BLANK[HIGHLIGHT]__);     // highlight the current status
+    } else {
+      display.print(__BLANK[NONHIGH]__);       // keep spacing for non-selected
+    }
+
+    display.println(__BLANK[STATUSARRAY]__);   // print the status text
+    __BLANK[INCREMENT]__;                      // move to the next item
+  }
+  display.display();              // push everything to the screen
+}
+
+bool __BLANK[HELPER1]__(int pin) {    // the function returns true or false, so it's a bool type function
+  if (__BLANK[HELPER2]__) {           // if the button is pressed
+    __BLANK[HELPER3]__;               // short delay for mechanical bounce
+    if (__BLANK[HELPER2]__) {         // if the button is still pressed
+      return true;
+    }
+    return false;
+  }
+  return false;
+}^^`,
         },
       ],
     },
