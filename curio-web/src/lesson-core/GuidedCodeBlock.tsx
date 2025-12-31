@@ -177,16 +177,17 @@ type TemplateTok =
   | { type: "text"; content: string; highlight?: boolean }
   | { type: "blank"; name: string; highlight?: boolean };
 
-function tokenizeTemplateLine(line: string): TemplateTok[] {
+function tokenizeTemplateLineWithState(
+  line: string,
+  inHiStart: boolean
+): { toks: TemplateTok[]; inHiEnd: boolean } {
   const toks: TemplateTok[] = [];
-  if (line == null) return toks;
+  if (line == null) return { toks, inHiEnd: inHiStart };
 
   const str = String(line);
 
-  // Split by highlight segments ^^...^^
-  // We'll walk through the string and mark highlight state.
   let i = 0;
-  let inHi = false;
+  let inHi = inHiStart;
 
   while (i < str.length) {
     // Toggle highlight on ^^
@@ -222,8 +223,9 @@ function tokenizeTemplateLine(line: string): TemplateTok[] {
     i = next === -1 ? str.length : next;
   }
 
-  return toks;
+  return { toks, inHiEnd: inHi };
 }
+
 
 function splitComment(lineTokens: TemplateTok[]) {
   // Treat "//" as starting comment, but only in text tokens and outside highlight logic.
@@ -295,89 +297,127 @@ const KEYWORD_RE = new RegExp(
 
 const PRE_RE = new RegExp(`^\\s*(${PREPROCESSOR_KEYWORDS.map(escapeRegex).join("|")})\\b`);
 
-function renderSyntaxHighlightedSegment(seg: string) {
-  // Preprocessor line
-  if (PRE_RE.test(seg)) {
-    return <span className={styles.codePreprocessor}>{seg}</span>;
-  }
+// --- keep these sets somewhere above (same as original) ---
+const TYPE_SET = new Set(TYPE_KEYWORDS);
+const CONTROL_SET = new Set(CONTROL_KEYWORDS);
+const ARDUINO_SET = new Set(ARDUINO_BUILTINS);
 
-  // Keep "Serial" special
-  const parts: React.ReactNode[] = [];
-  let last = 0;
+// ==========================================================
+// SYNTAX HIGHLIGHTING (RESTORED)
+// ==========================================================
+function renderSyntaxHighlightedSegment(text: string) {
+  if (!text) return null;
 
-  // First split for Serial.xxx
-  const serialRe = /\bSerial\b/g;
-  let m: RegExpExecArray | null;
-  while ((m = serialRe.exec(seg)) !== null) {
-    const start = m.index;
-    const end = start + m[0].length;
-
-if (start > last) {
-  parts.push(
-    <React.Fragment key={`kw-${last}-${start}`}>
-      {renderKeyworded(seg.slice(last, start), `k-${start}-a`)}
-    </React.Fragment>
-  );
-}
-
-    parts.push(
-      <span key={`serial-${start}`} className={styles.codeBuiltin}>
-        Serial
-      </span>
-    );
-    last = end;
-  }
-
-if (last < seg.length) {
-  parts.push(
-    <React.Fragment key={`kw-tail-${last}`}>
-      {renderKeyworded(seg.slice(last), `k-${last}-b`)}
-    </React.Fragment>
-  );
-}
+  const pieces: React.ReactNode[] = [];
+const regex =
+  /(#\s*(?:include|define|ifdef|ifndef|endif|elif|else|pragma|error|warning)\b|\/\/[^\n]*|"[^"\n]*"|'[^'\n]*'|[+-]?\d+(?:\.\d+)?|\b[A-Za-z_]\w*\b|\s+|[^\w\s]+)/g;
 
 
-  return <>{parts}</>;
-}
-
-function renderKeyworded(text: string, keyPrefix: string) {
-  const nodes: React.ReactNode[] = [];
-  let last = 0;
   let match: RegExpExecArray | null;
+  let idx = 0;
 
-  while ((match = KEYWORD_RE.exec(text)) !== null) {
-    const start = match.index;
-    const end = start + match[0].length;
+  while ((match = regex.exec(text)) !== null) {
+    const token = match[0];
 
-    if (start > last) {
-      nodes.push(
-        <span key={`${keyPrefix}-t-${last}`} className={styles.codeNormal}>
-          {text.slice(last, start)}
-        </span>
-      );
-    }
+    let cls = styles.codeHighlight; // base highlight color (optional)
+    if (token.startsWith("//")) cls = styles.syntaxComment;
+    else if (
+      (token.startsWith('"') && token.endsWith('"')) ||
+      (token.startsWith("'") && token.endsWith("'"))
+    )
+      cls = styles.syntaxString;
+    else if (/^\d/.test(token)) cls = styles.syntaxNumber;
+    else if (TYPE_SET.has(token)) cls = styles.syntaxType;
+    else if (CONTROL_SET.has(token)) cls = styles.syntaxControl;
+    else if (ARDUINO_SET.has(token)) cls = styles.syntaxArduinoFunc;
+    else if (token.trim().startsWith("#")) cls = styles.syntaxPreprocessor;
 
-    nodes.push(
-      <span key={`${keyPrefix}-k-${start}`} className={styles.codeKeyword}>
-        {match[0]}
-      </span>
-    );
-
-    last = end;
-  }
-
-  if (last < text.length) {
-    nodes.push(
-      <span key={`${keyPrefix}-t-${last}-tail`} className={styles.codeNormal}>
-        {text.slice(last)}
+    pieces.push(
+      <span key={`seg-${idx++}`} className={cls}>
+        {token}
       </span>
     );
   }
 
-  // reset global regex state
-  KEYWORD_RE.lastIndex = 0;
+  return pieces;
+}
 
-  return <>{nodes}</>;
+function stripOuterWrappers(s: string) {
+  let t = String(s ?? "").trim();
+  // remove common surrounding punctuation
+  t = t.replace(/^[([{\s]+/g, "").replace(/[;,)\]}]+$/g, "").trim();
+  return t;
+}
+
+function isQuotedLiteral(s: string) {
+  const t = String(s ?? "").trim();
+  return (
+    (t.length >= 2 && t.startsWith('"') && t.endsWith('"')) ||
+    (t.length >= 2 && t.startsWith("'") && t.endsWith("'"))
+  );
+}
+
+function isNumberLiteral(s: string) {
+  return /^[+-]?\d+(\.\d+)?$/.test(String(s ?? "").trim());
+}
+
+function computeSyntaxTag(v: any) {
+  const raw = String(v ?? "");
+  const trimmed = raw.trim();
+  if (!trimmed) return "empty";
+
+  // Strings (keep before wrapper stripping)
+  if (isQuotedLiteral(trimmed)) return "string";
+
+  const core = stripOuterWrappers(trimmed);
+
+  // Preprocessor / Comment
+  if (core.startsWith("#")) return "pre";
+  if (core.startsWith("//")) return "comment";
+
+  // Bool
+  if (/^(true|false)$/i.test(core)) return "bool";
+
+  // Numbers
+  if (isNumberLiteral(core)) return "number";
+
+  // Builtins: allow Serial.print style or direct matches
+  const serialMember = core.match(/^Serial\.(begin|print|println)$/);
+  if (serialMember) return "builtin";
+
+  if (ARDUINO_SET.has(core)) return "builtin";
+
+  // Types
+  if (TYPE_SET.has(core)) return "type";
+
+  // Optional: treat control keywords as "text" or "type" — up to you.
+  // If you want a dedicated styling for control words, add a blankSyntaxControl class.
+  // For now, we’ll just return text.
+  if (CONTROL_SET.has(core)) return "text";
+
+  return "text";
+}
+
+function getCompletedBlankSyntaxClass(v: any) {
+  const tag = computeSyntaxTag(v);
+  switch (tag) {
+    case "pre":
+      return styles.blankSyntaxPre;
+    case "comment":
+      return styles.blankSyntaxComment;
+    case "string":
+      return styles.blankSyntaxString;
+    case "number":
+      return styles.blankSyntaxNumber;
+    case "bool":
+      return styles.blankSyntaxBool;
+    case "builtin":
+      return styles.blankSyntaxBuiltin;
+    case "type":
+      return styles.blankSyntaxType;
+    default:
+      return styles.blankSyntaxText;
+  }
 }
 
 // ============================================================
@@ -409,45 +449,7 @@ function evalBlank(rule: BlankRule, value: string): boolean {
   return false;
 }
 
-function computeSyntaxTag(v: string) {
-  const s = String(v ?? "").trim();
 
-  if (!s) return "empty";
-  if (s.startsWith("#")) return "pre";
-  if (s.startsWith("//")) return "comment";
-  if (s.startsWith('"') || s.startsWith("'")) return "string";
-  if (isProbablyNumberLiteral(s)) return "number";
-  if (/\b(true|false)\b/.test(s)) return "bool";
-  if (/\b\d+\b/.test(s)) return "number";
-  if (/\b(pinMode|digitalWrite|digitalRead|analogWrite|analogRead|delay|millis|micros)\b/.test(s))
-    return "builtin";
-  if (/\b(void|int|long|float|double|char|bool|boolean|String|const|static)\b/.test(s))
-    return "type";
-
-  return "text";
-}
-
-function getCompletedBlankSyntaxClass(v: string) {
-  const tag = computeSyntaxTag(v);
-  switch (tag) {
-    case "pre":
-      return styles.blankSyntaxPre;
-    case "comment":
-      return styles.blankSyntaxComment;
-    case "string":
-      return styles.blankSyntaxString;
-    case "number":
-      return styles.blankSyntaxNumber;
-    case "bool":
-      return styles.blankSyntaxBool;
-    case "builtin":
-      return styles.blankSyntaxBuiltin;
-    case "type":
-      return styles.blankSyntaxType;
-    default:
-      return styles.blankSyntaxText;
-  }
-}
 
 export default function GuidedCodeBlock({
   step,
@@ -546,14 +548,19 @@ export default function GuidedCodeBlock({
   /* ==========================================================
      Tokenize once per code change
   ========================================================== */
-  const templateLineSplits = React.useMemo(() => {
-    const rawLines = String(code || "").replace(/\r\n/g, "\n").split("\n");
-    return rawLines.map((line) => {
-      const lineTokens = tokenizeTemplateLine(line);
-      const { codeTokens, comment } = splitComment(lineTokens);
-      return { codeTokens, comment };
-    });
-  }, [code]);
+const templateLineSplits = React.useMemo(() => {
+  const rawLines = String(code || "").replace(/\r\n/g, "\n").split("\n");
+
+  let inHi = false; // <- carry across lines
+  return rawLines.map((line) => {
+    const { toks, inHiEnd } = tokenizeTemplateLineWithState(line, inHi);
+    inHi = inHiEnd;
+
+    const { codeTokens, comment } = splitComment(toks);
+    return { codeTokens, comment };
+  });
+}, [code]);
+
 
   // Estimate a fixed code-column width so comments line up
   const codeColPx = React.useMemo(() => {
@@ -633,7 +640,7 @@ export default function GuidedCodeBlock({
                         onChange={(e) => {
                           const txt = e.target.value;
 
-                          // ✅ instant local update
+                          // instant local update
                           setLocalValues((prev) => ({
                             ...(prev || {}),
                             [name]: txt,
@@ -652,7 +659,7 @@ export default function GuidedCodeBlock({
                           }
                         }}
                         onBlur={() => {
-                          // ✅ commit to global only once
+                          // commit to global only once
                           const committed = String((localValuesRef.current || {})[name] ?? "");
                           setGlobalBlanks?.((prev) => ({
                             ...(prev || {}),
@@ -858,7 +865,7 @@ export default function GuidedCodeBlock({
     <>
       <div className={styles.codeCard}>
         <div className={styles.codeCardHeader}>
-          {/* ✅ FIX: allow per-block title instead of always "Example Code" */}
+          {/*  allow per-block title instead of always "Example Code" */}
           <div className={styles.codeCardTitle}>
             {String(block?.title || step?.codeTitle || "Example Code")}
           </div>

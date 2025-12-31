@@ -369,7 +369,8 @@ font-size: 14px;
 
 
 .imageGridLabel {
-  margin-top: 0px;
+  margin-top: 0ch;
+  margin-bottom: 1ch;
   color: #032a7d;
   font-weight: 600;
   font-size: 13px;
