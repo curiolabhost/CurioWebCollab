@@ -209,6 +209,8 @@
 .inlineBlankInput {
   min-width: 40px;
   border: 2px solid #e5e7eb;
+  height: auto;
+  line-height: 1.2;
   border-radius: 10px;
   padding: 4px 10px;
   text-align: center;
