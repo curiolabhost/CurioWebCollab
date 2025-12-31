@@ -850,30 +850,107 @@ export default function CodeLessonBase({
     // no-op (wire later)
   }, []);
 
-  function renderImageGrid(images: any, keyPrefix: string) {
-    if (!images) return null;
+function renderImageGrid(grid: any, keyPrefix = "grid") {
+  if (!grid || !Array.isArray(grid.items) || grid.items.length === 0) return null;
 
-    const items = Array.isArray(images) ? images : [images];
+  const columns = Math.max(1, Number(grid.columns || 3));
 
-    return (
+  // Allow explicit sizing from lesson content
+  const gridW = grid.width != null ? Number(grid.width) : null; // px
+  const gridH = grid.height != null ? Number(grid.height) : null; // px
+
+  // If any explicit size is provided, don't stretch tiles
+  const useFixedSize = Number.isFinite(gridW) || Number.isFinite(gridH);
+
+  // Responsive tile width when no fixed size is provided
+  const widthPct = `${Math.floor(100 / columns)}%`;
+
+  return (
+    <div className={styles.imageGridWrap} key={keyPrefix}>
       <div className={styles.imageGrid}>
-        {items.map((img: any, idx: number) => {
-          const src = typeof img === "string" ? img : img?.src || img?.uri || img?.url || "";
-          const caption = typeof img === "string" ? "" : String(img?.caption ?? "");
+        {grid.items.map((it: any, idx: number) => {
+          const isVideo = !!it?.video;
 
-          if (!src) return null;
+          // Support both { imageSrc } and { src/uri/url } and also string items
+          const src =
+            typeof it === "string"
+              ? it
+              : it?.imageSrc || it?.src || it?.uri || it?.url || "";
+
+          const label = typeof it === "string" ? "" : String(it?.label ?? "");
+
+          // Per-item overrides fall back to grid width/height
+          const itemW = it?.width != null ? Number(it.width) : gridW;
+          const itemH = it?.height != null ? Number(it.height) : gridH;
+
+          const fixedW = Number.isFinite(itemW) ? itemW : null;
+          const fixedH = Number.isFinite(itemH) ? itemH : null;
+
+          const itemUsesFixed = !!(fixedW || fixedH);
+
+          // defaults if only one dimension is provided (matches your old logic)
+          const wrapW = itemUsesFixed ? (fixedW ?? 180) : undefined;
+          const wrapH = itemUsesFixed ? (fixedH ?? 120) : undefined;
 
           return (
-            <div key={`${keyPrefix}-${idx}`} className={styles.imageGridItem}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={src} alt={caption || `img-${idx}`} className={styles.imageGridImg} />
-              {caption ? <div className={styles.imageGridCaption}>{caption}</div> : null}
+            <div
+              key={`${keyPrefix}-item-${idx}`}
+              className={styles.imageGridItem}
+              style={{
+                // If fixed sizing exists anywhere, use "auto" tile widths so they don't stretch
+                width: useFixedSize ? "auto" : widthPct,
+              }}
+            >
+              <div
+                className={styles.imageGridImgWrap}
+                style={
+                  itemUsesFixed
+                    ? {
+                        width: wrapW,
+                        height: wrapH,
+                      }
+                    : isVideo
+                    ? {
+                        aspectRatio: "16 / 9",
+                      }
+                    : undefined
+                }
+              >
+                {/* renderMedia equivalent */}
+                {isVideo ? (
+                  <video
+                    className={styles.imageGridVideo}
+                    controls
+                    src={it.video}
+                  />
+                ) : src ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    className={styles.imageGridImg}
+                    src={src}
+                    alt={label || `image-${idx}`}
+                    style={{
+                      width: "100%",
+                      height: "100%",
+                      objectFit: "contain",
+                      // IMPORTANT: in RN you disabled aspectRatio when fixed.
+                      // On web, we simply let the wrapper control dimensions.
+                    }}
+                  />
+                ) : null}
+              </div>
+
+              {!!label ? (
+                <div className={styles.imageGridLabel}>{label}</div>
+              ) : null}
             </div>
           );
         })}
       </div>
-    );
-  }
+    </div>
+  );
+}
+
 
   if (!lessonsList.length) {
     return (
