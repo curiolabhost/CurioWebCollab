@@ -312,9 +312,14 @@ function renderSyntaxHighlightedSegment(seg: string) {
     const start = m.index;
     const end = start + m[0].length;
 
-    if (start > last) {
-      parts.push(renderKeyworded(seg.slice(last, start), `k-${start}-a`));
-    }
+if (start > last) {
+  parts.push(
+    <React.Fragment key={`kw-${last}-${start}`}>
+      {renderKeyworded(seg.slice(last, start), `k-${start}-a`)}
+    </React.Fragment>
+  );
+}
+
     parts.push(
       <span key={`serial-${start}`} className={styles.codeBuiltin}>
         Serial
@@ -323,9 +328,14 @@ function renderSyntaxHighlightedSegment(seg: string) {
     last = end;
   }
 
-  if (last < seg.length) {
-    parts.push(renderKeyworded(seg.slice(last), `k-${last}-b`));
-  }
+if (last < seg.length) {
+  parts.push(
+    <React.Fragment key={`kw-tail-${last}`}>
+      {renderKeyworded(seg.slice(last), `k-${last}-b`)}
+    </React.Fragment>
+  );
+}
+
 
   return <>{parts}</>;
 }
