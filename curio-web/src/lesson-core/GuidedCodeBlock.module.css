@@ -192,6 +192,7 @@
   outline: none;
   flex-shrink: 0;
   display: inline-block;
+  box-sizing: content-box;
 }
 
 .codeBlankInputHighlight {
