@@ -1388,11 +1388,12 @@ For example, let's say your __BLANK[TRACKNAME]__ == 2, and you pressed NEXT, mak
 
       codes: [
         {
-          // ✅ gif -> imageGrid inside codes
           imageGridBeforeCode: {
             columns: 1,
             rows: 1,
-            items: [{ imageSrc: "/lesson-assets/loop.png", label: "Menu loop concept" }],
+            width: 800,
+            height: 400,
+            items: [{ imageSrc: "/electric-status-board/loop.png", label: "Menu loop concept" }],
           },
 
           topicTitle: `Using PREV button to toggle upward`,
