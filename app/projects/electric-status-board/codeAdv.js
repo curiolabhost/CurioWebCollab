@@ -1263,7 +1263,7 @@ So the screen displays **1:05**.`,
       ],
     },
   ],
- /* 6: [
+ 6: [
     {
       id: 1,
       title: "Step 1: Adding Timer Functionality",
@@ -1428,7 +1428,7 @@ So the screen displays **1:05**.`,
         },
       ],
     },
-  ],*/
+  ],
 
   7: [
     {
