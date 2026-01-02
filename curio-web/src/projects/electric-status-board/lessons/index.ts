@@ -1,5 +1,6 @@
 import CodeBegLesson from "./codeBeg";
 import CircuitBegLesson from "./circuitBeg";
+import CodeAdvLesson from "./codeAdv";
 
 export const ESB_LESSONS = {
   "code-beg": {
@@ -10,6 +11,15 @@ export const ESB_LESSONS = {
       description: "Learn by completing each step below.",
     },
   },
+
+  "code-adv": {
+    Component: CodeAdvLesson,
+    meta: {
+        title: "Focus Board",
+        subtitle: "Advanced Coding",
+        description: "Take your code further with these advanced lessons.",
+    },
+    },
 
   "circuit-beg": {
     Component: CircuitBegLesson,

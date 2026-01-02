@@ -212,6 +212,15 @@ function parseCurioPtr(storagePrefix: string): { slug: string; lessonSlug: strin
   return { slug, lessonSlug };
 }
 
+function siblingLessonSlug(current: string, want: "coding" | "circuits") {
+  // expects slugs like: code-beg, code-int, code-adv, circuit-beg, circuit-int, circuit-adv
+  const m = String(current).match(/^(code|circuit)-(.+)$/);
+  if (!m) return null;
+
+  const level = m[2]; // beg/int/adv/whatever after dash
+  return want === "coding" ? `code-${level}` : `circuit-${level}`;
+}
+
 function hasAnySteps(obj: any) {
   if (!obj || typeof obj !== "object") return false;
   return Object.keys(obj).length > 0;
@@ -220,6 +229,77 @@ function hasAnySteps(obj: any) {
 function isLessonEntryAdvanced(entry: any) {
   return !!entry?.advanced;
 }
+
+function isLessonEntryIntermediate(entry: any) { 
+  return !!entry?.intermediate;
+}
+
+function isLessonEntryOptional(entry: any) {
+  return !!entry?.optional;
+}
+
+function isStepOptional(step: any) {
+  return !!step?.optional;
+}
+
+function splitStepsForOptionalDropdown(stepsArr: any[]) {
+  const optIdxs = (stepsArr || [])
+    .map((st, idx) => (isStepOptional(st) ? idx : -1))
+    .filter((idx) => idx >= 0);
+
+  const hasOptional = optIdxs.length > 0;
+  if (!hasOptional) {
+    return {
+      hasOptional: false,
+      before: stepsArr.map((st, idx) => ({ st, idx })),
+      optionalBlock: [],
+      after: [],
+      firstOpt: -1,
+      lastOpt: -1,
+    };
+  }
+
+  const firstOpt = Math.min(...optIdxs);
+  const lastOpt = Math.max(...optIdxs);
+
+  const before = stepsArr
+    .map((st, idx) => ({ st, idx }))
+    .filter(({ idx }) => idx < firstOpt);
+
+  const optionalBlock = stepsArr
+    .map((st, idx) => ({ st, idx }))
+    .filter(({ idx, st }) => idx >= firstOpt && idx <= lastOpt && isStepOptional(st));
+
+  const after = stepsArr
+    .map((st, idx) => ({ st, idx }))
+    .filter(({ idx }) => idx > lastOpt);
+
+  return { hasOptional: true, before, optionalBlock, after, firstOpt, lastOpt };
+}
+
+
+function countCountedStepsForLesson(getEntry: (n: number) => any, getSteps: (n: number) => any[], lessonNum: number) {
+  const entry = getEntry(lessonNum);
+  if (isLessonEntryOptional(entry)) return 0; // optional lesson excluded
+  const arr = getSteps(lessonNum);
+  let c = 0;
+  for (let i = 0; i < arr.length; i++) {
+    if (isStepOptional(arr[i])) continue; // optional step excluded
+    c++;
+  }
+  return c;
+}
+
+function isCountedStep(getEntry: (n: number) => any, getSteps: (n: number) => any[], lessonNum: number, stepIdx: number) {
+  const entry = getEntry(lessonNum);
+  if (isLessonEntryOptional(entry)) return false;
+  const arr = getSteps(lessonNum);
+  const st = arr?.[stepIdx];
+  if (!st) return false;
+  return !isStepOptional(st);
+}
+
+
 
 export default function CodeLessonBase({
   lessonSteps = {},
@@ -236,7 +316,6 @@ export default function CodeLessonBase({
 
   backRoute = "",
 
-  // ✅ route targets for “separate pages”
   codingLessonSlug = "code-beg",
   circuitsLessonSlug = "circuit-beg",
 }: any) {
@@ -267,27 +346,36 @@ export default function CodeLessonBase({
     storageSetString(LESSON_TYPE_KEY, lessonType);
   }, [supportsInlineTracks, LESSON_TYPE_KEY, lessonType]);
 
-  const onSelectCircuits = React.useCallback(() => {
-    if (supportsInlineTracks) {
-      setLessonType("circuits");
-      return;
-    }
-    const ptr = parseCurioPtr(storagePrefix);
-    if (!ptr) return;
-    if (ptr.lessonSlug === circuitsLessonSlug) return;
-    router.push(`/projects/${ptr.slug}/lessons/${circuitsLessonSlug}`);
-  }, [supportsInlineTracks, storagePrefix, circuitsLessonSlug, router]);
+const onSelectCircuits = React.useCallback(() => {
+  if (supportsInlineTracks) {
+    setLessonType("circuits");
+    return;
+  }
 
-  const onSelectCoding = React.useCallback(() => {
-    if (supportsInlineTracks) {
-      setLessonType("coding");
-      return;
-    }
-    const ptr = parseCurioPtr(storagePrefix);
-    if (!ptr) return;
-    if (ptr.lessonSlug === codingLessonSlug) return;
-    router.push(`/projects/${ptr.slug}/lessons/${codingLessonSlug}`);
-  }, [supportsInlineTracks, storagePrefix, codingLessonSlug, router]);
+  const ptr = parseCurioPtr(storagePrefix);
+  if (!ptr) return;
+
+  const target = siblingLessonSlug(ptr.lessonSlug, "circuits") ?? circuitsLessonSlug;
+  if (ptr.lessonSlug === target) return;
+
+  router.push(`/projects/${ptr.slug}/lessons/${target}`);
+}, [supportsInlineTracks, storagePrefix, circuitsLessonSlug, router]);
+
+const onSelectCoding = React.useCallback(() => {
+  if (supportsInlineTracks) {
+    setLessonType("coding");
+    return;
+  }
+
+  const ptr = parseCurioPtr(storagePrefix);
+  if (!ptr) return;
+
+  const target = siblingLessonSlug(ptr.lessonSlug, "coding") ?? codingLessonSlug;
+  if (ptr.lessonSlug === target) return;
+
+  router.push(`/projects/${ptr.slug}/lessons/${target}`);
+}, [supportsInlineTracks, storagePrefix, codingLessonSlug, router]);
+
 
   const trackPrefix = React.useMemo(() => {
     if (!supportsInlineTracks) return storagePrefix;
@@ -363,7 +451,7 @@ export default function CodeLessonBase({
 
   const totalStepsAllLessons = React.useMemo(() => {
     let total = 0;
-    for (const ln of lessonsList) total += getLessonStepsArray(ln).length;
+    for (const ln of lessonsList) total += countCountedStepsForLesson(getLessonEntry, getLessonStepsArray, ln);
     return total;
   }, [lessonsList, getLessonStepsArray]);
 
@@ -372,7 +460,8 @@ export default function CodeLessonBase({
     for (const ln of lessonsList) {
       const entry = getLessonEntry(ln);
       if (isLessonEntryAdvanced(entry)) continue;
-      total += getLessonStepsArray(ln).length;
+      if (isLessonEntryOptional(entry)) continue;
+      total += countCountedStepsForLesson(getLessonEntry, getLessonStepsArray, ln);
     }
     return total;
   }, [lessonsList, getLessonEntry, getLessonStepsArray]);
@@ -421,17 +510,22 @@ export default function CodeLessonBase({
 
   const doneNormalCount = React.useMemo(() => {
     let n = 0;
+
     for (const ln of lessonsList) {
       const entry = getLessonEntry(ln);
       if (isLessonEntryAdvanced(entry)) continue;
+      if (isLessonEntryOptional(entry)) continue;
 
       const arr = getLessonStepsArray(ln);
-      arr.forEach((_: any, idx: number) => {
+      arr.forEach((_:any, idx:number) => {
+        if (!isCountedStep(getLessonEntry, getLessonStepsArray, ln, idx)) return;
         if (doneSet.has(makeStepKey(ln, idx))) n++;
       });
     }
+
     return n;
   }, [doneSet, lessonsList, getLessonEntry, getLessonStepsArray]);
+
 
   const advancedUnlocked =
     totalNormalStepsAllLessons > 0 && doneNormalCount >= totalNormalStepsAllLessons;
@@ -502,9 +596,16 @@ export default function CodeLessonBase({
   const steps = getLessonStepsArray(lesson);
   const safeStepIndex = stepIndex < steps.length ? stepIndex : 0;
   const step = steps[safeStepIndex];
+  const entryThisLesson = getLessonEntry(lesson);
+const isThisLessonOptional = isLessonEntryOptional(entryThisLesson);
+const isCurrentStepOptional = !!step?.optional; // optional steps have optional:true in content
+
 
   // sidebar accordion expanded lessons
   const [expandedLessons, setExpandedLessons] = React.useState<number[]>([lesson]);
+const [optionalExpandedByLesson, setOptionalExpandedByLesson] = React.useState<Record<number, boolean>>({});
+
+
 
   React.useEffect(() => {
     setExpandedLessons((prev) => (prev.includes(lesson) ? prev : [lesson, ...prev]));
@@ -516,6 +617,14 @@ export default function CodeLessonBase({
     );
   };
 
+  function toggleOptionalSteps(lessonNum: number) {
+  setOptionalExpandedByLesson((prev) => ({
+    ...(prev || {}),
+    [lessonNum]: !prev?.[lessonNum],
+  }));
+}
+
+
   /* ============================================================
      PROGRESS (UPDATED)
      - Before advancedUnlocked: % uses NORMAL lessons only (can hit 100%)
@@ -523,7 +632,28 @@ export default function CodeLessonBase({
   ============================================================ */
 
   const totalStepsForProgress = advancedUnlocked ? totalStepsAllLessons : totalNormalStepsAllLessons;
-  const doneCountForProgress = advancedUnlocked ? doneSet.size : doneNormalCount;
+  const doneCountAllCounted = React.useMemo(() => {
+  let n = 0;
+  for (const ln of lessonsList) {
+    const entry = getLessonEntry(ln);
+
+    // exclude optional lessons always
+    if (isLessonEntryOptional(entry)) continue;
+
+    // before unlock, exclude advanced required lessons (advanced + not optional)
+    if (!advancedUnlocked && isLessonEntryAdvanced(entry) && !isLessonEntryOptional(entry)) continue;
+
+    const arr = getLessonStepsArray(ln);
+    for (let i = 0; i < arr.length; i++) {
+      if (!isCountedStep(getLessonEntry, getLessonStepsArray, ln, i)) continue;
+      if (doneSet.has(makeStepKey(ln, i))) n++;
+    }
+  }
+  return n;
+}, [doneSet, lessonsList, getLessonEntry, getLessonStepsArray, advancedUnlocked]);
+
+const doneCountForProgress = advancedUnlocked ? doneCountAllCounted : doneNormalCount;
+
 
   const overallProgress =
     totalStepsForProgress > 0
@@ -531,26 +661,59 @@ export default function CodeLessonBase({
       : 0;
 
   // Lesson progress
-  const isThisLessonAdvanced = isLessonEntryAdvanced(getLessonEntry(lesson));
-  const lessonStepsCountAll = Array.isArray(steps) ? steps.length : 0;
+// Lesson progress (counted steps only — excludes optional lessons + optional steps)
+const isThisLessonAdvanced = isLessonEntryAdvanced(entryThisLesson);
+const lessonStepsCountAll = Array.isArray(steps) ? steps.length : 0;
 
-  const lessonStepsCountForProgress =
-    !advancedUnlocked && isThisLessonAdvanced ? 0 : lessonStepsCountAll;
+const countedStepsInThisLesson = React.useMemo(() => {
+  // Advanced required lessons are hidden from progress before unlock
+  if (!advancedUnlocked && isThisLessonAdvanced && !isThisLessonOptional) return 0;
 
-  const doneInThisLessonForProgress = React.useMemo(() => {
-    if (!advancedUnlocked && isThisLessonAdvanced) return 0;
-    let n = 0;
-    for (let i = 0; i < lessonStepsCountAll; i++) {
-      const k = makeStepKey(lesson, i);
-      if (doneSet.has(k)) n++;
-    }
-    return n;
-  }, [doneSet, lesson, lessonStepsCountAll, advancedUnlocked, isThisLessonAdvanced]);
+  // Optional lessons never count toward progress
+  if (isThisLessonOptional) return 0;
 
-  const lessonProgress =
-    lessonStepsCountForProgress > 0
-      ? Math.round((doneInThisLessonForProgress / lessonStepsCountForProgress) * 100)
-      : 0;
+  let total = 0;
+  for (let i = 0; i < steps.length; i++) {
+    if (!isCountedStep(getLessonEntry, getLessonStepsArray, lesson, i)) continue;
+    total++;
+  }
+  return total;
+}, [
+  steps,
+  lesson,
+  advancedUnlocked,
+  isThisLessonAdvanced,
+  isThisLessonOptional,
+  getLessonEntry,
+  getLessonStepsArray,
+]);
+
+const doneInThisLessonForProgress = React.useMemo(() => {
+  if (!advancedUnlocked && isThisLessonAdvanced && !isThisLessonOptional) return 0;
+  if (isThisLessonOptional) return 0;
+
+  let n = 0;
+  for (let i = 0; i < steps.length; i++) {
+    if (!isCountedStep(getLessonEntry, getLessonStepsArray, lesson, i)) continue;
+    if (doneSet.has(makeStepKey(lesson, i))) n++;
+  }
+  return n;
+}, [
+  doneSet,
+  steps,
+  lesson,
+  advancedUnlocked,
+  isThisLessonAdvanced,
+  isThisLessonOptional,
+  getLessonEntry,
+  getLessonStepsArray,
+]);
+
+const lessonProgress =
+  countedStepsInThisLesson > 0
+    ? Math.round((doneInThisLessonForProgress / countedStepsInThisLesson) * 100)
+    : 0;
+
 
   React.useEffect(() => {
     if (!doneSetLoaded) return;
@@ -641,10 +804,14 @@ export default function CodeLessonBase({
   };
 
   // Step navigation (skip advanced lessons until unlocked)
-  function isLessonLocked(lessonNum: number) {
-    const entry = getLessonEntry(lessonNum);
-    return isLessonEntryAdvanced(entry) && !advancedUnlocked;
-  }
+function isLessonLocked(lessonNum: number) {
+  const entry = getLessonEntry(lessonNum);
+  const isAdvanced = isLessonEntryAdvanced(entry);
+  const isOptional = isLessonEntryOptional(entry);
+
+  // only lock advanced REQUIRED lessons
+  return isAdvanced && !isOptional && !advancedUnlocked;
+}
 
   const canPrev = safeStepIndex > 0 || lessonsList.indexOf(lesson) > 0;
 
@@ -960,6 +1127,51 @@ function renderImageGrid(grid: any, keyPrefix = "grid") {
     );
   }
 
+  function renderStepButton(
+  lessonNum: number,
+  idx: number,
+  st: any,
+  locked: boolean,
+  safeStepIndex: number
+) {
+  const isActive = lessonNum === lesson && idx === safeStepIndex;
+  const stepKey = makeStepKey(lessonNum, idx);
+  const isStepDone = doneSet.has(stepKey);
+
+  const isOptional = isStepOptional(st);
+
+  return (
+    <button
+      key={idx}
+      type="button"
+      disabled={locked}
+      onClick={() => {
+        if (locked) return;
+        setLesson(lessonNum);
+        setStepIndex(idx);
+      }}
+      className={[
+        "w-full text-left text-sm py-1 px-3 rounded transition-colors",
+        locked
+          ? "bg-gray-100 text-gray-400 cursor-not-allowed opacity-70"
+          : isActive
+          ? "bg-indigo-100 text-indigo-700"
+          : isStepDone
+          ? "bg-transparent text-green-700 hover:bg-gray-100 hover:text-green-800"
+          : "text-gray-600 hover:bg-gray-100 hover:text-gray-900",
+      ].join(" ")}
+    >
+      <span className={`mr-2 text-s ${isOptional ? "text-gray-400" : "text-gray-600"}`}>
+        {idx + 1}.
+      </span>
+      <span>
+        {String(st.title).replace(/^(Step\s*)?\d+\s*:\s*/i, "")}
+      </span>
+    </button>
+  );
+}
+
+
   const lessonUi = (
     <div className="bg-white flex h-full">
       {/* Main Content */}
@@ -1144,8 +1356,9 @@ function renderImageGrid(grid: any, keyPrefix = "grid") {
                     "px-3 py-1 rounded-full text-sm border transition-colors",
                     (() => {
                       if (supportsInlineTracks) return lessonType === "circuits";
-                      const ptr = parseCurioPtr(storagePrefix);
-                      return ptr?.lessonSlug === circuitsLessonSlug;
+                        const ptr = parseCurioPtr(storagePrefix);
+                        const target = ptr ? siblingLessonSlug(ptr.lessonSlug, "circuits") : null;
+                        return ptr?.lessonSlug === (target ?? circuitsLessonSlug);
                     })()
                       ? "bg-sky-700 text-white border-sky-700"
                       : "bg-white text-gray-700 border-gray-200 hover:bg-gray-100",
@@ -1161,8 +1374,10 @@ function renderImageGrid(grid: any, keyPrefix = "grid") {
                     "px-3 py-1 rounded-full text-sm border transition-colors",
                     (() => {
                       if (supportsInlineTracks) return lessonType === "coding";
-                      const ptr = parseCurioPtr(storagePrefix);
-                      return ptr?.lessonSlug === codingLessonSlug;
+                        const ptr = parseCurioPtr(storagePrefix);
+                        const target = ptr ? siblingLessonSlug(ptr.lessonSlug, "coding") : null;
+                        return ptr?.lessonSlug === (target ?? codingLessonSlug);
+
                     })()
                       ? "bg-sky-700 text-white border-sky-700"
                       : "bg-white text-gray-700 border-gray-200 hover:bg-gray-100",
@@ -1216,7 +1431,7 @@ function renderImageGrid(grid: any, keyPrefix = "grid") {
                     >
                       <div className="text-left">
                         <div className={`text-sm mb-1 ${isLessonActive ? "text-indigo-600" : "text-gray-900"}`}>
-                          Lesson {lessonNum}
+                          {isLessonEntryOptional(entry) ? "Optional Lesson" : "Lesson"} {lessonNum}
                         </div>
                         {lessonSubtitle ? (
                           <div className={`text-xs ${isLessonActive ? "text-indigo-500" : "text-gray-500"}`}>
@@ -1232,41 +1447,55 @@ function renderImageGrid(grid: any, keyPrefix = "grid") {
                       )}
                     </button>
 
-                    {expanded ? (
-                      <div className="px-4 pb-4 pt-3 space-y-1">
-                        {lessonStepsArr.map((st: any, idx: number) => {
-                          const isActive = lessonNum === lesson && idx === safeStepIndex;
-                          const stepKey = makeStepKey(lessonNum, idx);
-                          const isStepDone = doneSet.has(stepKey);
+                      {expanded ? (
+                        <div className="px-4 pb-4 pt-3 space-y-1">
+                          {(() => {
+                            const split = splitStepsForOptionalDropdown(lessonStepsArr);
+                            const optOpen = !!optionalExpandedByLesson[lessonNum];
 
-                          return (
-                            <button
-                              key={idx}
-                              type="button"
-                              disabled={locked}
-                              onClick={() => {
-                                if (locked) return;
-                                setLesson(lessonNum);
-                                setStepIndex(idx);
-                              }}
-                              className={[
-                                "w-full text-left text-sm py-1 px-3 rounded transition-colors",
-                                locked
-                                  ? "bg-gray-100 text-gray-400 cursor-not-allowed opacity-70"
-                                  : isActive
-                                  ? "bg-indigo-100 text-indigo-700"
-                                  : isStepDone
-                                  ? "bg-transparent text-green-700 hover:bg-gray-100 hover:text-green-800"
-                                  : "text-gray-600 hover:bg-gray-100 hover:text-gray-900",
-                              ].join(" ")}
-                            >
-                              <span className="mr-2 text-s text-gray-600">{idx + 1}.</span>
-                              <span>{String(st.title).replace(/^(Step\s*)?\d+\s*:\s*/i, "")}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    ) : null}
+                            return (
+                              <>
+                                {/* BEFORE optional */}
+                                {split.before.map(({ st, idx }: any) =>
+                                  renderStepButton(lessonNum, idx, st, locked, safeStepIndex)
+                                )}
+
+                                {/* OPTIONAL dropdown */}
+                                {split.hasOptional && split.optionalBlock.length > 0 ? (
+                                  <div className="mt-2">
+                                    <button
+                                      type="button"
+                                      onClick={() => toggleOptionalSteps(lessonNum)}
+                                      className="w-full flex items-center justify-between py-2 px-3 rounded bg-gray-100 hover:bg-gray-200 text-sm text-gray-700"
+                                    >
+                                      <span className="font-medium">Optional Steps</span>
+                                      {optOpen ? (
+                                        <ChevronDown className="w-4 h-4 text-gray-500" />
+                                      ) : (
+                                        <ChevronRight className="w-4 h-4 text-gray-500" />
+                                      )}
+                                    </button>
+
+                                    {optOpen ? (
+                                      <div className="mt-1 space-y-1 pl-2 border-l border-gray-200">
+                                        {split.optionalBlock.map(({ st, idx }: any) =>
+                                          renderStepButton(lessonNum, idx, st, locked, safeStepIndex)
+                                        )}
+                                      </div>
+                                    ) : null}
+                                  </div>
+                                ) : null}
+
+                                {/* AFTER optional */}
+                                {split.after.map(({ st, idx }: any) =>
+                                  renderStepButton(lessonNum, idx, st, locked, safeStepIndex)
+                                )}
+                              </>
+                            );
+                          })()}
+                        </div>
+                      ) : null}
+
                   </div>
                 );
               })}
@@ -1315,7 +1544,7 @@ function renderImageGrid(grid: any, keyPrefix = "grid") {
                           >
                             <div className="text-left">
                               <div className={`text-sm mb-1 ${locked ? "text-gray-400" : isLessonActive ? "text-indigo-600" : "text-gray-900"}`}>
-                                Lesson {lessonNum}
+                                {isLessonEntryOptional(entry) ? "Optional Lesson" : "Lesson"} {lessonNum}
                               </div>
                               {lessonSubtitle ? (
                                 <div className={`text-xs ${locked ? "text-gray-400" : isLessonActive ? "text-indigo-500" : "text-gray-500"}`}>
@@ -1333,39 +1562,53 @@ function renderImageGrid(grid: any, keyPrefix = "grid") {
 
                           {expanded ? (
                             <div className="px-4 pb-4 pt-3 space-y-1">
-                              {lessonStepsArr.map((st: any, idx: number) => {
-                                const isActive = lessonNum === lesson && idx === safeStepIndex;
-                                const stepKey = makeStepKey(lessonNum, idx);
-                                const isStepDone = doneSet.has(stepKey);
+                              {(() => {
+                                const split = splitStepsForOptionalDropdown(lessonStepsArr);
+                                const optOpen = !!optionalExpandedByLesson[lessonNum];
 
                                 return (
-                                  <button
-                                    key={idx}
-                                    type="button"
-                                    disabled={locked}
-                                    onClick={() => {
-                                      if (locked) return;
-                                      setLesson(lessonNum);
-                                      setStepIndex(idx);
-                                    }}
-                                    className={[
-                                      "w-full text-left text-sm py-1 px-3 rounded transition-colors",
-                                      locked
-                                        ? "bg-gray-100 text-gray-400 cursor-not-allowed opacity-70"
-                                        : isActive
-                                        ? "bg-indigo-100 text-indigo-700"
-                                        : isStepDone
-                                        ? "bg-transparent text-green-700 hover:bg-gray-100 hover:text-green-800"
-                                        : "text-gray-600 hover:bg-gray-100 hover:text-gray-900",
-                                    ].join(" ")}
-                                  >
-                                    <span className="mr-2 text-s text-gray-400">{idx + 1}.</span>
-                                    <span>{String(st.title).replace(/^(Step\s*)?\d+\s*:\s*/i, "")}</span>
-                                  </button>
+                                  <>
+                                    {/* BEFORE optional */}
+                                    {split.before.map(({ st, idx }: any) =>
+                                      renderStepButton(lessonNum, idx, st, locked, safeStepIndex)
+                                    )}
+
+                                    {/* OPTIONAL dropdown */}
+                                    {split.hasOptional && split.optionalBlock.length > 0 ? (
+                                      <div className="mt-2">
+                                        <button
+                                          type="button"
+                                          onClick={() => toggleOptionalSteps(lessonNum)}
+                                          className="w-full flex items-center justify-between py-2 px-3 rounded bg-gray-100 hover:bg-gray-200 text-sm text-gray-700"
+                                        >
+                                          <span className="font-medium">Optional Steps</span>
+                                          {optOpen ? (
+                                            <ChevronDown className="w-4 h-4 text-gray-500" />
+                                          ) : (
+                                            <ChevronRight className="w-4 h-4 text-gray-500" />
+                                          )}
+                                        </button>
+
+                                        {optOpen ? (
+                                          <div className="mt-1 space-y-1 pl-2 border-l border-gray-200">
+                                            {split.optionalBlock.map(({ st, idx }: any) =>
+                                              renderStepButton(lessonNum, idx, st, locked, safeStepIndex)
+                                            )}
+                                          </div>
+                                        ) : null}
+                                      </div>
+                                    ) : null}
+
+                                    {/* AFTER optional */}
+                                    {split.after.map(({ st, idx }: any) =>
+                                      renderStepButton(lessonNum, idx, st, locked, safeStepIndex)
+                                    )}
+                                  </>
                                 );
-                              })}
+                              })()}
                             </div>
                           ) : null}
+
                         </div>
                       );
                     })}

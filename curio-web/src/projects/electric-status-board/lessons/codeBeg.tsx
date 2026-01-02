@@ -15,7 +15,7 @@ export const LESSON_STEPS_BEGINNER: Record<number, { phrase: string; advanced?: 
         "Arduino is an open-source electronics platform used to create interactive projects. Every Arduino sketch has two main functions: setup() runs once when the board is powered on or reset, loop() runs continuously as long as the board has power.",
       hint: "pinMode() configures a pin as INPUT or OUTPUT",
 
-      // NEW: all visual content goes through imageGrid, inside codes blocks
+      // all visual content goes through imageGrid, inside codes blocks
       codes: [
         {
           // this used to be step.gif
@@ -64,6 +64,7 @@ This continuous on/off cycle makes the LED blink once per second.`,
 
   2: {
     phrase: "OLED setup: libraries, screen dimensions, and button pins",
+    advanced: false,
     steps: [
     {
       id: 1,
@@ -202,15 +203,14 @@ void loop(){
       
 For example, the first blank for PREV can be 3 if you connected it to digital pin 3, as shown in the example circuit image below. Fill in the rest of the blanks for the Next and Select buttons based on your wiring.`,
 
-          // ✅ this used to be step.circuitImage
+          // this used to be step.circuitImage
           imageGridAfterCode: {
             columns: 1,
             rows: 1,
             items: [
               {
-                image: {
-                  uri: "https://dummyimage.com/600x400/ddd/000.png&text=Example+Circuit+Image",
-                },
+                imageSrc:
+                  "https://dummyimage.com/600x400/ddd/000.png&text=Example+Circuit+Image",
                 label: "Example circuit image",
               },
             ],
@@ -353,6 +353,7 @@ Configures the button pins as inputs with internal pull-up resistors.
 
   3: {
     phrase: "Build your first screens: welcome + status functions",
+    advanced: false,
     steps: [
     {
       id: 1,
@@ -401,6 +402,66 @@ void __BLANK[WELCOMEFUNCTION]__ {
   __BLANK[DISPLAY8]__;  //display 
 }^^`,
 
+answerKey: {
+  // Same blank appears twice: must match exactly
+  WELCOMEFUNCTION: { type: "identifier" },
+  DISPLAY1: ["display.clearDisplay()"],
+  DISPLAY2: ["display.setTextSize(1)", "display.setTextSize(2)", "display.setTextSize(3)"],
+  DISPLAY3: ["display.setTextColor(SSD1306_WHITE)", "display.setTextColor(SSD1306_INVERSE)"],
+
+  // The “print line” comment in your template is misleading — this line MUST set cursor.
+  // So we validate it as setCursor(...)
+  DISPLAY4: { type: "string", regex: "^display\\.setCursor\\(\\s*\\d+\\s*,\\s*\\d+\\s*\\)$" },
+  DISPLAY5: ["display.setTextSize(1)", "display.setTextSize(2)", "display.setTextSize(3)"],
+  DISPLAY6: { type: "string", regex: "^display\\.setCursor\\(\\s*\\d+\\s*,\\s*\\d+\\s*\\)$" },
+
+  // Allow print or println (kids may do either)
+  DISPLAY7: { type: "string", regex: "^display\\.(print|println)\\(.*\\)$" },
+
+  DISPLAY8: ["display.display()"],
+},
+
+blankExplanations: {
+  WELCOMEFUNCTION:
+    "This is the NAME of your welcome function (example: welcomeScreen). It must be a valid function identifier: letters/underscores, not starting with a number, no spaces.",
+
+  DISPLAY1:
+    "Clears the OLED’s drawing buffer so you start with a blank screen. Use: display.clearDisplay().",
+
+  DISPLAY2:
+    "Sets the text size for the first part of the welcome screen. Common values: 1 (small), 2 (medium), 3 (large).",
+
+  DISPLAY3:
+    "Sets text color mode. Most of the time you use SSD1306_WHITE so text shows up. SSD1306_INVERSE is a fun option for highlighting.",
+
+  DISPLAY4:
+    "Moves the cursor to where the first text should start. Must be display.setCursor(x, y) where x and y are pixel coordinates.",
+
+  DISPLAY5:
+    "Optionally change the text size again (example: big title then smaller subtitle).",
+
+  DISPLAY6:
+    "Move the cursor again before the next line, so your second line prints lower on the screen.",
+
+  DISPLAY7:
+    'Print your welcome message line (example: display.println("Hello!");). You can use print or println.',
+
+  DISPLAY8:
+    "Updates the physical OLED screen by pushing the buffer to the display. Without display.display(), nothing shows up.",
+},
+
+blankDifficulties: {
+  WELCOMEFUNCTION: "easy",
+  DISPLAY1: "easy",
+  DISPLAY2: "easy",
+  DISPLAY3: "easy",
+  DISPLAY4: "easy",
+  DISPLAY5: "easy",
+  DISPLAY6: "medium",
+  DISPLAY7: "easy",
+  DISPLAY8: "easy",
+},
+
           descAfterCode: `Now, create a function with the same functionality as the example WelcomeFunc above. 
 But, **rename the function as something else and have it display a different message.** Fill in the blanks.`,
         },
@@ -432,6 +493,40 @@ void __BLANK[STATUSFUNCTION]__{
   display.__BLANK[DISPLAY9]__;
 }^^`,
 
+          answerKey: {STATUSFUNCTION: { type: "identifier" },
+                      STATUSCODE1: ["display.clearDisplay()"],
+                      STATUSCODE2: { type: "string", regex: "^display\\.setTextSize\\(\\s*\\d+\\s*\\)\\s*;?$" },
+                      STATUSCODE3: { type: "string", regex: "^display\\.setCursor\\(\\s*\\d+\\s*,\\s*\\d+\\s*\\)\\s*;?$" },
+                      STATUSCODE4: { type: "string", regex: "^display\\.(print|println)\\(.*\\)\\s*;?$" },
+
+                      // In your code you wrote: display.__BLANK[DISPLAY9]__;
+                      // That blank MUST include parentheses in the stored value.
+                      DISPLAY9: ["display()"],
+                    },
+          blankExplanations: {
+              STATUSFUNCTION:
+                "This is the NAME of your function that draws the chosen status screen (example: showStatus). Must be a valid identifier.",
+              STATUSCODE1:
+                "Clear the OLED buffer at the start of the status screen so old menu text doesn’t remain.",
+              STATUSCODE2:
+                "Set the text size for the status screen (example: display.setTextSize(2);).",
+              STATUSCODE3:
+                "Set the cursor position for where the status text should start (example: display.setCursor(0, 0);).",
+              STATUSCODE4:
+                'Print the status text. Example: display.println("Studying"); or display.println(option);',
+              DISPLAY9:
+                "Push the buffer to the OLED so the printed status actually appears. Use display.display().",
+            },
+            blankDifficulties: {
+              STATUSFUNCTION: "easy",
+              STATUSCODE1: "easy",
+              STATUSCODE2: "easy",
+              STATUSCODE3: "easy",
+              STATUSCODE4: "easy",
+              DISPLAY9: "easy",
+            },
+
+
           descAfterCode: `Here are specific instructions on what each line of the code should do at it's minimum. You can also add more functinalities to this in the code editor.
 **Line 1:** clear the display.
 **Line 2:** set text size.
@@ -445,6 +540,7 @@ void __BLANK[STATUSFUNCTION]__{
 
   4: {
     phrase: "Variables + arrays: storing menu options and tracking state",
+    advanced: false,
     steps: [
     {
       id: 1,
@@ -504,6 +600,51 @@ float temperature = __BLANK[TEMP]__;
 __BLANK[DATETYPE]__ date = "12/25/2025";
 __BLANK[BUTTONTYPE]__ buttonState = false;
 int __BLANK[NAME2]__ = 365^^;`,
+        answerKey: {
+          NAMETYPE: ["String", "char"],
+          NAME1: { type: "string", regex: "^[^\\n\\r]+$" }, // allow anything non-empty inside quotes
+          YEAR: { type: "range", min: 1900, max: 2100 },
+          MONTH: { type: "string", regex: "^[A-Za-z]+$" },
+          READY: ["true", "false"],
+          TEMP: { type: "number" },
+          DATETYPE: ["String"],
+          BUTTONTYPE: ["bool"],
+          NAME2: { type: "identifier" },
+        },
+
+        blankExplanations: {
+          NAMETYPE:
+            "This blank is the variable TYPE. If you want text in quotes, use String. If you want one character, use char.",
+          NAME1:
+            "A name inside quotes. Example: Emily. (You can type any word here; it’s just practice.)",
+          YEAR:
+            "A year number (no quotes). Example: 2026.",
+          MONTH:
+            "A month written as a word inside quotes. Example: January.",
+          READY:
+            "A boolean value. Only true or false (no quotes).",
+          TEMP:
+            "A number that can be decimal. Example: 72.5.",
+          DATETYPE:
+            "Because you’re storing the date in quotes (\"12/25/2025\"), the type must be String.",
+          BUTTONTYPE:
+            "buttonState stores true/false, so the type should be bool.",
+          NAME2:
+            "A valid variable name for the last line. Example: daysInYear. Must start with a letter/underscore and contain no spaces.",
+        },
+
+        blankDifficulties: {
+          NAMETYPE: "easy",
+          NAME1: "easy",
+          YEAR: "easy",
+          MONTH: "easy",
+          READY: "easy",
+          TEMP: "easy",
+          DATETYPE: "easy",
+          BUTTONTYPE: "easy",
+          NAME2: "easy",
+        },
+
           descAfterCode: `String uses double quotation \`"" ""\`.
 Char uses single quotation \`' '\`.
 Integer does not need anything surrounding the numbers. 
@@ -512,19 +653,38 @@ Boolean only allows true or false. `,
         {
           descBeforeCode: `**Understanding changes in Variables:**`,
           title: "Practice: Counter",
-          code: `int counter = 0;
+          code: `^^int counter = 0;
 
 counter = counter + 1;
 counter = counter + 1;
-counter = counter + 1;`,
+counter = counter + 1;^^`,
           descAfterCode: `What does the counter now read?    __BLANK[COUNTER]__`,
-        },
+          answerKey: {
+            COUNTER: ["3"],
+          },
+          blankExplanations: {
+            COUNTER:
+              "Counter starts at 0 and you add 1 three times (0→1→2→3). Final value is 3.",
+          },
+          blankDifficulties: {
+            COUNTER: "easy",
+          },},
         {
           title: "Practice: Level",
-          code: `int level = 1;
+          code: `^^int level = 1;
 
 level = level + 1;
-level = level + 2;`,
+level = level + 2;^^`,
+          answerKey: {
+            LEVEL: ["4"],
+          },
+          blankExplanations: {
+            LEVEL:
+              "Level starts at 1, then +1 makes 2, then +2 makes 4. Final value is 4.",
+          },
+          blankDifficulties: {
+            LEVEL: "easy",
+          },
           descAfterCode: `What does the level now read?    __BLANK[LEVEL]__`,
         },
       ],
@@ -539,7 +699,7 @@ level = level + 2;`,
 
       codes: [
         {
-          // ✅ gif -> imageGrid
+          // imageGrid
           imageGridBeforeCode: {
             columns: 1,
             rows: 1,
@@ -562,6 +722,34 @@ __BLANK[ARRAYTYPE]__  __BLANK[ARRAYNAME]__ = __BLANK[ARRAY]__;^^
 /* Assign a variable named favoriteColor that calls your favorite color within the array. */
 __BLANK[VARRAYTYPE]__  __BLANK[VARRAYNAME]__ = __BLANK[CALL]__;^^`,
 
+          answerKey: {
+            ARRAYTYPE: ["String"],
+            ARRAYNAME: {
+              type: "string",
+              regex: "^[A-Za-z_][A-Za-z0-9_]*\\s*\\[\\s*\\]$",
+            },
+            ARRAY: { type: "string", regex: "^\\{.*\\}$" },
+            VARRAYTYPE: ["String"],
+            VARRAYNAME: { type: "identifier" },
+            CALL: {
+              type: "string",
+              regex: "^[A-Za-z_][A-Za-z0-9_]*\\s*\\[\\s*\\d+\\s*\\]$",
+            },
+          },
+
+          blankExplanations: {
+            ARRAYTYPE: "The data type for a text array is usually String.",
+            ARRAYNAME:
+              "Write a valid array name ending with [], like colors[] or favColors[].",
+            ARRAY:
+              "Write the array initializer in curly braces, like {\"Red\", \"Blue\", \"Green\", \"Yellow\"}.",
+            VARRAYTYPE:
+              "The variable that stores one color from the array should also be a String.",
+            VARRAYNAME: "Pick a variable name like favoriteColor.",
+            CALL:
+              "Call one element from your array using an index, like colors[2].",
+          },
+
           descAfterCode: `Arrays group related data together:
   - \`numbers[0]\` gives the **first** item → \`1\`  
   - \`numbers[1]\` gives the second item → \`2\`  
@@ -571,13 +759,13 @@ Arrays are extremely useful when you want your code to handle lots of similar va
         },
         {
           title: `More Practice:`,
-          code: `String days[] = {"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"};
+          code: `^^String days[] = {"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"};
 
-Fill in the blanks:
+//Fill in the blanks:
 days[3] =  __BLANK[DAY]__
 days[1] =  __BLANK[DAY2]__
 days[__BLANK[DAY3]__] = Monday
-days[__BLANK[DAY4]__] = Sunday`,
+days[__BLANK[DAY4]__] = Sunday^^`,
 
           answerKey: {
             DAY: ["Thursday"],
@@ -613,6 +801,40 @@ __BLANK[STATUSTYPE]__  __BLANK[STATUSNAME]__ = {
   __BLANK[STATUSLIST3]__,
   __BLANK[STATUSLIST4]__
 };^^`,
+        answerKey: {
+          STATUSTYPE: ["String"],
+          STATUSNAME: { type: "string", regex: "^[A-Za-z_][A-Za-z0-9_]*\\s*\\[\\s*\\]$" },
+
+          // Each should be a quoted string (you want them to type their own, so validate format)
+          STATUSLIST1: { type: "string", regex: '^".*"$' },
+          STATUSLIST2: { type: "string", regex: '^".*"$' },
+          STATUSLIST3: { type: "string", regex: '^".*"$' },
+          STATUSLIST4: { type: "string", regex: '^".*"$' },
+        },
+
+        blankExplanations: {
+          STATUSTYPE:
+            "Your array is storing text messages, so the type is String.",
+          STATUSNAME:
+            "This is the NAME of the array and must include [] at the end. Example: statuses[] or options[].",
+          STATUSLIST1:
+            'A status message in double quotes. Example: "Studying".',
+          STATUSLIST2:
+            'Another status message in double quotes. Example: "Working".',
+          STATUSLIST3:
+            'Another status message in double quotes. Example: "Gaming".',
+          STATUSLIST4:
+            'Another status message in double quotes. Example: "Do Not Disturb".',
+        },
+
+        blankDifficulties: {
+          STATUSTYPE: "easy",
+          STATUSNAME: "medium",
+          STATUSLIST1: "easy",
+          STATUSLIST2: "easy",
+          STATUSLIST3: "easy",
+          STATUSLIST4: "easy",
+        },
           descAfterCode: `Each item will now be accessed by its index:
   - __BLANK[STATUSNAME]__ [0] → __BLANK[STATUSLIST1]__
   - __BLANK[STATUSNAME]__ [1] → __BLANK[STATUSLIST2]__
@@ -658,6 +880,48 @@ __BLANK[TOTTYPE]__ __BLANK[TOTNAME]__ = __BLANK[TOTNUM]__;^^
 __BLANK[TRACKTYPE]__ __BLANK[TRACKNAME]__ = __BLANK[TRACKNUM]__; ^^
 
 String option = __BLANK[STATUSNAME]__ [__BLANK[TRACKNAME]__];^^`,
+          answerKey: {
+            TOTTYPE: ["int"],
+            TOTNAME: { type: "identifier" },
+
+            // they can have 4+ statuses; just enforce it's a positive integer
+            TOTNUM: { type: "range", min: 1, max: 50 },
+
+            TRACKTYPE: ["int"],
+            TRACKNAME: { type: "identifier" },
+            TRACKNUM: ["0"],
+
+            // “What would option read?” depends on their own list, so don’t hardgrade it.
+            OPTION: { type: "string" },
+          },
+
+          blankExplanations: {
+            TOTTYPE:
+              "This variable stores a count (whole number), so use int.",
+            TOTNAME:
+              "A variable name for the total number of status options. Example: totalOptions or totalStatuses.",
+            TOTNUM:
+              "The number of items in your status array (example: 4 if you listed 4 statuses). This MUST match how many strings you put in the array.",
+            TRACKTYPE:
+              "The menu index/cursor is a whole number, so use int.",
+            TRACKNAME:
+              "A variable name for the current selected index. Example: index, cursor, selectedIndex.",
+            TRACKNUM:
+              "Start at 0 so the first element of the array is selected at the beginning.",
+            OPTION:
+              "This is whatever status string is at index 0 (because the counter starts at 0). It depends on what YOU put as the first status in the array.",
+          },
+
+          blankDifficulties: {
+            TOTTYPE: "easy",
+            TOTNAME: "medium",
+            TOTNUM: "medium",
+            TRACKTYPE: "easy",
+            TRACKNAME: "medium",
+            TRACKNUM: "easy",
+            OPTION: "easy",
+          },
+
           descAfterCode: `These two variables let the menu scroll correctly. In our code we can check the value of counter:
   - If it is past the last item → wrap back to the first  
   - If it is before the first → wrap to the last
@@ -729,6 +993,53 @@ void __BLANK[STATUSFUNCTION]__{
 
   display.display();              // push everything to the screen
 }^^`,
+          answerKey: {
+            SHOWMENU: { type: "identifier" },
+            // You used display.__BLANK[SHOW1]__; so SHOW1 should be "clearDisplay()"
+            SHOW1: ["clearDisplay()"],
+            // These are lines without the "display." prefix in your template,
+            // so we validate the full statement they should type.
+            SHOW2: { type: "string", regex: "^display\\.setTextSize\\(\\s*\\d+\\s*\\)\\s*;?$" },
+            SHOW3: { type: "string", regex: "^display\\.setCursor\\(\\s*\\d+\\s*,\\s*\\d+\\s*\\)\\s*;?$" },
+            SHOW4: { type: "string", regex: '^".*"$' },
+            HIGHLIGHT: ['"> "', '"-> "', '"▶ "', '"* "', '"✓ "', '"• "'],
+            NONHIGH: ['"  "', '"   "', '"    "'],
+            // Must print the ith element of the status array (whatever they named it)
+            STATUSARRAY: { type: "string", regex: "^[A-Za-z_][A-Za-z0-9_]*\\s*\\[\\s*i\\s*\\]$" },
+            INCREMENT: ["i++", "i = i + 1", "i += 1"],
+          },
+          blankExplanations: {
+            SHOWMENU:
+              "This is the function name that draws your menu screen (example: showMenu). Must be a valid identifier.",
+            SHOW1:
+              "Because your code is written as display.__BLANK[SHOW1]__; you must fill in just the function call part: clearDisplay().",
+            SHOW2:
+              "Set the menu text size. Example: display.setTextSize(1);",
+            SHOW3:
+              "Set the cursor for where the menu starts. Example: display.setCursor(0, 0);",
+            SHOW4:
+              'The menu header text in quotes. Example: "Select Status".',
+            HIGHLIGHT:
+              'This is the symbol you print before the selected line. Most common is "> ".',
+            NONHIGH:
+              'Spaces that keep the non-selected lines aligned so the menu looks neat. Example: "  ".',
+            STATUSARRAY:
+              "Print the status at index i from your status array. Example: statuses[i]. (Use whatever array name you created.)",
+            INCREMENT:
+              "You must increase i each loop so the while loop finishes. Example: i++;",
+          },
+          blankDifficulties: {
+            SHOWMENU: "medium",
+            SHOW1: "easy",
+            SHOW2: "medium",
+            SHOW3: "medium",
+            SHOW4: "easy",
+            HIGHLIGHT: "easy",
+            NONHIGH: "easy",
+            STATUSARRAY: "medium",
+            INCREMENT: "easy",
+          },
+
           descAfterCode: `This function:
 1. Clears the screen and prints the title.
 2. Uses a while loop to go through every status in __BLANK[STATUSNAME]__.
@@ -746,6 +1057,7 @@ Feel free to change how you want the menu to show. You do not need to stick to i
 
   5: {
     phrase: "Loops: while loops and iterating through arrays",
+    advanced: false,
     steps: [
     {
       id: 1,
@@ -794,7 +1106,17 @@ The pattern is:
 - **Update:** \`i = i + 1;\` → move to the next number
 If you forget the update line, the loop never ends, because \`i\` would stay the same forever.
 
-What does the \`i\` read after while loop ends?    __BLANK[ANSWER]__`,
+What does the \`i\` read after while loop ends?    __BLANK[ANSWEREX]__`,
+          answerKey: {
+            ANSWEREX: ["4"],
+          },
+          blankExplanations: {
+            ANSWEREX:
+              "The loop starts at i = 0 and keeps running while i < 4. It prints 0, 1, 2, 3, then increments to 4. When i becomes 4, the condition (i < 4) is false, so the loop stops. Final value: 4.",
+          },
+          blankDifficulties: {
+            ANSWEREX: "easy",
+          },
         },
         {
           title: "Loop Practice 1: Print Even Numbers",
@@ -805,6 +1127,24 @@ while (num < __BLANK[LOOP1]__){
   Serial.println(__BLANK[LOOP2]__);
   num = num + __BLANK[LOOP3]__;
 }^^`,
+          answerKey: {
+            LOOP1: ["11"],                 // stop once num reaches 10, so condition should be num < 11
+            LOOP2: ["num"],                // print the variable num
+            LOOP3: ["2"],                  // increase by 2 each time
+          },
+          blankExplanations: {
+            LOOP1:
+              "We want to print even numbers up to 10. If we use `while (num < 11)`, the last printed value can be 10. (If we used `< 10`, it would stop at 8.)",
+            LOOP2:
+              "You should print the current value of the variable `num` each loop.",
+            LOOP3:
+              "To jump between even numbers (2 → 4 → 6 → 8 → 10), add 2 each time.",
+          },
+          blankDifficulties: {
+            LOOP1: "easy",
+            LOOP2: "easy",
+            LOOP3: "easy",
+          },
         },
         {
           title: "Loop Practice 2: Print Multiples of 3",
@@ -815,6 +1155,32 @@ while (__BLANK[LOOP6]__ < __BLANK[LOOP7]__){
   Serial.println(__BLANK[LOOP8]__);
   x = __BLANK[LOOP9]__;
 }^^`,
+          answerKey: {
+            LOOP5: ["3"],        // start at 3
+            LOOP6: ["x"],        // loop condition uses x
+            LOOP7: ["28"],       // allow 27 to print: while (x < 28)
+            LOOP8: ["x"],        // print x
+            LOOP9: ["x + 3"],    // increment by 3
+          },
+          blankExplanations: {
+            LOOP5:
+              "Multiples of 3 starting at 3 means initialize x to 3.",
+            LOOP6:
+              "The while loop should compare the variable `x` against an upper limit.",
+            LOOP7:
+              "To include 27, use an upper bound just above it, like 28, with `<`. (So 27 prints, then x becomes 30 and stops.)",
+            LOOP8:
+              "Print the current multiple: `x`.",
+            LOOP9:
+              "Advance to the next multiple of 3 by adding 3 each loop.",
+          },
+          blankDifficulties: {
+            LOOP5: "easy",
+            LOOP6: "easy",
+            LOOP7: "medium",
+            LOOP8: "easy",
+            LOOP9: "easy",
+          },
         },
         {
           title: "Loop Practice 3: Stop when a Number Reaches a Limit",
@@ -825,6 +1191,36 @@ while (__BLANK[LOOP11]__ < __BLANK[LOOP12]__){
   Serial.println(__BLANK[LOOP13]__);
   __BLANK[LOOP14]__ = __BLANK[LOOP15]__;
 }^^`,
+          answerKey: {
+            LOOP10: ["value", "num", "x"], // any valid identifier is fine
+            LOOP11: { type: "sameAs", target: "LOOP10" },
+            LOOP12: ["101"],              // stop when > 100, so continue while < 101
+            LOOP13: { type: "sameAs", target: "LOOP10" },
+            LOOP14: { type: "sameAs", target: "LOOP10" },
+            LOOP15: { type: "string", regex: "^(\\s*__BLANK\\[LOOP10\\]__\\s*\\*\\s*2\\s*|\\s*\\w+\\s*\\*\\s*2\\s*)$" },
+          },
+          blankExplanations: {
+            LOOP10:
+              "Pick a variable name (identifier) to store the number you keep doubling, like `value` or `num`.",
+            LOOP11:
+              "This should be the same variable as LOOP10 (the number you’re tracking). The loop condition uses that same variable.",
+            LOOP12:
+              "We stop when the number becomes greater than 100. Using `while (num < 101)` guarantees you’ll stop right after passing 100.",
+            LOOP13:
+              "Print the same variable you are doubling each time so you can watch it grow.",
+            LOOP14:
+              "This left side should be the same variable name again, because you are updating that variable.",
+            LOOP15:
+              "Update the variable by doubling it each loop: `num * 2` (or `value * 2`).",
+          },
+          blankDifficulties: {
+            LOOP10: "easy",
+            LOOP11: "easy",
+            LOOP12: "medium",
+            LOOP13: "easy",
+            LOOP14: "easy",
+            LOOP15: "easy",
+          },
         },
         {
           title: "Loop Practice 4: Loop Until Botton Press",
@@ -834,6 +1230,31 @@ while (__BLANK[LOOP11]__ < __BLANK[LOOP12]__){
 while (__BLANK[LOOP11]__ == false){
   Serial.println(__BLANK[LOOP13]__);
 }^^`,
+          answerKey: {
+            LOOP16: ["bool"],
+            LOOP17: ["false"],
+            // LOOP11 is used here as the variable name in: while (__BLANK[LOOP11]__ == false)
+            // It must match the variable being loop-checked (ready). Since your code uses `ready`,
+            // the simplest correct answer is to require LOOP11 to be "ready".
+            LOOP11: ["ready"],
+            LOOP13: ['"Waiting..."', '"Waiting..."', '"Waiting..."'], // allow exact string
+          },
+          blankExplanations: {
+            LOOP16:
+              "`ready` is a true/false value, so its type should be `bool`.",
+            LOOP17:
+              "Start with `ready = false` so the loop runs and keeps printing until something changes it to true.",
+            LOOP11:
+              "This blank is the variable the loop checks. Since your variable is named `ready`, the condition should be `while (ready == false)`.",
+            LOOP13:
+              "This should print the message each loop. Put the string literal in quotes: `\"Waiting...\"`.",
+          },
+          blankDifficulties: {
+            LOOP16: "easy",
+            LOOP17: "easy",
+            LOOP11: "easy",
+            LOOP13: "easy",
+          },
         },
         {
           title: "Loop Practice 5: Loop through Array 1",
@@ -852,6 +1273,24 @@ while (j < total) {
   }
 j = j + 1 ^^ // increment to the next index^^
 }^^`,
+          answerKey: {
+            LOOP14: ["6"],      // total items in nums[] (2,4,7,9,11,14)
+            LOOP15: { type: "range", min: 0, max: 20 }, // desiredNum can be any number, but typically one from the array
+            LOOP16: { type: "sameAs", target: "LOOP15" }, // compare against desiredNum
+          },
+          blankExplanations: {
+            LOOP14:
+              "This array has 6 items, so `total` should be 6. That ensures the while loop visits indices 0 through 5.",
+            LOOP15:
+              "Choose the number you want to find in the array (commonly one of the values inside nums[], like 9 or 14).",
+            LOOP16:
+              "To detect the target, compare `nums[j]` to the SAME number stored in `desiredNum`.",
+          },
+          blankDifficulties: {
+            LOOP14: "easy",
+            LOOP15: "easy",
+            LOOP16: "easy",
+          },
         },
         {
           title: "Loop Practice 6: Loop through Array 2",
@@ -870,6 +1309,55 @@ while (__BLANK[LOOP21]__ < total) {
   }
   __BLANK[LOOP26]__ = __BLANK[LOOP23]__ + 1;  ^^           // increment to the next index^^
 }^^`,
+          answerKey: {
+            LOOP17: {
+              type: "string",
+              regex: "^[A-Za-z_][A-Za-z0-9_]*\\s*\\[\\s*\\]$",
+            },
+            LOOP18: ["6"],
+            LOOP19: { type: "identifier" },
+            LOOP20: { type: "range", min: 0, max: 20 },            // choose a desired number
+            LOOP21: ["k", "i", "j", "idx"],                         // loop index variable name
+            LOOP22: ["0"],
+            LOOP23: { type: "string", regex: "^[A-Za-z_][A-Za-z0-9_]*\\s*\\[\\s*__BLANK\\[LOOP21\\]__\\s*\\]$" },
+            LOOP24: { type: "sameAs", target: "LOOP20" },           // compare to desired value
+            LOOP25: { type: "sameAs", target: "LOOP19" },           // print the desired number variable
+            LOOP26: { type: "sameAs", target: "LOOP21" },           // increment index variable
+          },
+          blankExplanations: {
+            LOOP17:
+              "This is the name of the integer array variable, and it must include `[]`, like `nums[]`.",
+            LOOP18:
+              "There are 6 numbers inside the array, so `total` should be 6.",
+            LOOP19:
+              "Create a variable name to store the desired number, like `desiredNum`.",
+            LOOP20:
+              "Pick the number you want to find and print (often one that exists in the array).",
+            LOOP21:
+              "This is the index variable used to walk through the array, like `k` or `i`.",
+            LOOP22:
+              "Start at index 0 because arrays are 0-indexed.",
+            LOOP23:
+              "This should reference the current element in the array using your index variable: `nums[k]` (arrayName[indexVar]).",
+            LOOP24:
+              "Compare the current array element to the exact desired value you chose (the same value as LOOP20).",
+            LOOP25:
+              "When you find the target, print the variable that stores the desired number (LOOP19).",
+            LOOP26:
+              "Increment the index variable so the loop moves to the next element: `k = k + 1`.",
+          },
+          blankDifficulties: {
+            LOOP17: "medium",
+            LOOP18: "easy",
+            LOOP19: "easy",
+            LOOP20: "easy",
+            LOOP21: "easy",
+            LOOP22: "easy",
+            LOOP23: "medium",
+            LOOP24: "easy",
+            LOOP25: "easy",
+            LOOP26: "easy",
+          },
         },
       ],
     },
@@ -882,7 +1370,7 @@ while (__BLANK[LOOP21]__ < total) {
 
       codes: [
         {
-          code: `^^const String options[] = {
+          code: `^^const String optionsExample[] = {
   "Sleeping",
   "Studying",
   "Gaming",
@@ -895,11 +1383,32 @@ while (i < __BLANK[SL2]__) {
   display.print(__BLANK[SL3]__);   ^^// print the status at index i^^
   __BLANK[SL4]__;                    ^^// move to the next index^^
 }^^`,
+          answerKey: {
+            SL2: { type: "sameAs", target: "SL1" },
+            SL3: ["optionsExample[i]", "optionsExample[ i ]"],
+            SL4: ["i = i + 1", "i++"],
+          },
+          blankExplanations: {
+            SL1:
+              "Name a variable that stores the total number of items in the optionsExample array (here it’s 4). A clear name is `totalOptions`.",
+            SL2:
+              "The while loop should compare `i` to the SAME total variable you integer variabledefined in above for total number of items",
+            SL3:
+              "To print each status, you must print the array element at index i: `optionsExample[i]`.",
+            SL4:
+              "Increment i so the loop moves to the next index. Otherwise it would never end.",
+          },
+          blankDifficulties: {
+            SL1: "easy",
+            SL2: "easy",
+            SL3: "easy",
+            SL4: "easy",
+          },
           descAfterCode: `Here, \`i\` is used as the **array index**:
-- When \`i = 0\`, we print \`options[0]\` → "Sleeping"
-- When \`i = 1\`, we print \`options[1]\` → "Studying"
-- When \`i = 2\`, we print \`options[2]\` → "Gaming"
-- When \`i = 3\`, we print \`options[3]\` → "Do Not Disturb"
+- When \`i = 0\`, we print \`optionsExample[0]\` → "Sleeping"
+- When \`i = 1\`, we print \`optionsExample[1]\` → "Studying"
+- When \`i = 2\`, we print \`optionsExample[2]\` → "Gaming"
+- When \`i = 3\`, we print \`optionsExample[3]\` → "Do Not Disturb"
 
 The loop stops when \`i\` becomes equal to \`totalOptions\`. This makes the code still correct if you change the number of items later.`,
         },
@@ -917,7 +1426,7 @@ The loop stops when \`i\` becomes equal to \`totalOptions\`. This makes the code
         {
           code: `^^int indexChosen = 1;    ^^// example: 'Studying' is selected^^
 
-const String options[] = {
+const String optionsExample[] = {
   "Sleeping",
   "Studying",
   "Gaming",
@@ -926,15 +1435,29 @@ const String options[] = {
 int __BLANK[SL1]__ = 4;      ^^// total number of items in the array^^
 
 int i = __BLANK[SL5]__;
-while (i < __BLANK[SL6]__ {
+while (i < __BLANK[SL6]__) {
   if (i == indexChosen) {
       display.print("> ");        ^^// arrow for the selected item^^
     } else {
     display.print("  ");        ^^// just spaces for others^^
     }
-  display.println(options[i]);
+  display.println(optionsExample[i]);
   i = i + 1;
 }^^`,
+          answerKey: {
+            SL5: ["0"],
+            SL6: ["4", { type: "sameAs", target: "SL1" }],
+          },
+          blankExplanations: {
+            SL5:
+              "Start your loop index at 0 so you print from the first status in the array.",
+            SL6:
+              "The loop should run until i reaches the total number of options. Since there are 4 items, using 4 works. If you used a variable like `totalOptions`, that also works (and is more flexible).",
+          },
+          blankDifficulties: {
+            SL5: "easy",
+            SL6: "easy",
+          },
           descAfterCode: `The condition \`if (i == indexChosen)\` means:
 - If this row’s index equals the selected index, print \`"> "\` first.
 - Otherwise, print spaces so the text lines up.
@@ -1057,6 +1580,7 @@ Feel free to change how you want the menu to show. You do not need to stick to i
 
   6: {
     phrase: "Buttons: INPUT_PULLUP, reading presses, and debouncing",
+    advanced: false,
     steps: [
     {
       id: 1,
@@ -1079,6 +1603,20 @@ So the logic becomes:
 - **Pressed → \`digitalRead(pin)\` is** __BLANK[INPUTHIGHLOW]__
 
 We'll use this pattern for all the buttons in the status board project.`,
+      answerKey: {
+        INPUTHIGHLOW1: ["HIGH"],
+        INPUTHIGHLOW: ["LOW"],
+      },
+      blankExplanations: {
+        INPUTHIGHLOW1:
+          "With INPUT_PULLUP, the pin is pulled HIGH when the button is NOT pressed.",
+        INPUTHIGHLOW:
+          "When the button is pressed, the pin is connected to GND, so it reads LOW.",
+      },
+      blankDifficulties: {
+        INPUTHIGHLOW1: "easy",
+        INPUTHIGHLOW: "easy",
+      },
       hint:
         "Remember: with INPUT_PULLUP, a pressed button reads LOW, and a released button reads HIGH.",
     },
@@ -1148,6 +1686,24 @@ We'll use this pattern for all the buttons in the status board project.`,
 ^^    delay(250);^^                            // small pause so one press doesn’t count many times
 ^^  }^^
 ^^}^^`,
+          answerKey: {
+            BUTTON1: ["INPUT_PULLUP"],
+            BUTTON2: ["LOW"],
+            BUTTON3: ["1"],
+          },
+          blankExplanations: {
+            BUTTON1:
+              "Use INPUT_PULLUP because the button is wired to GND and should read HIGH when released.",
+            BUTTON2:
+              "With INPUT_PULLUP, pressed = LOW (that’s the condition you check).",
+            BUTTON3:
+              "Increase the counter by 1 per press.",
+          },
+          blankDifficulties: {
+            BUTTON1: "easy",
+            BUTTON2: "easy",
+            BUTTON3: "easy",
+          },
           descAfterCode:
             "Try pressing the button multiple times and watch the numbers go up. This is similar to how we move through menu items with each press.",
         },
@@ -1172,6 +1728,33 @@ We'll use this pattern for all the buttons in the status board project.`,
 ^^    delay(250);^^                                      // simple debounce
 ^^  }^^
 ^^}^^`,
+        answerKey: {
+          BUTTON4: ["#define"],
+          BUTTON5: ["BUTTON"],
+          BUTTON6: ["INPUT_PULLUP"],
+          BUTTON7: { type: "string", regex: "^digitalRead\\(BUTTON\\)$" },
+          BUTTON8: ["LOW"],
+        },
+        blankExplanations: {
+          BUTTON4:
+            "Use #define to create a constant like #define BUTTON 2.",
+          BUTTON5:
+            "This should be the constant name you’re using everywhere: BUTTON.",
+          BUTTON6:
+            "Buttons should be INPUT_PULLUP so released reads HIGH and pressed reads LOW.",
+          BUTTON7:
+            "Read the button state using digitalRead(BUTTON).",
+          BUTTON8:
+            "Pressed is LOW when using INPUT_PULLUP wiring.",
+        },
+        blankDifficulties: {
+          BUTTON4: "easy",
+          BUTTON5: "easy",
+          BUTTON6: "easy",
+          BUTTON7: "medium",
+          BUTTON8: "easy",
+        },
+
           descAfterCode:
             "First press turns the LED **on**, second press turns it **off**, and so on. This idea of flipping a state is exactly how we’ll switch screens or modes later.",
         },
@@ -1184,9 +1767,9 @@ We'll use this pattern for all the buttons in the status board project.`,
 ^^String options[] = {"Red", "Blue", "Green", "Yellow"};^^
 ^^int totalOptions = 4;^^
 ^^int index = 0;^^
+^^__BLANK[BUTTON9]__  __BLANK[BUTTON10]__  __BLANK[BUTTON11]__;^^   // define button, connected to pin 10 ^^
 
 ^^void setup() {^^
-^^  __BLANK[BUTTON9]__  __BLANK[BUTTON10]__ = __BLANK[BUTTON11]__;^^   // define button, connected to pin 10
 ^^  Serial.begin(9600);^^
 ^^  Serial.println(options[index]);^^                                   // show the first option
 ^^}^^
@@ -1203,6 +1786,33 @@ We'll use this pattern for all the buttons in the status board project.`,
 ^^    delay(250);^^
 ^^  }^^
 ^^}^^`,
+      answerKey: {
+        BUTTON9: ["#define"],
+        BUTTON10: ["BUTTON"],
+        BUTTON11: ["10"],
+        BUTTON12: { type: "string", regex: "^digitalRead\\(BUTTON\\)$" },
+        BUTTON13: ["LOW"],
+      },
+      blankExplanations: {
+        BUTTON9:
+          "Use #define to create the button constant.",
+        BUTTON10:
+          "Use the name BUTTON so the rest of the code matches.",
+        BUTTON11:
+          "The prompt says the button is connected to pin 10, so the number is 10.",
+        BUTTON12:
+          "Read button state using digitalRead(BUTTON).",
+        BUTTON13:
+          "Pressed is LOW with INPUT_PULLUP.",
+      },
+      blankDifficulties: {
+        BUTTON9: "easy",
+        BUTTON10: "easy",
+        BUTTON11: "easy",
+        BUTTON12: "medium",
+        BUTTON13: "easy",
+      },
+
           descAfterCode:
             "This is very close to how the status board scrolls through different statuses. The variable `index` is like a menu cursor that moves and wraps around.",
         },
@@ -1210,7 +1820,7 @@ We'll use this pattern for all the buttons in the status board project.`,
           title: "Practice 4: Only React to a Long Press",
           descBeforeCode:
             "Make your code respond only if the button is held down for about 2 seconds, not just tapped.",
-          code: `^^__BLANK[BUTTON14]__  __BLANK[BUTTON15]__  =  __BLANK[BUTTON16]__^^   // define button, connected to pin 10
+          code: `^^__BLANK[BUTTON14]__  __BLANK[BUTTON15]__  __BLANK[BUTTON16]__^^   // define button, connected to pin 10
 
 ^^void setup() {^^
 ^^  pinMode(BUTTON, INPUT_PULLUP);^^
@@ -1227,6 +1837,33 @@ We'll use this pattern for all the buttons in the status board project.`,
 ^^    }^^
 ^^  }^^
 ^^}^^`,
+          answerKey: {
+            BUTTON14: ["#define"],
+            BUTTON15: ["BUTTON"],
+            BUTTON16: ["10"],
+            BUTTON17: ["LOW"],
+            BUTTON18: ["LOW"],
+          },
+          blankExplanations: {
+            BUTTON14:
+              "Use #define to define a constant.",
+            BUTTON15:
+              "Use the constant name BUTTON so it matches the rest of the example.",
+            BUTTON16:
+              "The comment says it’s connected to pin 10, so use 10.",
+            BUTTON17:
+              "Pressed reads LOW (INPUT_PULLUP).",
+            BUTTON18:
+              "After delay(2000), you check again — it’s still pressed if it still reads LOW.",
+          },
+          blankDifficulties: {
+            BUTTON14: "easy",
+            BUTTON15: "easy",
+            BUTTON16: "easy",
+            BUTTON17: "easy",
+            BUTTON18: "easy",
+          },
+
           descAfterCode:
             "This pattern is useful for features like a 'long-press to reset' or special settings mode, where you don’t want a quick tap to trigger the action.",
         },
@@ -1262,7 +1899,29 @@ We'll use this pattern for all the buttons in the status board project.`,
 ^^    Serial.println("Clean press detected!");^^  // print message
 ^^    delay(200);^^                              // extra delay to avoid multiple triggers
 ^^  }^^
-}^^`,
+          }^^`,
+          answerKey: {
+            HELPER1: { type: "identifier" },
+            HELPER2: { type: "string", regex: "^digitalRead\\(pin\\)\\s*==\\s*LOW$" },
+            HELPER3: {
+              type: "string",
+              regex: "^delay\\(\\s*\\d+\\s*\\)$",
+            },
+          },
+          blankExplanations: {
+            HELPER1:
+              "This is the function name (example: isPressed). It must be a valid identifier and will be reused later when checking PREV/NEXT/SELECT.",
+            HELPER2:
+              "This condition checks if the button is pressed. With INPUT_PULLUP wiring, pressed = LOW, so it should be: digitalRead(pin) == LOW",
+            HELPER3:
+              "A short delay (like 20ms to 100ms) to let the button settle so bouncing doesn’t trigger multiple fake presses.",
+          },
+          blankDifficulties: {
+            HELPER1: "medium",
+            HELPER2: "medium",
+            HELPER3: "easy",
+          },
+
           descAfterCode:
             "The function `isPressed(pin)`:\n\n" +
             "- Reads the pin once and checks if it is `LOW`.\n" +
@@ -1369,6 +2028,7 @@ bool __BLANK[HELPER1]__(int pin) {^^    // the function returns true or false, s
 
   7: {
     phrase: "Navigation logic: scrolling the menu and selecting statuses",
+    advanced: false,
     steps: [
     {
       id: 1,
