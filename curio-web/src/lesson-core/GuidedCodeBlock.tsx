@@ -308,29 +308,46 @@ const ARDUINO_SET = new Set(ARDUINO_BUILTINS);
 function renderSyntaxHighlightedSegment(text: string) {
   if (!text) return null;
 
-  const pieces: React.ReactNode[] = [];
-const regex =
-  /(#\s*(?:include|define|ifdef|ifndef|endif|elif|else|pragma|error|warning)\b|\/\/[^\n]*|"[^"\n]*"|'[^'\n]*'|[+-]?\d+(?:\.\d+)?|\b[A-Za-z_]\w*\b|\s+|[^\w\s]+)/g;
+  // Normalize curly quotes → straight quotes so strings tokenize correctly
+  const normalized = String(text)
+    .replace(/[‘’]/g, "'")
+    .replace(/[“”]/g, '"');
 
+  const pieces: React.ReactNode[] = [];
+
+  // KEY FIX:
+  // - Keep the quoted-string patterns
+  // - BUT make the final fallback punctuation match ONE char, not many,
+  //   so it doesn't swallow braces+quotes (e.g., "{'") or "', '"
+  const regex =
+    /(#\s*(?:include|define|ifdef|ifndef|endif|elif|else|pragma|error|warning)\b|\/\/[^\n]*|"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|[+-]?\d+(?:\.\d+)?|\b[A-Za-z_]\w*\b|\s+|[^\w\s])/g;
 
   let match: RegExpExecArray | null;
   let idx = 0;
 
-  while ((match = regex.exec(text)) !== null) {
+  while ((match = regex.exec(normalized)) !== null) {
     const token = match[0];
 
-    let cls = styles.codeHighlight; // base highlight color (optional)
-    if (token.startsWith("//")) cls = styles.syntaxComment;
-    else if (
+    let cls = styles.codeHighlight;
+
+    if (token.startsWith("//")) {
+      cls = styles.syntaxComment;
+    } else if (
       (token.startsWith('"') && token.endsWith('"')) ||
       (token.startsWith("'") && token.endsWith("'"))
-    )
+    ) {
       cls = styles.syntaxString;
-    else if (/^\d/.test(token)) cls = styles.syntaxNumber;
-    else if (TYPE_SET.has(token)) cls = styles.syntaxType;
-    else if (CONTROL_SET.has(token)) cls = styles.syntaxControl;
-    else if (ARDUINO_SET.has(token)) cls = styles.syntaxArduinoFunc;
-    else if (token.trim().startsWith("#")) cls = styles.syntaxPreprocessor;
+    } else if (/^[+-]?\d/.test(token)) {
+      cls = styles.syntaxNumber;
+    } else if (TYPE_SET.has(token)) {
+      cls = styles.syntaxType;
+    } else if (CONTROL_SET.has(token)) {
+      cls = styles.syntaxControl;
+    } else if (ARDUINO_SET.has(token)) {
+      cls = styles.syntaxArduinoFunc;
+    } else if (token.trim().startsWith("#")) {
+      cls = styles.syntaxPreprocessor;
+    }
 
     pieces.push(
       <span key={`seg-${idx++}`} className={cls}>
@@ -341,6 +358,7 @@ const regex =
 
   return pieces;
 }
+
 
 function stripOuterWrappers(s: string) {
   let t = String(s ?? "").trim();
