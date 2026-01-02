@@ -121,7 +121,7 @@ app.post("/ai/help", async (req, res) => {
 
   const prompt =
     mode === "arduino-verify"
-      ? `You are a friendly Arduino tutor. Explain these errors with hints only.
+      ? `You are a friendly Arduino tutor. Explain these errors with hints only. Do NOT give the students the answer. Limit your responses to only three sentences long.
 
 Sketch:
 \`\`\`cpp
@@ -150,7 +150,7 @@ ${question}`;
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "qwen2.5-coder:3b",
+        model: "qwen2.5-coder:7b",
         stream: true,
         messages: [{ role: "user", content: prompt }],
       }),
