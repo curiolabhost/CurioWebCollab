@@ -102,7 +102,7 @@
 ============================================================ */
 
 .codeNormal {
-  color: #a3a5a3ff;
+  color: rgb(152, 154, 152);
   font-weight: 400;
   font-family: ui-monospace, Menlo, Monaco, Consolas, "Courier New", monospace;
   font-size: 14px;
@@ -111,7 +111,7 @@
 }
 
 .codeHighlight {
-  color: #cdced1ff;
+  color: rgb(228, 229, 231);
   font-weight: 400;
   font-family: ui-monospace, Menlo, Monaco, Consolas, "Courier New", monospace;
   font-size: 14px;
@@ -145,7 +145,7 @@
 }
 
 .syntaxType {
-  color: #f9a8d4;
+  color: #f598cb;
   font-family: ui-monospace, Menlo, Monaco, Consolas, "Courier New", monospace;
   font-size: 14px;
   line-height: 20px;
@@ -161,7 +161,15 @@
 }
 
 .syntaxArduinoFunc {
-  color: #fcd34d;
+  color: #d8b645;
+  font-family: ui-monospace, Menlo, Monaco, Consolas, "Courier New", monospace;
+  font-size: 14px;
+  line-height: 20px;
+  white-space: pre;
+}
+
+.syntaxPreprocessor {
+  color: #c87df7;
   font-family: ui-monospace, Menlo, Monaco, Consolas, "Courier New", monospace;
   font-size: 14px;
   line-height: 20px;
@@ -192,6 +200,7 @@
   outline: none;
   flex-shrink: 0;
   display: inline-block;
+  box-sizing: content-box;
 }
 
 .codeBlankInputHighlight {

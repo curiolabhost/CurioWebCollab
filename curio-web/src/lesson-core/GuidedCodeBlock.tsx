@@ -30,13 +30,14 @@ const CONTROL_KEYWORDS = [
   "case",
   "break",
   "continue",
+  "return",
   "if",
   "else",
-  "#define",
-  "#include",
 ];
 
-const ARDUINO_FUNCS = [
+const PREPROCESSOR_KEYWORDS = ["#include", "#define", "#ifdef", "#ifndef", "#endif"];
+
+const ARDUINO_BUILTINS = [
   "setup",
   "loop",
   "pinMode",
@@ -48,41 +49,35 @@ const ARDUINO_FUNCS = [
   "millis",
   "micros",
   "Serial",
-  "Serial.begin",
-  "Serial.print",
-  "Serial.println",
-  "HIGH",
-  "LOW",
-  "INPUT",
-  "OUTPUT",
-  "INPUT_PULLUP",
+  "begin",
+  "print",
+  "println",
+  "display",
+  "clearDisplay",
+  "setCursor",
+  "setTextSize",
+  "setTextColor",
+  "drawRect",
+  "drawLine",
+  "drawCircle",
+  "fillRect",
+  "fillCircle",
+  "display",
 ];
 
-const TYPE_SET = new Set(TYPE_KEYWORDS);
-const CONTROL_SET = new Set(CONTROL_KEYWORDS);
-const ARDUINO_SET = new Set(ARDUINO_FUNCS);
-
-const CHAR_W = 8.6;
-
-type BlankRule =
-  | string
-  | number
-  | Array<string | number>
-  | {
-      type?: "identifier" | "range" | "number" | "sameAs" | "string";
-      min?: number;
-      max?: number;
-      target?: string;
-      regex?: string;
-      values?: Array<string | number>;
-    };
+type BlankRule = {
+  equals?: string;
+  oneOf?: string[];
+  contains?: string;
+  matches?: string; // regex string
+};
 
 type Props = {
   step: any;
   block: any;
   blockIndex: number;
-  storageKey?: string;
-  globalKey?: string;
+  storageKey: string;
+  globalKey: string;
   apiBaseUrl?: string;
   analyticsTag?: string;
 
@@ -90,87 +85,150 @@ type Props = {
   setLocalBlanks?: React.Dispatch<React.SetStateAction<Record<string, any>>>;
   setGlobalBlanks?: React.Dispatch<React.SetStateAction<Record<string, any>>>;
 
-  blankStatus?: Record<string, boolean>;
-  setBlankStatus?: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
+  blankStatus?: Record<string, boolean | null | undefined>;
+  setBlankStatus?: React.Dispatch<React.SetStateAction<Record<string, any>>>;
 
-  activeBlankHint?: any;
-  setActiveBlankHint?: React.Dispatch<React.SetStateAction<any>>;
+  activeBlankHint?: { name: string; text: string; blockIndex: number } | null;
+  setActiveBlankHint?: React.Dispatch<
+    React.SetStateAction<{ name: string; text: string; blockIndex: number } | null>
+  >;
 
   aiHelpByBlank?: Record<string, string>;
   setAiHelpByBlank?: React.Dispatch<React.SetStateAction<Record<string, string>>>;
-
   aiLoadingKey?: string | null;
   setAiLoadingKey?: React.Dispatch<React.SetStateAction<string | null>>;
-
   aiLastRequestAtByKey?: Record<string, number>;
   setAiLastRequestAtByKey?: React.Dispatch<React.SetStateAction<Record<string, number>>>;
-
   aiHintLevelByBlank?: Record<string, number>;
   setAiHintLevelByBlank?: React.Dispatch<React.SetStateAction<Record<string, number>>>;
 
   checkAttempts?: number;
   setCheckAttempts?: React.Dispatch<React.SetStateAction<number>>;
-
   blankAttemptsByName?: Record<string, number>;
   setBlankAttemptsByName?: React.Dispatch<React.SetStateAction<Record<string, number>>>;
 
-  logBlankAnalytics?: (event: any) => void;
+  logBlankAnalytics?: (payload: any) => void;
 
   horizontalScroll?: boolean;
 };
 
-type TemplateTok =
-  | { type: "text"; content: string; highlight: boolean }
-  | { type: "blank"; name: string; highlight: boolean }
-  | { type: "newline" };
+const CHAR_W = 8.6;
 
-function splitToTemplateTokens(rawCode: string): TemplateTok[][] {
-  if (!rawCode) return [];
-
-  const chunks = rawCode.split(/(\^\^[\s\S]*?\^\^)/g).filter(Boolean);
-  const tokens: TemplateTok[] = [];
-
-  for (const chunk of chunks) {
-    const isHighlight = chunk.startsWith("^^") && chunk.endsWith("^^");
-    const inner = isHighlight ? chunk.slice(2, -2) : chunk;
-
-    const parts = inner.split(/(__BLANK\[[A-Z0-9_]+\]__|\n)/g);
-
-    for (const part of parts) {
-      if (part === "\n") {
-        tokens.push({ type: "newline" });
-        continue;
-      }
-      if (!part) continue;
-
-      const blankMatch = part.match(/^__BLANK\[([A-Z0-9_]+)\]__$/);
-      if (blankMatch) {
-        tokens.push({
-          type: "blank",
-          name: blankMatch[1],
-          highlight: isHighlight,
-        });
-      } else {
-        tokens.push({
-          type: "text",
-          content: part,
-          highlight: isHighlight,
-        });
-      }
-    }
+// ============================================================
+// Utilities
+// ============================================================
+function safeJsonParse<T>(raw: string | null): T | null {
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return null;
   }
-
-  // Group into lines
-  const lines: TemplateTok[][] = [[]];
-  for (const tok of tokens) {
-    if (tok.type === "newline") lines.push([]);
-    else lines[lines.length - 1].push(tok);
-  }
-  return lines;
 }
 
-// Split a line into "code tokens" and "comment string" (template-level)
-function splitLineAtCommentTemplate(lineTokens: TemplateTok[]) {
+function storageGetJson<T>(key: string): T | null {
+  if (!key) return null;
+  if (typeof window === "undefined") return null;
+  try {
+    return safeJsonParse<T>(window.localStorage.getItem(key));
+  } catch {
+    return null;
+  }
+}
+
+function storageSetJson(key: string, value: any) {
+  if (!key) return;
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(key, JSON.stringify(value));
+  } catch {}
+}
+
+function nowMs() {
+  return Date.now();
+}
+
+function clamp(n: number, lo: number, hi: number) {
+  return Math.max(lo, Math.min(hi, n));
+}
+
+function isProbablyNumberLiteral(s: string) {
+  return /^[+-]?\d+(\.\d+)?$/.test(s.trim());
+}
+
+function isValidRegex(re: string) {
+  try {
+    // eslint-disable-next-line no-new
+    new RegExp(re);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function normalizeWs(s: string) {
+  return String(s ?? "").replace(/\s+/g, " ").trim();
+}
+
+// ============================================================
+// Template parsing: ^^...^^ highlight segments, __BLANK[NAME]__ blanks
+// ============================================================
+type TemplateTok =
+  | { type: "text"; content: string; highlight?: boolean }
+  | { type: "blank"; name: string; highlight?: boolean };
+
+function tokenizeTemplateLineWithState(
+  line: string,
+  inHiStart: boolean
+): { toks: TemplateTok[]; inHiEnd: boolean } {
+  const toks: TemplateTok[] = [];
+  if (line == null) return { toks, inHiEnd: inHiStart };
+
+  const str = String(line);
+
+  let i = 0;
+  let inHi = inHiStart;
+
+  while (i < str.length) {
+    // Toggle highlight on ^^
+    if (str.slice(i, i + 2) === "^^") {
+      inHi = !inHi;
+      i += 2;
+      continue;
+    }
+
+    // Blank token
+    const blankStart = str.indexOf("__BLANK[", i);
+    if (blankStart === i) {
+      const end = str.indexOf("]__", i);
+      if (end !== -1) {
+        const name = str.slice(i + "__BLANK[".length, end).trim();
+        toks.push({ type: "blank", name, highlight: inHi });
+        i = end + "]__".length;
+        continue;
+      }
+    }
+
+    // Otherwise, consume until next special token
+    const nextHi = str.indexOf("^^", i);
+    const nextBlank = str.indexOf("__BLANK[", i);
+
+    let next = -1;
+    if (nextHi !== -1 && nextBlank !== -1) next = Math.min(nextHi, nextBlank);
+    else if (nextHi !== -1) next = nextHi;
+    else if (nextBlank !== -1) next = nextBlank;
+
+    const chunk = next === -1 ? str.slice(i) : str.slice(i, next);
+    toks.push({ type: "text", content: chunk, highlight: inHi });
+    i = next === -1 ? str.length : next;
+  }
+
+  return { toks, inHiEnd: inHi };
+}
+
+
+function splitComment(lineTokens: TemplateTok[]) {
+  // Treat "//" as starting comment, but only in text tokens and outside highlight logic.
   const codeTokens: TemplateTok[] = [];
   let comment = "";
   let inComment = false;
@@ -219,6 +277,180 @@ function estimateTemplateTokenWidthPx(tok: TemplateTok, valueLen: number) {
   return 0;
 }
 
+// ============================================================
+// Syntax highlighting for "^^...^^" segments (simple keyword coloring)
+// ============================================================
+function escapeRegex(s: string) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+const KEYWORD_RE = new RegExp(
+  `\\b(${[
+    ...TYPE_KEYWORDS,
+    ...CONTROL_KEYWORDS,
+    ...ARDUINO_BUILTINS.filter((k) => k !== "Serial"),
+  ]
+    .map(escapeRegex)
+    .join("|")})\\b`,
+  "g"
+);
+
+const PRE_RE = new RegExp(`^\\s*(${PREPROCESSOR_KEYWORDS.map(escapeRegex).join("|")})\\b`);
+
+// --- keep these sets somewhere above (same as original) ---
+const TYPE_SET = new Set(TYPE_KEYWORDS);
+const CONTROL_SET = new Set(CONTROL_KEYWORDS);
+const ARDUINO_SET = new Set(ARDUINO_BUILTINS);
+
+// ==========================================================
+// SYNTAX HIGHLIGHTING (RESTORED)
+// ==========================================================
+function renderSyntaxHighlightedSegment(text: string) {
+  if (!text) return null;
+
+  const pieces: React.ReactNode[] = [];
+const regex =
+  /(#\s*(?:include|define|ifdef|ifndef|endif|elif|else|pragma|error|warning)\b|\/\/[^\n]*|"[^"\n]*"|'[^'\n]*'|[+-]?\d+(?:\.\d+)?|\b[A-Za-z_]\w*\b|\s+|[^\w\s]+)/g;
+
+
+  let match: RegExpExecArray | null;
+  let idx = 0;
+
+  while ((match = regex.exec(text)) !== null) {
+    const token = match[0];
+
+    let cls = styles.codeHighlight; // base highlight color (optional)
+    if (token.startsWith("//")) cls = styles.syntaxComment;
+    else if (
+      (token.startsWith('"') && token.endsWith('"')) ||
+      (token.startsWith("'") && token.endsWith("'"))
+    )
+      cls = styles.syntaxString;
+    else if (/^\d/.test(token)) cls = styles.syntaxNumber;
+    else if (TYPE_SET.has(token)) cls = styles.syntaxType;
+    else if (CONTROL_SET.has(token)) cls = styles.syntaxControl;
+    else if (ARDUINO_SET.has(token)) cls = styles.syntaxArduinoFunc;
+    else if (token.trim().startsWith("#")) cls = styles.syntaxPreprocessor;
+
+    pieces.push(
+      <span key={`seg-${idx++}`} className={cls}>
+        {token}
+      </span>
+    );
+  }
+
+  return pieces;
+}
+
+function stripOuterWrappers(s: string) {
+  let t = String(s ?? "").trim();
+  // remove common surrounding punctuation
+  t = t.replace(/^[([{\s]+/g, "").replace(/[;,)\]}]+$/g, "").trim();
+  return t;
+}
+
+function isQuotedLiteral(s: string) {
+  const t = String(s ?? "").trim();
+  return (
+    (t.length >= 2 && t.startsWith('"') && t.endsWith('"')) ||
+    (t.length >= 2 && t.startsWith("'") && t.endsWith("'"))
+  );
+}
+
+function isNumberLiteral(s: string) {
+  return /^[+-]?\d+(\.\d+)?$/.test(String(s ?? "").trim());
+}
+
+function computeSyntaxTag(v: any) {
+  const raw = String(v ?? "");
+  const trimmed = raw.trim();
+  if (!trimmed) return "empty";
+
+  // Strings (keep before wrapper stripping)
+  if (isQuotedLiteral(trimmed)) return "string";
+
+  const core = stripOuterWrappers(trimmed);
+
+  // Preprocessor / Comment
+  if (core.startsWith("#")) return "pre";
+  if (core.startsWith("//")) return "comment";
+
+  // Bool
+  if (/^(true|false)$/i.test(core)) return "bool";
+
+  // Numbers
+  if (isNumberLiteral(core)) return "number";
+
+  // Builtins: allow Serial.print style or direct matches
+  const serialMember = core.match(/^Serial\.(begin|print|println)$/);
+  if (serialMember) return "builtin";
+
+  if (ARDUINO_SET.has(core)) return "builtin";
+
+  // Types
+  if (TYPE_SET.has(core)) return "type";
+
+  // Optional: treat control keywords as "text" or "type" — up to you.
+  // If you want a dedicated styling for control words, add a blankSyntaxControl class.
+  // For now, we’ll just return text.
+  if (CONTROL_SET.has(core)) return "text";
+
+  return "text";
+}
+
+function getCompletedBlankSyntaxClass(v: any) {
+  const tag = computeSyntaxTag(v);
+  switch (tag) {
+    case "pre":
+      return styles.blankSyntaxPre;
+    case "comment":
+      return styles.blankSyntaxComment;
+    case "string":
+      return styles.blankSyntaxString;
+    case "number":
+      return styles.blankSyntaxNumber;
+    case "bool":
+      return styles.blankSyntaxBool;
+    case "builtin":
+      return styles.blankSyntaxBuiltin;
+    case "type":
+      return styles.blankSyntaxType;
+    default:
+      return styles.blankSyntaxText;
+  }
+}
+
+// ============================================================
+// Blank evaluation
+// ============================================================
+function evalBlank(rule: BlankRule, value: string): boolean {
+  const v = String(value ?? "");
+
+  if (!rule) return false;
+
+  if (typeof rule.equals === "string") {
+    return normalizeWs(v) === normalizeWs(rule.equals);
+  }
+
+  if (Array.isArray(rule.oneOf)) {
+    const nv = normalizeWs(v);
+    return rule.oneOf.some((x) => normalizeWs(x) === nv);
+  }
+
+  if (typeof rule.contains === "string") {
+    return normalizeWs(v).includes(normalizeWs(rule.contains));
+  }
+
+  if (typeof rule.matches === "string" && isValidRegex(rule.matches)) {
+    const re = new RegExp(rule.matches);
+    return re.test(v);
+  }
+
+  return false;
+}
+
+
+
 export default function GuidedCodeBlock({
   step,
   block,
@@ -263,13 +495,12 @@ export default function GuidedCodeBlock({
   const blockExplanations = block?.blankExplanations || step?.blankExplanations || null;
 
   // ✅ answerKey can live on block OR step
-  const answerKey: Record<string, BlankRule> | null =
-    block?.answerKey || step?.answerKey || null;
+  const answerKey: Record<string, BlankRule> | null = block?.answerKey || step?.answerKey || null;
 
   const difficulties: Record<string, any> = step?.blankDifficulties || {};
 
   /* ==========================================================
-     PERFORMANCE: localValues updates instantly (no parent setState per keypress)
+     PERFORMANCE: localValues updates instantly (no parent setState per keystroke)
   ========================================================== */
   const [localValues, setLocalValues] = React.useState<Record<string, any>>(
     () => (mergedBlanks && typeof mergedBlanks === "object" ? mergedBlanks : {})
@@ -279,347 +510,68 @@ export default function GuidedCodeBlock({
 
   // If mergedBlanks changes due to navigation/restore, sync local values (but don’t fight typing)
   React.useEffect(() => {
-    const safeMerged =
-      mergedBlanks && typeof mergedBlanks === "object" ? mergedBlanks : {};
-    setLocalValues((prev) => ({ ...safeMerged, ...(prev || {}) }));
+    const safeMerged = mergedBlanks && typeof mergedBlanks === "object" ? mergedBlanks : {};
+    setLocalValues(safeMerged);
   }, [mergedBlanks]);
 
-  // Optional: ultra-light parent local update (doesn't have to happen on every keypress)
-  const rafRef = React.useRef<number | null>(null);
-  const scheduleParentLocalUpdate = React.useCallback(
-    (name: string, value: string) => {
-      if (!setLocalBlanks) return;
+  // Parent local update (throttled) so sidebar "blank done" etc can reflect without global writes
+  const pendingRef = React.useRef<Record<string, any>>({});
+  const flushTimerRef = React.useRef<any>(null);
 
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      rafRef.current = requestAnimationFrame(() => {
-        setLocalBlanks((prev) => ({ ...(prev || {}), [name]: value }));
-      });
-    },
-    [setLocalBlanks]
-  );
+  function scheduleParentLocalUpdate(name: string, value: string) {
+    if (!setLocalBlanks) return;
 
-  /* ==========================================================
-     SYNTAX HIGHLIGHTING
-  ========================================================== */
-  const renderSyntaxHighlightedSegment = (text: string) => {
-    if (!text) return null;
+    pendingRef.current[name] = value;
 
-    const pieces: React.ReactNode[] = [];
-    const regex =
-      /(\b[A-Za-z_]\w*\b|\/\/[^\n]*|"[^"\n]*"|'[^'\n]*'|\d+|\s+|[^\w\s]+)/g;
+    if (flushTimerRef.current) return;
+    flushTimerRef.current = window.setTimeout(() => {
+      const patch = pendingRef.current;
+      pendingRef.current = {};
+      flushTimerRef.current = null;
 
-    let match: RegExpExecArray | null;
-    let idx = 0;
-
-    while ((match = regex.exec(text)) !== null) {
-      const token = match[0];
-      let cls = styles.codeHighlight;
-
-      if (token.startsWith("//")) cls = styles.syntaxComment;
-      else if (
-        (token.startsWith('"') && token.endsWith('"')) ||
-        (token.startsWith("'") && token.endsWith("'"))
-      )
-        cls = styles.syntaxString;
-      else if (/^\d/.test(token)) cls = styles.syntaxNumber;
-      else if (TYPE_SET.has(token)) cls = styles.syntaxType;
-      else if (CONTROL_SET.has(token)) cls = styles.syntaxControl;
-      else if (ARDUINO_SET.has(token)) cls = styles.syntaxArduinoFunc;
-
-      pieces.push(
-        <span key={`seg-${idx++}`} className={cls}>
-          {token}
-        </span>
-      );
-    }
-
-    return pieces;
-  };
-
-  // If blank value EXACTLY matches a special token, apply syntax style
-  const getCompletedBlankSyntaxClass = (rawValue: any) => {
-    const v = String(rawValue ?? "").trim();
-    if (!v) return "";
-
-    if (TYPE_SET.has(v)) return styles.syntaxType;
-    if (CONTROL_SET.has(v)) return styles.syntaxControl;
-    if (ARDUINO_SET.has(v)) return styles.syntaxArduinoFunc;
-
-    return "";
-  };
-
-  /* ==========================================================
-     COPY FUNCTION (fills blanks + strips ^^)
-  ========================================================== */
-  const copyCode = async (rawCode: string) => {
-    try {
-      let textToCopy = rawCode || "";
-
-      const values = localValuesRef.current || mergedBlanks || {};
-      Object.entries(values || {}).forEach(([name, value]) => {
-        const placeholder = `__BLANK[${name}]__`;
-        const replacement =
-          value && String(value).trim().length > 0 ? String(value) : "_____";
-        textToCopy = textToCopy.split(placeholder).join(replacement);
-      });
-
-      textToCopy = textToCopy.replace(/__BLANK\[[A-Z0-9_]+\]__/g, "_____");
-      textToCopy = textToCopy.replace(/\^\^/g, "");
-
-      await navigator.clipboard.writeText(textToCopy);
-    } catch (e) {
-      console.warn("Failed to copy code:", e);
-    }
-  };
-
-  /* ==========================================================
-     AI HELP FOR A SPECIFIC BLANK
-  ========================================================== */
-  const requestAiBlankHelpForBlank = async ({
-    blankName,
-    code: codeForPayload,
-  }: {
-    blankName: string;
-    code: string;
-  }) => {
-    if (!step) return;
-    if (!apiBaseUrl) return;
-
-    const key = `${blockIndex}:${blankName}`;
-
-    const usedHints = (aiHintLevelByBlank || {})[key] ?? 0;
-    if (usedHints >= MAX_HINT_LEVEL) return;
-
-    const studentAnswer = String((localValuesRef.current || {})[blankName] ?? "").trim();
-    const rule = answerKey?.[blankName];
-    if (!rule) return;
-
-    const previousHintText = (aiHelpByBlank || {})[key] || null;
-
-    const now = Date.now();
-    const last = (aiLastRequestAtByKey || {})[key] || 0;
-    if (now - last < AI_COOLDOWN_MS) {
-      const secondsLeft = Math.ceil((AI_COOLDOWN_MS - (now - last)) / 1000);
-
-      setAiHelpByBlank?.((prev) => ({
+      setLocalBlanks((prev) => ({
         ...(prev || {}),
-        [key]:
-          (prev || {})[key] ||
-          `Try tweaking your answer or re-reading the hint first. You can ask AI again in about ${secondsLeft} second${
-            secondsLeft === 1 ? "" : "s"
-          }.`,
+        ...patch,
       }));
-      return;
-    }
-
-    const upcomingHintNumber = usedHints + 1;
-
-    let mode = "gentle_nudge";
-    if (upcomingHintNumber === 2) mode = "conceptual_explanation";
-    else if (upcomingHintNumber === 3) mode = "analogy_based";
-
-    const payload = {
-      lessonId: step?.id,
-      title: step?.title,
-      description: step?.desc || null,
-      codeSnippet: codeForPayload || step?.code || null,
-      blank: {
-        name: blankName,
-        studentAnswer,
-        rule,
-        allBlanks: localValuesRef.current || {},
-        previousHint: previousHintText,
-      },
-      mode,
-      hintLevel: upcomingHintNumber,
-    };
-
-    try {
-      setAiLoadingKey?.(key);
-      setAiLastRequestAtByKey?.((prev) => ({
-        ...(prev || {}),
-        [key]: now,
-      }));
-
-      const res = await fetch(`${apiBaseUrl}/api/blank-help`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) throw new Error("AI help request failed");
-
-      const data = await res.json();
-      if (!data || !data.explanation) return;
-
-      setAiHelpByBlank?.((prev) => ({
-        ...(prev || {}),
-        [key]: data.explanation,
-      }));
-
-      setAiHintLevelByBlank?.((prev) => ({
-        ...(prev || {}),
-        [key]: upcomingHintNumber,
-      }));
-
-      const difficulty = (step?.blankDifficulties || {})[blankName] || null;
-
-      logBlankAnalytics?.({
-        type: "AI_HINT",
-        blankName,
-        blockIndex,
-        hintLevel: upcomingHintNumber,
-        studentAnswer,
-        previousHintUsed: !!previousHintText,
-        difficulty,
-        analyticsTag: analyticsTag || null,
-        stepId: step?.id,
-        stepTitle: step?.title,
-        storageKey: storageKey || null,
-        globalKey: globalKey || null,
-      });
-    } catch (err) {
-      console.warn("AI blank help error:", err);
-      setAiHelpByBlank?.((prev) => ({
-        ...(prev || {}),
-        [key]:
-          (prev || {})[key] ||
-          "I had trouble generating more help right now. Try adjusting your answer slightly and re-checking.",
-      }));
-    } finally {
-      setAiLoadingKey?.((prev) => (prev === key ? null : prev));
-    }
-  };
-
-  /* ==========================================================
-     CHECK FUNCTION
-  ========================================================== */
-  const checkBlanks = async () => {
-    if (!answerKey) return;
-
-    const nextAttempt = (checkAttempts || 0) + 1;
-    setCheckAttempts?.((prev) => (prev || 0) + 1);
-
-    const results: Record<string, boolean> = {};
-    const values = localValuesRef.current || {};
-
-    Object.entries(answerKey).forEach(([name, spec]) => {
-      const raw = String(values[name] ?? "").trim();
-      let isCorrect = false;
-
-      if (spec && typeof spec === "object" && !Array.isArray(spec)) {
-        const s = spec as any;
-
-        switch (s.type) {
-          case "identifier":
-            isCorrect = /^[A-Za-z_][A-Za-z0-9_]*$/.test(raw);
-            break;
-          case "range": {
-            const num = Number(raw);
-            if (!Number.isNaN(num)) {
-              const min = s.min ?? -Infinity;
-              const max = s.max ?? Infinity;
-              isCorrect = num >= min && num <= max;
-            }
-            break;
-          }
-          case "number": {
-            const num = Number(raw);
-            isCorrect = !Number.isNaN(num);
-            break;
-          }
-          case "sameAs": {
-            const otherName = s.target;
-            const otherVal = String(values[otherName] ?? "").trim();
-            isCorrect = raw !== "" && raw === otherVal;
-            break;
-          }
-          case "string": {
-            if (raw.length === 0) isCorrect = false;
-            else if (s.regex) isCorrect = new RegExp(s.regex).test(raw);
-            else isCorrect = true;
-            break;
-          }
-          default: {
-            if (Array.isArray(s.values))
-              isCorrect = s.values.some((v: any) => raw === String(v).trim());
-            else isCorrect = false;
-          }
-        }
-      } else {
-        const accepted = Array.isArray(spec) ? spec : spec != null ? [spec] : [];
-        isCorrect = accepted.some((v) => raw === String(v).trim());
-      }
-
-      results[name] = isCorrect;
-    });
-
-const nextBlankAttempts = { ...(blankAttemptsByName || {}) };
-
-Object.entries(results).forEach(([name, ok]) => {
-  const wasCorrectBefore = blankStatus?.[name] === true;
-
-  // Count only if:
-  // - currently wrong
-  // - AND it was not already marked wrong before. Re-clicking Check Code without changes does nothing
-  if (!ok && wasCorrectBefore !== false) {
-    nextBlankAttempts[name] = (nextBlankAttempts[name] ?? 0) + 1;
+    }, 200);
   }
-});
 
-
-    setBlankAttemptsByName?.(nextBlankAttempts);
-    setBlankStatus?.(results);
-
-    const incorrectNames = Object.entries(results)
-      .filter(([, ok]) => !ok)
-      .map(([name]) => name);
-
-    logBlankAnalytics?.({
-      type: "CHECK_BLANKS",
-      attempt: nextAttempt,
-      results,
-      blanks: Object.entries(results).map(([name, isCorrect]) => ({
-        name,
-        isCorrect,
-        studentAnswer: String(values[name] ?? "").trim(),
-        difficulty: difficulties[name] || null,
-        attemptsForThisBlank: nextBlankAttempts[name] ?? 0,
-      })),
-      incorrectBlanks: incorrectNames,
-      analyticsTag: analyticsTag || null,
-      stepId: step?.id,
-      stepTitle: step?.title,
-      storageKey: storageKey || null,
-      globalKey: globalKey || null,
-    });
-
-    if (incorrectNames.length === 0) {
-      setActiveBlankHint?.(null);
-      setAiHelpByBlank?.({});
-    }
-  };
+  React.useEffect(() => {
+    return () => {
+      if (flushTimerRef.current) {
+        window.clearTimeout(flushTimerRef.current);
+        flushTimerRef.current = null;
+      }
+    };
+  }, []);
 
   /* ==========================================================
-     TEMPLATE PARSING (ONCE) + COMMENT SPLITS (ONCE)
+     Tokenize once per code change
   ========================================================== */
-  const templateLines = React.useMemo(() => splitToTemplateTokens(code), [code]);
+const templateLineSplits = React.useMemo(() => {
+  const rawLines = String(code || "").replace(/\r\n/g, "\n").split("\n");
 
-  const templateLineSplits = React.useMemo(
-    () => templateLines.map(splitLineAtCommentTemplate),
-    [templateLines]
-  );
+  let inHi = false; // <- carry across lines
+  return rawLines.map((line) => {
+    const { toks, inHiEnd } = tokenizeTemplateLineWithState(line, inHi);
+    inHi = inHiEnd;
 
-  // Compute CODE_COL_PX from template + current values (cheap-ish)
+    const { codeTokens, comment } = splitComment(toks);
+    return { codeTokens, comment };
+  });
+}, [code]);
+
+
+  // Estimate a fixed code-column width so comments line up
   const codeColPx = React.useMemo(() => {
-    const values = localValues || {};
     let maxCodePx = 0;
-
     for (const { codeTokens } of templateLineSplits) {
       let lineW = 0;
       for (const t of codeTokens) {
-        if (t.type === "blank") {
-          const v = String(values[t.name] ?? "");
+        if (t.type === "text") {
+          lineW += estimateTemplateTokenWidthPx(t, 0);
+        } else if (t.type === "blank") {
+          const v = String((localValues || {})[t.name] ?? "");
           lineW += estimateTemplateTokenWidthPx(t, v.length);
         } else {
           lineW += estimateTemplateTokenWidthPx(t, 0);
@@ -668,7 +620,8 @@ Object.entries(results).forEach(([name, ok]) => {
                   const name = tok.name;
                   const val = String(values[name] ?? "");
                   const status = (blankStatus || {})[name];
-                  const width = Math.max(40, Math.max(1, val.length) * CHAR_W);
+                  const ch = Math.max(4, Math.max(1, val.length));
+                    const width = `${ch}ch`;
 
                   const blankClass = [
                     styles.codeBlankInput,
@@ -687,7 +640,7 @@ Object.entries(results).forEach(([name, ok]) => {
                         onChange={(e) => {
                           const txt = e.target.value;
 
-                          // ✅ instant local update
+                          // instant local update
                           setLocalValues((prev) => ({
                             ...(prev || {}),
                             [name]: txt,
@@ -706,7 +659,7 @@ Object.entries(results).forEach(([name, ok]) => {
                           }
                         }}
                         onBlur={() => {
-                          // ✅ commit to global only once
+                          // commit to global only once
                           const committed = String((localValuesRef.current || {})[name] ?? "");
                           setGlobalBlanks?.((prev) => ({
                             ...(prev || {}),
@@ -773,11 +726,149 @@ Object.entries(results).forEach(([name, ok]) => {
   const loadingThis = !!aiKey && aiLoadingKey === aiKey;
   const showHintBox = !!activeBlankHint && activeBlankHint.blockIndex === blockIndex;
 
+  const requestAiBlankHelpForBlank = async ({
+    blankName,
+    code: fullCode,
+  }: {
+    blankName: string;
+    code: string;
+  }) => {
+    if (!blankName) return;
+
+    const key = `${blockIndex}:${blankName}`;
+    const lastAt = (aiLastRequestAtByKey || {})[key] ?? 0;
+    const since = nowMs() - lastAt;
+
+    // cooldown
+    if (since < AI_COOLDOWN_MS) {
+      setAiHelpByBlank?.((prev) => ({
+        ...(prev || {}),
+        [key]: `Try again in ${(AI_COOLDOWN_MS - since) / 1000}s after thinking it through.`,
+      }));
+      return;
+    }
+
+    // hint level cap
+    const lvl = (aiHintLevelByBlank || {})[key] ?? 0;
+    if (lvl >= MAX_HINT_LEVEL) {
+      setAiHelpByBlank?.((prev) => ({
+        ...(prev || {}),
+        [key]: "You’ve reached the maximum number of AI hints for this blank.",
+      }));
+      return;
+    }
+
+    setAiLoadingKey?.(key);
+
+    try {
+      const payload = {
+        blankName,
+        userValue: String((localValuesRef.current || {})[blankName] ?? ""),
+        code: String(fullCode || ""),
+        explanations: blockExplanations || {},
+        lessonPhrase: step?.phrase || "",
+        stepTitle: step?.title || "",
+        analyticsTag: analyticsTag || "",
+      };
+
+      const res = await fetch(`${apiBaseUrl}/api/lesson/blank-hint`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json().catch(() => ({}));
+      const hintText = String(data?.hint || data?.message || "No hint returned.");
+
+      setAiHelpByBlank?.((prev) => ({
+        ...(prev || {}),
+        [key]: hintText,
+      }));
+
+      setAiHintLevelByBlank?.((prev) => ({
+        ...(prev || {}),
+        [key]: lvl + 1,
+      }));
+
+      setAiLastRequestAtByKey?.((prev) => ({
+        ...(prev || {}),
+        [key]: nowMs(),
+      }));
+
+      logBlankAnalytics?.({
+        type: "ai_hint",
+        blankName,
+        blockIndex,
+        level: lvl + 1,
+        tag: analyticsTag,
+      });
+    } catch (e: any) {
+      setAiHelpByBlank?.((prev) => ({
+        ...(prev || {}),
+        [key]: `Error requesting AI hint: ${String(e?.message || e)}`,
+      }));
+    } finally {
+      setAiLoadingKey?.(null);
+    }
+  };
+
+  const copyCode = async (raw: string) => {
+    const plain = String(raw || "")
+      .replace(/\^\^/g, "")
+      .replace(/__BLANK\[[^\]]+\]__/g, "_____");
+
+    try {
+      await navigator.clipboard.writeText(plain);
+    } catch {
+      // ignore
+    }
+  };
+
+  const checkBlanks = () => {
+    if (!answerKey) return;
+
+    const values = localValuesRef.current || {};
+    const nextStatus: Record<string, boolean> = {};
+    const nextAttemptsByName = { ...(blankAttemptsByName || {}) };
+
+    for (const [name, rule] of Object.entries(answerKey)) {
+      const v = String(values[name] ?? "");
+      const ok = evalBlank(rule as BlankRule, v);
+      nextStatus[name] = ok;
+
+      nextAttemptsByName[name] = (nextAttemptsByName[name] || 0) + 1;
+
+      logBlankAnalytics?.({
+        type: "check_blank",
+        blankName: name,
+        ok,
+        attempt: nextAttemptsByName[name],
+        difficulty: difficulties?.[name],
+        tag: analyticsTag,
+      });
+    }
+
+    setBlankStatus?.((prev) => ({
+      ...(prev || {}),
+      ...nextStatus,
+    }));
+
+    setBlankAttemptsByName?.(nextAttemptsByName);
+    setCheckAttempts?.((n) => (n || 0) + 1);
+
+    // persist attempts/status in step storage as well (optional)
+    storageSetJson(`${storageKey}:blankStatus`, nextStatus);
+    storageSetJson(`${storageKey}:blankAttemptsByName`, nextAttemptsByName);
+  };
+
   return (
     <>
       <div className={styles.codeCard}>
         <div className={styles.codeCardHeader}>
-          <div className={styles.codeCardTitle}>Example Code</div>
+          {/*  allow per-block title instead of always "Example Code" */}
+          <div className={styles.codeCardTitle}>
+            {String(block?.title || step?.codeTitle || "Example Code")}
+          </div>
 
           <div className={styles.codeCardHeaderActions}>
             {answerKey && (
@@ -810,7 +901,7 @@ Object.entries(results).forEach(([name, ok]) => {
           </div>
 
           <div className={styles.hintContent}>
-            <div className={styles.blankHintText}>{activeBlankHint.text}</div>
+            <div className={styles.blankHintText}>{activeBlankHint?.text}</div>
 
             {!aiText && !loadingThis && (
               <div className={styles.hintSubText}>
@@ -845,7 +936,7 @@ Object.entries(results).forEach(([name, ok]) => {
                 className={styles.hintIconBtn}
                 onClick={() =>
                   requestAiBlankHelpForBlank({
-                    blankName: activeBlankHint.name,
+                    blankName: activeBlankHint!.name,
                     code,
                   })
                 }
@@ -880,7 +971,6 @@ Object.entries(results).forEach(([name, ok]) => {
   );
 }
 
-
 /**
  * ============================================================
  * What we track right now (GuidedCodeBlock + CodeLessonBase)
@@ -895,7 +985,6 @@ Object.entries(results).forEach(([name, ok]) => {
  * Blank values (persisted):
  * - GLOBAL blanks (KEYS.globalBlanksKey): blankName -> text (shared across steps)
  * - LOCAL blanks per-step (KEYS.localBlanksPrefixKey + currentStepKey): blankName -> text
- *
  * Guided UI per-step (persisted) under:
  * - guidedUiKeyForThisStep = `${KEYS.localBlanksPrefixKey}:UI:${currentStepKey}`
  * Stores:
