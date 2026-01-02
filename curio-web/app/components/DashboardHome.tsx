@@ -143,6 +143,19 @@ function prettyLevelFromLessonSlug(lessonSlug: string) {
   return labelizeLessonSlug(lessonSlug);
 }
 
+function levelSuffixFromLessonSlug(lessonSlug: string | null | undefined) {
+  const last = (lessonSlug || "").split("/").pop() || "";
+  const parts = last.split(/[-_]/g).filter(Boolean);
+  const suffix = (parts[parts.length - 1] || "").toLowerCase();
+
+  if (suffix === "beg" || suffix === "beginner") return "beg";
+  if (suffix === "int" || suffix === "intermediate") return "int";
+  if (suffix === "adv" || suffix === "advanced") return "adv";
+  return null;
+}
+
+
+
 export function DashboardHome() {
   const router = useRouter();
   const projects = PROJECTS;
@@ -159,8 +172,8 @@ export function DashboardHome() {
   const [activeDoneCount, setActiveDoneCount] = useState<number>(0);
 
   // Track totals (Coding + Circuits)
-  const CODING_SLUG = "code-beg";
-  const CIRCUITS_SLUG = "circuit-beg";
+  //const CODING_SLUG = "code-beg";
+  //const CIRCUITS_SLUG = "circuit-beg";
 
   const [codeTotalSteps, setCodeTotalSteps] = useState<number>(0);
   const [codeDoneCount, setCodeDoneCount] = useState<number>(0);
@@ -326,8 +339,15 @@ export function DashboardHome() {
         return { total, done };
       }
 
-      const coding = readTotalsFor(CODING_SLUG);
-      const circuits = readTotalsFor(CIRCUITS_SLUG);
+            const level = levelSuffixFromLessonSlug(ptr.lessonSlug);
+
+            // same level as whatever the active card is showing
+            const codingSlug = level ? `code-${level}` : "code-beg";
+            const circuitsSlug = level ? `circuit-${level}` : "circuit-beg";
+
+            const coding = readTotalsFor(codingSlug);
+            const circuits = readTotalsFor(circuitsSlug);
+
 
       setCodeTotalSteps(coding.total);
       setCodeDoneCount(coding.done);

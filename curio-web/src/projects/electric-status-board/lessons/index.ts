@@ -1,6 +1,7 @@
 import CodeBegLesson from "./codeBeg";
 import CircuitBegLesson from "./circuitBeg";
 import CodeAdvLesson from "./codeAdv";
+import CodeIntLesson from "./codeInt";
 
 export const ESB_LESSONS = {
   "code-beg": {
@@ -20,6 +21,16 @@ export const ESB_LESSONS = {
         description: "Take your code further with these advanced lessons.",
     },
     },
+
+    "code-int":{
+        Component:CodeIntLesson,
+        meta:{
+            title: "Focus Board",
+            subtitle: "Intermediate Coding",
+            description: "Integreate clock and timer modules"
+        }
+    },
+
 
   "circuit-beg": {
     Component: CircuitBegLesson,
