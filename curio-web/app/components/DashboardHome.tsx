@@ -376,11 +376,6 @@ export function DashboardHome() {
     }
   }, [activePtr?.slug]);
 
-  const currentProject = useMemo(() => {
-    if (!activePtr?.slug) return null;
-    return PROJECTS.find((p) => p.slug === activePtr.slug) ?? null;
-  }, [activePtr]);
-
   // Use pretty label for display
   const currentLevelDisplay = useMemo(() => {
     return activePtr?.lessonSlug ? prettyLevelFromLessonSlug(activePtr.lessonSlug) : "";
@@ -399,6 +394,22 @@ export function DashboardHome() {
   const doneStepsAll = useMemo(() => {
     return Math.max(0, codeDoneCount + circuitDoneCount);
   }, [codeDoneCount, circuitDoneCount]);
+
+  const isActiveComplete = useMemo(() => {
+  return !!activePtr?.slug && totalStepsAll > 0 && doneStepsAll >= totalStepsAll;
+}, [activePtr?.slug, totalStepsAll, doneStepsAll]);
+
+
+
+
+const currentProject = useMemo(() => {
+  if (!activePtr?.slug) return null;
+
+  // If this project is currently complete, don't show it in Current tab
+  if (totalStepsAll > 0 && doneStepsAll >= totalStepsAll) return null;
+
+  return PROJECTS.find((p) => p.slug === activePtr.slug) ?? null;
+}, [activePtr, totalStepsAll, doneStepsAll]);
 
   // Week baseline init (local)
   useEffect(() => {
@@ -493,36 +504,45 @@ export function DashboardHome() {
     }
   }, [activePtr?.slug]);
 
-  // ✅ Auto-move project to Completed when (done/total)=1, AND total>0
-  useEffect(() => {
-    if (!activePtr?.slug) return;
-    if (!currentProject) return;
+  // Auto-move project to Completed when (done/total)=1, AND total>0
+useEffect(() => {
+  if (!activePtr?.slug) return;
+  if (!currentProject) return;
 
-    if (totalStepsAll > 0 && doneStepsAll >= totalStepsAll) {
-      const already = completedList.some((c) => c.project.slug === activePtr.slug);
-      if (already) return;
+  const slug = activePtr.slug;
+  const inCompleted = completedList.some((c) => c.project.slug === slug);
 
-      const startedISO = readJson<string>(STARTED_AT_KEY(activePtr.slug));
-      const startedDate = startedISO ? new Date(startedISO) : new Date();
-      const completedDate = new Date();
-
-      const nextEntry: CompletedProject = {
-        project: currentProject,
-        totalHours: Math.max(0, hoursCompletedApprox),
-        startedDate: Number.isFinite(startedDate.getTime()) ? startedDate : new Date(),
-        completedDate,
-      };
-
-      persistCompleted([nextEntry, ...completedList]);
-
-      // Clear current pointer so it no longer shows as active
-      try {
-        localStorage.removeItem("curio:activeLesson");
-        window.dispatchEvent(new Event("curio:activeLesson"));
-      } catch {}
+  // If not complete anymore, REMOVE from completed
+  if (!isActiveComplete) {
+    if (inCompleted) {
+      persistCompleted(completedList.filter((c) => c.project.slug !== slug));
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activePtr?.slug, totalStepsAll, doneStepsAll, currentProject, hoursCompletedApprox]);
+    return;
+  }
+
+  // If complete, ADD to completed (if missing)
+  if (!inCompleted) {
+    const startedISO = readJson<string>(STARTED_AT_KEY(slug));
+    const startedDate = startedISO ? new Date(startedISO) : new Date();
+
+    const nextEntry: CompletedProject = {
+      project: currentProject,
+      totalHours: Math.max(0, hoursCompletedApprox),
+      startedDate: Number.isFinite(startedDate.getTime()) ? startedDate : new Date(),
+      completedDate: new Date(),
+    };
+
+    persistCompleted([nextEntry, ...completedList]);
+  }
+
+  // Optional: clear pointer so it doesn't show as "current"
+  try {
+    localStorage.removeItem("curio:activeLesson");
+    window.dispatchEvent(new Event("curio:activeLesson"));
+  } catch {}
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [activePtr?.slug, isActiveComplete, currentProject, hoursCompletedApprox, completedList]);
+
 
   const calculateCompletionDate = () => {
     const remainingHours = Math.max(0, hoursRemaining);
