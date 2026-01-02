@@ -95,6 +95,9 @@ export default function ArduinoEditor({ height = "100%", width = "100%", apiBase
         "editor.lineHighlightBackground": "#111827",
         "editor.selectionBackground": "#264F78",
         "editorIndentGuides": "#1f2933",
+        "editorError.foreground": "#ff5555",
+        "editorError.background": "#8d0000ff",
+        "editorGutter.background": "#0f172a",
       },
     });
 
@@ -177,6 +180,73 @@ export default function ArduinoEditor({ height = "100%", width = "100%", apiBase
     });
   };
 
+  //Send the line-by-line errors to the AI
+  const sendErrorToAI = async (fullCode, errorMessage, lineNumber) => {
+    if (!fullCode) {
+      setPopoverContent("Cannot explain: code is empty.");
+      return;
+    }
+
+    setPopoverContent("Loading explanation...");
+    setStatus("Requesting AI explanation...");
+
+    try {
+      const res = await fetch(`${apiBaseUrl}/ai/help`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mode: "arduino-verify",
+          code: fullCode,
+          errors: [{ line: lineNumber, message: errorMessage }], // only the clicked error
+        }),
+      });
+
+      if (!res.body) throw new Error("No response body");
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      const popoverRef = { current: "" };
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+
+        const events = buffer.split("\n\n");
+        buffer = events.pop(); // keep incomplete
+
+        for (const evt of events) {
+          const lines = evt.split("\n");
+          let eventType = "message";
+          let data = "";
+
+          for (const line of lines) {
+            if (line.startsWith("event:")) eventType = line.slice(6).trim();
+            else if (line.startsWith("data:")) data += line.slice(5).trim();
+          }
+
+          if (eventType === "token") {
+            const { token } = JSON.parse(data);
+            popoverRef.current += token;
+            setPopoverContent(popoverRef.current);
+          }
+
+          if (eventType === "done") setStatus("AI explanation complete.");
+          if (eventType === "error") {
+            const { error } = JSON.parse(data);
+            setPopoverContent(error);
+            setStatus("AI request failed.");
+          }
+        }
+      }
+    } catch (err) {
+      console.error("❌ AI error:", err);
+      setPopoverContent("Something went wrong while asking the AI helper.");
+      setStatus("AI request failed.");
+    }
+  };
+
   const onMount = (editor, monaco) => {
     monaco.editor.setTheme("arduino-dark");
     editorRef.current = editor;
@@ -186,22 +256,21 @@ export default function ArduinoEditor({ height = "100%", width = "100%", apiBase
     // AI popover
     editor.onMouseDown((e) => {
       if (!e.target.position) return;
+
       const line = e.target.position.lineNumber;
-      const column = e.target.position.column;
       const model = editor.getModel();
       const markers = monaco.editor.getModelMarkers({ resource: model.uri, owner: "verify" });
-      const marker = markers.find(m => m.startLineNumber === line);
+      const marker = markers.find(m => line >= m.startLineNumber && line <= m.endLineNumber);
       if (!marker) return;
 
-      const key = marker.aiKey;
-      const aiText = aiHelpMap[key];
-      if (!aiText) return;
+      const currentCode = editor.getValue(); // full sketch
 
       const editorDom = editor.getDomNode();
       const rect = editorDom.getBoundingClientRect();
       setPopoverPosition({ top: e.event.posy - rect.top, left: e.event.posx - rect.left });
-      setPopoverContent(aiText);
       setPopoverVisible(true);
+
+      sendErrorToAI(currentCode, marker.message, marker.startLineNumber);
     });
   };
 
@@ -269,6 +338,30 @@ export default function ArduinoEditor({ height = "100%", width = "100%", apiBase
         }))
       );
 
+      //Error Highlighting
+      monacoRef.current.editor.setModelMarkers(
+        editorRef.current.getModel(),
+        "verify",
+        errors.map(err => ({
+          startLineNumber: err.line,
+          startColumn: err.column || 1,
+          endLineNumber: err.line,
+          endColumn: (err.column || 1) + 1,
+          message: err.message,
+          severity: monacoRef.current.MarkerSeverity.Error,
+          aiKey: `${err.line}:${err.column || 1}`,
+          tags: [monacoRef.current.MarkerTag.Unnecessary], 
+        }))
+      )
+      editorRef.current.deltaDecorations([], errors.map(err => ({
+        range: new monacoRef.current.Range(err.line, 1, err.line, 1000),
+        options: { 
+          isWholeLine: true, 
+          className: 'errorLineHighlight', 
+          glyphMarginClassName: 'errorGlyph'
+        }
+      })));
+
       let outputText = errors.map(err => `Sketch.ino:${err.line}:${err.column || 1}: error: ${err.message}`).join("\n");
       setCompilerOutput(outputText);
       setStatus(`Found ${errors.length} error(s).`);
@@ -290,24 +383,68 @@ export default function ArduinoEditor({ height = "100%", width = "100%", apiBase
     setIsExplaining(true);
 
     try {
+      console.log("🧠 explainErrorsWithAI called", {
+        apiBaseUrl,
+        lastErrors,
+      })
       const res = await fetch(`${apiBaseUrl}/ai/help`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ mode: "arduino-verify", code: value, errors: lastErrors }),
+        body: JSON.stringify({
+          mode: "arduino-verify",
+          code: value,
+          errors: lastErrors,
+        }),
       });
 
-      const data = await res.json();
-      if (!data.ok) throw new Error(data.error || "Unknown AI error");
+      if (!res.ok || !res.body) {
+        throw new Error("No response body");
+      }
 
-      // Format output nicely
-      const formatted = data.explanation
-        .split("\n")
-        .map(line => line.trim())
-        .filter(line => line.length > 0)
-        .join("\n");
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
 
-      setCompilerOutput(formatted);
-      setStatus("AI explanation complete.");
+      let buffer = "";
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+
+        // Split SSE frames
+        const events = buffer.split("\n\n");
+        buffer = events.pop(); // keep incomplete frame
+
+        for (const evt of events) {
+          const lines = evt.split("\n");
+          let eventType = "message";
+          let data = "";
+
+          for (const line of lines) {
+            if (line.startsWith("event:")) {
+              eventType = line.slice(6).trim();
+            } else if (line.startsWith("data:")) {
+              data += line.slice(5).trim();
+            }
+          }
+
+          if (eventType === "token") {
+            const { token } = JSON.parse(data);
+            setCompilerOutput(prev => prev + token);
+          }
+
+          if (eventType === "done") {
+            setStatus("AI explanation complete.");
+          }
+
+          if (eventType === "error") {
+            const { error } = JSON.parse(data);
+            setCompilerOutput(error);
+            setStatus("AI request failed.");
+          }
+        }
+      }
     } catch (err) {
       console.error("❌ AI error:", err);
       setCompilerOutput("Something went wrong while asking the AI helper.");
@@ -457,8 +594,9 @@ export default function ArduinoEditor({ height = "100%", width = "100%", apiBase
             fontSize: 12,
             boxShadow: "0 0 10px rgba(0,0,0,0.5)",
             zIndex: 1000,
+            cursor: "pointer",
           }}
-          onClick={() => setPopoverVisible(false)}
+          onClick={() => setPopoverVisible(false)} // close on click
         >
           {popoverContent}
         </div>
