@@ -19,7 +19,7 @@ const LESSON_STEPS_ADVANCED = {
           code: `^^#include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h> 
-(ADD CLOCK MODULE HERE - ANUSHKA)     
+(ADD CLOCK MODULE HERE)     
 ^^
 void setup(){
 }
