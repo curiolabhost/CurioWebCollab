@@ -1199,7 +1199,7 @@ function renderImageGrid(grid: any, keyPrefix = "grid") {
       {/* Main Content */}
       <div className="flex-1 min-w-0 overflow-y-auto">
         {/* Header */}
-        <div className="bg-white border-b border-gray-200 px-12 py-8">
+        <div className="bg-white border-b border-gray-200 px-12 py-9">
           <h1 className="mb-2 text-s font-bold text-sky-600">
             {step?.lessonTitle ?? `Lesson ${lesson}`}
           </h1>
@@ -1259,7 +1259,7 @@ function renderImageGrid(grid: any, keyPrefix = "grid") {
         {/* Lesson Content */}
         <div className="px-12 py-6 w-full">
           <div className="w-full">
-            {/* ✅ If this step has a custom component (ex: ProjectMindMap), render it instead */}
+            {/* If this step has a custom component (ex: ProjectMindMap), render it instead */}
             {step?.customComponent ? (
               <div className="w-full">
                 {(() => {
