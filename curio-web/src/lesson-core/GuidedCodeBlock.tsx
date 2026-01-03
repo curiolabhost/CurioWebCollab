@@ -72,6 +72,17 @@ type BlankRule = {
   matches?: string; // regex string
 };
 
+// ---- Restored "JS-era" typed specs (range / sameAs / etc.) ----
+type BlankTypedSpec =
+  | { type: "identifier" }
+  | { type: "range"; min?: number; max?: number }
+  | { type: "number" }
+  | { type: "sameAs"; target: string }
+  | { type: "string"; regex?: string }
+  | { type?: string; values?: any[] }; // fallback: values list
+
+type AnswerSpec = BlankRule | BlankTypedSpec | string[] | string;
+
 type Props = {
   step: any;
   block: any;
@@ -148,14 +159,6 @@ function nowMs() {
   return Date.now();
 }
 
-function clamp(n: number, lo: number, hi: number) {
-  return Math.max(lo, Math.min(hi, n));
-}
-
-function isProbablyNumberLiteral(s: string) {
-  return /^[+-]?\d+(\.\d+)?$/.test(s.trim());
-}
-
 function isValidRegex(re: string) {
   try {
     // eslint-disable-next-line no-new
@@ -168,6 +171,10 @@ function isValidRegex(re: string) {
 
 function normalizeWs(s: string) {
   return String(s ?? "").replace(/\s+/g, " ").trim();
+}
+
+function isPlainObject(x: any) {
+  return x != null && typeof x === "object" && !Array.isArray(x);
 }
 
 // ============================================================
@@ -198,8 +205,7 @@ function tokenizeTemplateLineWithState(
     }
 
     // Blank token
-    const blankStart = str.indexOf("__BLANK[", i);
-    if (blankStart === i) {
+    if (str.slice(i, i + "__BLANK[".length) === "__BLANK[") {
       const end = str.indexOf("]__", i);
       if (end !== -1) {
         const name = str.slice(i + "__BLANK[".length, end).trim();
@@ -226,9 +232,8 @@ function tokenizeTemplateLineWithState(
   return { toks, inHiEnd: inHi };
 }
 
-
 function splitComment(lineTokens: TemplateTok[]) {
-  // Treat "//" as starting comment, but only in text tokens and outside highlight logic.
+  // Treat "//" as starting comment, but only in text tokens.
   const codeTokens: TemplateTok[] = [];
   let comment = "";
   let inComment = false;
@@ -284,19 +289,6 @@ function escapeRegex(s: string) {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-const KEYWORD_RE = new RegExp(
-  `\\b(${[
-    ...TYPE_KEYWORDS,
-    ...CONTROL_KEYWORDS,
-    ...ARDUINO_BUILTINS.filter((k) => k !== "Serial"),
-  ]
-    .map(escapeRegex)
-    .join("|")})\\b`,
-  "g"
-);
-
-const PRE_RE = new RegExp(`^\\s*(${PREPROCESSOR_KEYWORDS.map(escapeRegex).join("|")})\\b`);
-
 // --- keep these sets somewhere above (same as original) ---
 const TYPE_SET = new Set(TYPE_KEYWORDS);
 const CONTROL_SET = new Set(CONTROL_KEYWORDS);
@@ -309,16 +301,10 @@ function renderSyntaxHighlightedSegment(text: string) {
   if (!text) return null;
 
   // Normalize curly quotes → straight quotes so strings tokenize correctly
-  const normalized = String(text)
-    .replace(/[‘’]/g, "'")
-    .replace(/[“”]/g, '"');
+  const normalized = String(text).replace(/[‘’]/g, "'").replace(/[“”]/g, '"');
 
   const pieces: React.ReactNode[] = [];
 
-  // KEY FIX:
-  // - Keep the quoted-string patterns
-  // - BUT make the final fallback punctuation match ONE char, not many,
-  //   so it doesn't swallow braces+quotes (e.g., "{'") or "', '"
   const regex =
     /(#\s*(?:include|define|ifdef|ifndef|endif|elif|else|pragma|error|warning)\b|\/\/[^\n]*|"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|[+-]?\d+(?:\.\d+)?|\b[A-Za-z_]\w*\b|\s+|[^\w\s])/g;
 
@@ -358,7 +344,6 @@ function renderSyntaxHighlightedSegment(text: string) {
 
   return pieces;
 }
-
 
 function stripOuterWrappers(s: string) {
   let t = String(s ?? "").trim();
@@ -408,9 +393,7 @@ function computeSyntaxTag(v: any) {
   // Types
   if (TYPE_SET.has(core)) return "type";
 
-  // Optional: treat control keywords as "text" or "type" — up to you.
-  // If you want a dedicated styling for control words, add a blankSyntaxControl class.
-  // For now, we’ll just return text.
+  // Control words: treat as text by default
   if (CONTROL_SET.has(core)) return "text";
 
   return "text";
@@ -439,11 +422,10 @@ function getCompletedBlankSyntaxClass(v: any) {
 }
 
 // ============================================================
-// Blank evaluation
+// Blank evaluation (current TS rule format)
 // ============================================================
 function evalBlank(rule: BlankRule, value: string): boolean {
   const v = String(value ?? "");
-
   if (!rule) return false;
 
   if (typeof rule.equals === "string") {
@@ -467,14 +449,77 @@ function evalBlank(rule: BlankRule, value: string): boolean {
   return false;
 }
 
+// ============================================================
+// AnswerSpec evaluation (restores JS-era typed specs + arrays)
+// ============================================================
+function evalAnswerSpec(spec: AnswerSpec, value: string, allValues: Record<string, any>): boolean {
+  const raw = String(value ?? "").trim();
 
+  // arrays: ["begin", "start"]
+if (Array.isArray(spec)) {
+  return spec.some((entry) => evalAnswerSpec(entry as any, raw, allValues));
+}
+
+
+  // string shorthand: "begin"
+  if (typeof spec === "string") {
+    return raw === spec.trim();
+  }
+
+  // typed objects (old JS)
+  if (isPlainObject(spec) && typeof (spec as any).type === "string") {
+    const t = String((spec as any).type);
+
+    switch (t) {
+      case "identifier":
+        return /^[A-Za-z_][A-Za-z0-9_]*$/.test(raw);
+
+      case "range": {
+        const num = Number(raw);
+        if (Number.isNaN(num)) return false;
+        const min = (spec as any).min ?? -Infinity;
+        const max = (spec as any).max ?? Infinity;
+        return num >= min && num <= max;
+      }
+
+      case "number": {
+        const num = Number(raw);
+        return !Number.isNaN(num);
+      }
+
+      case "sameAs": {
+        const target = String((spec as any).target || "").trim();
+        if (!target) return false;
+        const otherVal = String(allValues?.[target] ?? "").trim();
+        return raw !== "" && raw === otherVal;
+      }
+
+      case "string": {
+        const re = (spec as any).regex;
+        if (!raw) return false;
+        if (typeof re === "string" && re.length > 0 && isValidRegex(re)) {
+          return new RegExp(re).test(raw);
+        }
+        return true;
+      }
+
+      default: {
+        const arr = Array.isArray((spec as any).values) ? (spec as any).values : [];
+        return arr.some((v: any) => raw === String(v).trim());
+      }
+    }
+  }
+
+  // otherwise treat as BlankRule
+  return evalBlank(spec as BlankRule, raw);
+}
 
 export default function GuidedCodeBlock({
   step,
   block,
   blockIndex,
   storageKey,
-  globalKey,
+  globalKey, // (kept for signature compatibility)
   apiBaseUrl = "http://localhost:4000",
   analyticsTag,
 
@@ -512,8 +557,8 @@ export default function GuidedCodeBlock({
   const code: string = block?.code || step?.code || "";
   const blockExplanations = block?.blankExplanations || step?.blankExplanations || null;
 
-  // ✅ answerKey can live on block OR step
-  const answerKey: Record<string, BlankRule> | null = block?.answerKey || step?.answerKey || null;
+  // answerKey can be: BlankRule | typed specs | arrays | strings
+  const answerKey: Record<string, AnswerSpec> | null = block?.answerKey || step?.answerKey || null;
 
   const difficulties: Record<string, any> = step?.blankDifficulties || {};
 
@@ -526,10 +571,13 @@ export default function GuidedCodeBlock({
   const localValuesRef = React.useRef(localValues);
   localValuesRef.current = localValues;
 
-  // If mergedBlanks changes due to navigation/restore, sync local values (but don’t fight typing)
+  // merge-in on navigation/restore WITHOUT clobbering current typing
   React.useEffect(() => {
     const safeMerged = mergedBlanks && typeof mergedBlanks === "object" ? mergedBlanks : {};
-    setLocalValues(safeMerged);
+    setLocalValues((prev) => ({
+      ...(prev || {}),
+      ...safeMerged,
+    }));
   }, [mergedBlanks]);
 
   // Parent local update (throttled) so sidebar "blank done" etc can reflect without global writes
@@ -538,6 +586,7 @@ export default function GuidedCodeBlock({
 
   function scheduleParentLocalUpdate(name: string, value: string) {
     if (!setLocalBlanks) return;
+    if (typeof window === "undefined") return;
 
     pendingRef.current[name] = value;
 
@@ -556,7 +605,7 @@ export default function GuidedCodeBlock({
 
   React.useEffect(() => {
     return () => {
-      if (flushTimerRef.current) {
+      if (flushTimerRef.current && typeof window !== "undefined") {
         window.clearTimeout(flushTimerRef.current);
         flushTimerRef.current = null;
       }
@@ -566,19 +615,18 @@ export default function GuidedCodeBlock({
   /* ==========================================================
      Tokenize once per code change
   ========================================================== */
-const templateLineSplits = React.useMemo(() => {
-  const rawLines = String(code || "").replace(/\r\n/g, "\n").split("\n");
+  const templateLineSplits = React.useMemo(() => {
+    const rawLines = String(code || "").replace(/\r\n/g, "\n").split("\n");
 
-  let inHi = false; // <- carry across lines
-  return rawLines.map((line) => {
-    const { toks, inHiEnd } = tokenizeTemplateLineWithState(line, inHi);
-    inHi = inHiEnd;
+    let inHi = false; // carry across lines
+    return rawLines.map((line) => {
+      const { toks, inHiEnd } = tokenizeTemplateLineWithState(line, inHi);
+      inHi = inHiEnd;
 
-    const { codeTokens, comment } = splitComment(toks);
-    return { codeTokens, comment };
-  });
-}, [code]);
-
+      const { codeTokens, comment } = splitComment(toks);
+      return { codeTokens, comment };
+    });
+  }, [code]);
 
   // Estimate a fixed code-column width so comments line up
   const codeColPx = React.useMemo(() => {
@@ -592,7 +640,7 @@ const templateLineSplits = React.useMemo(() => {
           const v = String((localValues || {})[t.name] ?? "");
           lineW += estimateTemplateTokenWidthPx(t, v.length);
         } else {
-          lineW += estimateTemplateTokenWidthPx(t, 0);
+          lineW += estimateTemplateTokenWidthPx(t as any, 0);
         }
       }
       if (lineW > maxCodePx) maxCodePx = lineW;
@@ -638,8 +686,9 @@ const templateLineSplits = React.useMemo(() => {
                   const name = tok.name;
                   const val = String(values[name] ?? "");
                   const status = (blankStatus || {})[name];
+
                   const ch = Math.max(4, Math.max(1, val.length));
-                    const width = `${ch}ch`;
+                  const width = `${ch}ch`;
 
                   const blankClass = [
                     styles.codeBlankInput,
@@ -759,9 +808,10 @@ const templateLineSplits = React.useMemo(() => {
 
     // cooldown
     if (since < AI_COOLDOWN_MS) {
+      const secsLeft = Math.ceil((AI_COOLDOWN_MS - since) / 1000);
       setAiHelpByBlank?.((prev) => ({
         ...(prev || {}),
-        [key]: `Try again in ${(AI_COOLDOWN_MS - since) / 1000}s after thinking it through.`,
+        [key]: `Try again in about ${secsLeft} second${secsLeft === 1 ? "" : "s"} after thinking it through.`,
       }));
       return;
     }
@@ -830,18 +880,29 @@ const templateLineSplits = React.useMemo(() => {
     }
   };
 
+  // ✅ restore JS behavior: substitute filled blanks, strip ^^, keep unfixed blanks as _____
   const copyCode = async (raw: string) => {
-    const plain = String(raw || "")
-      .replace(/\^\^/g, "")
-      .replace(/__BLANK\[[^\]]+\]__/g, "_____");
-
     try {
-      await navigator.clipboard.writeText(plain);
+      let textToCopy = String(raw || "");
+      const values = localValuesRef.current || mergedBlanks || {};
+
+      for (const [name, value] of Object.entries(values || {})) {
+        const placeholder = `__BLANK[${name}]__`;
+        const replacement = value && String(value).trim().length > 0 ? String(value) : "_____";
+        textToCopy = textToCopy.split(placeholder).join(replacement);
+      }
+
+      textToCopy = textToCopy.replace(/__BLANK\[[A-Z0-9_]+\]__/g, "_____");
+      textToCopy = textToCopy.replace(/\^\^/g, "");
+
+      await navigator.clipboard.writeText(textToCopy);
     } catch {
       // ignore
     }
   };
 
+  // ✅ restores typed specs + arrays + sameAs
+  // ✅ counts attempts ONLY when wrong (per blank), matching your old JS comment
   const checkBlanks = () => {
     if (!answerKey) return;
 
@@ -849,18 +910,21 @@ const templateLineSplits = React.useMemo(() => {
     const nextStatus: Record<string, boolean> = {};
     const nextAttemptsByName = { ...(blankAttemptsByName || {}) };
 
-    for (const [name, rule] of Object.entries(answerKey)) {
+    for (const [name, spec] of Object.entries(answerKey)) {
       const v = String(values[name] ?? "");
-      const ok = evalBlank(rule as BlankRule, v);
+      const ok = evalAnswerSpec(spec, v, values);
       nextStatus[name] = ok;
 
-      nextAttemptsByName[name] = (nextAttemptsByName[name] || 0) + 1;
+      // wrong-only counting (so "attempts" means "wrong attempts")
+      if (!ok) {
+        nextAttemptsByName[name] = (nextAttemptsByName[name] || 0) + 1;
+      }
 
       logBlankAnalytics?.({
         type: "check_blank",
         blankName: name,
         ok,
-        attempt: nextAttemptsByName[name],
+        attempt: nextAttemptsByName[name] ?? 0,
         difficulty: difficulties?.[name],
         tag: analyticsTag,
       });
@@ -874,16 +938,21 @@ const templateLineSplits = React.useMemo(() => {
     setBlankAttemptsByName?.(nextAttemptsByName);
     setCheckAttempts?.((n) => (n || 0) + 1);
 
-    // persist attempts/status in step storage as well (optional)
     storageSetJson(`${storageKey}:blankStatus`, nextStatus);
     storageSetJson(`${storageKey}:blankAttemptsByName`, nextAttemptsByName);
+
+    // optional: clear hint state if everything correct
+    const anyWrong = Object.values(nextStatus).some((x) => x === false);
+    if (!anyWrong) {
+      setActiveBlankHint?.(null);
+      setAiHelpByBlank?.({});
+    }
   };
 
   return (
     <>
       <div className={styles.codeCard}>
         <div className={styles.codeCardHeader}>
-          {/*  allow per-block title instead of always "Example Code" */}
           <div className={styles.codeCardTitle}>
             {String(block?.title || step?.codeTitle || "Example Code")}
           </div>
