@@ -231,8 +231,8 @@
 }
 
 .errorDot {
-  width: 10px;
-  height: 10px;
+  width: 5px;
+  height: 5px;
   border-radius: 999px;
   background: #dc2626;
   display: inline-block;

@@ -1,6 +1,9 @@
+
 // app/projects/electric-status-board/components/ArduinoEditor.jsx
-import React from "react";
-import Editor from "@monaco-editor/react";
+"use client";
+
+import * as React from "react";
+import Editor, { BeforeMount, OnMount } from "@monaco-editor/react";
 
 const STORAGE_KEY = "esb:arduino:sketch";
 
