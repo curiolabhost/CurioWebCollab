@@ -970,10 +970,11 @@ function isLessonLocked(lessonNum: number) {
   const inlineLocalValuesRef = React.useRef(inlineLocalValues);
   inlineLocalValuesRef.current = inlineLocalValues;
 
-  React.useEffect(() => {
-    const safeMerged = mergedBlanks && typeof mergedBlanks === "object" ? mergedBlanks : {};
-    setInlineLocalValues((prev) => ({ ...safeMerged, ...(prev || {}) }));
-  }, [mergedBlanks]);
+React.useEffect(() => {
+  const safeMerged = mergedBlanks && typeof mergedBlanks === "object" ? mergedBlanks : {};
+  setInlineLocalValues((prev) => ({ ...(prev || {}), ...safeMerged }));
+}, [mergedBlanks]);
+
 
   const inlineRafRef = React.useRef<number | null>(null);
 
@@ -1016,6 +1017,27 @@ function isLessonLocked(lessonNum: number) {
   const logBlankAnalytics = React.useCallback((_event: any) => {
     // no-op (wire later)
   }, []);
+
+
+function renderCustomStep(step: any) {
+  const Comp = step?.customComponent;
+  if (!Comp) return null;
+
+  // we pass embedded so the component doesn't try to be full-screen
+  // and pass navigation hooks if we want the mind map to have buttons
+  return (
+    <div className="w-full">
+      <Comp
+        embedded
+        onBack={goPrev}
+        onContinue={goNext}
+        // (optional) can pass the current project pointer too
+        // ptr={parseCurioPtr(storagePrefix)}
+      />
+    </div>
+  );
+}
+
 
 function renderImageGrid(grid: any, keyPrefix = "grid") {
   if (!grid || !Array.isArray(grid.items) || grid.items.length === 0) return null;
@@ -1237,88 +1259,106 @@ function renderImageGrid(grid: any, keyPrefix = "grid") {
         {/* Lesson Content */}
         <div className="px-12 py-6 w-full">
           <div className="w-full">
-            {step?.desc ? (
-              <div className={styles.stepDescBlock}>{renderInline(step.desc)}</div>
-            ) : null}
-
-            {Array.isArray(step?.codes) && step.codes.length > 0 ? (
-              <div className="space-y-8">
-                {step.codes.map((block: any, idx: number) => (
-                  <div key={idx}>
-                    {block?.descBeforeCode ? (
-                      <div className={styles.stepDescBlock}>
-                        {renderInline(block.descBeforeCode)}
-                      </div>
-                    ) : null}
-
-                    {block?.topicTitle ? (
-                      <h3 className={styles.blockTopicTitle}>{String(block.topicTitle)}</h3>
-                    ) : null}
-
-                    {block?.descBetweenBeforeAndCode ? (
-                      <div className={styles.stepDescBlock}>
-                        {renderInline(block.descBetweenBeforeAndCode)}
-                      </div>
-                    ) : null}
-
-                    {block?.imageGridBeforeCode
-                      ? renderImageGrid(block.imageGridBeforeCode, `b-${idx}-before`)
-                      : null}
-
-                    {block?.code ? (
-                      <GuidedCodeBlock
-                        step={step}
-                        block={block}
-                        blockIndex={idx}
-                        storageKey={localStorageKeyForThisStep}
-                        globalKey={KEYS.globalBlanksKey}
-                        apiBaseUrl={apiBaseUrl}
-                        analyticsTag={analyticsTag}
-                        mergedBlanks={mergedBlanks}
-                        setLocalBlanks={setLocalBlanks}
-                        setGlobalBlanks={setGlobalBlanks}
-                        blankStatus={blankStatus}
-                        setBlankStatus={setBlankStatus}
-                        activeBlankHint={activeBlankHint}
-                        setActiveBlankHint={setActiveBlankHint}
-                        aiHelpByBlank={aiHelpByBlank}
-                        setAiHelpByBlank={setAiHelpByBlank}
-                        aiLoadingKey={aiLoadingKey}
-                        setAiLoadingKey={setAiLoadingKey}
-                        aiLastRequestAtByKey={aiLastRequestAtByKey}
-                        setAiLastRequestAtByKey={setAiLastRequestAtByKey}
-                        aiHintLevelByBlank={aiHintLevelByBlank}
-                        setAiHintLevelByBlank={setAiHintLevelByBlank}
-                        checkAttempts={checkAttempts}
-                        setCheckAttempts={setCheckAttempts}
-                        blankAttemptsByName={blankAttemptsByName}
-                        setBlankAttemptsByName={setBlankAttemptsByName}
-                        logBlankAnalytics={logBlankAnalytics}
-                      />
-                    ) : null}
-
-                    {block?.descAfterCode ? (
-                      <div className={styles.stepDescBlock}>{renderInline(block.descAfterCode)}</div>
-                    ) : null}
-
-                    {block?.imageGridAfterCode
-                      ? renderImageGrid(block.imageGridAfterCode, `b-${idx}-after`)
-                      : null}
-
-                    {block?.descAfterImage ? (
-                      <div className={styles.stepDescBlock}>{renderInline(block.descAfterImage)}</div>
-                    ) : null}
-
-                    {block?.hint ? (
-                      <div className={styles.hintBox}>
-                        <div className={styles.hintTitle}>Hint</div>
-                        <div className={styles.hintText}>{String(block.hint)}</div>
-                      </div>
-                    ) : null}
-                  </div>
-                ))}
+            {/* ✅ If this step has a custom component (ex: ProjectMindMap), render it instead */}
+            {step?.customComponent ? (
+              <div className="w-full">
+                {(() => {
+                  const Comp = step.customComponent;
+                  return <Comp embedded onBack={goPrev} onContinue={goNext} />;
+                })()}
               </div>
-            ) : null}
+            ) : (
+              <>
+                {step?.desc ? (
+                  <div className={styles.stepDescBlock}>{renderInline(step.desc)}</div>
+                ) : null}
+
+                {Array.isArray(step?.codes) && step.codes.length > 0 ? (
+                  <div className="space-y-8">
+                    {step.codes.map((block: any, idx: number) => (
+                      <div key={idx}>
+                        {block?.topicTitle ? (
+                          <h3 className={styles.blockTopicTitle}>
+                            {String(block.topicTitle)}
+                          </h3>
+                        ) : null}
+
+                        {block?.descBeforeCode ? (
+                          <div className={styles.stepDescBlock}>
+                            {renderInline(block.descBeforeCode)}
+                          </div>
+                        ) : null}
+
+                        {block?.descBetweenBeforeAndCode ? (
+                          <div className={styles.stepDescBlock}>
+                            {renderInline(block.descBetweenBeforeAndCode)}
+                          </div>
+                        ) : null}
+
+                        {block?.imageGridBeforeCode
+                          ? renderImageGrid(block.imageGridBeforeCode, `b-${idx}-before`)
+                          : null}
+
+                        {block?.code ? (
+                          <GuidedCodeBlock
+                            step={step}
+                            block={block}
+                            blockIndex={idx}
+                            storageKey={localStorageKeyForThisStep}
+                            globalKey={KEYS.globalBlanksKey}
+                            apiBaseUrl={apiBaseUrl}
+                            analyticsTag={analyticsTag}
+                            mergedBlanks={mergedBlanks}
+                            setLocalBlanks={setLocalBlanks}
+                            setGlobalBlanks={setGlobalBlanks}
+                            blankStatus={blankStatus}
+                            setBlankStatus={setBlankStatus}
+                            activeBlankHint={activeBlankHint}
+                            setActiveBlankHint={setActiveBlankHint}
+                            aiHelpByBlank={aiHelpByBlank}
+                            setAiHelpByBlank={setAiHelpByBlank}
+                            aiLoadingKey={aiLoadingKey}
+                            setAiLoadingKey={setAiLoadingKey}
+                            aiLastRequestAtByKey={aiLastRequestAtByKey}
+                            setAiLastRequestAtByKey={setAiLastRequestAtByKey}
+                            aiHintLevelByBlank={aiHintLevelByBlank}
+                            setAiHintLevelByBlank={setAiHintLevelByBlank}
+                            checkAttempts={checkAttempts}
+                            setCheckAttempts={setCheckAttempts}
+                            blankAttemptsByName={blankAttemptsByName}
+                            setBlankAttemptsByName={setBlankAttemptsByName}
+                            logBlankAnalytics={logBlankAnalytics}
+                          />
+                        ) : null}
+
+                        {block?.descAfterCode ? (
+                          <div className={styles.stepDescBlock}>
+                            {renderInline(block.descAfterCode)}
+                          </div>
+                        ) : null}
+
+                        {block?.imageGridAfterCode
+                          ? renderImageGrid(block.imageGridAfterCode, `b-${idx}-after`)
+                          : null}
+
+                        {block?.descAfterImage ? (
+                          <div className={styles.stepDescBlock}>
+                            {renderInline(block.descAfterImage)}
+                          </div>
+                        ) : null}
+
+                        {block?.hint ? (
+                          <div className={styles.hintBox}>
+                            <div className={styles.hintTitle}>Hint</div>
+                            <div className={styles.hintText}>{String(block.hint)}</div>
+                          </div>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+              </>
+            )}
 
             <div className="flex justify-between pt-10 border-t border-gray-200 mt-12">
               <button
@@ -1342,6 +1382,7 @@ function renderImageGrid(grid: any, keyPrefix = "grid") {
           </div>
         </div>
       </div>
+
 
       {/* Sidebar */}
       {sidebarExpanded ? (

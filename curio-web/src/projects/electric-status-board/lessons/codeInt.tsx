@@ -2,18 +2,50 @@
 
 import * as React from "react";
 import CodeLessonBase from "@/src/lesson-core/CodeLessonBase";
+import ESBProjectMindMapLesson from "./ProjectMindMapLesson";
 
 export const LESSON_STEPS_INTERMEDIATE: Record<number, { phrase: string; advanced?: boolean; optional?: boolean; steps: any[] }> = {
   // =========================================================
   // LESSON 1
   // =========================================================
-  1: {
+  
+  1:{
+
+    phrase: "Understand Project Logic",
+    advanced: false,
+    steps:[{
+      title: "Understand Project Logic",
+      customComponent: ESBProjectMindMapLesson, // wrapper
+    }
+    ]
+
+
+  },
+
+  2: {
     phrase: "OLED setup: libraries, screen dimensions, and button pins",
     advanced: false,
     steps: [
       {
         id: 1,
         title: "Step 1: Setting Libraries",
+        codes: [
+          {
+            topicTitle: "Include Libraries",
+            descBeforeCode:
+              "Coding libraries are collections of prewritten code that help you perform common tasks. Using libraries saves time and prevents you from having to write everything from scratch. For our electronic status board, we need the correct libraries to communicate with the SSD1306 OLED display over I²C and to draw text and shapes on the screen.",
+            imageGridBeforeCode: null,
+            descBetweenBeforeAndCode: null,
+            code: `^^#include <Wire.h>
+#include __BLANK[LIB_GFX]__
+#include __BLANK[LIB_SSD]__
+#include __BLANK[LIB_CLOCK]__^^     
+
+void setup(){
+}
+
+void loop(){
+}`,
         answerKey: {
           LIB_GFX: ["<Adafruit_GFX.h>"],
           LIB_SSD: ["<Adafruit_SSD1306.h>"],
@@ -32,23 +64,6 @@ export const LESSON_STEPS_INTERMEDIATE: Record<number, { phrase: string; advance
           LIB_SSD: "easy",
           LIB_CLOCK: "medium",
         },
-        codes: [
-          {
-            topicTitle: "Include Libraries",
-            descBeforeCode:
-              "Coding libraries are collections of prewritten code that help you perform common tasks. Using libraries saves time and prevents you from having to write everything from scratch. For our electronic status board, we need the correct libraries to communicate with the SSD1306 OLED display over I²C and to draw text and shapes on the screen.",
-            imageGridBeforeCode: null,
-            descBetweenBeforeAndCode: null,
-            code: `^^#include <Wire.h>
-#include __BLANK[LIB_GFX]__
-#include __BLANK[LIB_SSD]__
-#include __BLANK[LIB_CLOCK]__^^     
-
-void setup(){
-}
-
-void loop(){
-}`,
             descAfterCode: `This step adds important libraries used for communicating with the OLED screen (and a clock module if you have one):
 
 \`#include <Wire.h>\`  
@@ -338,7 +353,7 @@ Configures the button pins as inputs with internal pull-up resistors.
   // =========================================================
   // LESSON 2
   // =========================================================
-  2: {
+  3: {
     phrase: "Screens: welcome page + status page functions",
     advanced: false,
     steps: [
@@ -540,7 +555,7 @@ void __BLANK[STATUSFUNCTION]__(){  //Status Function
   // =========================================================
   // LESSON 3
   // =========================================================
-  3: {
+  4: {
     phrase: "Variables + lists (arrays) for menu options",
     advanced: false,
     steps: [
@@ -852,6 +867,8 @@ void loop(){
 Create a variable that stores the total **number** of status in the array.`,
             imageGridBeforeCode: {
               columns: 1,
+              height: 380,
+              width: 450,
               items: [
                 {
                   imageSrc: "/electric-status-board/videos/CurioLabL4.gif",
@@ -871,10 +888,7 @@ Create a variable that stores the total **number** of status in the array.`,
 __BLANK[TOTTYPE]__ __BLANK[TOTNAME]__ = __BLANK[TOTNUM]__;^^
 
 // Counter for tracking which item of the status list you are on. Assign 0 for the counter.^^
-__BLANK[TRACKTYPE]__ __BLANK[TRACKNAME]__ = __BLANK[TRACKNUM]__; ^^
-
-// Practice how you can use the array and the counter. ^^
-String option = __BLANK[STATUSNAME]__ [__BLANK[TRACKNAME]__];^^`,
+__BLANK[TRACKTYPE]__ __BLANK[TRACKNAME]__ = __BLANK[TRACKNUM]__; ^^`,
 
         answerKey: {
           TOTTYPE: ["int"],
@@ -912,16 +926,18 @@ String option = __BLANK[STATUSNAME]__ [__BLANK[TRACKNAME]__];^^`,
         },
             descAfterCode: `These two variables let the menu scroll correctly. In our code we can check the value of counter:
   - If it is past the last item → wrap back to the first  
-  - If it is before the first → wrap to the last
-
-What would the String option read?   __BLANK[OPTION]__`,
+  - If it is before the first → wrap to the last.`,
             imageGridAfterCode: null,
             descAfterImage: null,
-            hint: "We use this to handle scrolling and wrap-around behavior.",
-          },
-        ],
+            hint: "We use this to handle scrolling and wrap-around behavior."},
+            {
+            title: `Practice: Calling array item`,
+            code: `// Practice how you can use the array and the counter = 0. ^^
+  String option = __BLANK[STATUSNAME]__ [__BLANK[TRACKNAME]__];^^`,
+            descAfterCode: `What would the String option read?   __BLANK[OPTION]__`,
+         }
+         ],
       },
-
       {
         id: 6,
         title: "Step 6: Function for Menu Page",
@@ -1001,7 +1017,7 @@ void __BLANK[STATUSFUNCTION]__(){
   __BLANK[STATUSCODE2]__;
   __BLANK[STATUSCODE3]__;
   __BLANK[STATUSCODE4]__; 
-  display.println(__BLANK[STATUSNAME2]__[__BLANK[TRACKNAME2]__]);^^ // show one status from the array
+  display.println(__BLANK[STATUSNAME2]__[__BLANK[TRACKNAME2]__]);^^ // show a status from the array using counter
 }^^`,
             descAfterCode: `Now your project can:
   - Store multiple status options in an array  
@@ -1017,6 +1033,929 @@ Variables track **where** you are. Arrays store **what choices** you have.`,
       },
     ],
   },
+
+  5: {
+  phrase: "Variables + arrays: storing menu options and tracking state",
+  advanced: false,
+  steps: [
+    {
+      id: 1,
+      title: "Step 1: What is a Loop?",
+      optional: true,
+      codes: [
+        {
+          topicTitle: "Why loops matter",
+          descBeforeCode:
+            "We already have an array of status messages. Now we want to print ALL of them without writing many repeated lines of code.",
+          imageGridBeforeCode: null,
+          descBetweenBeforeAndCode: null,
+          code: `^^
+display.println(options[0]); // Without a loop (not flexible)
+display.println(options[1]); // Better idea: use a loop to repeat the same pattern for each item.
+display.println(options[2]);
+display.println(options[3]);
+^^`,
+          answerKey: {},
+          blankExplanations: {},
+          blankDifficulties: {},
+          descAfterCode: `Without a loop, you have to write a separate line for every status in the array. If you add or remove items, you must rewrite the code.
+
+Loops fix this problem by repeating the same code for each index in the array. In the next steps, we will use a **while loop** to walk through the list of options automatically.`,
+          imageGridAfterCode: null,
+          descAfterImage: null,
+          hint:
+            "Imagine you had 10 or 20 statuses. You wouldn’t want to copy-paste the same line 20 times.",
+        },
+      ],
+    },
+
+    {
+      id: 2,
+      title: "Step 2: Basic While Loop",
+      optional: true,
+      codes: [
+        {
+          topicTitle: "Warm-up: The while-loop pattern",
+          descBeforeCode:
+            "A while loop repeats a block of code as long as its condition is true. Study this pattern: start value → condition → update.",
+          imageGridBeforeCode: null,
+          descBetweenBeforeAndCode: null,
+          code: `^^// Warm-up example: prints 0,1,2,3 then stops^^
+^^int i = 0;                      ^^// 1) start value^^
+while (i < 4) {                 ^^// 2) condition^^
+  Serial.println(i);
+  i = i + 1;                    ^^// 3) update (moves i forward)^^
+}^^`,
+          answerKey: {
+            ANSWER_I: ["4"],
+          },
+          blankExplanations: {
+            ANSWER_I:
+              "After the loop stops, i has just reached the first value that makes the condition false.",
+          },
+          blankDifficulties: {
+            ANSWER_I: "easy",
+          },
+          descAfterCode: `The loop stops when \`i < 4\` becomes false.
+
+What does the \`i\` read after while loop ends?    __BLANK[ANSWER_I]__`,
+          imageGridAfterCode: null,
+          descAfterImage: null,
+          hint: "If the update line is missing, the loop may never end.",
+        },
+
+        {
+          topicTitle: "Loop Practices",
+          title: `Loop Practice 1`,
+          descBeforeCode:
+            `**Practice 1: Print Even Numbers**
+Start at 2 and keep printing even numbers by adding the same step each time.`,
+          imageGridBeforeCode: null,
+          descBetweenBeforeAndCode: null,
+          code: `^^int num = 2;
+while (num < __BLANK[P1_LIMIT]__) {
+  Serial.println(__BLANK[P1_PRINT]__);
+  num = num + __BLANK[P1_STEP]__;
+}^^`,
+          answerKey: {
+            P1_LIMIT: { type: "range", min: 3, max: 50 },
+            P1_PRINT: ["num"],
+            P1_STEP: ["2"],
+          },
+          blankExplanations: {
+            P1_LIMIT:
+              "Pick a number that makes the loop stop after a few prints. The loop should stop when num reaches the limit.",
+            P1_PRINT:
+              "Print the variable that changes each loop iteration (not a fixed number).",
+            P1_STEP:
+              "Even numbers increase by a constant step. Choose the amount num should increase each time.",
+          },
+          blankDifficulties: {
+            P1_LIMIT: "easy",
+            P1_PRINT: "easy",
+            P1_STEP: "easy",
+          },
+          descAfterCode:
+            "If your step is 2, the output should be even numbers: 2, 4, 6, ... until the condition becomes false.",
+          imageGridAfterCode: null,
+          descAfterImage: null,
+          hint: "Even numbers go up by 2 each time.",
+        },
+
+        {
+          descBeforeCode:
+            `**Loop Practice 2: Print Multiples of Three**
+Pick a starting value for x, then update x by 3 each loop.`,
+          imageGridBeforeCode: null,
+          descBetweenBeforeAndCode: null,
+          title: `Loop Practice 2`,
+          code: `^^int x = __BLANK[P2_START]__;
+while (__BLANK[P2_CONDVAR]__ < __BLANK[P2_LIMIT]__) {
+  Serial.println(__BLANK[P2_PRINT]__);
+  __BLANK[P2_UPDATE]__;
+}^^`,
+          answerKey: {
+            P2_START: { type: "range", min: 0, max: 30 },
+            P2_CONDVAR: ["x"],
+            P2_LIMIT: { type: "range", min: 10, max: 100 },
+            P2_PRINT: ["x"],
+            P2_UPDATE: ["x = x + 3", "x += 3"],
+          },
+          blankExplanations: {
+            P2_START:
+              "Choose a starting number for x. It should make sense for counting by 3.",
+            P2_CONDVAR:
+              "Use the same variable you’re updating inside the loop for the condition check.",
+            P2_LIMIT:
+              "Pick a stopping limit so the loop eventually ends.",
+            P2_PRINT:
+              "Print the changing variable for each loop iteration.",
+            P2_UPDATE:
+              "Update x so it moves forward by 3 each time (otherwise the loop may never end).",
+          },
+          blankDifficulties: {
+            P2_START: "easy",
+            P2_CONDVAR: "easy",
+            P2_LIMIT: "easy",
+            P2_PRINT: "easy",
+            P2_UPDATE: "medium",
+          },
+          descAfterCode:
+            "As long as x increases by 3 each time, the loop will eventually reach the limit and stop.",
+          imageGridAfterCode: null,
+          descAfterImage: null,
+          hint: "Make sure the update changes x by 3.",
+        },
+
+        {
+          descBeforeCode:
+            `**Loop Practice 3: Stop when a Number Reaches a Limit**
+Create a counter variable, print it, and increase it by 1 each loop until it reaches your limit.`,
+          imageGridBeforeCode: null,
+          descBetweenBeforeAndCode: null,
+          title: `Loop Practice 3`,
+          code: `^^int __BLANK[P3_VAR]__ = 5;
+while (__BLANK[P3_CONDVAR]__ < __BLANK[P3_LIMIT]__) {
+  Serial.println(__BLANK[P3_PRINT]__);
+  __BLANK[P3_VAR]__ = __BLANK[P3_NEXT]__;
+}^^`,
+          answerKey: {
+            P3_VAR: { type: "identifier" },
+            P3_CONDVAR: { type: "sameAs", target: "P3_VAR" },
+            P3_LIMIT: { type: "range", min: 6, max: 200 },
+            P3_PRINT: { type: "sameAs", target: "P3_VAR" },
+            P3_NEXT: { type: "expression" }, // should represent counter + 1
+          },
+          blankExplanations: {
+            P3_VAR:
+              "Choose a variable name for your counter (any valid identifier).",
+            P3_CONDVAR:
+              "Use the same variable name you created for the counter in the while condition.",
+            P3_LIMIT:
+              "Pick a limit bigger than the start value so the loop can run at least once.",
+            P3_PRINT:
+              "Print the counter variable each time so you can see it change.",
+            P3_NEXT:
+              "Update the counter to the next value by adding 1 to it.",
+          },
+          blankDifficulties: {
+            P3_VAR: "easy",
+            P3_CONDVAR: "easy",
+            P3_LIMIT: "easy",
+            P3_PRINT: "easy",
+            P3_NEXT: "easy",
+          },
+          descAfterCode:
+            "This is the same pattern: start value → condition → update. The update must move the counter forward.",
+          imageGridAfterCode: null,
+          descAfterImage: null,
+          hint: "Your update should increase the counter by exactly 1.",
+        },
+
+        {
+          descBeforeCode: `**Loop Practice 4: Loop Until Button Press (concept)**
+This is concept practice: loop while a true/false flag is false. In a real project, the flag would change when you read a button.`,
+          imageGridBeforeCode: null,
+          descBetweenBeforeAndCode: null,
+          title: `Loop Practice 4`,
+          code: `^^__BLANK[P4_TYPE]__ __BLANK[P4_FLAG]__ = __BLANK[P4_VALUE]__;
+while (__BLANK[P4_FLAG]__ == false) {
+  Serial.println(__BLANK[P4_PRINT]__);
+  // In a real project, you'd update the flag based on a button read.
+}^^`,
+          answerKey: {
+            P4_TYPE: ["bool"],
+            P4_VALUE: ["true", "false"],
+            P4_FLAG: { type: "identifier" },
+            P4_PRINT: ['"Waiting..."', '"Pressed?"', '"Not ready yet"', '"..."'],
+          },
+          blankExplanations: {
+            P4_TYPE:
+              "Choose the correct type for a true/false variable.",
+            P4_FLAG:
+              "Pick a variable name to represent whether you’re ready or not.",
+            P4_VALUE:
+              "Choose the starting true/false value for the variable.",
+            P4_PRINT:
+              "Print a short message string while waiting in the loop (any message is fine).",
+          },
+          blankDifficulties: {
+            P4_TYPE: "easy",
+            P4_FLAG: "easy",
+            P4_VALUE: "easy",
+            P4_PRINT: "easy",
+          },
+          descAfterCode:
+            "If the flag never changes inside the loop, this would run forever. In real code, you’d update the flag by reading a button.",
+          imageGridAfterCode: null,
+          descAfterImage: null,
+          hint: "True/false variables use the type bool.",
+        },
+
+        {
+          descBeforeCode: `**Loop Practice 5: Loop through Array 1 (search)**
+Walk through an array and stop early when you find the target value.`,
+          imageGridBeforeCode: null,
+          descBetweenBeforeAndCode: null,
+          title: `Loop Practice 5`,
+          code: `^^int nums[] = {2, 4, 7, 9, 11, 14};
+int total = __BLANK[P5_TOTAL]__;     ^^// total number of items in the array^^
+int desiredNum = __BLANK[P5_TARGET]__;
+
+int j = 0;
+while (j < total) {
+  if (nums[j] == __BLANK[P5_IFCOMPARE]__) {
+    Serial.println("Target reached!");
+    Serial.println(desiredNum);      ^^// print the desired number^^
+    break;                           ^^// stop the loop^^
+  }
+  j = j + 1;                         ^^// increment to the next index^^
+}^^`,
+          answerKey: {
+            P5_TOTAL: ["6"],
+            P5_TARGET: { type: "range", min: 0, max: 100 },
+            P5_IFCOMPARE: ["desiredNum"],
+          },
+          blankExplanations: {
+            P5_TOTAL:
+              "This is how many items are in the nums array. Count them.",
+            P5_TARGET:
+              "Pick a number you want to search for in the array.",
+            P5_IFCOMPARE:
+              "Compare nums[j] to the variable holding the target value.",
+          },
+          blankDifficulties: {
+            P5_TOTAL: "easy",
+            P5_TARGET: "easy",
+            P5_IFCOMPARE: "easy",
+          },
+          descAfterCode:
+            "The keyword break stops the loop immediately once the target is found.",
+          imageGridAfterCode: null,
+          descAfterImage: null,
+          hint: "If you don’t break, the loop keeps checking the rest of the array.",
+        },
+
+        {
+          descBeforeCode: `**Loop Practice 6: Loop through Array 2 (search)**
+Same idea, but you choose your own array name, target variable name, and indexing variable.`,
+          imageGridBeforeCode: null,
+          descBetweenBeforeAndCode: null,
+          title: `Loop Practice 6`,
+          code: `^^int __BLANK[P6_ARRNAME]__[] = {4, 3, 2, 10, 1, 6};
+int total2 = __BLANK[P6_TOTAL]__;    ^^// total number of items in the array^^
+int __BLANK[P6_DESNAME]__ = __BLANK[P6_DESVAL]__;   ^^// desired number^^
+
+int __BLANK[P6_IDXVAR]__ = __BLANK[P6_STARTIDX]__;
+while (__BLANK[P6_IDXVAR]__ < total2) {
+  if (__BLANK[P6_READ]__ == __BLANK[P6_COMPARE]__) {
+    Serial.println("Here is the number:");
+    Serial.println(__BLANK[P6_PRINT]__);
+    break;
+  }
+  __BLANK[P6_INCLEFT]__ = __BLANK[P6_INCRIGHT]__ + 1;  ^^// increment index^^
+}^^`,
+          answerKey: {
+            P6_ARRNAME: { type: "identifier" },
+            P6_TOTAL: ["6"],
+            P6_DESNAME: { type: "identifier" },
+            P6_DESVAL: { type: "range", min: 0, max: 20 },
+            P6_IDXVAR: ["k"],
+            P6_STARTIDX: ["0"],
+            P6_READ: { type: "expression" }, // array[index]
+            P6_COMPARE: { type: "sameAs", target: "P6_DESNAME" },
+            P6_PRINT: { type: "sameAs", target: "P6_DESNAME" },
+            P6_INCLEFT: { type: "sameAs", target: "P6_IDXVAR" },
+            P6_INCRIGHT: { type: "sameAs", target: "P6_IDXVAR" },
+          },
+          blankExplanations: {
+            P6_ARRNAME:
+              "Pick a valid array name for the list of numbers.",
+            P6_TOTAL:
+              "This is the number of items in your array. Count how many values you put in it.",
+            P6_DESNAME:
+              "Pick a variable name for the number you want to find.",
+            P6_DESVAL:
+              "Pick a number that exists in your array so the condition can become true.",
+            P6_IDXVAR:
+              "This is your index variable that moves through the array.",
+            P6_STARTIDX:
+              "Start at the first index of the array.",
+            P6_READ:
+              "Access the current array element using the index variable (array[index]).",
+            P6_COMPARE:
+              "Compare the current array value to your target variable.",
+            P6_PRINT:
+              "Print the target variable once it is found.",
+            P6_INCLEFT:
+              "Update the same index variable you’re using in the while condition.",
+            P6_INCRIGHT:
+              "Increment the index variable so it moves to the next index.",
+          },
+          blankDifficulties: {
+            P6_ARRNAME: "easy",
+            P6_TOTAL: "easy",
+            P6_DESNAME: "easy",
+            P6_DESVAL: "easy",
+            P6_IDXVAR: "easy",
+            P6_STARTIDX: "easy",
+            P6_READ: "medium",
+            P6_COMPARE: "easy",
+            P6_PRINT: "easy",
+            P6_INCLEFT: "easy",
+            P6_INCRIGHT: "easy",
+          },
+          descAfterCode:
+            "If your target number exists in the array, the loop will eventually find it and stop.",
+          imageGridAfterCode: null,
+          descAfterImage: null,
+          hint: "Make sure P6_READ uses your array name and your index variable.",
+        },
+      ],
+    },
+
+    {
+      id: 3,
+      title: "Step 3: While Loop for the Status Menu",
+      codes: [
+        {
+          topicTitle: "Loop through status options",
+          descBeforeCode: `Now we use a while loop to go through each item in the options array. Instead of printing numbers, we print status messages.
+This code will be very similar to how you did in the array loop practice.`,
+          imageGridBeforeCode: null,
+          descBetweenBeforeAndCode: null,
+          code: `^^const String options[] = {
+  "Sleeping",
+  "Studying",
+  "Gaming",
+  "Do Not Disturb"
+};
+int __BLANK[SL_TOTALNAME]__ = 4;      ^^// total number of items in the array^^
+
+int i = 0;
+while (i < __BLANK[SL_TOTALUSE]__) {
+  display.println(__BLANK[SL_PRINT]__);   ^^// print the status at index i^^
+  __BLANK[SL_INC]__;                     ^^// move to the next index^^
+}^^`,
+          answerKey: {
+            SL_TOTALNAME: { type: "identifier" },
+            SL_TOTALUSE: { type: "sameAs", target: "SL_TOTALNAME" },
+            SL_PRINT: { type: "expression" }, // options[i]
+            SL_INC: ["i = i + 1", "i += 1"],
+          },
+          blankExplanations: {
+            SL_TOTALNAME:
+              "Choose a variable name that stores how many items are in the options array.",
+            SL_TOTALUSE:
+              "Use the same total-count variable you defined above so the loop stops correctly.",
+            SL_PRINT:
+              "Print the current option at index i using array indexing (array[i]).",
+            SL_INC:
+              "Increment i so the loop moves to the next index each time.",
+          },
+          blankDifficulties: {
+            SL_TOTALNAME: "easy",
+            SL_TOTALUSE: "easy",
+            SL_PRINT: "medium",
+            SL_INC: "easy",
+          },
+          descAfterCode:
+            "The loop stops when i reaches the total count, so it still works if you add or remove statuses later.",
+          imageGridAfterCode: null,
+          descAfterImage: null,
+          hint: null,
+        },
+      ],
+    },
+
+    {
+      id: 4,
+      title: "Step 4: Highlight the Selected Status",
+      codes: [
+        {
+          topicTitle: "Add a highlight indicator",
+          descBeforeCode:
+            "We want the menu to show which status is currently selected by displaying a symbol like > next to the status. We do this by checking if the loop index i matches a chosen index number.",
+          imageGridBeforeCode: null,
+          descBetweenBeforeAndCode: null,
+          code: `^^int indexChosen = 1;    ^^// example: 'Studying' is selected^^
+
+const String options[] = {
+  "Sleeping",
+  "Studying",
+  "Gaming",
+  "Do Not Disturb"
+};
+int __BLANK[HL_TOTALNAME]__ = __BLANK[HL_TOTALCOUNT]__;      ^^// total items^^
+
+int i = __BLANK[HL_STARTI]__;
+while (i < __BLANK[HL_TOTALUSE]__) {
+  if (i == indexChosen) {
+    display.print("> ");        ^^// arrow for the selected item^^
+  } else {
+    display.print("  ");        ^^// spaces for others^^
+  }
+  display.println(options[i]);
+  i = i + 1;
+}^^`,
+          answerKey: {
+            HL_TOTALNAME: { type: "identifier" },
+            HL_TOTALCOUNT: ["4"],
+            HL_TOTALUSE: { type: "sameAs", target: "HL_TOTALNAME" },
+            HL_STARTI: ["0"],
+          },
+          blankExplanations: {
+            HL_TOTALNAME:
+              "Choose a variable name that stores the total number of menu options.",
+            HL_TOTALCOUNT:
+              "This should match how many items are in the options array right now.",
+            HL_TOTALUSE:
+              "Use the same total-count variable you defined above in the while condition.",
+            HL_STARTI:
+              "Start the index at the first item of the array (the first index).",
+          },
+          blankDifficulties: {
+            HL_TOTALNAME: "easy",
+            HL_TOTALCOUNT: "easy",
+            HL_TOTALUSE: "easy",
+            HL_STARTI: "easy",
+          },
+          descAfterCode:
+            "If i equals the chosen index, we print an arrow first. Otherwise we print spaces so everything stays aligned.",
+          imageGridAfterCode: null,
+          descAfterImage: null,
+          hint: "Use an if statement inside the while loop to decide when to draw the arrow.",
+        },
+      ],
+    },
+
+    {
+      id: 5,
+      title: "Step 5: Create a Function that Draws the Menu on the OLED",
+      codes: [
+        {
+          topicTitle: "Build showMenu() using a while loop",
+          descBeforeCode:
+            "Add a function that clears the screen, prints a title, then prints each status with a highlight for the selected one.",
+          imageGridBeforeCode: {
+            columns: 1,
+            width: 400,
+            height: 350,
+            items: [
+              {
+                imageSrc: "/electric-status-board/videos/CurioLabL4.gif",
+                label: "Menu preview",
+              },
+            ],
+          },
+          descBetweenBeforeAndCode:
+            "Use the same while loop logic, but draw everything onto the OLED inside a function.",
+          code: `^^void __BLANK[SHOWMENU]__() {
+  display.__BLANK[SHOW_CLEAR]__;           // clear display buffer
+
+  display.__BLANK[SHOW_SIZE]__(__BLANK[SHOW_SIZE_N]__);   // set text size
+  display.__BLANK[SHOW_CURSOR]__(__BLANK[SHOW_X]__, __BLANK[SHOW_Y]__); // set cursor
+  display.println(__BLANK[SHOW_HEADER]__);                // print header
+  display.println("-------------------");
+
+  int i = 0;
+  while (__BLANK[WHILE_COND]__) {
+    if (i == __BLANK[TRACKNAME]__) {
+      display.print(__BLANK[HIGHLIGHT]__);  // selected indicator
+    } else {
+      display.print(__BLANK[NONHIGH]__);    // spacing
+    }
+
+    display.println(__BLANK[STATUS_AT_I]__); // print status text
+    __BLANK[INC_I]__;                         // go to next index
+  }
+
+  display.display(); // push buffer to OLED
+}^^`,
+          answerKey: {
+            SHOWMENU: { type: "identifier" },
+
+            SHOW_CLEAR: ["clearDisplay()"],
+            SHOW_SIZE: ["setTextSize"],
+            SHOW_SIZE_N: { type: "range", min: 1, max: 3 },
+            SHOW_CURSOR: ["setCursor"],
+            SHOW_X: { type: "range", min: 0, max: 127 },
+            SHOW_Y: { type: "range", min: 0, max: 63 },
+            SHOW_HEADER: [
+              '"Menu"',
+              '"Status Menu"',
+              '"Choose Status"',
+              '"Select Status"',
+            ],
+
+            WHILE_COND: { type: "expression" }, // i < total
+            TRACKNAME: { type: "identifier" }, // selected index variable name
+
+            HIGHLIGHT: ['"> "', '"* "', '"-> "', '"• "'],
+            NONHIGH: ['"  "'],
+
+            STATUS_AT_I: { type: "expression" }, // array[i]
+            INC_I: ["i = i + 1", "i += 1"],
+          },
+          blankExplanations: {
+            SHOWMENU:
+              "Pick a function name (any valid identifier). You’ll call this function when you want to draw the menu.",
+            SHOW_CLEAR:
+              "Clear the OLED’s buffer before drawing the menu.",
+            SHOW_SIZE:
+              "Use the function that sets text size on the OLED.",
+            SHOW_SIZE_N:
+              "Choose a small text size so multiple menu lines fit on the screen.",
+            SHOW_CURSOR:
+              "Set the cursor position before printing text.",
+            SHOW_X:
+              "Choose an x-position for the menu header (0 starts at the left).",
+            SHOW_Y:
+              "Choose a y-position near the top for the menu header.",
+            SHOW_HEADER:
+              "Pick a short header message that will appear at the top of the menu.",
+            WHILE_COND:
+              "Write the while condition that stops the loop at the right time (usually compares i to your total count).",
+            TRACKNAME:
+              "Use your variable name that tracks which option is selected (its value should match an index).",
+            HIGHLIGHT:
+              "Choose a symbol (string) that marks the selected option.",
+            NONHIGH:
+              "Use spaces so non-selected lines still align with the selected line.",
+            STATUS_AT_I:
+              "Print the status item at index i using array indexing (array[i]).",
+            INC_I:
+              "Increment i so the while loop moves to the next menu item.",
+          },
+          blankDifficulties: {
+            SHOWMENU: "easy",
+            SHOW_CLEAR: "easy",
+            SHOW_SIZE: "easy",
+            SHOW_SIZE_N: "easy",
+            SHOW_CURSOR: "easy",
+            SHOW_X: "easy",
+            SHOW_Y: "easy",
+            SHOW_HEADER: "easy",
+            WHILE_COND: "medium",
+            TRACKNAME: "easy",
+            HIGHLIGHT: "easy",
+            NONHIGH: "easy",
+            STATUS_AT_I: "medium",
+            INC_I: "easy",
+          },
+          descAfterCode:
+            "Once this function works, you can call it whenever the user is on the menu screen.",
+          imageGridAfterCode: null,
+          descAfterImage: null,
+          hint: null,
+        },
+      ],
+    },
+  ],
+  },
+
+  6: {
+  phrase: "Clock screen: printing HH:MM:SS + showing it on the OLED",
+  advanced: false,
+  steps: [
+    {
+      id: 1,
+      title: "Step 1: Print the Time as HH:MM:SS",
+      codes: [
+        {
+          topicTitle: "Extracting and Printing Time",
+          descBeforeCode:
+            "**Goal:** Write a helper function that prints the current RTC time as `HH:MM:SS` onto the OLED (with leading zeros).",
+          imageGridBeforeCode: {
+            columns: 1,
+            items: [
+              {
+                imageSrc: "/electric-status-board/images/clockHelperDiagram.png",
+                label: "Time formatting idea: HH:MM:SS with leading zeros",
+              },
+            ],
+          },
+          descBetweenBeforeAndCode: `This helper function does **not** clear the screen and it does **not** call \`display.display()\`. 
+It only prints the time **at the current cursor position**. That makes it reusable: you can call it from the status screen and the clock screen.
+
+You will:
+1) Read current time from the RTC
+2) Print hours with a leading 0 if hour is less than 10
+3) Print minutes with a leading 0 if minutes is less than 10
+4) Print seconds with a leading 0 if needed seconds is less than 10`,
+          code: `^^
+void __BLANK[SHOWTIME]__() {                          // function name for showing time
+  DateTime __BLANK[NOWVAR]__ = __BLANK[RTC]__.now();  // get current time from RTC
+
+  int __BLANK[HHVAR]__ = __BLANK[NOWVAR]__.hour();                    // extract hour
+  int __BLANK[MMVAR]__ = __BLANK[NOWVAR]__.__BLANK[GET_MINUTE]__;     // extract minute
+  int __BLANK[SSVAR]__ = __BLANK[NOWVAR]__.__BLANK[GET_SECOND]__;     // extract second
+
+  if (__BLANK[HHVAR]__ < __BLANK[TEN1]__) {           // if hour is 0-9...
+    display.__BLANK[PRINT0_1]__;                      // print leading 0
+  }
+  display.__BLANK[PRINTH]__(__BLANK[HHVAR]__);        // print hour number
+  display.__BLANK[PRINTCOLON1]__;                     // print ":"
+
+  if (__BLANK[MMVAR1]__ < __BLANK[TEN2]__) {          // if minute is 0-9...
+    display.__BLANK[PRINT0_2]__;                      // print leading 0
+  }
+  display.__BLANK[PRINTM]__(__BLANK[MMVAR2]__);       // print minute number
+  display.__BLANK[PRINTCOLON2]__;                     // print ":"
+
+  if (__BLANK[SSVAR1]__ < __BLANK[TEN3]__) {          // if second is 0-9...
+    display.__BLANK[PRINT0_3]__;                      // print leading 0
+  }
+  display.__BLANK[PRINTS]__(__BLANK[SSVAR2]__);       // print second number
+}
+^^
+`,
+          answerKey: {
+            SHOWTIME: { type: "identifier" },
+
+            NOWVAR: { type: "identifier" },
+
+            // Your original had __[BLANK]__.now()
+            // Give that blank a real name students can understand:
+            RTC: ["rtc"],
+
+            HHVAR: { type: "identifier" },
+
+            MMVAR: { type: "identifier" },
+            MMVAR1: { type: "sameAs", target: "MMVAR" },
+            MMVAR2: { type: "sameAs", target: "MMVAR" },
+
+            SSVAR: { type: "identifier" },
+            SSVAR1: { type: "sameAs", target: "SSVAR" },
+            SSVAR2: { type: "sameAs", target: "SSVAR" },
+
+            // IMPORTANT: because your template is nowVar.__BLANK[GET_MINUTE]__;
+            // this blank must include parentheses.
+            GET_MINUTE: ["minute()"],
+            GET_SECOND: ["second()"],
+
+            TEN1: ["10"],
+            TEN2: ["10"],
+            TEN3: ["10"],
+
+            // display.__BLANK[...]__; expects the full member call part
+            PRINT0_1: ['print("0")', "print('0')"],
+            PRINT0_2: ['print("0")', "print('0')"],
+            PRINT0_3: ['print("0")', "print('0')"],
+
+            // display.__BLANK[PRINTH]__(...) expects just "print" or "println"
+            PRINTH: ["print"],
+            PRINTM: ["print"],
+            PRINTS: ["print"],
+
+            PRINTCOLON1: ['print(":")', "print(':')"],
+            PRINTCOLON2: ['print(":")', "print(':')"],
+          },
+
+            blankExplanations: {
+              SHOWTIME:
+                "Function name that prints the current time (example: showTime). Must be a valid identifier.",
+
+              NOWVAR:
+                "Variable name holding the DateTime returned by rtc.now() (example: now).",
+
+              RTC:
+                "The name of your RTC object. In most projects it’s `rtc` (from: RTC_DS3231 rtc;).",
+
+              HHVAR:
+                "Variable name that stores the hour (0–23). You will reuse this SAME name later in the if and print lines.",
+
+              MMVAR:
+                "Variable name that stores the minute (0–59). You will reuse the SAME name again in MMVAR1 and MMVAR2.",
+
+              MMVAR1:
+                "This must be EXACTLY the same variable name you typed for MMVAR (practice: reuse the same variable consistently).",
+
+              MMVAR2:
+                "This must be EXACTLY the same variable name you typed for MMVAR.",
+
+              SSVAR:
+                "Variable name that stores the second (0–59). You must reuse it again in SSVAR1 and SSVAR2.",
+
+              SSVAR1:
+                "This must be EXACTLY the same variable name you typed for SSVAR.",
+
+              SSVAR2:
+                "This must be EXACTLY the same variable name you typed for SSVAR.",
+
+              GET_MINUTE:
+                "DateTime function that extracts minutes. Because the template already has a dot before it, include parentheses: minute().",
+
+              GET_SECOND:
+                "DateTime function that extracts seconds. Include parentheses: second().",
+
+              TEN1:
+                "Use 10 so you can check if hour is a single digit (0–9). If hour < 10, print a leading 0 first.",
+
+              TEN2:
+                "Use 10 so you can check if minute is 0–9 and needs a leading 0.",
+
+              TEN3:
+                "Use 10 so you can check if second is 0–9 and needs a leading 0.",
+
+              PRINT0_1:
+                'Print the leading "0" before the hour when needed. Since the code is display.__BLANK[...]__; fill in print("0") (or print(\'0\')).',
+
+              PRINT0_2:
+                'Print the leading "0" before the minute when needed. Use print("0") (or print(\'0\')).',
+
+              PRINT0_3:
+                'Print the leading "0" before the second when needed. Use print("0") (or print(\'0\')).',
+
+              PRINTH:
+                "Use the display function name that prints the hour number without a newline. Usually `print`.",
+
+              PRINTM:
+                "Use the display function name that prints the minute number without a newline. Usually `print`.",
+
+              PRINTS:
+                "Use the display function name that prints the second number. Usually `print`.",
+
+              PRINTCOLON1:
+                'Print the ":" after the hour. Use print(":") (or print(\':\')).',
+
+              PRINTCOLON2:
+                'Print the ":" after the minute. Use print(":") (or print(\':\')).',
+            },
+
+
+            blankDifficulties: {
+              SHOWTIME: "easy",
+              NOWVAR: "easy",
+              RTC: "easy",
+
+              HHVAR: "easy",
+
+              MMVAR: "easy",
+              MMVAR1: "medium", // “repeat exactly” is the learning point
+              MMVAR2: "medium",
+
+              SSVAR: "easy",
+              SSVAR1: "medium",
+              SSVAR2: "medium",
+
+              GET_MINUTE: "easy",
+              GET_SECOND: "easy",
+
+              TEN1: "easy",
+              TEN2: "easy",
+              TEN3: "easy",
+
+              PRINT0_1: "easy",
+              PRINT0_2: "easy",
+              PRINT0_3: "easy",
+
+              PRINTH: "easy",
+              PRINTM: "easy",
+              PRINTS: "easy",
+
+              PRINTCOLON1: "easy",
+              PRINTCOLON2: "easy",
+            },
+
+          descAfterCode: `As an example, imagine the real-time clock currently reads **March 8, 2026 at 14:07:03 (2:07:03 PM)**. When the line __BLANK[RTC]__.now() runs, it does not return just one number. 
+Instead, it returns a \`DateTime\` object that contains the entire timestamp all at once: the year, month, day, hour, minute, and second. 
+This full snapshot of the current moment is stored in the variable __BLANK[NOWVAR]__, allowing the program to work with a single, consistent time reading.
+
+From that snapshot, the program then extracts individual pieces of time. Calling __BLANK[NOWVAR]__.hour() returns 14, __BLANK[NOWVAR]__.minute() returns 7, and __BLANK[NOWVAR]__.second() returns 3.
+`,
+          imageGridAfterCode: null,
+          descAfterImage: `When you’re done, this function should print something like \`09:07:03\` or \`14:25:56\` depending on the time.
+**Important:** This function only prints to the OLED's buffer at the current cursor location. It does not clear the screen and does not call \`display.display()\`.`,
+          hint:
+            "Use display.print(...) not display.println(...) so the time stays on one line.",
+        },
+      ],
+    },
+
+    {
+      id: 2,
+      title: "Step 2: Design the Clock Screen",
+      codes: [
+        {
+          topicTitle: "Function to set the look of the clock",
+          descBeforeCode:
+            "**Goal:** Clear the OLED, show the label `Clock:`, then print the current time using your time function.",
+          imageGridBeforeCode: {
+            columns: 1,
+            items: [
+              {
+                imageSrc: "/electric-status-board/images/clockScreenMock.png",
+                label: "Example layout: label + big time",
+              },
+            ],
+          },
+          descBetweenBeforeAndCode: `Now we make a full screen for the clock:
+- clear the display
+- set text color
+- set text sizes
+- call \`display.display()\` at the end`,
+          code: `^^
+void __BLANK[SHOWTT]__() {                           // function name for clock look
+  display.__BLANK[CLEAR]__;                          // clear old pixels/text
+  __BLANK[COLOR]__;                                 // set text color (white)
+
+  __BLANK[SIZE1]__;                                 // small text for label
+  __BLANK[PRINT_LABEL]__;                           // print "Clock:"
+
+  __BLANK[SIZE2]__;                                 // bigger text for time
+  __BLANK[CALL_HELPER]__;                           // call HH:MM:SS clock function to print time here
+
+  display.__BLANK[FLUSH]__;                          // update OLED display
+}
+^^
+            `,
+            answerKey: {
+              SHOWTT: { type: "identifier" },
+              CLEAR: ["clearDisplay()"],
+              FLUSH: ["display()"],
+              COLOR: ["display.setTextColor(SSD1306_WHITE)"],
+              // allow ANY numeric text size (1,2,3,4,...)
+              SIZE1: { type: "string", regex: "^display\\.setTextSize\\(\\s*\\d+\\s*\\)\\s*;?$" },
+              SIZE2: { type: "string", regex: "^display\\.setTextSize\\(\\s*\\d+\\s*\\)\\s*;?$" },
+              // just require display.print(...) (don’t check the content)
+              PRINT_LABEL: { type: "string", regex: "^display\\.(print|println)\\(.*\\)\\s*;?$" },
+              CALL_HELPER: { type: "sameAs", target: "SHOWTIME" },
+            },
+
+          blankExplanations: {
+            SHOWTT:
+              "This is the function name that draws the clock screen. It must be a valid identifier (no spaces).",
+
+            CLEAR:
+              "Clears the OLED buffer so old text doesn’t remain. Because the code is display.__BLANK[CLEAR]__; fill in clearDisplay().",
+
+            COLOR:
+              "Set the OLED text color to white using: display.setTextColor(SSD1306_WHITE).",
+
+            SIZE1:
+              "Set the text size for the label. Any number is allowed as long as you write display.setTextSize(number).",
+
+            PRINT_LABEL:
+              "Print a label using display.print(...) (or display.println(...)). The exact text doesn’t matter for grading.",
+
+            SIZE2:
+              "Set the text size for the actual time. Any number is allowed as long as you write display.setTextSize(number).",
+
+            CALL_HELPER:
+              "Call your time-printing helper function here. It should match the function name you created earlier for SHOWTIME (and include parentheses, like showTime()).",
+
+            FLUSH:
+              "Push the buffer to the screen so it appears. Because the code is display.__BLANK[FLUSH]__; fill in display().",
+          },
+
+          blankDifficulties: {
+            CLEAR: "easy",
+            COLOR: "easy",
+            SIZE1: "easy",
+            CURSOR1: "easy",
+            PRINT_LABEL: "easy",
+            SIZE2: "easy",
+            CURSOR2: "medium",
+            CALL_HELPER: "easy",
+            FLUSH: "easy",
+          },
+          descAfterCode: `After you fill this in, calling \`showClockScreen()\` should display:
+1) A label that says "Clock:" or anything you want. 
+2) A large time in HH:MM:SS
+3) A small hint at the bottom that says "PREV: Menu"
+
+This is a complete screen function because it clears the display and calls \`display.display()\` at the end.`,
+          imageGridAfterCode: null,
+          descAfterImage: null,
+          hint:
+            "Remember: your helper function prints time at the cursor, so setCursor(...) before calling it.",
+        },
+      ],
+    },
+  ],
+},
+
 };
 
 export default function CodeIntLesson({

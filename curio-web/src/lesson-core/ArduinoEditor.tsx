@@ -25,7 +25,7 @@ const ARDUINO_FUNCS = [
 const toolbarButtonStyle = {
   fontSize: 12,
   padding: "4px 8px",
-  borderRadius: 4,
+  borderRadius: 15,
   border: "1px solid #374151",
   background: "#111827",
   color: "#e5e7eb",
