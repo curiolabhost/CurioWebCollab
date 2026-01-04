@@ -33,8 +33,29 @@ export const LESSON_STEPS_CIRCUIT_BEG: Record<number, { phrase: string; steps: a
     phrase: "Circuit setup: parts, OLED wiring, libraries, and button inputs",
     steps: [
       {
+        id: "circuit-intro",
+        title: "Introduction to Circuit Setup",
+        codes: [
+          {
+            topicTitle: "Overview",
+            descBeforeCode: processDesc(`
+In this lesson, we will set up the hardware components needed for the Electric Status Board project.
+
+**Key Steps**:
+@Gather materials including Arduino, OLED display, buttons, breadboard, and wires
+@Wire the OLED display to the Arduino using I²C protocol
+@Install necessary libraries in Arduino IDE for OLED functionality
+@Test the OLED with an example sketch to ensure proper operation
+@Wire push buttons with internal pull-up resistors for menu navigation
+
+By the end of this lesson, you will have a functioning OLED display and buttons ready for programming the status board menu system.
+            `),
+          },
+        ],
+      },
+      {
         id: "circuit-1",
-        title: "Step 1: Materials & OLED Wiring (Power + I²C)",
+        title: "Step 1: Circuit Materials Introduction",
     codes: [
         {
           topicTitle: "Materials",
@@ -68,17 +89,15 @@ export const LESSON_STEPS_CIRCUIT_BEG: Record<number, { phrase: string; steps: a
         },
 
         {
-          topicTitle: "Connect OLED to Arduino",
+          topicTitle: "How to use Breadboard",
           descAfterImage: processDesc(`
             
-@**Step 1**: Open your wokwi page and add the arduino uno, breadboard, and SSD1306 OLED
-@**Step 2**: Connect VCC on OLED to 5V on arduino 
-@**Step 3**: Connect GND on OLED to GND on arduino
-@**Step 4**: Connect SDA on OLED to A4 on arduino
-@**Step 5**: Connect SCL on OLED to A5 on arduino
+@**Breadboard**: A breadboard is a practice board that lets us build electronic circuits without soldering.
 
-Once this is done, your OLED has power + data connection.
-          `),
+1. Each holes is where you can insert a wire or component lead to make connections.
+2. In the middle, holes in a row of 5 are connected together horizontally.
+3. The two long rows on the sides are used for power (VCC) and ground (GND) connections.
+         `),
 
           imageGridAfterCode: {
             columns: 1,
@@ -86,15 +105,57 @@ Once this is done, your OLED has power + data connection.
             height: 400,
             items: [
               {
-                label: "OLED Wiring Reference",
-                imageSrc: "/electric-status-board/circuit/OLEDwiringreference.png",
+                label: "Breadboard connections",
+                imageSrc: "/electric-status-board/circuit/Breadboard_demo.png",
               },
             ],
           },
+          
         },
       ],
     },
 
+    {
+        id: "arduino-setup",
+        title: "Step 1: Arduino UNO Setup",
+        codes: [
+          {
+            topicTitle: "Arduino UNO Introduction",
+            descBeforeCode: processDesc(`
+              @Arduino connects the hardware and software. 
+              @It sends and receives signals from your hardware and the computer or vice versa. 
+              @Download **Arduino IDE** from arduino.cc to program your board.
+            `),
+            imageGridAfterCode: {
+            columns: 1,
+            width: 900,
+            height: 400,
+            items: [
+              {
+                imageSrc: "/electric-status-board/circuit/ardunio_demo.png",
+              },
+            ],
+          },
+          },
+          {
+            topicTitle: "Digital and Analog Signals",
+            descBeforeCode: processDesc(`
+              @An analog signal is a range and is continuous. 
+              @Digital signal represent only two binary states (like 0/1, yes/no) that are read as high or low states in the program.
+            `),
+            imageGridAfterCode: {
+            columns: 1,
+            width: 800,
+            height: 300,
+            items: [
+              {
+                imageSrc: "/electric-status-board/circuit/analog_digital.png",
+              },
+            ],
+          },
+          },
+        ],
+      },
       {
         id: "circuit-2",
         title: "Step 2: Install OLED Libraries",
@@ -102,9 +163,14 @@ Once this is done, your OLED has power + data connection.
           {
             topicTitle: "Install the Libraries",
             descBeforeCode: processDesc(`
-@Open Arduino IDE → Tools → Manage Libraries
-@Search and install "Adafruit SSD1306"
-@Search and install "Adafruit GFX Library"
+              An Arduino library is a collection of ready-made code that reduces the need to write complex code from scratch.
+              @Open Arduino IDE → Tools → Manage Libraries
+              @Search and install "Adafruit SSD1306"
+              @Search and install "Adafruit GFX Library"
+
+              **Note**: The simulator Wokwi only has SSD1306 OLED implemented, if trying to use a different OLED model, please install the corresponding library in your local Arduino IDE.
+              In this lesson, we will use SSD1306 OLED as an example on wokwi first. Later when building the physical circuit, you can choose a larger OLED screen which is SH1106 model that require Adafruit_SH110X library instead of SSD1306. 
+              Be careful, as the model is different, part of the code will need to be adjusted accordingly.
             `),
 
             imageGridAfterCode: {
@@ -114,16 +180,36 @@ Once this is done, your OLED has power + data connection.
               items: [{ label: "Library Manager Search", imageSrc: "/electric-status-board/circuit/adafruitssd1306.png" }],
             },
           },
-          
-          {
-            topicTitle: "Connect OLED to Arduino",
-            descAfterImage: processDesc(`
+                  {
+          topicTitle: "Connect OLED to Arduino",
+          descAfterImage: processDesc(`
+            
+@**Step 1**: Open your wokwi page through wokwi.com and add the arduino uno, breadboard, and SSD1306 OLED
+@**Step 2**: Connect VCC on OLED to 5V on arduino 
+@**Step 3**: Connect GND on OLED to GND on arduino
+@**Step 4**: Connect SDA on OLED to A4 on arduino
+@**Step 5**: Connect SCL on OLED to A5 on arduino
+
+Once this is done, your OLED has power + data connection.
+
 **Common Issues**:
 @“SSD1306 allocation failed” → wrong display size example
 @Blank screen → wrong SDA/SCL wiring or incorrect address (0x3C/0x3D)
 @Upload stalls → reset Arduino and try again
-            `),
+          `),
+
+          imageGridAfterCode: {
+            columns: 1,
+            width: 800,
+            height: 500,
+            items: [
+              {
+                label: "Wokwi Page",
+                imageSrc: "/electric-status-board/circuit/wokwipage.png",
+              },
+            ],
           },
+        },
         ],
       },
 
@@ -158,9 +244,9 @@ Once this is done, you are good to proceed to building your own menu system!
                 {
                   label: "Expected OLED Output",
                   video: {
-                    src: "https://www.youtube.com/embed/4Yc1gkXoHkI",
+                    src: "/electric-status-board/videos/exampleOLED_demestration.mp4",
                   controls: true,
-                loop: false,
+                  loop: false,
                   },
                    },
               ],
