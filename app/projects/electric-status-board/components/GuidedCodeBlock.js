@@ -67,7 +67,7 @@ const ARDUINO_FUNCS = [
   "INPUT_PULLUP",
 ];
 
-// ✅ faster membership checks
+// faster membership checks
 const TYPE_SET = new Set(TYPE_KEYWORDS);
 const CONTROL_SET = new Set(CONTROL_KEYWORDS);
 const ARDUINO_SET = new Set(ARDUINO_FUNCS);

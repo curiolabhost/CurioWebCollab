@@ -1,5 +1,6 @@
+
 import { useMemo, useState } from "react";
-import { ChevronLeft, ArrowRight, Lightbulb, Zap } from "lucide-react";
+import { ArrowRight, Lightbulb, Zap } from "lucide-react";
 
 /* ============================================================
    Types (generic)
@@ -104,11 +105,8 @@ export function ProjectMindmap({
       {/* Header */}
       <div className="bg-white border-b">
         <div className="max-w-7xl mx-auto px-12 py-8">
-
           <h1 className="text-gray-900 mb-3">{projectOverview?.title}</h1>
-          <p className="text-m text-gray-600 max-w-4xl">
-            {projectOverview?.description}
-          </p>
+          <p className="text-m text-gray-600 max-w-4xl">{projectOverview?.description}</p>
         </div>
       </div>
 
@@ -122,209 +120,234 @@ export function ProjectMindmap({
             Click on any screen to see its connections and component behaviors.
           </p>
 
-          <div className="bg-white rounded-2xl p-12 border border-gray-200 shadow-lg">
-            {/* SVG Canvas for Flowchart */}
-            <div className="relative w-full" style={{ height: "600px" }}>
-              {/* Connection Lines */}
-              <svg
-                className="absolute inset-0 w-full h-full pointer-events-none"
-                style={{ zIndex: 0 }}
-              >
-                <defs>
-                  <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
-                    <polygon points="0 0, 10 3, 0 6" fill="#9CA3AF" />
-                  </marker>
-                  <marker
-                    id="arrowhead-highlight"
-                    markerWidth="10"
-                    markerHeight="10"
-                    refX="9"
-                    refY="3"
-                    orient="auto"
+          {/* ============================================================
+             CHANGE: left (map) + right (details) layout
+          ============================================================ */}
+          <div className="grid grid-cols-3 gap-6">
+            {/* Left: Mindmap (2/3 width) */}
+            <div className="col-span-2">
+              <div className="bg-white rounded-2xl p-12 border border-gray-200 shadow-lg">
+                {/* SVG Canvas for Flowchart */}
+                <div className="relative w-full" style={{ height: "600px" }}>
+                  {/* Connection Lines */}
+                  <svg
+                    className="absolute inset-0 w-full h-full pointer-events-none"
+                    style={{ zIndex: 0 }}
                   >
-                    <polygon points="0 0, 10 3, 0 6" fill="#6366F1" />
-                  </marker>
-                </defs>
+                    <defs>
+                      <marker
+                        id="arrowhead"
+                        markerWidth="10"
+                        markerHeight="10"
+                        refX="9"
+                        refY="3"
+                        orient="auto"
+                      >
+                        <polygon points="0 0, 10 3, 0 6" fill="#9CA3AF" />
+                      </marker>
+                      <marker
+                        id="arrowhead-highlight"
+                        markerWidth="10"
+                        markerHeight="10"
+                        refX="9"
+                        refY="3"
+                        orient="auto"
+                      >
+                        <polygon points="0 0, 10 3, 0 6" fill="#6366F1" />
+                      </marker>
+                    </defs>
 
-                {(mindmapNodes || []).map((node) => {
-                  const fromPos = getNodePosition(node.id);
+                    {(mindmapNodes || []).map((node) => {
+                      const fromPos = getNodePosition(node.id);
 
-                  // Hub logic (generic): draw a shared vertical + horizontal trunk for connections
-                  if (node.id === hubId) {
-                    const isHighlighted =
-                      selectedNode === node.id || node.connections.some((id) => selectedNode === id);
+                      // Hub logic (generic): draw a shared vertical + horizontal trunk for connections
+                      if (node.id === hubId) {
+                        const isHighlighted =
+                          selectedNode === node.id ||
+                          node.connections.some((id) => selectedNode === id);
 
-                    return (
-                      <g key={node.id}>
-                        {/* Vertical line from hub down */}
-                        <line
-                          x1={`${fromPos.x}%`}
-                          y1={`${fromPos.y + 4}%`}
-                          x2={`${fromPos.x}%`}
-                          y2={`${fromPos.y + 8}%`}
-                          stroke={isHighlighted ? "#6366F1" : "#D1D5DB"}
-                          strokeWidth={isHighlighted ? "3" : "2"}
-                          className="transition-all duration-300"
-                        />
-
-                        {/* Horizontal line spanning min/max x of children (instead of hardcoded 15% to 85%) */}
-                        {(() => {
-                          const xs = node.connections.map((toId) => getNodePosition(toId).x);
-                          const minX = xs.length ? Math.min(...xs) : fromPos.x;
-                          const maxX = xs.length ? Math.max(...xs) : fromPos.x;
-                          return (
+                        return (
+                          <g key={node.id}>
+                            {/* Vertical line from hub down */}
                             <line
-                              x1={`${minX}%`}
-                              y1={`${fromPos.y + 8}%`}
-                              x2={`${maxX}%`}
+                              x1={`${fromPos.x}%`}
+                              y1={`${fromPos.y + 4}%`}
+                              x2={`${fromPos.x}%`}
                               y2={`${fromPos.y + 8}%`}
                               stroke={isHighlighted ? "#6366F1" : "#D1D5DB"}
                               strokeWidth={isHighlighted ? "3" : "2"}
                               className="transition-all duration-300"
                             />
-                          );
-                        })()}
 
-                        {/* Vertical lines to each option */}
-                        {node.connections.map((toId) => {
-                          const toPos = getNodePosition(toId);
-                          const isConnHighlighted = selectedNode === node.id || selectedNode === toId;
+                            {/* Horizontal line spanning min/max x of children (instead of hardcoded 15% to 85%) */}
+                            {(() => {
+                              const xs = node.connections.map((toId) => getNodePosition(toId).x);
+                              const minX = xs.length ? Math.min(...xs) : fromPos.x;
+                              const maxX = xs.length ? Math.max(...xs) : fromPos.x;
+                              return (
+                                <line
+                                  x1={`${minX}%`}
+                                  y1={`${fromPos.y + 8}%`}
+                                  x2={`${maxX}%`}
+                                  y2={`${fromPos.y + 8}%`}
+                                  stroke={isHighlighted ? "#6366F1" : "#D1D5DB"}
+                                  strokeWidth={isHighlighted ? "3" : "2"}
+                                  className="transition-all duration-300"
+                                />
+                              );
+                            })()}
 
-                          return (
+                            {/* Vertical lines to each option */}
+                            {node.connections.map((toId) => {
+                              const toPos = getNodePosition(toId);
+                              const isConnHighlighted =
+                                selectedNode === node.id || selectedNode === toId;
+
+                              return (
+                                <line
+                                  key={toId}
+                                  x1={`${toPos.x}%`}
+                                  y1={`${fromPos.y + 8}%`}
+                                  x2={`${toPos.x}%`}
+                                  y2={`${toPos.y - 4}%`}
+                                  stroke={isConnHighlighted ? "#6366F1" : "#D1D5DB"}
+                                  strokeWidth={isConnHighlighted ? "3" : "2"}
+                                  markerEnd={
+                                    isConnHighlighted
+                                      ? "url(#arrowhead-highlight)"
+                                      : "url(#arrowhead)"
+                                  }
+                                  className="transition-all duration-300"
+                                />
+                              );
+                            })}
+                          </g>
+                        );
+                      }
+
+                      // Regular connections for other nodes
+                      return node.connections.map((toId) => {
+                        const toPos = getNodePosition(toId);
+                        const isHighlighted = selectedNode === node.id || selectedNode === toId;
+
+                        return (
+                          <g key={`${node.id}-${toId}`}>
                             <line
-                              key={toId}
-                              x1={`${toPos.x}%`}
-                              y1={`${fromPos.y + 8}%`}
+                              x1={`${fromPos.x}%`}
+                              y1={`${fromPos.y + 4}%`}
                               x2={`${toPos.x}%`}
                               y2={`${toPos.y - 4}%`}
-                              stroke={isConnHighlighted ? "#6366F1" : "#D1D5DB"}
-                              strokeWidth={isConnHighlighted ? "3" : "2"}
-                              markerEnd={isConnHighlighted ? "url(#arrowhead-highlight)" : "url(#arrowhead)"}
+                              stroke={isHighlighted ? "#6366F1" : "#D1D5DB"}
+                              strokeWidth={isHighlighted ? "3" : "2"}
+                              markerEnd={
+                                isHighlighted ? "url(#arrowhead-highlight)" : "url(#arrowhead)"
+                              }
                               className="transition-all duration-300"
                             />
-                          );
-                        })}
-                      </g>
-                    );
-                  }
+                          </g>
+                        );
+                      });
+                    })}
+                  </svg>
 
-                  // Regular connections for other nodes
-                  return node.connections.map((toId) => {
-                    const toPos = getNodePosition(toId);
-                    const isHighlighted = selectedNode === node.id || selectedNode === toId;
+                  {/* Nodes */}
+                  {(mindmapNodes || []).map((node) => {
+                    const pos = getNodePosition(node.id);
+                    const Icon = node.icon;
+
+                    const isSelected = selectedNode === node.id;
+                    const isHovered = hoveredNode === node.id;
+                    const isConnected = isNodeHighlighted(node.id);
 
                     return (
-                      <g key={`${node.id}-${toId}`}>
-                        <line
-                          x1={`${fromPos.x}%`}
-                          y1={`${fromPos.y + 4}%`}
-                          x2={`${toPos.x}%`}
-                          y2={`${toPos.y - 4}%`}
-                          stroke={isHighlighted ? "#6366F1" : "#D1D5DB"}
-                          strokeWidth={isHighlighted ? "3" : "2"}
-                          markerEnd={isHighlighted ? "url(#arrowhead-highlight)" : "url(#arrowhead)"}
-                          className="transition-all duration-300"
-                        />
-                      </g>
+                      <div
+                        key={node.id}
+                        className={`absolute transform -translate-x-1/2 -translate-y-1/2 cursor-pointer transition-all duration-300 ${
+                          isSelected || isHovered ? "z-20 scale-110" : isConnected ? "z-10" : "z-0"
+                        }`}
+                        style={{ left: `${pos.x}%`, top: `${pos.y}%` }}
+                        onClick={() => setSelectedNode(node.id === selectedNode ? null : node.id)}
+                        onMouseEnter={() => setHoveredNode(node.id)}
+                        onMouseLeave={() => setHoveredNode(null)}
+                      >
+                        <div
+                          className={`${node.color} border-2 rounded-xl px-6 py-4 min-w-[180px] shadow-md hover:shadow-xl transition-all ${
+                            isSelected ? "ring-4 ring-indigo-300" : ""
+                          } ${
+                            isConnected && !isSelected
+                              ? "opacity-100"
+                              : !selectedNode
+                              ? "opacity-100"
+                              : "opacity-40"
+                          }`}
+                        >
+                          {Icon ? (
+                            <div className="flex justify-center mb-2">
+                              <Icon className="w-6 h-6" />
+                            </div>
+                          ) : null}
+
+                          <div className="text-center text-sm">{node.title}</div>
+
+                          {node.type === "hub" ? (
+                            <div className="flex justify-center mt-2">
+                              <div className="px-2 py-1 bg-purple-600 text-white text-xs rounded-full">
+                                HUB
+                              </div>
+                            </div>
+                          ) : null}
+                        </div>
+                      </div>
                     );
-                  });
-                })}
-              </svg>
+                  })}
+                </div>
+              </div>
+            </div>
 
-              {/* Nodes */}
-              {(mindmapNodes || []).map((node) => {
-                const pos = getNodePosition(node.id);
-                const Icon = node.icon;
-
-                const isSelected = selectedNode === node.id;
-                const isHovered = hoveredNode === node.id;
-                const isConnected = isNodeHighlighted(node.id);
-
-                return (
-                  <div
-                    key={node.id}
-                    className={`absolute transform -translate-x-1/2 -translate-y-1/2 cursor-pointer transition-all duration-300 ${
-                      isSelected || isHovered ? "z-20 scale-110" : isConnected ? "z-10" : "z-0"
-                    }`}
-                    style={{ left: `${pos.x}%`, top: `${pos.y}%` }}
-                    onClick={() => setSelectedNode(node.id === selectedNode ? null : node.id)}
-                    onMouseEnter={() => setHoveredNode(node.id)}
-                    onMouseLeave={() => setHoveredNode(null)}
-                  >
-                    <div
-                      className={`${node.color} border-2 rounded-xl px-6 py-4 min-w-[180px] shadow-md hover:shadow-xl transition-all ${
-                        isSelected ? "ring-4 ring-indigo-300" : ""
-                      } ${
-                        isConnected && !isSelected
-                          ? "opacity-100"
-                          : !selectedNode
-                          ? "opacity-100"
-                          : "opacity-40"
-                      }`}
-                    >
-                      {Icon ? (
-                        <div className="flex justify-center mb-2">
-                          <Icon className="w-6 h-6" />
-                        </div>
-                      ) : null}
-
-                      <div className="text-center text-sm">{node.title}</div>
-
-                      {node.type === "hub" ? (
-                        <div className="flex justify-center mt-2">
-                          <div className="px-2 py-1 bg-purple-600 text-white text-xs rounded-full">
-                            HUB
-                          </div>
-                        </div>
-                      ) : null}
+            {/* Right: Node Details Panel (1/3 width) */}
+            <div className="col-span-1">
+              {displayNode ? (
+                <div className="bg-white rounded-xl p-8 border-2 border-indigo-200 shadow-lg sticky top-6">
+                  <div className="flex flex-col items-center text-center">
+                    <div className={`${displayNode.color} border-2 rounded-xl p-6 mb-4`}>
+                      {displayNode.icon ? <displayNode.icon className="w-8 h-8" /> : null}
                     </div>
+
+                    <h3 className="text-xl mb-2">{displayNode.title}</h3>
+                    <p className="text-gray-600 mb-4">{displayNode.description}</p>
+
+                    {displayNode.connections?.length ? (
+                      <div className="w-full">
+                        <div className="text-sm text-gray-500 mb-2">Connects to:</div>
+                        <div className="flex gap-2 flex-wrap justify-center">
+                          {displayNode.connections.map((connId) => {
+                            const connNode = nodeById.get(connId);
+                            return (
+                              <div
+                                key={connId}
+                                className="px-3 py-1 bg-indigo-100 text-indigo-700 text-sm rounded-full"
+                              >
+                                {connNode?.title}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
-                );
-              })}
+                </div>
+              ) : (
+                <div className="bg-gray-50 rounded-xl p-8 border border-gray-200 flex items-center justify-center text-center h-full">
+                  <p className="text-sm text-gray-500">Click or hover over a screen to see details</p>
+                </div>
+              )}
             </div>
           </div>
         </section>
 
-        {/* Node Details Panel */}
-        {displayNode ? (
-          <section className="mb-12">
-            <div className="bg-white rounded-xl p-8 border-2 border-indigo-200 shadow-lg">
-              <div className="flex items-start gap-6">
-                <div className={`${displayNode.color} border-2 rounded-xl p-6 flex-shrink-0`}>
-                  {displayNode.icon ? <displayNode.icon className="w-8 h-8" /> : null}
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-xl mb-2">{displayNode.title}</h3>
-                  <p className="text-gray-600 mb-4">{displayNode.description}</p>
-
-                  {displayNode.connections?.length ? (
-                    <div className="mb-4">
-                      <div className="text-sm text-gray-500 mb-2">Connects to:</div>
-                      <div className="flex gap-2 flex-wrap">
-                        {displayNode.connections.map((connId) => {
-                          const connNode = nodeById.get(connId);
-                          return (
-                            <div
-                              key={connId}
-                              className="px-3 py-1 bg-indigo-100 text-indigo-700 text-sm rounded-full"
-                            >
-                              {connNode?.title}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-            </div>
-          </section>
-        ) : null}
-
         {/* Button Behaviors */}
         {!!buttonBehaviors?.length ? (
           <section className="mb-12">
-
             <div className="grid grid-cols-2 gap-6">
               {buttonBehaviors.map((behavior, index) => (
                 <div
@@ -368,3 +391,4 @@ export function ProjectMindmap({
     </div>
   );
 }
+
