@@ -35,62 +35,65 @@ export const LESSON_STEPS_CIRCUIT_BEG: Record<number, { phrase: string; steps: a
       {
         id: "circuit-1",
         title: "Step 1: Materials & OLED Wiring (Power + I²C)",
-        codes: [
-          {
-            topicTitle: "Materials",
-            imageGridBeforeCode: {
-              columns: 4,
-              width: 200,
-              height: 200,
-              items: [
-                { label: "Arduino UNO (or Nano)", imageSrc: "/lesson-assets/arduino_uno.png" },
-                { label: "SSD1306 OLED", imageSrc: "/lesson-assets/ssd1306_oled.png" },
-                { label: "Push Buttons ×3", imageSrc: "/lesson-assets/pushbuttons.png" },
-                { label: "Breadboard", imageSrc: "/lesson-assets/breadboard.jpg" },
-                { label: "Jumper Wires", imageSrc: "/lesson-assets/jumper_wires.jpg" },
-              ],
-            },
-            descAfterCode: processDesc(`
-Gather these parts first:
-
-@Arduino UNO (or Nano)
-@SSD1306 OLED (I²C, 128×64 or 128×32)
-@3× momentary pushbuttons
-@Breadboard
-@Jumper wires
-            `),
+    codes: [
+        {
+          topicTitle: "Materials",
+          imageGridBeforeCode: {
+            columns: 4,
+            width: 170,
+            height: 170,
+            items: [
+              {
+                label: "Arduino UNO (or Nano)",
+                imageSrc: "/electric-status-board/circuit/arduino_uno.png",
+              },
+              {
+                label: "SSD1306 OLED Display",
+                imageSrc: "/electric-status-board/circuit/ssd1306.jpg",
+              },
+              {
+                label: "Push Buttons ×3",
+                imageSrc: "/electric-status-board/circuit/pushbuttons.png",
+              },
+              {
+                label: "Breadboard",
+                imageSrc: "/electric-status-board/circuit/breadboard.jpg",
+              },
+              {
+                label: "Jumper Wires",
+                imageSrc: "/electric-status-board/circuit/jumper_wires.jpg",
+              },
+            ],
           },
+        },
 
-          {
-            topicTitle: "Wiring (OLED Power + I²C)",
-            descBeforeCode: processDesc(`
-Power the OLED:
-@OLED VCC → 5V (or 3.3V on some boards)
-@OLED GND → GND
-@Raw OLED panels (no breakout) usually require 3.3V only
+        {
+          topicTitle: "Connect OLED to Arduino",
+          descAfterImage: processDesc(`
+            
+@**Step 1**: Open your wokwi page and add the arduino uno, breadboard, and SSD1306 OLED
+@**Step 2**: Connect VCC on OLED to 5V on arduino 
+@**Step 3**: Connect GND on OLED to GND on arduino
+@**Step 4**: Connect SDA on OLED to A4 on arduino
+@**Step 5**: Connect SCL on OLED to A5 on arduino
 
-I²C lines (OLED ↔ Arduino):
-@OLED SDA → A4
-@OLED SCL → A5
-@Typical I²C address is 0x3C (sometimes 0x3D)
+Once this is done, your OLED has power + data connection.
+          `),
 
-Once this is wired, your OLED has power + data connection.
-            `),
-
-            // If you want a single “big photo” here, use a 1-column grid.
-            imageGridAfterCode: {
-              columns: 1,
-              items: [
-                {
-                  label: "OLED Wiring Reference",
-                  imageSrc:
-                    "https://dummyimage.com/1200x700/ddd/000.png&text=OLED+Circuit+Photo+Placeholder",
-                },
-              ],
-            },
+          imageGridAfterCode: {
+            columns: 1,
+            width: 800,
+            height: 400,
+            items: [
+              {
+                label: "OLED Wiring Reference",
+                imageSrc: "/electric-status-board/circuit/OLEDwiringreference.png",
+              },
+            ],
           },
-        ],
-      },
+        },
+      ],
+    },
 
       {
         id: "circuit-2",
@@ -99,22 +102,23 @@ Once this is wired, your OLED has power + data connection.
           {
             topicTitle: "Install the Libraries",
             descBeforeCode: processDesc(`
-We’ll use the Adafruit SSD1306 + GFX drivers.
-
-Install the display libraries:
 @Open Arduino IDE → Tools → Manage Libraries
 @Search and install "Adafruit SSD1306"
 @Search and install "Adafruit GFX Library"
-@Restart IDE if examples do not appear
             `),
 
             imageGridAfterCode: {
               columns: 1,
-              items: [{ label: "Library Manager Search", imageSrc: "/lesson-assets/adafruitssd1306.png" }],
+              width: 800,
+             height: 400,
+              items: [{ label: "Library Manager Search", imageSrc: "/electric-status-board/circuit/adafruitssd1306.png" }],
             },
-
+          },
+          
+          {
+            topicTitle: "Connect OLED to Arduino",
             descAfterImage: processDesc(`
-Common Issues:
+**Common Issues**:
 @“SSD1306 allocation failed” → wrong display size example
 @Blank screen → wrong SDA/SCL wiring or incorrect address (0x3C/0x3D)
 @Upload stalls → reset Arduino and try again
@@ -125,35 +129,40 @@ Common Issues:
 
       {
         id: "circuit-3",
-        title: "Step 3: Run an Example (Sanity Check)",
+        title: "Step 3: Run an Example Sketch",
         codes: [
           {
-            topicTitle: "Confirm the OLED Works First",
+            topicTitle: "Confirm the OLED Works",
             descBeforeCode: processDesc(`
 Before building your own menu, run a known working test.
 
-Open the example sketch:
-@File → Examples → Adafruit SSD1306 → ssd1306_128x64
-@If using 128×32, choose the matching example
+Step 1: Open the example sketch:
+@File → Examples → Adafruit SSD1306 → ssd1306_128x64.i2c
+@ If trying this on wokwi, change the line #define SCREEN_ADDRESS 0x3D into #define SCREEN_ADDRESS 0x3C to make it work
 
-Upload the sketch:
-@Select correct board + COM port
-@Click Upload
+Step 2: Upload the sketch to your Arduino:
+@Tools → Port → Select the correct COM port for your Arduino
+@Tools → Board → Select correct board type (e.g., Arduino Uno)
+@Sketch → Upload
 
-Expected output:
-@Adafruit splash screen
-@Scrolling or drawing test shapes
+Step 3: Observe the OLED display:
+@You should see a series of test patterns and graphics on the OLED
+@If not displaying correctly, double-check wiring and library installation
 
-If the OLED works here, wiring + libraries are correct.
-            `),
+Once this is done, you are good to proceed to building your own menu system!
+             `),
 
             imageGridAfterCode: {
               columns: 1,
               items: [
                 {
                   label: "Expected OLED Output",
-                  imageSrc: "https://dummyimage.com/1200x700/ddd/000.png&text=OLED+Test+Output",
-                },
+                  video: {
+                    src: "https://www.youtube.com/embed/4Yc1gkXoHkI",
+                  controls: true,
+                loop: false,
+                  },
+                   },
               ],
             },
           },
@@ -162,29 +171,30 @@ If the OLED works here, wiring + libraries are correct.
 
       {
         id: "circuit-4",
-        title: "Step 4: Buttons with Internal Pull-Ups",
+        title: "Step 4: PushButtons with Internal Pull-Ups",
         codes: [
           {
             topicTitle: "Button Wiring (INPUT_PULLUP)",
             descBeforeCode: processDesc(`
-We will use INPUT_PULLUP so the button reads LOW when pressed.
+In this project, we will have 3 push buttons for controling the status board menu:
+@Button 1: go to Previous Item
+@Button 2: go to Next Item
+@Button 3: Select Item
 
-2-leg button wiring:
+4-leg push buttons wiring:
+Step 1: Inside wokwi, add 3 push buttons to your breadboard and place them across breadboard center gap
+Step 2: Wire each button:
+@Choose one side of the button and connect it to one of the pin (D2/D3/D4) for all 3 buttons
+@Opposite side goes to GND for all three buttons
+Step 3: Configure pins in code as INPUT_PULLUP:
+@ pinMode(buttonPin, INPUT_PULLUP);
+
+Button State Logic:
+@Press = LOW, Release = HIGH (via pull-up).
+
+2-leg button wiring (similar to 4-leg button):
 @One leg → Arduino D2 / D3 / D4
 @Other leg → GND
-@pinMode(pin, INPUT_PULLUP)
-
-Typical mapping:
-@Prev → D2
-@Next → D3
-@Select → D4
-
-4-leg buttons:
-@Place across breadboard center gap
-@One side goes to D2/D3/D4
-@Opposite side goes to GND
-
-Press = LOW, Release = HIGH (via pull-up).
             `),
 
             imageGridAfterCode: {
