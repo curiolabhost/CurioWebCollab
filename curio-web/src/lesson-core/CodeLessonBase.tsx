@@ -1143,14 +1143,32 @@ function renderImageGrid(grid: any, keyPrefix = "grid") {
                     : undefined
                 }
               >
-                {/* renderMedia equivalent */}
+                +                {/* renderMedia equivalent */}
                 {isVideo ? (
-                  <video
-                    className={styles.imageGridVideo}
-                    controls
-                    src={it.video}
-                  />
-                ) : src ? (
+                  (() => {
+                    // support video as string or object: { src, controls, loop, muted, poster }
+                    const videoSrc =
+                      typeof it?.video === "string"
+                       ? it.video
+                     : it?.video?.src || it?.video?.uri || it?.video?.url || src;
+                    const videoControls = it?.video?.controls ?? true;
+                    const videoLoop = it?.video?.loop ?? false;
+                    const videoMuted = it?.video?.muted ?? false;
+                    const videoPoster = it?.video?.poster;
+
+                    return (
+                      <video
+                        className={styles.imageGridVideo}
+                      src={videoSrc}
+                        controls={videoControls}
+                          loop={videoLoop}
+                        muted={videoMuted}
+                        poster={videoPoster}
+                        style={{ width: "100%", height: "100%", objectFit: "contain" }}
+                      />
+                    );
+                  })()
+               ) : src ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     className={styles.imageGridImg}
@@ -1719,7 +1737,7 @@ function renderImageGrid(grid: any, keyPrefix = "grid") {
           defaultWokwiUrl=""
         />
       ) : (
-        <ArduinoEditor apiBaseUrl={apiBaseUrl} storageKey={EDITOR_KEYS.arduinoSketchKey} />
+        <ArduinoEditor apiBaseUrl={apiBaseUrl} />
       )}
     </div>
   );
