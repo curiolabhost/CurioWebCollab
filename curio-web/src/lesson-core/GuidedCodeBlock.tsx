@@ -233,7 +233,9 @@ function tokenizeTemplateLineWithState(
 }
 
 function splitComment(lineTokens: TemplateTok[]) {
-  // Treat "//" as starting comment, but only in text tokens.
+  // Default behavior:
+  // - "//" splits into the right comment column
+  // - "//<<" forces the comment to stay inline on the left (no split)
   const codeTokens: TemplateTok[] = [];
   let comment = "";
   let inComment = false;
@@ -250,20 +252,35 @@ function splitComment(lineTokens: TemplateTok[]) {
       const idx = s.indexOf("//");
 
       if (idx >= 0) {
-        const before = s.slice(0, idx);
         const after = s.slice(idx);
 
-        if (before.trim().length > 0) {
+        // "//<<" means: keep this comment inline (do NOT split)
+        if (after.startsWith("//<<")) {
+          // Optionally normalize the directive so it still looks like a normal comment:
+          // "code //<< note" -> "code // note"
+          const normalized = s.replace("//<<", "//");
+          codeTokens.push({ ...tok, content: normalized });
+          continue;
+        }
+
+        // Otherwise: split to right column on normal "//"
+        const before = s.slice(0, idx);
+
+        // keep the comment text as-is (including the "//")
+        const commentPart = after;
+
+        if (before.length > 0) {
           codeTokens.push({ ...tok, content: before });
-          comment = after;
+          comment = commentPart;
         } else {
-          comment = after;
+          comment = commentPart;
         }
 
         inComment = true;
       } else {
         codeTokens.push(tok);
       }
+
       continue;
     }
 
@@ -274,6 +291,7 @@ function splitComment(lineTokens: TemplateTok[]) {
 
   return { codeTokens, comment: comment.trimEnd() };
 }
+
 
 function estimateTemplateTokenWidthPx(tok: TemplateTok, valueLen: number) {
   if (!tok) return 0;

@@ -10,26 +10,8 @@ function processDesc(text) {
     .split("\n")
     .map((line) => {
       const trimmed = line.trim();
-      // Bulleted lines starting with "@"
       if (trimmed.startsWith("@")) {
-        const content = trimmed.substring(1).trim();
-        // Match "1. ..." or "Step 1: ..." inside the bullet
-        const stepMatch =
-          content.match(/^(\d+\.)\s*(.*)/) || content.match(/^(Step\s+\d+:)\s*(.*)/i);
-        if (stepMatch) {
-          const label = stepMatch[1];
-          const rest = stepMatch[2];
-          // Bold only the label inside the bullet
-          return "• **" + label + "**" + (rest ? " " + rest : "");
-        }
-        return "• " + content;
-      }
-
-      // Bold only the numeric step label like "1." or "Step 1:"
-      const match =
-        trimmed.match(/^(\d+\.)\s*(.*)/) || trimmed.match(/^(Step\s+\d+:)\s*(.*)/i);
-      if (match) {
-        return "**" + match[1] + "**" + (match[2] ? " " + match[2] : "");
+        return "• " + trimmed.substring(1).trim();
       }
       return line;
     })
@@ -55,8 +37,8 @@ const LESSON_STEPS_CIRCUIT = {
           topicTitle: "Materials",
           imageGridBeforeCode: {
             columns: 4,
-            width: 180,
-            height: 180,
+            width: 200,
+            height: 200,
             items: [
               {
                 label: "Arduino UNO (or Nano)",
@@ -80,30 +62,40 @@ const LESSON_STEPS_CIRCUIT = {
               },
             ],
           },
-        },
 
-        {
-          topicTitle: "Connect OLED to Arduino",
+          descAfterCode: processDesc(`
+Gather these parts first:
+
+@Arduino UNO (or Nano)
+@SSD1306 OLED (I²C, 128×64 or 128×32)
+@3× momentary pushbuttons
+@Breadboard
+@Jumper wires
+          `),
+
+          topicTitle2: "Wiring (OLED Power + I²C)", // optional: if your renderer ignores this, remove it
           descAfterImage: processDesc(`
-            
-@Step 1: Open your wokwi page and add the arduino uno, breadboard, and SSD1306 OLED
-@Step 2: Connect VCC on OLED to 5V on arduino 
-@Step 3: Connect GND on OLED to GND on arduino
-@Step 4: Connect SDA on OLED to A4 on arduino
-@Step 5: Connect SCL on OLED to A5 on arduino
+Power the OLED:
+@OLED VCC → 5V (or 3.3V on some boards)
+@OLED GND → GND
+@Raw OLED panels (no breakout) usually require 3.3V only
 
-Once this is done, your OLED has power + data connection.
+I²C lines (OLED ↔ Arduino):
+@OLED SDA → A4
+@OLED SCL → A5
+@Typical I²C address is 0x3C (sometimes 0x3D)
+
+Once this is wired, your OLED has power + data connection.
           `),
 
           // If you want a single “big photo” here, convert it into an image grid (1 column).
           imageGridAfterCode: {
             columns: 1,
-            width: 800,
-            height: 400,
             items: [
               {
                 label: "OLED Wiring Reference",
-                image: require("../../../assets/circuit/OLEDwiringreference.png"),
+                image:
+                  "https://dummyimage.com/1200x700/ddd/000.png&text=OLED+Circuit+Photo+Placeholder",
               },
             ],
           },
@@ -116,17 +108,19 @@ Once this is done, your OLED has power + data connection.
 
       codes: [
         {
-          topicTitle: "Add Adafruit SSD1306 + GFX Libraries",
+          topicTitle: "Install the Libraries",
           descBeforeCode: processDesc(`
+We’ll use the Adafruit SSD1306 + GFX drivers.
+
+Install the display libraries:
 @Open Arduino IDE → Tools → Manage Libraries
 @Search and install "Adafruit SSD1306"
 @Search and install "Adafruit GFX Library"
+@Restart IDE if examples do not appear
           `),
-
+          
           imageGridAfterCode: {
             columns: 1,
-            width: 800,
-            height: 400,
             items: [
               {
                 label: "Library Manager Search",
@@ -134,10 +128,9 @@ Once this is done, your OLED has power + data connection.
               },
             ],
           },
-        },
-        {
-          topicTitle: "Connect OLED to Arduino",
+
           descAfterImage: processDesc(`
+Common Issues:
 @“SSD1306 allocation failed” → wrong display size example
 @Blank screen → wrong SDA/SCL wiring or incorrect address (0x3C/0x3D)
 @Upload stalls → reset Arduino and try again
@@ -151,39 +144,32 @@ Once this is done, your OLED has power + data connection.
 
       codes: [
         {
-          topicTitle: "Confirm the OLED Works",
+          topicTitle: "Confirm the OLED Works First",
           descBeforeCode: processDesc(`
 Before building your own menu, run a known working test.
 
-Step 1: Open the example sketch:
-@File → Examples → Adafruit SSD1306 → ssd1306_128x64.i2c
-@ If trying this on wokwi, change the line #define SCREEN_ADDRESS 0x3D into #define SCREEN_ADDRESS 0x3C to make it work
+Open the example sketch:
+@File → Examples → Adafruit SSD1306 → ssd1306_128x64
+@If using 128×32, choose the matching example
 
-Step 2: Upload the sketch to your Arduino:
-@Tools → Port → Select the correct COM port for your Arduino
-@Tools → Board → Select correct board type (e.g., Arduino Uno)
-@Sketch → Upload
+Upload the sketch:
+@Select correct board + COM port
+@Click Upload
 
-Step 3: Observe the OLED display:
-@You should see a series of test patterns and graphics on the OLED
-@If not displaying correctly, double-check wiring and library installation
+Expected output:
+@Adafruit splash screen
+@Scrolling or drawing test shapes
 
-Once this is done, you are good to proceed to building your own menu system!
+If the OLED works here, wiring + libraries are correct.
           `),
 
           imageGridAfterCode: {
             columns: 1,
-             width: 600,
-            height: 400,
             items: [
               {
-                label: "OLED Example Demo",
-                video: {
-                 
-                src: require("../../../assets/videos/exampleOLED_demestration.mp4"),
-                controls: true,
-                loop: false,
-            },
+                label: "Expected OLED Output",
+                image:
+                  "https://dummyimage.com/1200x700/ddd/000.png&text=OLED+Test+Output",
               },
             ],
           },
@@ -192,31 +178,30 @@ Once this is done, you are good to proceed to building your own menu system!
     },
     {
       id: "circuit-4",
-      title: "Step 4: PushButtons with Internal Pull-Ups",
+      title: "Step 4: Buttons with Internal Pull-Ups",
 
       codes: [
         {
           topicTitle: "Button Wiring (INPUT_PULLUP)",
           descBeforeCode: processDesc(`
-In this project, we will have 3 push buttons for controling the status board menu:
-@Button 1: go to Previous Item
-@Button 2: go to Next Item
-@Button 3: Select Item
+We will use INPUT_PULLUP so the button reads LOW when pressed.
 
-4-leg push buttons wiring:
-Step 1: Inside wokwi, add 3 push buttons to your breadboard and place them across breadboard center gap
-Step 2: Wire each button:
-@Choose one side of the button and connect it to one of the pin (D2/D3/D4) for all 3 buttons
-@Opposite side goes to GND for all three buttons
-Step 3: Configure pins in code as INPUT_PULLUP:
-@ pinMode(buttonPin, INPUT_PULLUP);
-
-Button State Logic:
-@Press = LOW, Release = HIGH (via pull-up).
-
-2-leg button wiring (similar to 4-leg button):
+2-leg button wiring:
 @One leg → Arduino D2 / D3 / D4
 @Other leg → GND
+@pinMode(pin, INPUT_PULLUP)
+
+Typical mapping:
+@Prev → D2
+@Next → D3
+@Select → D4
+
+4-leg buttons:
+@Place across breadboard center gap
+@One side goes to D2/D3/D4
+@Opposite side goes to GND
+
+Press = LOW, Release = HIGH (via pull-up).
           `),
 
           imageGridAfterCode: {
