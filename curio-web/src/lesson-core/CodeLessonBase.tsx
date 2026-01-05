@@ -91,6 +91,40 @@ function makeStepKey(lessonNumber: number, stepIdx: number) {
   return `L${lessonNumber}-S${stepIdx}`;
 }
 
+//for adding bullet points
+function processDesc(text: string): string {
+  return text
+    .split("\n")
+    .map((line) => {
+      const trimmed = line.trim();
+
+      // Existing @ bullet support (outside backticks)
+      if (trimmed.startsWith("@")) {
+        return "\u00A0\u00A0•\u00A0\u00A0" + trimmed.substring(1).trim();
+      }
+
+      return line;
+    })
+    .join("\n")
+    .replace(/`([\s\S]*?)`/g, (match, inner) => {
+      // Only process multiline backtick blocks
+      if (!inner.includes("\n")) return match;
+
+      const lines = inner.split("\n");
+
+      const converted = lines.map((l: string) => {
+        const t = l.trimStart();
+        if (t.startsWith("- ") || t.startsWith("* ")) {
+          return "\u00A0\u00A0•\u00A0\u00A0" + t.substring(2);
+        }
+        return l;
+      });
+
+      return "`" + converted.join("\n") + "`";
+    });
+}
+
+
 function renderWithInlineCode(
   text: string | null | undefined,
   opts: {
@@ -1000,7 +1034,7 @@ React.useEffect(() => {
     (text: string | null | undefined) => {
       if (!text) return null;
 
-      return renderWithInlineCode(text, {
+      return renderWithInlineCode(processDesc(String(text)), {
         values: inlineLocalValues,
         onChangeBlank: (name, txt) => {
           setInlineLocalValues((prev) => ({ ...(prev || {}), [name]: txt }));

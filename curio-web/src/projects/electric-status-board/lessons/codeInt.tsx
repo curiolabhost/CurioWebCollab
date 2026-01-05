@@ -258,7 +258,7 @@ void setup() {
   Wire.begin();
   __BLANK[BEGINA]__;      // Initialize OLED
 
-  // set the modes for the buttons you are using 
+  //<< set the modes for the buttons you are using 
   pinMode(PREV, INPUT_PULLUP);                 // PREV button
   __BLANK[PINMODE1]__(__BLANK[NEXT]__, __BLANK[INPUT1]__); // NEXT button
   __BLANK[PINMODE]__(__BLANK[SELECT]__, __BLANK[INPUT2]__);^^      // SELECT button
@@ -269,7 +269,7 @@ void setup() {
           INPUT1: ["INPUT_PULLUP"],
           PINMODE: ["pinMode"],
           PINMODE1: ["pinMode"],
-          SELECT: { type: "sameAs", target: "SEL" },
+          SELECT: { type: "sameAs", target: "SELVAR" },
           INPUT2: ["INPUT_PULLUP"],
         },
         blankExplanations: {
@@ -299,10 +299,10 @@ void setup() {
         },
             descAfterCode: `Reminder:
 - With \`INPUT_PULLUP\`: released = HIGH, pressed = LOW.
-- You must call the OLED update line after drawing if you want changes to show.
-
-**Here are some useful functions for OLED module**
-\`Wire.begin();\`  
+- You must call the OLED update line after drawing if you want changes to show.`
+      },{
+topicTitle:"Useful functions for OLED module",
+descBeforeCode:`\`Wire.begin();\`  
 Starts the I²C communication bus so the Arduino can talk to devices like the OLED display using SDA (data) and SCL (clock). This must be called before using any I²C device.
 
 \`display.begin(A, B);\`  
@@ -351,7 +351,7 @@ Configures the button pins as inputs with internal pull-up resistors.
   },
 
   // =========================================================
-  // LESSON 2
+  // LESSON 3
   // =========================================================
   3: {
     phrase: "Screens: welcome page + status page functions",
@@ -366,17 +366,25 @@ Configures the button pins as inputs with internal pull-up resistors.
             descBeforeCode: "**Clear the screen, print a big greeting.**",
             imageGridBeforeCode: {
               columns: 1,
+              height: 300,
+              width: 600,
               items: [
                 {
-                  imageSrc: "/electric-status-board/images/welcomeFunc.png",
-                  label: "Example: welcome function",
+                  imageSrc: "/electric-status-board/printvsprintln.png",
+                  label: "Tiny Example: print() vs println()",
                 },
               ],
             },
-            descBetweenBeforeAndCode: `This is an example of a function named welcomeFunc. All of the lines of code inside the curly brackets define what welcomeFunc does. You can run this function by calling it in either setup() or loop(). As a reminder, functions are reusable blocks of code that perform a specific task. 
-      
+            descBetweenBeforeAndCode: `This is an example of a function named welcomeFunc. You can run this function by calling it in either setup() or loop(). As a reminder, functions are reusable blocks of code that perform a specific task. 
 Since we want the welcome page to show up only ONCE when we turn the device on, we will place that function in the **setup()**.
-Read through each line of the code in the example above, and try to understand what it does.`,
+
+**Difference between** \`println()\` **and** \`print()\`
+@\`print()\` writes text (or a value) **without** moving to a new line afterward.
+@If you call print() again, the next text continues on the same line.
+@\`println()\` writes text (or a value) and then **moves the cursor to the start of the next line**.
+@The next print() / println() will begin on a new line.
+
+`},{
             code: `##include <Wire.h>
 #include __BLANK[LIB_GFX]__
 #include __BLANK[LIB_SSD]__
@@ -390,35 +398,35 @@ Adafruit_SSD1306 display (__BLANK[WIDTH2]__, __BLANK[HEIGHT2]__ , &Wire, RESET);
 #define PREV __BLANK[PREVN]__
 #define __BLANK[NEXTVAR]__ __BLANK[NEXTN]__
 #define __BLANK[SELVAR]__  __BLANK[SELN]__
-^^
+
 void setup() {
   Wire.begin();
-  __BLANK[BEGINA]__;      
-  __BLANK[WELCOMEFUNCTION]__(); // Produce welcome message upon starting the board
+  __BLANK[BEGINA]__; ^^  
+//<< Produce welcome message upon starting the board   
+  __BLANK[WELCOMEFUNCTION1]__(); ^^
 
-  //buttons being used
+//<<buttons being used
   pinMode(PREV, INPUT_PULLUP);                 
   __BLANK[PINMODE1]__(__BLANK[NEXT]__, __BLANK[INPUT1]__); 
-  __BLANK[PINMODE]__(__BLANK[SELECT]__, __BLANK[INPUT2]__);^^      
+  __BLANK[PINMODE]__(__BLANK[SELECT]__, __BLANK[INPUT2]__);  
 }
-
 void loop(){
 }
-
 ^^
 void __BLANK[WELCOMEFUNCTION]__() {
   __BLANK[DISPLAY1]__;  //clear display  
   __BLANK[DISPLAY2]__;  //text size 
   __BLANK[DISPLAY3]__;  //text color 
-  __BLANK[DISPLAY4]__;  //print line 
-  __BLANK[DISPLAY5]__;  //text size 
   __BLANK[DISPLAY6]__;  //text cursor 
+  __BLANK[DISPLAY4]__;  //print line (println() or print()?)
+  __BLANK[DISPLAY5]__;  //text size 
   __BLANK[DISPLAY7]__;  //print line 
   __BLANK[DISPLAY8]__;  //display 
 }^^`,
 
           answerKey: {
             WELCOMEFUNCTION: { type: "identifier" },
+            WELCOMEFUNCTION1:{ type:"sameAs",target:"WELCOMEFUNCTION"},
             DISPLAY1: ["display.clearDisplay()"],
             DISPLAY2: ["display.setTextSize(2)", "display.setTextSize(3)"],
             DISPLAY3: ["display.setTextColor(SSD1306_WHITE)"],
@@ -438,6 +446,7 @@ void __BLANK[WELCOMEFUNCTION]__() {
             DISPLAY8: ["display.display()"],
           },
           blankExplanations: {
+            WELCOMEFUNCTION1: `Call the welcome function you made below. For example if your function is named "sayWelcome", then you would call it in the setup() as sayWelcome();`,
             WELCOMEFUNCTION:
               "Pick a custom function name (valid identifier) for your welcome screen.",
             DISPLAY1: "Clear the OLED buffer first.",
@@ -464,12 +473,27 @@ void __BLANK[WELCOMEFUNCTION]__() {
             DISPLAY7: "medium",
             DISPLAY8: "easy",
           },
-            descAfterCode: `Now, create a function with the same functionality as the example WelcomeFunc above. 
-But, **rename the function as something else and have it display a different message.** Fill in the blanks.`,
+            descAfterCode: `You call the Welcome Function you made in the void setup() so that it displays in the screen as soon as you turn the board on.`,
             imageGridAfterCode: null,
             descAfterImage: null,
             hint: "Call display() after drawing to push the buffer to the screen.",
           },
+          {
+            topicTitle: "Try Simulation",
+            descBeforeCode:`Paste the code into simaulator and run it to check if the welcome message displays as intended. Here is an example of a welcome message. 
+  You can set cursor for certain texts to position your welcome messages in a more organized manner!`,
+            imageGridBeforeCode: {
+              columns: 1,
+              width: 400,
+              height:350,
+              items: [
+                {
+                  imageSrc: "/electric-status-board/welcomeFunc.png",
+                  label: "Example: welcome function",
+                },
+              ],
+            },
+          }
         ],
       },
 
@@ -553,10 +577,11 @@ void __BLANK[STATUSFUNCTION]__(){  //Status Function
   },
 
   // =========================================================
-  // LESSON 3
+  // LESSON 4
   // =========================================================
+
   4: {
-    phrase: "Variables + lists (arrays) for menu options",
+    phrase: "Variables + lists (arrays) for Main Menu options",
     advanced: false,
     steps: [
       {
@@ -788,22 +813,24 @@ Arrays are extremely useful when you want your code to handle lots of similar va
 
       {
         id: 4,
-        title: "Step 4: Lists Are Perfect for Menu Options",
+        title: "Step 4: Create Lists for Main Menu Options",
         codes: [
           {
-            topicTitle: "Create your status array",
-            descBeforeCode: `Instead of making many separate variables for each status, we store them all in a single array so the menu can move through them easily.
-        
-Think of at least four status that relates to your daily acitivity, like studying, working, playing, etc.
-Place those status in an array. Create a name for that array.`,
+            topicTitle: "Create your main options array",
+            descBeforeCode: `Instead of making many separate variables for each options, we store them all in a single array so the menu can move through them easily.
+Before we can display a menu, we need to **store the menu options** somewhere. In this project, we keep the top-level menu labels (\`Status\`, \`Clock\`, \`Timer\`) inside a **string array**. 
+
+\`Status\` : for static display of a certain status like "Studying", "Gaming", etc. 
+\`Clock\` : for displaying time 
+\`Timer\` : for starting a timer
+`,
             imageGridBeforeCode: null,
             descBetweenBeforeAndCode: null,
-            code: `^^// List of menu status messages
-__BLANK[STATUSTYPE]__  __BLANK[STATUSNAME]__ = { //define array name
-  __BLANK[STATUSLIST1]__, //status 0
-  __BLANK[STATUSLIST2]__, //status 1
-  __BLANK[STATUSLIST3]__, //status 2
-  __BLANK[STATUSLIST4]__  //status 3
+            code: `^^// List of main menu options
+__BLANK[MMENUTYPE]__  __BLANK[MMENUNAME]__ = { //define array name
+  "Status", //menu option 0
+  __BLANK[MENULIST2]__, //menu option 1
+  __BLANK[MENULIST3]__, //menu option 2
 };^^
 
 void setup(){
@@ -813,233 +840,146 @@ void setup(){
 void loop(){
 }
 `,
-        answerKey: {
-          STATUSTYPE: ["String"],
-          STATUSNAME: { type: "regex", pattern: "^[A-Za-z_]\\w*\\[\\]$" },
-          STATUSLIST1: { type: "regex", pattern: '^".+"$' },
-          STATUSLIST2: { type: "regex", pattern: '^".+"$' },
-          STATUSLIST3: { type: "regex", pattern: '^".+"$' },
-          STATUSLIST4: { type: "regex", pattern: '^".+"$' },
-        },
-        blankExplanations: {
-          STATUSTYPE:
-            "Use a type that can store words/sentences as text.",
-          STATUSNAME:
-            "Name your status list and include [] to show it’s an array.",
-          STATUSLIST1:
-            "Write a status option inside quotes (example: \"Studying\").",
-          STATUSLIST2:
-            "Write a second status option inside quotes.",
-          STATUSLIST3:
-            "Write a third status option inside quotes.",
-          STATUSLIST4:
-            "Write a fourth status option inside quotes.",
-        },
-        blankDifficulties: {
-          STATUSTYPE: "easy",
-          STATUSNAME: "easy",
-          STATUSLIST1: "easy",
-          STATUSLIST2: "easy",
-          STATUSLIST3: "easy",
-          STATUSLIST4: "easy",
-        },
-            descAfterCode: `Each item will now be accessed by its index:
-  - __BLANK[STATUSNAME]__ [0] → __BLANK[STATUSLIST1]__
-  - __BLANK[STATUSNAME]__ [1] → __BLANK[STATUSLIST2]__
-  - __BLANK[STATUSNAME]__ [2] → __BLANK[STATUSLIST3]__ 
-  - __BLANK[STATUSNAME]__ [3] → __BLANK[STATUSLIST4]__
-
-  This list allows your program to display different messages simply by picking a number.`,
-            imageGridAfterCode: null,
-            descAfterImage: null,
-            hint: "This is the same structure used in your favoriteColor array.",
-          },
-        ],
-      },
-
-      {
-        id: 5,
-        title: "Step 5: Counting Items in the List",
-        codes: [
-          {
-            topicTitle: "Total count + tracking index",
-            descBeforeCode: `Arrays don’t automatically know how many items they contain, so we store the total count in a variable.
-Create a variable that stores the total **number** of status in the array.`,
-            imageGridBeforeCode: {
-              columns: 1,
-              height: 380,
-              width: 450,
-              items: [
-                {
-                  imageSrc: "/electric-status-board/videos/CurioLabL4.gif",
-                  label: "Status Board menu",
+              answerKey: {
+                // Type that stores text labels for a menu array.
+                // (We allow several common valid choices to keep it flexible.)
+                MMENUTYPE: {
+                  type: "string",
+                  // Accept: const char*  | char* | String
+                  // (regex is a STRING in this system)
+                  regex: "^(const\\s+char\\s*\\*|char\\s*\\*|String)\\s*$",
                 },
-              ],
-            },
-            descBetweenBeforeAndCode: null,
-            code: `__BLANK[STATUSTYPE]__  __BLANK[STATUSNAME]__ = {
-  __BLANK[STATUSLIST1]__, 
-  __BLANK[STATUSLIST2]__,
-  __BLANK[STATUSLIST3]__,
-  __BLANK[STATUSLIST4]__
-};
 
-// Number of items in the status list^^
-__BLANK[TOTTYPE]__ __BLANK[TOTNAME]__ = __BLANK[TOTNUM]__;^^
+                // Array name must be a valid identifier AND include [] at the end in the code.
+                // Using "string" + regex here because identifier spec alone won't enforce [].
+                MMENUNAME: {
+                  type: "string",
+                  regex: "^[A-Za-z_]\\w*\\[\\]$",
+                },
 
-// Counter for tracking which item of the status list you are on. Assign 0 for the counter.^^
-__BLANK[TRACKTYPE]__ __BLANK[TRACKNAME]__ = __BLANK[TRACKNUM]__; ^^`,
+                // Let these be flexible: any quoted label is accepted.
+                // (Users might choose different names for the menu items.)
+                MENULIST2: {
+                  type: "string",
+                  regex: '^".+"$',
+                },
+                MENULIST3: {
+                  type: "string",
+                  regex: '^".+"$',
+                },
+              },
 
-        answerKey: {
-          TOTTYPE: ["int"],
-          TOTNAME: { type: "identifier" },
-          TOTNUM: { type: "range", min: 1, max: 20 },
-          TRACKTYPE: ["int"],
-          TRACKNAME: { type: "identifier" },
-          TRACKNUM: ["0"],
-          OPTION: { type: "regex", pattern: '^".+"$' },
-        },
-        blankExplanations: {
-          TOTTYPE:
-            "The total count is a whole number, so use an integer type.",
-          TOTNAME:
-            "Pick a clear name that means “how many statuses exist.”",
-          TOTNUM:
-            "Count how many items are in your status array and store that number.",
-          TRACKTYPE:
-            "The array index is a whole number, so use int.",
-          TRACKNAME:
-            "Pick a name that tracks which status you are currently on.",
-          TRACKNUM:
-            "Start at 0 because arrays begin at index 0.",
-          OPTION:
-            "This is the first status in your list if your index starts at 0.",
-        },
-        blankDifficulties: {
-          TOTTYPE: "easy",
-          TOTNAME: "easy",
-          TOTNUM: "easy",
-          TRACKTYPE: "easy",
-          TRACKNAME: "easy",
-          TRACKNUM: "easy",
-          OPTION: "easy",
-        },
-            descAfterCode: `These two variables let the menu scroll correctly. In our code we can check the value of counter:
-  - If it is past the last item → wrap back to the first  
-  - If it is before the first → wrap to the last.`,
+              blankExplanations: {
+                MMENUTYPE:
+                  "Choose a valid text type for a list of menu labels. Most commonly this is `const char*` (C-style strings), but `String` can also work depending on your codebase.",
+                MMENUNAME:
+                  "Name your menu array and include `[]` to show it’s an array (example: `mainMenu[]`).",
+                MENULIST2:
+                  "Write the second menu option as text inside quotes (example: \"Clock\"). This will be the label shown in the menu.",
+                MENULIST3:
+                  "Write the third menu option as text inside quotes (example: \"Timer\"). This will be the label shown in the menu.",
+              },
+
+              blankDifficulties: {
+                MMENUTYPE: "easy",
+                MMENUNAME: "easy",
+                MENULIST2: "easy",
+                MENULIST3: "easy",
+              },
+
+              descAfterCode: `Now your program has a **top-level menu list** stored in an array. Each item can be accessed by its index:
+
+              - __BLANK[MMENUNAME]__[0] → "Status"
+              - __BLANK[MMENUNAME]__[1] → __BLANK[MENULIST2]__
+              - __BLANK[MMENUNAME]__[2] → __BLANK[MENULIST3]__`,
+
             imageGridAfterCode: null,
             descAfterImage: null,
-            hint: "We use this to handle scrolling and wrap-around behavior."},
-            {
-            title: `Practice: Calling array item`,
-            code: `// Practice how you can use the array and the counter = 0. ^^
-  String option = __BLANK[STATUSNAME]__ [__BLANK[TRACKNAME]__];^^`,
-            descAfterCode: `What would the String option read?   __BLANK[OPTION]__`,
-         }
-         ],
-      },
-      {
-        id: 6,
-        title: "Step 6: Function for Menu Page",
-        answerKey: {
-          STATUSTYPE: ["String"],
-          STATUSNAME: { type: "regex", pattern: "^[A-Za-z_]\\w*\\[\\]$" },
-          STATUSLIST1: { type: "regex", pattern: '^".+"$' },
-          STATUSLIST2: { type: "regex", pattern: '^".+"$' },
-          STATUSLIST3: { type: "regex", pattern: '^".+"$' },
-          STATUSLIST4: { type: "regex", pattern: '^".+"$' },
-          TOTTYPE: ["int"],
-          TOTNAME: { type: "identifier" },
-          TOTNUM: { type: "range", min: 1, max: 20 },
-          TRACKTYPE: ["int"],
-          TRACKNAME: { type: "identifier" },
-          TRACKNUM: ["0"],
-
-          WELCOMEFUNCTION: { type: "identifier" },
-          STATUSFUNCTION: { type: "identifier" },
-
-          DISPLAY1: ["display.clearDisplay()"],
-          DISPLAY2: ["display.setTextSize(2)", "display.setTextSize(3)"],
-          DISPLAY3: ["display.setTextColor(SSD1306_WHITE)"],
-          DISPLAY4: { type: "regex", pattern: '^display\\.println\\(".*"\\)$' },
-          DISPLAY5: ["display.setTextSize(1)"],
-          DISPLAY6: { type: "regex", pattern: "^display\\.setCursor\\(\\d+,\\s*\\d+\\)$" },
-          DISPLAY7: { type: "regex", pattern: '^display\\.println\\(".*"\\)$' },
-          DISPLAY8: ["display.display()"],
-
-          STATUSCODE1: ["display.clearDisplay()"],
-          STATUSCODE2: ["display.setTextSize(2)", "display.setTextSize(3)"],
-          STATUSCODE3: { type: "regex", pattern: "^display\\.setCursor\\(\\d+,\\s*\\d+\\)$" },
-          STATUSCODE4: ["display.setTextColor(SSD1306_WHITE)"],
-
-          STATUSNAME2: { type: "identifier" },
-          TRACKNAME2: { type: "identifier" },
-        },
-        blankExplanations: {
-          STATUSNAME2:
-            "Use the array name (without []) so you can index into it like name[index].",
-          TRACKNAME2:
-            "Use the variable that tracks which status index you’re currently on.",
-        },
-        blankDifficulties: {
-          STATUSNAME2: "easy",
-          TRACKNAME2: "easy",
-        },
-        codes: [
+          },
           {
-            topicTitle: "Functions so far (welcome + status)",
-            descBeforeCode:
-              "Now we create a menu page, where pressing Next or Previous button allows the user to toggle around the status options",
+            topicTitle: "Using the Main Menu Array",
+            descBeforeCode: `We will need to create an index variable for the main menu array that will increment/decrement depending on the button presses (NEXT and PREVIOUS).
+`,
             imageGridBeforeCode: null,
             descBetweenBeforeAndCode: null,
-            code: `__BLANK[STATUSTYPE]__  __BLANK[STATUSNAME]__ = {
-  __BLANK[STATUSLIST1]__, 
-  __BLANK[STATUSLIST2]__,
-  __BLANK[STATUSLIST3]__,
-  __BLANK[STATUSLIST4]__,
-};
-__BLANK[TOTTYPE]__ __BLANK[TOTNAME]__ = __BLANK[TOTNUM]__;
-__BLANK[TRACKTYPE]__ __BLANK[TRACKNAME]__ = __BLANK[TRACKNUM]__;
+            code: `
+__BLANK[MMENUTYPE]__  __BLANK[MMENUNAME]__ = { //array name
+  "Status", 
+  __BLANK[MENULIST2]__, 
+  __BLANK[MENULIST3]__, 
+};^^
 
-void __BLANK[WELCOMEFUNCTION]__(){
-  __BLANK[DISPLAY1]__; //clear display
-  __BLANK[DISPLAY2]__; //text size
-  __BLANK[DISPLAY3]__; //text color
-  __BLANK[DISPLAY4]__; //print line
-  __BLANK[DISPLAY5]__; //text size
-  __BLANK[DISPLAY6]__; //text cursor
-  __BLANK[DISPLAY7]__; //print line
-  __BLANK[DISPLAY8]__; //display
-}^^
+int __BLANK[TOTMAIN]__ = __BLANK[TOTMAINNUM]__;    //total number of items in the main menu array
+__BLANK[MINDEXTYPE]__ __BLANK[MINDEX]__ = __BLANK[MINDEXNUM]__; //counter index for the main menu array. Assign 0.
+^^
 
-void __BLANK[STATUSFUNCTION]__(){
-  __BLANK[STATUSCODE1]__;
-  __BLANK[STATUSCODE2]__;
-  __BLANK[STATUSCODE3]__;
-  __BLANK[STATUSCODE4]__; 
-  display.println(__BLANK[STATUSNAME2]__[__BLANK[TRACKNAME2]__]);^^ // show a status from the array using counter
-}^^`,
-            descAfterCode: `Now your project can:
-  - Store multiple status options in an array  
-  - Track the current option using an index variable  
-  - Display the correct message on the OLED  
+void setup(){
+ ...
+}
 
-Variables track **where** you are. Arrays store **what choices** you have.`,
-            imageGridAfterCode: null,
-            descAfterImage: null,
-            hint: null,
-          },
+void loop(){
+}`,
+            answerKey: {
+              // variable name for total items
+              TOTMAIN: { type: "identifier" },
+
+              // total number of items (Status, Clock, Timer) = 3
+              TOTMAINNUM: { type: "range", min: 3, max: 3 },
+
+              // type for the index variable (usually int)
+              MINDEXTYPE: {
+                // allow a few valid numeric types; keep flexible
+                type: "string",
+                regex: "^(int|uint8_t|byte|size_t)\\s*$",
+              },
+
+              // index variable name (must be a valid identifier)
+              MINDEX: { type: "identifier" },
+
+              // should start at 0
+              MINDEXNUM: { type: "range", min: 0, max: 0 },
+            },
+
+            blankExplanations: {
+              TOTMAIN:
+                "Name the variable that stores how many items exist in the main menu array.",
+              TOTMAINNUM:
+                "Set this to the exact number of options in your main menu array. With Status, Clock, Timer → this should be **3**.",
+              MINDEXTYPE:
+                "Choose a numeric type for the menu index. Most commonly this is `int` (an integer counter).",
+              MINDEX:
+                "Name the variable that tracks which main menu item is currently selected (example: `mainIndex`).",
+              MINDEXNUM:
+                "Start the selected index at **0** so the first menu item (index 0) is highlighted by default.",
+            },
+
+            blankDifficulties: {
+              TOTMAIN: "easy",
+              TOTMAINNUM: "easy",
+              MINDEXTYPE: "easy",
+              MINDEX: "easy",
+              MINDEXNUM: "easy",
+            },
+
+          },{
+            title: `Practice: Calling array item`,
+            code: `// Practice how you can use the array using the index counter variable you just made. ^^
+  String practice = __BLANK[MMENUNAME]__ [__BLANK[MINDEX1]__];^^`,
+            descAfterCode: `What would the String \`practice\` read?   __BLANK[OPTION]__`,
+
+          }
         ],
       },
+
+
     ],
   },
 
   5: {
-  phrase: "Variables + arrays: storing menu options and tracking state",
+  phrase: "Variables + arrays: iterating Main and Status menu options",
   advanced: false,
   steps: [
-    {
-      id: 1,
+    { id: 1,
       title: "Step 1: What is a Loop?",
       optional: true,
       codes: [
@@ -1069,8 +1009,7 @@ Loops fix this problem by repeating the same code for each index in the array. I
       ],
     },
 
-    {
-      id: 2,
+    { id: 2,
       title: "Step 2: Basic While Loop",
       optional: true,
       codes: [
@@ -1394,250 +1333,1165 @@ while (__BLANK[P6_IDXVAR]__ < total2) {
       ],
     },
 
+    { id: 3,
+      title: "Step 3: Show the Main Menu",
+      codes: [
+        {
+          topicTitle: "Print the menu + highlight the selected option",
+          descBeforeCode: `**Here is the idea:**
+When you press a navigation button (Next or Previous), the value of __BLANK[MINDEX]__ is increased or decreased to change which menu option is selected (0 → 1 → 2).
+For example, if the Next button is pressed once, __BLANK[MINDEX]__ becomes 1.
+As the program loops through the menu array, it checks each option’s index. When the loop index equals __BLANK[MINDEX]__, that option is marked as selected and highlighted on the screen. In this example, the selected item is shown with an arrow \`>\`, but you can use any symbol or indicator you prefer.
+
+This new function draws the **Main Menu screen** on the OLED.
+**Here is what your new function would need to do step-by-step:**
+@ Clears the screen and sets up text styling
+@ Prints a title ("Main Menu:") and a divider line
+@ Uses a while loop to print every menu item in the main menu array __BLANK[MMENUNAME]__.
+@ Adds a highlight indicator (like ">") next to the selected item (when i == __BLANK[MINDEX]__)
+@ All other menu items print normally (with spaces so everything stays aligned)
+@ Other indicators you can use instead of \`">\` include: \`*\`, \`→\`, \`#\`, and any others. 
+    
+You will fill in a few key blanks to make the loop and highlighting work.`,
+          imageGridBeforeCode: null,
+          descBetweenBeforeAndCode: null,
+
+           code: `
+__BLANK[MMENUTYPE]__  __BLANK[MMENUNAME]__ = { //array name
+  "Status", 
+  __BLANK[MENULIST2]__, 
+  __BLANK[MENULIST3]__, 
+};
+
+int __BLANK[TOTMAIN]__ = __BLANK[TOTMAINNUM]__;    //total number of items in the main menu array
+__BLANK[MINDEXTYPE]__ __BLANK[MINDEX]__ = __BLANK[MINDEXNUM]__; //counter index for the main menu array. Assign 0.
+           
+^^
+void __BLANK[SHOWMAIN_FN]__() {                // name the function that draws the main menu
+  __BLANK[DISPLAYM1]__.__BLANK[CLEAR]__;                 // clear the OLED screen
+  __BLANK[DISPLAYM2]__.__BLANK[SET_SIZE]__;             // set small text size
+  __BLANK[DISPLAYM3]__.__BLANK[SET_COLOR]__;// set text color
+  __BLANK[DISPLAYM4]__.__BLANK[SET_CURSOR]__;        // move cursor to top-left corner
+  __BLANK[DISPLAYM5]__.println("Main Menu:");              // print menu title
+  display.println("----------");              // print divider line
+
+  int i = __BLANK[START_I]__;                 // start index at first menu item (0)
+  while (i < __BLANK[TOTALMAIN_USE]__) {      // loop through all main menu items
+    if (i == __BLANK[INDEX_USE]__){             // check if this item is selected (i == your main menu index counter variable)
+      display.print(__BLANK[ARROW]__);         // print arrow or other indicator for selected item
+    }
+    else { display.print(__BLANK[SPACES]__);        // print spaces for non-selected items
+    }
+    display.println(__BLANK[MENU_ACCESS]__);  // print menu text at index i
+    __BLANK[INC_I]__;                          // move to the next menu item
+  }
+
+  display.__BLANK[FLUSH]__();                 // update OLED to show everything
+}
+^^`,
+          answerKey: {
+            // function name
+            SHOWMAIN_FN: { type: "identifier" },
+
+            // These should all be the SAME object (display)
+            DISPLAYM1: "display",
+            DISPLAYM2: "display",
+            DISPLAYM3: "display",
+            DISPLAYM4: "display",
+            DISPLAYM5: "display",
+
+            // display method names (must be correct calls)
+            CLEAR: { type: "string", regex: "^clearDisplay\\(\\)$" },
+            SET_SIZE: { type: "string", regex: "^setTextSize\\(.+\\)$" },      // allow any argument
+            SET_COLOR: { type: "string", regex: "^setTextColor\\(.+\\)$" },    // allow any argument
+            SET_CURSOR: { type: "string", regex: "^setCursor$" },              // args are already in code
+            FLUSH: { type: "string", regex: "^display\\(\\)$" },
+
+            // loop start index (start at 0)
+            START_I: { type: "range", min: 0, max: 0 },
+
+            // total items variable (should be totalMain, but let user choose identifier)
+            TOTALMAIN_USE: { type: "sameAs", target: "TOTMAIN"},
+
+            // MUST match the earlier blank MINDEX the user already filled in a previous step
+            INDEX_USE: { type: "sameAs", target: "MINDEX" },
+
+            // indicator + spacing (allow any quoted string)
+            ARROW: { type: "string", regex: '^".+"$' },
+            SPACES: { type: "string", regex: '^"\\s*"$' }, // allow "  " or "" etc.
+            // print menu item at index i (flexible array name)
+            MENU_ACCESS: { type: "string", regex: "^[A-Za-z_]\\w*\\s*\\[\\s*i\\s*\\]$" },
+            // increment i
+            INC_I: {
+              type: "string",
+              regex: "^(i\\+\\+|\\+\\+i|i\\s*\\+=\\s*1|i\\s*=\\s*i\\s*\\+\\s*1)$",
+            },
+          },
+
+          blankExplanations: {
+            SHOWMAIN_FN:
+              "Name the function that draws the main menu screen.",
+            DISPLAYM1:
+              "This should be your OLED display object (usually named `display`).",
+            DISPLAYM2:
+              "Use the same display object name as above.",
+            DISPLAYM3:
+              "Use the same display object name as above.",
+            DISPLAYM4:
+              "Use the same display object name as above.",
+            DISPLAYM5:
+              "Use the same display object name as above.",
+            CLEAR:
+              "Call the function that clears the OLED screen.",
+            SET_SIZE:
+              "Call the function that sets text size: `setTextSize(...)`. You can choose any size number.",
+            SET_COLOR:
+              "Call the function that sets text color: `setTextColor(...)`. You can choose any valid color constant (example: `SSD1306_WHITE`).",
+            SET_CURSOR:
+              "Use the method name `setCursor` (use the x,y coordinates to place the header on the top of the screen.",
+            FLUSH:
+              "Call `display()` to push everything you printed onto the OLED screen.",
+            START_I:
+              "Start `i` at 0 so the loop begins at the first menu item.",
+            TOTALMAIN_USE:
+              "Use the variable that stores how many main menu items exist, which you created earlier.",
+            INDEX_USE:
+              "This MUST match the same menu index variable you created earlier. This is the variable that changes when buttons are pressed.",
+            ARROW:
+              "Pick an indicator to show which option is selected. Common choices: `\"> \"`, `\"* \"`, `\"->\"`, or even an emoji if your font supports it.",
+            SPACES:
+              "Print spacing for non-selected items so the menu stays aligned (usually two spaces like `\"  \"`).",
+            MENU_ACCESS:
+              "Print the menu label at index `i` using array indexing variable.",
+            INC_I:
+              "Increment `i` by 1 so the loop moves to the next menu item each time.",
+          },
+
+          blankDifficulties: {
+            SHOWMAIN_FN: "easy",
+
+            DISPLAYM1: "easy",
+            DISPLAYM2: "easy",
+            DISPLAYM3: "easy",
+            DISPLAYM4: "easy",
+            DISPLAYM5: "easy",
+
+            CLEAR: "easy",
+            SET_SIZE: "easy",
+            SET_COLOR: "easy",
+            SET_CURSOR: "easy",
+            FLUSH: "easy",
+
+            START_I: "easy",
+            TOTALMAIN_USE: "easy",
+            INDEX_USE: "easy",
+
+            ARROW: "easy",
+            SPACES: "easy",
+            MENU_ACCESS: "medium",
+            INC_I: "easy",
+          },
+        },
+       {
+          topicTitle: "Checkpoint: Test your code so far on Simulator (Welcome → Main Menu)",
+          descBeforeCode: `Now that you’ve built the Welcome screen function and the Main Menu function, you can test everything so far in the simulator.
+**What should happen:**
+@ Welcome screen shows once at startup
+@ Then the Main Menu displays
+@ No button navigation yet (we add that next)`,
+          imageGridBeforeCode: null,
+          descBetweenBeforeAndCode: null,
+          title: "Codes Put Together",
+          code: `^^
+#include <Wire.h>
+#include __BLANK[LIB_GFX]__
+#include __BLANK[LIB_SSD]__
+#include __BLANK[LIB_CLOCK]__
+
+#define __BLANK[WVAR]__  __BLANK[WIDTH]__
+#define __BLANK[HVAR]__  __BLANK[HEIGHT]__
+#define RESET  -1
+Adafruit_SSD1306 display(__BLANK[WIDTH2]__, __BLANK[HEIGHT2]__, &Wire, RESET);
+
+#define PREV __BLANK[PREVN]__
+#define __BLANK[NEXTVAR]__ __BLANK[NEXTN]__
+#define __BLANK[SELVAR]__  __BLANK[SELN]__
+
+//<< ------------------------------
+//<< MAIN MENU DATA (from Lesson 4)
+//<< ------------------------------
+__BLANK[MMENUTYPE]__ __BLANK[MMENUNAME]__ = {
+  "Status",
+  __BLANK[MENULIST2]__,
+  __BLANK[MENULIST3]__,
+};
+
+int __BLANK[TOTMAIN]__ = __BLANK[TOTMAINNUM]__;
+__BLANK[MINDEXTYPE]__ __BLANK[MINDEX]__ = __BLANK[MINDEXNUM]__;
+
+//<< ------------------------------
+//<< SETUP + LOOP (run so far)
+//<< ------------------------------
+void setup() {
+  Wire.begin();
+  __BLANK[BEGINA]__;
+
+  pinMode(PREV, INPUT_PULLUP);
+  pinMode(__BLANK[NEXTVAR]__, INPUT_PULLUP);
+  pinMode(__BLANK[SELVAR]__, INPUT_PULLUP);
+
+  //<< 1) Call Welcome Function once
+  __BLANK[WELCOMEFUNCTION]__();
+
+  //<< 2) A short delay before the main menu so you can see the welcome function
+  delay(__BLANK[DELAY_MS]__);
+
+  //<< 3) Then call the main menu Function 
+  __BLANK[SHOWMAIN_FN1]__();
+}
+
+void loop() {
+  //<< No navigation yet — we add button logic next lesson/step.
+}
+
+//<< ------------------------------
+//<< FUNCTIONS (from Lesson 3 + 5)
+//<< ------------------------------
+
+//<< Welcome screen (from Lesson 3)
+void __BLANK[WELCOMEFUNCTION]__() {
+  __BLANK[DISPLAY1]__;
+  __BLANK[DISPLAY2]__;
+  __BLANK[DISPLAY3]__;
+  __BLANK[DISPLAY4]__;
+  __BLANK[DISPLAY5]__;
+  __BLANK[DISPLAY6]__;
+  __BLANK[DISPLAY7]__;
+  __BLANK[DISPLAY8]__;
+}
+
+//<< Main menu screen (from Lesson 5 Step 3)
+void __BLANK[SHOWMAIN_FN]__() {
+  __BLANK[DISPLAYM1]__.__BLANK[CLEAR]__;
+  __BLANK[DISPLAYM2]__.__BLANK[SET_SIZE]__;
+  __BLANK[DISPLAYM3]__.__BLANK[SET_COLOR]__;
+  __BLANK[DISPLAYM4]__.setCursor(0, 0);
+  __BLANK[DISPLAYM5]__.println("Main Menu:");
+  display.println("----------");
+
+  int i = __BLANK[START_I]__;
+  while (i < __BLANK[TOTALMAIN_USE]__) {
+    if (i == __BLANK[INDEX_USE]__) {
+      display.print(__BLANK[ARROW]__);
+    } else {
+      display.print(__BLANK[SPACES]__);
+    }
+    display.println(__BLANK[MENU_ACCESS]__);
+    __BLANK[INC_I]__;
+  }
+
+  display.__BLANK[FLUSH]__();
+}
+^^`,
+      answerKey:{
+        DELAY_MS: {
+          type: "range",
+          min: 300,
+          max: 10000,
+        },
+        //SHOWMAIN_FN1: {type:"sameAs",target:"SHOWMAIN_FN"}
+      },
+
+      blankExplanations:{
+        DELAY_MS: "Choose how long (in milliseconds) the welcome screen stays visible before switching to the main menu. If the value is very small (i.e.10-200 ms), it may disappear too quickly for you to see.",
+        SHOWMAIN_FN1: "This function is one you made that draws the main menu screen. Check the functions you made so far."
+      },
+      descAfterCode: `**If your simulator shows a blank screen:**
+@ Double-check your OLED I²C address (many are \`0x3C\`, some are \`0x3D\`)
+@ If your display is 128×32, change \`SCREEN_HEIGHT\` from 64 to 32
+@ Make sure you called \`display.display()\` after drawing
+
+**What you just proved:**
+You successfully built:
+@ Libraries + display object
+@ setup() initialization
+@ a welcome screen function
+@ a main menu drawing function`,
+        },],},
     {
-      id: 3,
-      title: "Step 3: While Loop for the Status Menu",
+      id: 4,
+      title: "Step 4: Show the Status Menu",
       codes: [
         {
           topicTitle: "Loop through status options",
-          descBeforeCode: `Now we use a while loop to go through each item in the options array. Instead of printing numbers, we print status messages.
-This code will be very similar to how you did in the array loop practice.`,
+          descBeforeCode: `Once the "Status" option is selected on the main menu, the screen should lead to several status options you can choose from. Just like we made an array for the main menu, and used a while loop to go through each option with an indicator (i.e. arrow), we will bascially do the same thing again for this purpose as well. `,
           imageGridBeforeCode: null,
           descBetweenBeforeAndCode: null,
-          code: `^^const String options[] = {
-  "Sleeping",
-  "Studying",
-  "Gaming",
-  "Do Not Disturb"
+          code: `^^// List of main menu options
+__BLANK[STATUSTYPE]__  __BLANK[STATUSNAME]__ = { //define array name
+  __BLANK[STATUSLIST1]__, //status 0
+  __BLANK[STATUSLIST2]__, //status 1
+  __BLANK[STATUSLIST3]__, //status 2
+  __BLANK[STATUSLIST4]__  //status 3
 };
-int __BLANK[SL_TOTALNAME]__ = 4;      ^^// total number of items in the array^^
 
-int i = 0;
-while (i < __BLANK[SL_TOTALUSE]__) {
-  display.println(__BLANK[SL_PRINT]__);   ^^// print the status at index i^^
-  __BLANK[SL_INC]__;                     ^^// move to the next index^^
+__BLANK[TOTTYPE]__ __BLANK[TOTNAME]__ = __BLANK[TOTNUM]__; // Number of items in the status list
+
+__BLANK[TRACKTYPE]__ __BLANK[TRACKNAME]__ = __BLANK[TRACKNUM]__; ^^ // Counter for tracking which item of the status list you are on. Assign 0 for the counter.
+^^
+`,
+        answerKey: {
+          STATUSTYPE: ["String"],
+          STATUSNAME: { type: "regex", pattern: "^[A-Za-z_]\\w*\\[\\]$" },
+          STATUSLIST1: { type: "regex", pattern: '^".+"$' },
+          STATUSLIST2: { type: "regex", pattern: '^".+"$' },
+          STATUSLIST3: { type: "regex", pattern: '^".+"$' },
+          STATUSLIST4: { type: "regex", pattern: '^".+"$' },
+                    TOTTYPE: ["int"],
+          TOTNAME: { type: "identifier" },
+          TOTNUM: { type: "range", min: 1, max: 20 },
+          TRACKTYPE: ["int"],
+          TRACKNAME: { type: "identifier" },
+          TRACKNUM: ["0"],
+          OPTION: { type: "regex", pattern: '^".+"$' },
+        },
+        blankExplanations: {
+          STATUSTYPE:
+            "Use a type that can store words/sentences as text.",
+          STATUSNAME:
+            "Name your status list and include [] to show it’s an array.",
+          STATUSLIST1:
+            "Write a status option inside quotes (example: \"Studying\").",
+          STATUSLIST2:
+            "Write a second status option inside quotes.",
+          STATUSLIST3:
+            "Write a third status option inside quotes.",
+          STATUSLIST4:
+            "Write a fourth status option inside quotes.",
+          TOTTYPE:
+            "The total count is a whole number, so use an integer type.",
+          TOTNAME:
+            "Pick a clear name that means “how many statuses exist.”",
+          TOTNUM:
+            "Count how many items are in your status array and store that number.",
+          TRACKTYPE:
+            "The array index is a whole number, so use int.",
+          TRACKNAME:
+            "Pick a name that tracks which status you are currently on.",
+          TRACKNUM:
+            "Start at 0 because arrays begin at index 0.",
+          OPTION:
+            "This is the first status in your list if your index starts at 0."
+        },
+        blankDifficulties: {
+          STATUSTYPE: "easy",
+          STATUSNAME: "easy",
+          STATUSLIST1: "easy",
+          STATUSLIST2: "easy",
+          STATUSLIST3: "easy",
+          STATUSLIST4: "easy",
+          TOTTYPE: "easy",
+          TOTNAME: "easy",
+          TOTNUM: "easy",
+          TRACKTYPE: "easy",
+          TRACKNAME: "easy",
+          TRACKNUM: "easy",
+          OPTION: "easy",
+        },
+            descAfterCode: `Each item will now be accessed by its index:
+  __BLANK[STATUSNAME]__ [0] → __BLANK[STATUSLIST1]__
+  __BLANK[STATUSNAME]__ [1] → __BLANK[STATUSLIST2]__
+  __BLANK[STATUSNAME]__ [2] → __BLANK[STATUSLIST3]__ 
+  __BLANK[STATUSNAME]__ [3] → __BLANK[STATUSLIST4]__
+
+  This list allows your program to display different messages simply by picking a number.`,
+
+
+        },
+        {
+          topicTitle:"Function to display Status Menu",
+          descBeforeCode:`You will write a function that displays the Status Menu on the OLED screen.
+The function clears the screen, sets up text formatting, and then uses a while loop to print each status option from your status list. As the loop runs, it checks whether the current index matches the value stored in __BLANK[TRACKNAME]__.
+When the indices match, that status is highlighted using an indicator (such as \`>\`). All other statuses are printed normally. This allows the selected status to move as the index value changes when buttons are pressed.`, 
+          code:
+`^^
+void __BLANK[SHOWSTATUSMENU_FN]__() {                // name the function that draws the main menu
+  __BLANK[DISPLAYS1]__.__BLANK[CLEARS]__;                 // clear the OLED screen
+  __BLANK[DISPLAYS2]__.__BLANK[SET_SIZES]__;             // set small text size
+  __BLANK[DISPLAYS3]__.__BLANK[SET_COLORS]__;// set text color
+  __BLANK[DISPLAYS4]__.__BLANK[SET_CURSORS]__;        // move cursor to top-left corner
+  __BLANK[DISPLAYS5]__.println(__BLANK[MENUTITLE]__);              // print menu title
+  display.println("----------");              // print divider line
+
+  int i = __BLANK[HL_STARTI]__;
+  while (i < __BLANK[HL_TOTALUSE]__) {
+    if (i == __BLANK[CHOSENIND]__) {
+      display.__BLANK[INDICATE]__;        // arrow for the selected item
+    } else {
+      display.__BLANK[SPACE]__;        // spaces for others
+    }
+    display.println(__BLANK[STATUSNAME1]__); // print status at the "i"th index.
+    __BLANK[IINCRE]__;
+  }
+  display.display();
 }^^`,
           answerKey: {
-            SL_TOTALNAME: { type: "identifier" },
-            SL_TOTALUSE: { type: "sameAs", target: "SL_TOTALNAME" },
-            SL_PRINT: { type: "expression" }, // options[i]
-            SL_INC: ["i = i + 1", "i += 1"],
+            // function name
+            SHOWSTATUSMENU_FN: { type: "identifier" },
+            DISPLAYS1: { type: "identifier" },
+            DISPLAYS2: { type: "sameAs", target: "DISPLAYS1" },
+            DISPLAYS3: { type: "sameAs", target: "DISPLAYS1" },
+            DISPLAYS4: { type: "sameAs", target: "DISPLAYS1" },
+            DISPLAYS5: { type: "sameAs", target: "DISPLAYS1" },
+            // display method calls — allow freedom for size/color/cursor content
+            CLEARS: { type: "string", regex: "^clearDisplay\\(\\)$" },
+            SET_SIZES: { type: "string", regex: "^setTextSize\\(.+\\)$" },     // any arg
+            SET_COLORS: { type: "string", regex: "^setTextColor\\(.+\\)$" },   // any arg
+            SET_CURSORS: { type: "string", regex: "^setCursor\\(.+\\)$" },     // any args
+
+            // menu title string is flexible (must be a quoted string)
+            MENUTITLE: { type: "string", regex: '^".+"$' },
+
+            HL_STARTI: { type: "range", min: 0, max: 0 },
+
+            HL_TOTALUSE: { type: "sameAs", target: "TOTNAME" },
+
+            CHOSENIND: { type: "sameAs", target: "TRACKNAME" },
+
+            INDICATE: {
+              type: "string",
+              regex: "^(print\\(.+\\)|println\\(.+\\))$",
+            },
+            SPACE: {
+              type: "string",
+              regex: "^(print\\(.+\\)|println\\(.+\\))$",
+            },
+
+            // what to print each row:
+            // MUST be the status array at index i, and MUST match array name from FIRST block (STATUSNAME)
+            STATUSNAME1: {
+              type: "string",
+              // enforce: <same array name>[i]
+              regex: "^[A-Za-z_]\\w*\\s*\\[\\s*i\\s*\\]$",
+            },
+
+            // increment i
+            IINCRE: {
+              type: "string",
+              regex: "^(i\\+\\+|\\+\\+i|i\\s*\\+=\\s*1|i\\s*=\\s*i\\s*\\+\\s*1)$",
+            },
           },
+
           blankExplanations: {
-            SL_TOTALNAME:
-              "Choose a variable name that stores how many items are in the options array.",
-            SL_TOTALUSE:
-              "Use the same total-count variable you defined above so the loop stops correctly.",
-            SL_PRINT:
-              "Print the current option at index i using array indexing (array[i]).",
-            SL_INC:
-              "Increment i so the loop moves to the next index each time.",
+            SHOWSTATUSMENU_FN:
+              "Name the function that draws the Status Menu screen.",
+            DISPLAYS1:
+              "This should be your OLED display object (usually named `display`).",
+            DISPLAYS2:
+              "Use the same display object name as above.",
+            DISPLAYS3:
+              "Use the same display object name as above.",
+            DISPLAYS4:
+              "Use the same display object name as above.",
+            DISPLAYS5:
+              "Use the same display object name as above.",
+            CLEARS:
+              "Call `clearDisplay()` to wipe the old screen before redrawing the menu.",
+            SET_SIZES:
+              "Call `setTextSize(...)` to choose a readable font size. You can use any number.",
+            SET_COLORS:
+              "Call `setTextColor(...)` to set the text color. You can use any valid OLED color constant.",
+            SET_CURSORS:
+              "Call `setCursor(...)` to choose where text starts on the screen. You can pick any (x, y).",
+            MENUTITLE:
+              "Write the title text shown at the top of the Status Menu (example: \"Status Menu:\").",
+            HL_STARTI:
+              "Start the loop at 0 so you begin printing from the first status in the array.",
+            HL_TOTALUSE:
+              "Use the same total-count variable from the first block. This makes the loop stop at the correct time.",
+            CHOSENIND:
+              "Use the SAME tracking index variable from the first block. This is the one that changes when buttons are pressed.",
+            INDICATE:
+              "Print an indicator for the selected item (example: `print(\"> \")` or `print(\"* \")`).",
+            SPACE:
+              "Print spacing for non-selected items (example: `print(\"  \")`) so the menu stays aligned.",
+
+            STATUSNAME1:
+              "Print the current status text at index [i] using array indexing.",
+
+            IINCRE:
+              "Increment `i` so the loop moves to the next status each time.",
           },
+
           blankDifficulties: {
-            SL_TOTALNAME: "easy",
-            SL_TOTALUSE: "easy",
-            SL_PRINT: "medium",
-            SL_INC: "easy",
+            SHOWSTATUSMENU_FN: "easy",
+
+            DISPLAYS1: "easy",
+            DISPLAYS2: "easy",
+            DISPLAYS3: "easy",
+            DISPLAYS4: "easy",
+            DISPLAYS5: "easy",
+
+            CLEARS: "easy",
+            SET_SIZES: "easy",
+            SET_COLORS: "easy",
+            SET_CURSORS: "easy",
+
+            MENUTITLE: "easy",
+
+            HL_STARTI: "easy",
+            HL_TOTALUSE: "easy",
+            CHOSENIND: "easy",
+
+            INDICATE: "easy",
+            SPACE: "easy",
+
+            STATUSNAME1: "medium",
+            IINCRE: "easy",
           },
-          descAfterCode:
-            "The loop stops when i reaches the total count, so it still works if you add or remove statuses later.",
+
+        }
+      ],
+    },
+  ],
+  },
+
+// =========================================================
+// LESSON 6
+// =========================================================
+6: {
+  phrase: "Putting it all together: full sketch structure + what you have so far",
+  advanced: false,
+  steps: [
+    {
+      id: 1,
+      title: "Step 1: Where each piece of code belongs",
+      codes: [
+        {
+          topicTitle: "Arduino sketch layout (important!)",
+          descBeforeCode: `Students often get stuck because the code is correct, but it’s placed in the wrong spot.
+
+Use this simple rule:
+
+@ **Libraries** go at the very top (they must be first).
+@ **Constants + global variables** go next (pins, arrays, counters, totals).
+@ **setup()** is for one-time initialization (Wire, OLED begin, pinMode, welcome screen).
+@ **loop()** runs forever (later we will read buttons and decide which screen to show).
+@ **Functions** can go below loop() (or above setup()) — but they must be **outside** setup() and loop().
+
+Below is a “skeleton” that shows the correct order. (No blanks — just a map.)`,
+          imageGridBeforeCode: null,
+          descBetweenBeforeAndCode: null,
+          code: `^^//<< ===== 1) Libraries (top of file) =====
+#include <Wire.h> 
+#include ...
+
+//<< ===== 2) Constants + global variables (menus, pins, counters, display object) =====
+#define width 128
+....
+Adafruit_SSD1306 display(...);
+
+#define button 3
+#define ...
+
+String menu[] = {...};
+int ...
+
+//<< ===== 3) setup() runs ONCE =====
+void setup() {
+  Wire.begin();
+  display.begin(...);
+  pinMode(...);
+}
+
+//<< ===== 4) loop() runs FOREVER =====
+void loop() {
+  //<< later: read buttons, update indexes, call menus/screens
+}
+
+//<< ===== 5) Functions go OUTSIDE setup/loop =====
+void __BLANK[WELCOMEFUNCTION]__() { ... }
+void __BLANK[SHOWMAIN_FN]__() { ... }
+void __BLANK[SHOWSTATUSMENU_FN]__() { ... }
+^^`,
+          answerKey: {},
+          blankExplanations: {},
+          blankDifficulties: {},
+          descAfterCode: `If your code compiles but “does nothing,” the most common cause is that a function exists but is never called (usually in setup() or loop()).`,
           imageGridAfterCode: null,
           descAfterImage: null,
-          hint: null,
+          hint: "Functions must be outside setup() and loop(). Call them from setup() or loop() to make them run.",
+        },
+      ],
+    },
+
+    {
+      id: 2,
+      title: "Step 2: Here is what you have so far (with your blanks)",
+      codes: [
+        {
+          topicTitle: "Full sketch so far",
+          descBeforeCode: `This code box shows everything you have built so far, in the correct order.
+
+As a reminder:
+@ Anything at the top (libraries/defines/arrays/counters) is **global** — every function can use it.
+@ setup() is where you initialize the OLED + buttons and show the welcome screen once.
+@ The menu functions are defined at the bottom and can be called later from loop().
+
+This is a “checkpoint” — you are not adding new logic yet, just organizing what you already wrote.`,
+          imageGridBeforeCode: null,
+          descBetweenBeforeAndCode: null,
+
+          code: `^^
+//<< ===================== 1) LIBRARIES =======================================
+#include <Wire.h>
+#include __BLANK[LIB_GFX]__
+#include __BLANK[LIB_SSD]__
+#include __BLANK[LIB_CLOCK]__
+
+//<< ===================== 2) CONSTANTS + GLOBAL VARIABLES =====================
+
+//<< --- OLED setup ---
+#define __BLANK[WVAR]__  __BLANK[WIDTH]__          // screen width in pixels
+#define __BLANK[HVAR]__  __BLANK[HEIGHT]__         // screen height in pixels
+#define RESET -1                                  // no reset pin wired
+Adafruit_SSD1306 display(__BLANK[WIDTH2]__, __BLANK[HEIGHT2]__, &Wire, RESET);
+
+//<< --- button pins ---
+#define PREV __BLANK[PREVN]__                      // previous button pin
+#define __BLANK[NEXTVAR]__ __BLANK[NEXTN]__        // next button pin
+#define __BLANK[SELVAR]__  __BLANK[SELN]__         // select button pin
+
+//<< --- main menu array ---
+__BLANK[MMENUTYPE]__ __BLANK[MMENUNAME]__ = {
+  "Status",
+  __BLANK[MENULIST2]__,
+  __BLANK[MENULIST3]__,
+};
+
+int __BLANK[TOTMAIN]__ = __BLANK[TOTMAINNUM]__;            // number of items in main menu
+__BLANK[MINDEXTYPE]__ __BLANK[MINDEX]__ = __BLANK[MINDEXNUM]__; // selected main-menu index
+
+//<< --- status menu array ---
+__BLANK[STATUSTYPE]__ __BLANK[STATUSNAME]__ = {
+  __BLANK[STATUSLIST1]__,
+  __BLANK[STATUSLIST2]__,
+  __BLANK[STATUSLIST3]__,
+  __BLANK[STATUSLIST4]__
+};
+
+__BLANK[TOTTYPE]__ __BLANK[TOTNAME]__ = __BLANK[TOTNUM]__;         // number of status items
+__BLANK[TRACKTYPE]__ __BLANK[TRACKNAME]__ = __BLANK[TRACKNUM]__;   // selected status index
+
+//<< ===================== 3) SETUP (RUNS ONCE) ===============================
+void setup() {
+  Wire.begin();
+  __BLANK[BEGINA]__;                            // initialize OLED
+
+  //<< buttons (pull-up mode)
+  pinMode(PREV, INPUT_PULLUP);
+  __BLANK[PINMODE1]__(__BLANK[NEXTVAR]__, __BLANK[INPUT1]__);
+  __BLANK[PINMODE]__(__BLANK[SELVAR]__, __BLANK[INPUT2]__);
+
+  //<< welcome page once on power-up
+  __BLANK[WELCOMEFUNCTION]__();
+}
+
+//<< ===================== 4) LOOP (RUNS FOREVER) ============================
+void loop() {
+  //<< later: read buttons, update __BLANK[MINDEX]__ / __BLANK[TRACKNAME]__,
+  //<< and decide which screen function to call.
+}
+
+//<< ===================== 5) FUNCTIONS (OUTSIDE setup/loop) =================
+
+//<< --- welcome screen ---
+void __BLANK[WELCOMEFUNCTION]__() {
+  __BLANK[DISPLAY1]__;
+  __BLANK[DISPLAY2]__;
+  __BLANK[DISPLAY3]__;
+  __BLANK[DISPLAY4]__;
+  __BLANK[DISPLAY5]__;
+  __BLANK[DISPLAY6]__;
+  __BLANK[DISPLAY7]__;
+  __BLANK[DISPLAY8]__;
+}
+
+//<< --- example status screen ---
+void __BLANK[STATUSFUNCTION]__() {
+  __BLANK[STATUSCODE1]__;
+  __BLANK[STATUSCODE2]__;
+  __BLANK[STATUSCODE3]__;
+  __BLANK[STATUSCODE4]__;
+  display.__BLANK[DISPLAY9]__;
+}
+
+//<< --- main menu screen ---
+void __BLANK[SHOWMAIN_FN]__() {
+  __BLANK[DISPLAYM1]__.__BLANK[CLEAR]__;
+  __BLANK[DISPLAYM2]__.__BLANK[SET_SIZE]__;
+  __BLANK[DISPLAYM3]__.__BLANK[SET_COLOR]__;
+  __BLANK[DISPLAYM4]__.__BLANK[SET_CURSOR]__;
+  __BLANK[DISPLAYM5]__.println("Main Menu:");
+  display.println("----------");
+
+  int i = __BLANK[START_I]__;
+  while (i < __BLANK[TOTALMAIN_USE]__) {
+    if (i == __BLANK[INDEX_USE]__) {
+      display.print(__BLANK[ARROW]__);
+    } else {
+      display.print(__BLANK[SPACES]__);
+    }
+    display.println(__BLANK[MENU_ACCESS]__);
+    __BLANK[INC_I]__;
+  }
+  display.__BLANK[FLUSH]__;
+}
+
+//<< --- status menu screen ---
+void __BLANK[SHOWSTATUSMENU_FN]__() {
+  __BLANK[DISPLAYS1]__.__BLANK[CLEARS]__;
+  __BLANK[DISPLAYS2]__.__BLANK[SET_SIZES]__;
+  __BLANK[DISPLAYS3]__.__BLANK[SET_COLORS]__;
+  __BLANK[DISPLAYS4]__.__BLANK[SET_CURSORS]__;
+  __BLANK[DISPLAYS5]__.println(__BLANK[MENUTITLE]__);
+  display.println("----------");
+
+  int i = __BLANK[HL_STARTI]__;
+  while (i < __BLANK[HL_TOTALUSE]__) {
+    if (i == __BLANK[CHOSENIND]__) {
+      display.__BLANK[INDICATE]__;
+    } else {
+      display.__BLANK[SPACE]__;
+    }
+    display.println(__BLANK[STATUSNAME]__[i]);  // print the i-th status
+    __BLANK[IINCRE]__;
+  }
+  display.display();
+}
+^^`,
+
+          // This is a checkpoint view only—no new blanks introduced here.
+          // So we keep keys empty to avoid confusing grading in this “review” step.
+          answerKey: {},
+          blankExplanations: {},
+          blankDifficulties: {},
+
+          descAfterCode: `**Common placement mistakes (quick check):**
+@ If you put arrays or counters **inside setup()**, other functions may not be able to use them.
+@ If you put a function **inside loop()**, Arduino will error (functions must be outside).
+@ If your menu function prints but nothing shows, make sure the function is actually **called** and that you eventually do a \`display.display()\` after drawing.
+
+**What comes next:**
+Next lesson, you’ll connect buttons to:
+@ change __BLANK[MINDEX]__ to scroll the main menu
+@ change __BLANK[TRACKNAME]__ to scroll the status menu
+@ call the correct screen function based on the selection`,
+          imageGridAfterCode: null,
+          descAfterImage: null,
+          hint: "Use this as your checkpoint sketch. If something is missing, it’s usually because it was placed in the wrong section.",
+        },
+        {
+          topicTitle: "Try Simulating Main and Status menu",
+          descBeforeCode:`Just like you called the welcome function and the main menu function (temporarily) in the void setup(), you can also call the status menu function in the setup() after a delay to check if the status menu displays as intended.`,
+          code:`^^
+void setup() {
+  Wire.begin();
+  __BLANK[BEGINA]__;
+
+  pinMode(PREV, INPUT_PULLUP);
+  pinMode(__BLANK[NEXTVAR]__, INPUT_PULLUP);
+  pinMode(__BLANK[SELVAR]__, INPUT_PULLUP);
+
+  //<< 1) Call Welcome Function once
+  __BLANK[WELCOMEFUNCTION]__();
+
+  //<< 2) A short delay before the main menu so you can see the welcome function
+  delay(__BLANK[DELAY_MS]__);
+
+  //<< 3) Then call the main menu Function 
+  __BLANK[SHOWMAIN_FN1]__();
+
+  //<< 4) A short delay before the status menu
+  __BLANK[DELAYTRY]__
+
+  //<< 5) Call the status menu function
+  __BLANK[STATUSTRY]__
+}^^`,
+          answerKey: {
+            // ...keep your existing keys...
+
+            // 4) A short delay before the status menu
+            // This blank should be a full delay line (with parentheses + semicolon).
+            DELAYTRY: {
+              type: "string",
+              regex: "^delay\\(\\s*\\d+\\s*\\)\\s*;?$",
+            },
+          }
+        }
+      ],
+    },
+  ],
+},
+
+7: {
+  phrase:"Using buttons for Menu",
+  advanced: false,
+  steps: [
+    {
+      id: 1,
+      title: "Step 1: How Buttons Work & INPUT_PULLUP",
+      desc: `Buttons are simple switches. When you press a button, it closes the circuit so current can flow. When you release it, the circuit opens again, and current stops.
+On the Arduino, we use buttons as **digital inputs** that read either \`HIGH\` or \`LOW\`. However, if a pin is not connected to anything, it can "float" and randomly jump between \`HIGH\` and \`LOW\`. This is why we use **pull-up** (or pull-down) resistors.
+
+**With** \`INPUT_PULLUP\`**:**
+@ The Arduino turns on an internal resistor that pulls the pin up to \`HIGH\` when the button is not pressed.
+@ The button is wired so that one side connects to the digital pin and the other side connects to GND. When the button is not pressed, the circuit is open, so the pin is not connected to ground. Because of the internal pull-up resistor, the pin stays at HIGH.
+@ When the button is pressed, the switch closes and directly connects the pin to GND. This pulls the pin \`LOW\`, overpowering the weak internal pull-up resistor.
+**Case 1: Button NOT pressed**
+@ The button is an open switch
+@ There is no connection to GND
+@ The only connection the pin has is: through the internal pull-up resistor to Vcc
+So the pin voltage is pulled up to HIGH.
+
+
+
+
+
+
+So the logic becomes:
+@ **Not pressed → \`digitalRead(pin)\` is** __BLANK[INPUTHIGHLOW1]__
+@ **Pressed → \`digitalRead(pin)\` is** __BLANK[INPUTHIGHLOW]__
+
+We'll use this pattern for all the buttons in the status board project.`,
+      hint: "Remember: with INPUT_PULLUP, a pressed button reads LOW, and a released button reads HIGH.",
+      answerKey: {
+        INPUTHIGHLOW1: ["HIGH"],
+        INPUTHIGHLOW: ["LOW"],
+      },
+      blankExplanations: {
+        INPUTHIGHLOW1:
+          "Fill in whether the pin reads HIGH or LOW when the button is not pressed using INPUT_PULLUP logic.",
+        INPUTHIGHLOW:
+          "Fill in whether the pin reads HIGH or LOW when the button is pressed using INPUT_PULLUP logic.",
+      },
+      blankDifficulties: {
+        INPUTHIGHLOW1: "easy",
+        INPUTHIGHLOW: "easy",
+      },
+    },
+
+    {
+      id: 2,
+      title: "Step 2: Basic Button Code",
+      desc: "Here is a minimal example that reads a single button wired from pin 2 to GND, using `INPUT_PULLUP`.",
+      hint: "Notice that we print 'pressed' when the state is LOW, not HIGH.",
+      codes: [
+        {
+          code: `^^#define BUTTON 2^^                          // button is connected to digital pin 2
+
+^^void setup() {^^
+^^  pinMode(BUTTON, INPUT_PULLUP);^^           // button is defined as an INPUT with internal pull-up
+^^  Serial.begin(9600);^^
+^^}^^
+
+^^void loop() {^^
+^^  int state = digitalRead(BUTTON);^^         // read HIGH (1) or LOW (0)
+
+^^  if (state == LOW) {^^
+^^    Serial.println("Button pressed!");^^
+^^  } else {^^
+^^    Serial.println("Not pressed");^^
+^^  }^^
+
+^^  delay(100);^^                              // slow down the prints a bit
+^^}^^`,
+          descAfterCode: `Here's what is happening:
+
+- \`pinMode(BUTTON, INPUT_PULLUP);\` enables the internal pull-up resistor and expects the button to be wired to GND.
+- \`digitalRead(BUTTON)\` returns:
+  - \`LOW\` when the button is **pressed** (connected to GND),
+  - \`HIGH\` when the button is **not pressed**.
+- The \`if\` statement checks for \`LOW\` to detect the press and prints out the correct message.`,
+        },
+      ],
+    },
+
+    {
+      id: 3,
+      title: "Step 3: Button Practice Exercises",
+      desc: "Now try a few different ways of using buttons so you’re ready for the menu page logic in the status board project.",
+      hint: "All of these still use INPUT_PULLUP and treat LOW as 'pressed'.",
+      codes: [
+        {
+          title: "Practice 1: Count Button Presses",
+          descBeforeCode:
+            "Each time you press the button, increase a counter by 1 and print it to the Serial Monitor.",
+          code: `^^#define BUTTON 2^^
+^^int counter = 0;^^
+
+^^void setup() {^^
+^^  pinMode(BUTTON, __BLANK[BUTTON1]__);^^     // set button as INPUT_PULLUP
+^^  Serial.begin(9600);^^
+^^}^^
+
+^^void loop() {^^
+^^  if (digitalRead(BUTTON) == __BLANK[BUTTON2]__) {^^
+^^    counter = counter + __BLANK[BUTTON3]__;^^
+^^    Serial.println(counter);^^
+^^    delay(250);^^                            // small pause so one press doesn’t count many times
+^^  }^^
+^^}^^`,
+          answerKey: {
+            BUTTON1: ["INPUT_PULLUP"],
+            BUTTON2: ["LOW"],
+            BUTTON3: ["1"],
+          },
+          blankExplanations: {
+            BUTTON1:
+              "Choose the pin mode that enables the internal pull-up resistor for a button wired to GND.",
+            BUTTON2:
+              "With INPUT_PULLUP, choose the value that indicates the button is pressed.",
+            BUTTON3:
+              "Choose how much the counter should increase by for each press.",
+          },
+          blankDifficulties: {
+            BUTTON1: "easy",
+            BUTTON2: "easy",
+            BUTTON3: "easy",
+          },
+          descAfterCode:
+            "Try pressing the button multiple times and watch the numbers go up. This is similar to how we move through menu items with each press.",
+        },
+
+        {
+          title: "Practice 2: Toggle an LED On/Off",
+          descBeforeCode:
+            "Use the button to turn an LED on and off, switching state each time you press.",
+          code: `^^__BLANK[BUTTON4]__ BUTTON 2^^
+^^#define LED 13^^
+
+^^bool ledState = false;^^
+
+^^void setup() {^^
+^^  pinMode(__BLANK[BUTTON5]__, __BLANK[BUTTON6]__);^^   // pin mode for button
+^^  pinMode(LED, OUTPUT);^^                              // pin mode for LED which is an output
+^^}^^
+
+^^void loop() {^^
+^^  if (__BLANK[BUTTON7]__ == __BLANK[BUTTON8]__) {^^    // if button is pressed
+^^    ledState = !ledState;^^                            // flip true ↔ false
+^^    digitalWrite(LED, ledState);^^                     // write true/false to LED
+^^    delay(250);^^                                      // simple debounce
+^^  }^^
+^^}^^`,
+          answerKey: {
+            BUTTON4: ["#define"],
+            BUTTON5: ["BUTTON"],
+            BUTTON6: ["INPUT_PULLUP"],
+            BUTTON7: ["digitalRead(BUTTON)"],
+            BUTTON8: ["LOW"],
+          },
+          blankExplanations: {
+            BUTTON4:
+              "Write the preprocessor keyword used to define constants like pin labels.",
+            BUTTON5:
+              "Use the constant name you defined for the button pin.",
+            BUTTON6:
+              "Choose the button pin mode that uses the internal pull-up resistor.",
+            BUTTON7:
+              "Read the button pin so you can compare it to pressed/not-pressed.",
+            BUTTON8:
+              "With INPUT_PULLUP, choose the value that indicates a press.",
+          },
+          blankDifficulties: {
+            BUTTON4: "easy",
+            BUTTON5: "easy",
+            BUTTON6: "easy",
+            BUTTON7: "easy",
+            BUTTON8: "easy",
+          },
+          descAfterCode:
+            "First press turns the LED **on**, second press turns it **off**, and so on. This idea of flipping a state is exactly how we’ll switch screens or modes later.",
+        },
+
+        {
+          title: "Practice 3: Cycle Through Options in an Array",
+          descBeforeCode:
+            "This practice is similar to your menu page. Each press moves to the next item in the list and wraps around when it reaches the end.",
+          code: `^^#define BUTTON 2^^
+
+^^String options[] = {"Red", "Blue", "Green", "Yellow"};^^
+^^int totalOptions = 4;^^
+^^int index = 0;^^
+
+^^void setup() {^^
+^^  __BLANK[BUTTON9]__  __BLANK[BUTTON10]__ = __BLANK[BUTTON11]__;^^   // define button pin number
+^^  Serial.begin(9600);^^
+^^  Serial.println(options[index]);^^
+^^}^^
+
+^^void loop() {^^
+^^  if (__BLANK[BUTTON12]__ == __BLANK[BUTTON13]__) {^^
+^^    index = index + 1;^^
+
+^^    if (index >= totalOptions) {^^
+^^      index = 0;^^
+^^    }^^
+
+^^    Serial.println(options[index]);^^
+^^    delay(250);^^
+^^  }^^
+^^}^^`,
+          answerKey: {
+            BUTTON9: ["int"],
+            BUTTON10: ["BUTTON"],
+            BUTTON11: ["10"],
+            BUTTON12: ["digitalRead(BUTTON)"],
+            BUTTON13: ["LOW"],
+          },
+          blankExplanations: {
+            BUTTON9:
+              "Choose a numeric type for storing a pin number constant.",
+            BUTTON10:
+              "Use the constant name for the button pin.",
+            BUTTON11:
+              "Choose a valid digital pin number for the button connection.",
+            BUTTON12:
+              "Read the button pin so you can check if it’s pressed.",
+            BUTTON13:
+              "With INPUT_PULLUP, choose the value that means pressed.",
+          },
+          blankDifficulties: {
+            BUTTON9: "easy",
+            BUTTON10: "easy",
+            BUTTON11: "easy",
+            BUTTON12: "easy",
+            BUTTON13: "easy",
+          },
+          descAfterCode:
+            "This is very close to how the status board scrolls through different statuses. The variable `index` is like a menu cursor that moves and wraps around.",
+        },
+
+        {
+          title: "Practice 4: Only React to a Long Press",
+          descBeforeCode:
+            "Make your code respond only if the button is held down for about 2 seconds, not just tapped.",
+          code: `^^__BLANK[BUTTON14]__  __BLANK[BUTTON15]__  __BLANK[BUTTON16]__^^   // define button pin number
+
+^^void setup() {^^
+^^  pinMode(BUTTON, INPUT_PULLUP);^^
+^^  Serial.begin(9600);^^
+^^}^^
+
+^^void loop() {^^
+^^  if (digitalRead(BUTTON) == __BLANK[BUTTON17]__) {^^
+^^    delay(2000);^^
+
+^^    if (digitalRead(BUTTON) == __BLANK[BUTTON18]__) {^^
+^^      Serial.println("You held the button!");^^
+^^      delay(500);^^
+^^    }^^
+^^  }^^
+^^}^^`,
+          answerKey: {
+            BUTTON14: ["#define"],
+            BUTTON15: ["BUTTON"],
+            BUTTON16: ["10"],
+            BUTTON17: ["LOW"],
+            BUTTON18: ["LOW"],
+          },
+          blankExplanations: {
+            BUTTON14:
+              "Write the preprocessor keyword used to define constants.",
+            BUTTON15:
+              "Use the same constant name for the button pin.",
+            BUTTON16:
+              "Choose a valid digital pin number for the button connection.",
+            BUTTON17:
+              "With INPUT_PULLUP, choose the value that indicates the button is currently pressed.",
+            BUTTON18:
+              "If still pressed after waiting, this should match the pressed value again.",
+          },
+          blankDifficulties: {
+            BUTTON14: "easy",
+            BUTTON15: "easy",
+            BUTTON16: "easy",
+            BUTTON17: "easy",
+            BUTTON18: "easy",
+          },
+          descAfterCode:
+            "This pattern is useful for features like a 'long-press to reset' or special settings mode, where you don’t want a quick tap to trigger the action.",
         },
       ],
     },
 
     {
       id: 4,
-      title: "Step 4: Highlight the Selected Status",
+      title: "Step 4: Create a Helper Function for Button",
+      desc:
+        "Real buttons can be noisy. When you press them, they may rapidly flicker between HIGH and LOW for a few milliseconds. This is called 'bouncing'. A **debounce helper function** makes sure we only react to a clean, stable press.",
+      hint:
+        "The helper checks the pin, waits a bit, and checks again to confirm the press. Make sure variable names match what you have declared previously.",
       codes: [
         {
-          topicTitle: "Add a highlight indicator",
-          descBeforeCode:
-            "We want the menu to show which status is currently selected by displaying a symbol like > next to the status. We do this by checking if the loop index i matches a chosen index number.",
-          imageGridBeforeCode: null,
-          descBetweenBeforeAndCode: null,
-          code: `^^int indexChosen = 1;    ^^// example: 'Studying' is selected^^
-
-const String options[] = {
-  "Sleeping",
-  "Studying",
-  "Gaming",
-  "Do Not Disturb"
-};
-int __BLANK[HL_TOTALNAME]__ = __BLANK[HL_TOTALCOUNT]__;      ^^// total items^^
-
-int i = __BLANK[HL_STARTI]__;
-while (i < __BLANK[HL_TOTALUSE]__) {
-  if (i == indexChosen) {
-    display.print("> ");        ^^// arrow for the selected item^^
-  } else {
-    display.print("  ");        ^^// spaces for others^^
-  }
-  display.println(options[i]);
-  i = i + 1;
-}^^`,
-          answerKey: {
-            HL_TOTALNAME: { type: "identifier" },
-            HL_TOTALCOUNT: ["4"],
-            HL_TOTALUSE: { type: "sameAs", target: "HL_TOTALNAME" },
-            HL_STARTI: ["0"],
-          },
-          blankExplanations: {
-            HL_TOTALNAME:
-              "Choose a variable name that stores the total number of menu options.",
-            HL_TOTALCOUNT:
-              "This should match how many items are in the options array right now.",
-            HL_TOTALUSE:
-              "Use the same total-count variable you defined above in the while condition.",
-            HL_STARTI:
-              "Start the index at the first item of the array (the first index).",
-          },
-          blankDifficulties: {
-            HL_TOTALNAME: "easy",
-            HL_TOTALCOUNT: "easy",
-            HL_TOTALUSE: "easy",
-            HL_STARTI: "easy",
-          },
-          descAfterCode:
-            "If i equals the chosen index, we print an arrow first. Otherwise we print spaces so everything stays aligned.",
-          imageGridAfterCode: null,
-          descAfterImage: null,
-          hint: "Use an if statement inside the while loop to decide when to draw the arrow.",
-        },
-      ],
-    },
-
-    {
-      id: 5,
-      title: "Step 5: Create a Function that Draws the Menu on the OLED",
-      codes: [
-        {
-          topicTitle: "Build showMenu() using a while loop",
-          descBeforeCode:
-            "Add a function that clears the screen, prints a title, then prints each status with a highlight for the selected one.",
-          imageGridBeforeCode: {
-            columns: 1,
-            width: 400,
-            height: 350,
-            items: [
-              {
-                imageSrc: "/electric-status-board/videos/CurioLabL4.gif",
-                label: "Menu preview",
-              },
-            ],
-          },
-          descBetweenBeforeAndCode:
-            "Use the same while loop logic, but draw everything onto the OLED inside a function.",
-          code: `^^void __BLANK[SHOWMENU]__() {
-  display.__BLANK[SHOW_CLEAR]__;           // clear display buffer
-
-  display.__BLANK[SHOW_SIZE]__(__BLANK[SHOW_SIZE_N]__);   // set text size
-  display.__BLANK[SHOW_CURSOR]__(__BLANK[SHOW_X]__, __BLANK[SHOW_Y]__); // set cursor
-  display.println(__BLANK[SHOW_HEADER]__);                // print header
-  display.println("-------------------");
-
-  int i = 0;
-  while (__BLANK[WHILE_COND]__) {
-    if (i == __BLANK[TRACKNAME]__) {
-      display.print(__BLANK[HIGHLIGHT]__);  // selected indicator
-    } else {
-      display.print(__BLANK[NONHIGH]__);    // spacing
+          title: "Example Code: Debouncing Function",
+          code: `^^bool __BLANK[HELPER1]__(int pin) {^^
+^^  if (__BLANK[HELPER2]__) {^^
+^^    __BLANK[HELPER3]__;^^
+    if (__BLANK[HELPER2]__) {
+      return true;
     }
-
-    display.println(__BLANK[STATUS_AT_I]__); // print status text
-    __BLANK[INC_I]__;                         // go to next index
+    return false;
   }
+}^^
 
-  display.display(); // push buffer to OLED
-}^^`,
+/* Example of how this function can be used in the void loop() */
+
+^^#define button 1^^
+
+^^void loop() {^^
+^^  if (__BLANK[HELPER1]__(button)) {^^
+^^    Serial.println("Clean press detected!");^^
+^^    delay(200);^^
+^^  }^^
+^^}^^`,
           answerKey: {
-            SHOWMENU: { type: "identifier" },
-
-            SHOW_CLEAR: ["clearDisplay()"],
-            SHOW_SIZE: ["setTextSize"],
-            SHOW_SIZE_N: { type: "range", min: 1, max: 3 },
-            SHOW_CURSOR: ["setCursor"],
-            SHOW_X: { type: "range", min: 0, max: 127 },
-            SHOW_Y: { type: "range", min: 0, max: 63 },
-            SHOW_HEADER: [
-              '"Menu"',
-              '"Status Menu"',
-              '"Choose Status"',
-              '"Select Status"',
-            ],
-
-            WHILE_COND: { type: "expression" }, // i < total
-            TRACKNAME: { type: "identifier" }, // selected index variable name
-
-            HIGHLIGHT: ['"> "', '"* "', '"-> "', '"• "'],
-            NONHIGH: ['"  "'],
-
-            STATUS_AT_I: { type: "expression" }, // array[i]
-            INC_I: ["i = i + 1", "i += 1"],
+            HELPER1: { type: "identifier" },
+            HELPER2: {
+              type: "string",
+              regex: "^digitalRead\\(\\s*pin\\s*\\)\\s*==\\s*LOW\\s*$",
+            },
+            HELPER3: {
+              type: "string",
+              regex: "^delay\\(\\s*\\d+\\s*\\)\\s*;?$",
+            },
           },
           blankExplanations: {
-            SHOWMENU:
-              "Pick a function name (any valid identifier). You’ll call this function when you want to draw the menu.",
-            SHOW_CLEAR:
-              "Clear the OLED’s buffer before drawing the menu.",
-            SHOW_SIZE:
-              "Use the function that sets text size on the OLED.",
-            SHOW_SIZE_N:
-              "Choose a small text size so multiple menu lines fit on the screen.",
-            SHOW_CURSOR:
-              "Set the cursor position before printing text.",
-            SHOW_X:
-              "Choose an x-position for the menu header (0 starts at the left).",
-            SHOW_Y:
-              "Choose a y-position near the top for the menu header.",
-            SHOW_HEADER:
-              "Pick a short header message that will appear at the top of the menu.",
-            WHILE_COND:
-              "Write the while condition that stops the loop at the right time (usually compares i to your total count).",
-            TRACKNAME:
-              "Use your variable name that tracks which option is selected (its value should match an index).",
-            HIGHLIGHT:
-              "Choose a symbol (string) that marks the selected option.",
-            NONHIGH:
-              "Use spaces so non-selected lines still align with the selected line.",
-            STATUS_AT_I:
-              "Print the status item at index i using array indexing (array[i]).",
-            INC_I:
-              "Increment i so the while loop moves to the next menu item.",
+            HELPER1:
+              "Pick a function name for your debounce helper. You will use the same name when calling it later.",
+            HELPER2:
+              "Write the condition that checks whether the button pin is currently pressed using INPUT_PULLUP logic.",
+            HELPER3:
+              "Add a short delay (a small number of milliseconds) to filter out mechanical bouncing.",
           },
           blankDifficulties: {
-            SHOWMENU: "easy",
-            SHOW_CLEAR: "easy",
-            SHOW_SIZE: "easy",
-            SHOW_SIZE_N: "easy",
-            SHOW_CURSOR: "easy",
-            SHOW_X: "easy",
-            SHOW_Y: "easy",
-            SHOW_HEADER: "easy",
-            WHILE_COND: "medium",
-            TRACKNAME: "easy",
-            HIGHLIGHT: "easy",
-            NONHIGH: "easy",
-            STATUS_AT_I: "medium",
-            INC_I: "easy",
+            HELPER1: "easy",
+            HELPER2: "easy",
+            HELPER3: "easy",
           },
           descAfterCode:
-            "Once this function works, you can call it whenever the user is on the menu screen.",
-          imageGridAfterCode: null,
-          descAfterImage: null,
-          hint: null,
+            "The helper reads the pin, waits briefly, and checks again. If the pin is still in the pressed state, it returns true. This reduces false triggers from button bounce.",
         },
       ],
     },
   ],
-  },
+},
 
-  6: {
+  8: {
   phrase: "Clock screen: printing HH:MM:SS + showing it on the OLED",
   advanced: false,
-  steps: [
+  steps: [ 
     {
       id: 1,
       title: "Step 1: Print the Time as HH:MM:SS",
@@ -1881,69 +2735,120 @@ void __BLANK[SHOWTT]__() {                           // function name for clock 
   __BLANK[COLOR]__;                                 // set text color (white)
 
   __BLANK[SIZE1]__;                                 // small text for label
+  __BLANK[CURSOR1]__;                               // cursor for label
   __BLANK[PRINT_LABEL]__;                           // print "Clock:"
 
   __BLANK[SIZE2]__;                                 // bigger text for time
-  __BLANK[CALL_HELPER]__;                           // call HH:MM:SS clock function to print time here
+  __BLANK[CURSOR2]__;                               // cursor for time
+  __BLANK[CALL_HELPER]__();                         // call HH:MM:SS clock function to print time here
 
-  display.__BLANK[FLUSH]__;                          // update OLED display
+  // add code here for small hint at the bottom to say previous: menu
+  __BLANK[SIZE3]__;                                 // small text for hint
+  __BLANK[CURSOR3]__;                               // cursor near bottom
+  __BLANK[PRINT_HINT]__;                            // print "PREV: Menu"
+
+  display.__BLANK[FLUSH1]__;                         // update OLED display
 }
 ^^
-            `,
-            answerKey: {
-              SHOWTT: { type: "identifier" },
-              CLEAR: ["clearDisplay()"],
-              FLUSH: ["display()"],
-              COLOR: ["display.setTextColor(SSD1306_WHITE)"],
-              // allow ANY numeric text size (1,2,3,4,...)
-              SIZE1: { type: "string", regex: "^display\\.setTextSize\\(\\s*\\d+\\s*\\)\\s*;?$" },
-              SIZE2: { type: "string", regex: "^display\\.setTextSize\\(\\s*\\d+\\s*\\)\\s*;?$" },
-              // just require display.print(...) (don’t check the content)
-              PRINT_LABEL: { type: "string", regex: "^display\\.(print|println)\\(.*\\)\\s*;?$" },
-              CALL_HELPER: { type: "sameAs", target: "SHOWTIME" },
+`,
+
+          answerKey: {
+            SHOWTT: { type: "identifier" },
+
+            CLEAR: ["clearDisplay()"],
+            FLUSH1: ["display()"],
+
+            COLOR: ["display.setTextColor(SSD1306_WHITE)"],
+
+            // allow ANY numeric text size (1,2,3,4,...)
+            SIZE1: { type: "string", regex: "^display\\.setTextSize\\(\\s*\\d+\\s*\\)\\s*;?$" },
+            SIZE2: { type: "string", regex: "^display\\.setTextSize\\(\\s*\\d+\\s*\\)\\s*;?$" },
+            SIZE3: { type: "string", regex: "^display\\.setTextSize\\(\\s*\\d+\\s*\\)\\s*;?$" },
+
+            // allow ANY cursor position (x,y integers)
+            CURSOR1: { type: "string", regex: "^display\\.setCursor\\(\\s*\\d+\\s*,\\s*\\d+\\s*\\)\\s*;?$" },
+            CURSOR2: { type: "string", regex: "^display\\.setCursor\\(\\s*\\d+\\s*,\\s*\\d+\\s*\\)\\s*;?$" },
+            CURSOR3: { type: "string", regex: "^display\\.setCursor\\(\\s*\\d+\\s*,\\s*\\d+\\s*\\)\\s*;?$" },
+
+            // just require display.print/println(...) (don’t check the content)
+            PRINT_LABEL: { type: "string", regex: "^display\\.(print|println)\\(.*\\)\\s*;?$" },
+
+            // hint should be a print/println that includes PREV and Menu somewhere
+            PRINT_HINT: {
+              type: "string",
+              regex: '^display\\.(print|println)\\(\\s*".*(PREV|Prev|prev).*?(Menu|menu).*"\\s*\\)\\s*;?$',
             },
+
+            // must match the helper function name they made earlier (SHOWTIME)
+            CALL_HELPER: { type: "sameAs", target: "SHOWTIME" },
+          },
 
           blankExplanations: {
             SHOWTT:
-              "This is the function name that draws the clock screen. It must be a valid identifier (no spaces).",
+              "This is the function name for the screen that shows the clock. Use a valid function name (letters/numbers/underscore, no spaces).",
 
             CLEAR:
-              "Clears the OLED buffer so old text doesn’t remain. Because the code is display.__BLANK[CLEAR]__; fill in clearDisplay().",
+              "This clears the OLED’s drawing buffer at the start so old text doesn’t remain on the screen.",
 
             COLOR:
-              "Set the OLED text color to white using: display.setTextColor(SSD1306_WHITE).",
+              "This sets the text drawing color mode for the OLED so the text is visible.",
 
             SIZE1:
-              "Set the text size for the label. Any number is allowed as long as you write display.setTextSize(number).",
+              "Set the text size for the label line. Any valid number is accepted as long as you use the correct function format.",
+
+            CURSOR1:
+              "Move the cursor to where you want the label to appear before you print it (x and y are pixel coordinates).",
 
             PRINT_LABEL:
-              "Print a label using display.print(...) (or display.println(...)). The exact text doesn’t matter for grading.",
+              "Print a short label for the screen using a display print function. The grader only checks that you used a print/println call correctly.",
 
             SIZE2:
-              "Set the text size for the actual time. Any number is allowed as long as you write display.setTextSize(number).",
+              "Set the text size for the time display. Use a valid text-size call (any number is accepted).",
+
+            CURSOR2:
+              "Move the cursor to where you want the time to start before calling your time helper.",
 
             CALL_HELPER:
-              "Call your time-printing helper function here. It should match the function name you created earlier for SHOWTIME (and include parentheses, like showTime()).",
+              "Call the time-printing helper you defined earlier. This must match the same helper name you already created (the grader checks name consistency).",
 
-            FLUSH:
-              "Push the buffer to the screen so it appears. Because the code is display.__BLANK[FLUSH]__; fill in display().",
+            SIZE3:
+              "Set a smaller text size for the hint so it stays subtle compared to the main time.",
+
+            CURSOR3:
+              "Move the cursor near the bottom portion of the screen so the hint prints at the bottom area.",
+
+            PRINT_HINT:
+              "Print a hint message that includes a short 'previous/menu' instruction. The grader checks that you used a display print/println call and that the message contains the key words.",
+
+            FLUSH1:
+              "This updates the physical OLED screen so everything you drew becomes visible.",
           },
 
           blankDifficulties: {
+            SHOWTT: "easy",
+
             CLEAR: "easy",
             COLOR: "easy",
+
             SIZE1: "easy",
             CURSOR1: "easy",
             PRINT_LABEL: "easy",
+
             SIZE2: "easy",
             CURSOR2: "medium",
             CALL_HELPER: "easy",
-            FLUSH: "easy",
+
+            SIZE3: "easy",
+            CURSOR3: "easy",
+            PRINT_HINT: "easy",
+
+            FLUSH1: "easy",
           },
+
           descAfterCode: `After you fill this in, calling \`showClockScreen()\` should display:
 1) A label that says "Clock:" or anything you want. 
 2) A large time in HH:MM:SS
-3) A small hint at the bottom that says "PREV: Menu"
+3) A small hint at the bottom that instructs what button to press to go back to Main Menu. 
 
 This is a complete screen function because it clears the display and calls \`display.display()\` at the end.`,
           imageGridAfterCode: null,
