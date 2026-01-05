@@ -2142,9 +2142,10 @@ void setup() {
       id: 1,
       title: "Step 1: How Buttons Work & INPUT_PULLUP",
       desc: `Buttons are simple switches. When you press a button, it closes the circuit so current can flow. When you release it, the circuit opens again, and current stops.
-On the Arduino, we use buttons as **digital inputs** that read either \`HIGH\` or \`LOW\`. However, if a pin is not connected to anything, it can "float" and randomly jump between \`HIGH\` and \`LOW\`. This is why we use **pull-up** (or pull-down) resistors.
-
-**With** \`INPUT_PULLUP\`**:**
+On the Arduino, we use buttons as **digital inputs** that read either \`HIGH\` or \`LOW\`. However, if a pin is not connected to anything, it can "float" and randomly jump between \`HIGH\` and \`LOW\`. This is why we use **pull-up** (or pull-down) resistors.`,
+      codes:[{
+topicTitle: "How Input Pullup works",
+descBeforeCode:`**With** \`INPUT_PULLUP\`**:**
 @ The Arduino turns on an internal resistor that pulls the pin up to \`HIGH\` when the button is not pressed.
 @ The button is wired so that one side connects to the digital pin and the other side connects to GND. When the button is not pressed, the circuit is open, so the pin is not connected to ground. Because of the internal pull-up resistor, the pin stays at HIGH.
 @ When the button is pressed, the switch closes and directly connects the pin to GND. This pulls the pin \`LOW\`, overpowering the weak internal pull-up resistor.
@@ -2153,11 +2154,11 @@ On the Arduino, we use buttons as **digital inputs** that read either \`HIGH\` o
 @ There is no connection to GND
 @ The only connection the pin has is: through the internal pull-up resistor to Vcc
 So the pin voltage is pulled up to HIGH.
-
-
-
-
-
+**Case 2: Button pressed**
+@ The button closes the switch
+@ The pin is now directly connected to GND
+@ GND is a much stronger connection than the weak pull-up resistor
+So the voltage at the pin is pulled down to LOW.
 
 So the logic becomes:
 @ **Not pressed → \`digitalRead(pin)\` is** __BLANK[INPUTHIGHLOW1]__
@@ -2178,7 +2179,7 @@ We'll use this pattern for all the buttons in the status board project.`,
       blankDifficulties: {
         INPUTHIGHLOW1: "easy",
         INPUTHIGHLOW: "easy",
-      },
+      },}]
     },
 
     {
