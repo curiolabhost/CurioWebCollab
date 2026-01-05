@@ -40,7 +40,7 @@ export default function LessonHeaderControls({ viewModeKey }: LessonHeaderContro
     padding: "8px 12px",
     borderRadius: 10,
 
-    // ✅ longhand border only (no shorthand "border")
+    // longhand border only (no shorthand "border")
     borderWidth: 1,
     borderStyle: "solid",
     borderColor: "#e5e7eb",

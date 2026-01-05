@@ -236,6 +236,8 @@
   border-radius: 999px;
   background: #dc2626;
   display: inline-block;
+  position: relative;
+  top: -5px;
 }
 
 /* ============================================================
