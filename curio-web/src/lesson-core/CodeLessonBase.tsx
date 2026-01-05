@@ -1143,7 +1143,7 @@ function renderImageGrid(grid: any, keyPrefix = "grid") {
                     : undefined
                 }
               >
-                +                {/* renderMedia equivalent */}
+                                {/* renderMedia equivalent */}
                 {isVideo ? (
                   (() => {
                     // support video as string or object: { src, controls, loop, muted, poster }
