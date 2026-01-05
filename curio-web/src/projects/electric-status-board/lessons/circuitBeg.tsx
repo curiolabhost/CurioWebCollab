@@ -11,19 +11,6 @@ import CodeLessonBase from "@/src/lesson-core/CodeLessonBase";
  *   Example: "/lesson-assets/arduino_uno.png"
  */
 
-// ------------------------------------------------------------
-// Helper: Converts @ lines into bullets
-// ------------------------------------------------------------
-function processDesc(text: string): string {
-  return text
-    .split("\n")
-    .map((line) => {
-      const trimmed = line.trim();
-      if (trimmed.startsWith("@")) return "• " + trimmed.substring(1).trim();
-      return line;
-    })
-    .join("\n");
-}
 
 // ------------------------------------------------------------
 // CIRCUIT LESSON CONTENT (CodeBeg-style shape)
@@ -38,8 +25,7 @@ export const LESSON_STEPS_CIRCUIT_BEG: Record<number, { phrase: string; steps: a
         codes: [
           {
             topicTitle: "Overview",
-            descBeforeCode: processDesc(`
-In this lesson, we will set up the hardware components needed for the Electric Status Board project.
+            descBeforeCode: `In this lesson, we will set up the hardware components needed for the Electric Status Board project.
 
 **Key Steps**:
 @Gather materials including Arduino, OLED display, buttons, breadboard, and wires
@@ -49,7 +35,7 @@ In this lesson, we will set up the hardware components needed for the Electric S
 @Wire push buttons with internal pull-up resistors for menu navigation
 
 By the end of this lesson, you will have a functioning OLED display and buttons ready for programming the status board menu system.
-            `),
+            `,
           },
         ],
       },
@@ -90,14 +76,11 @@ By the end of this lesson, you will have a functioning OLED display and buttons 
 
         {
           topicTitle: "How to use Breadboard",
-          descAfterImage: processDesc(`
-            
-@**Breadboard**: A breadboard is a practice board that lets us build electronic circuits without soldering.
-
+          descAfterImage: ` @**Breadboard**: A breadboard is a practice board that lets us build electronic circuits without soldering.
 1. Each holes is where you can insert a wire or component lead to make connections.
 2. In the middle, holes in a row of 5 are connected together horizontally.
 3. The two long rows on the sides are used for power (VCC) and ground (GND) connections.
-         `),
+         `,
 
           imageGridAfterCode: {
             columns: 1,
@@ -121,11 +104,11 @@ By the end of this lesson, you will have a functioning OLED display and buttons 
         codes: [
           {
             topicTitle: "Arduino UNO Introduction",
-            descBeforeCode: processDesc(`
+            descBeforeCode: `
               @Arduino connects the hardware and software. 
               @It sends and receives signals from your hardware and the computer or vice versa. 
               @Download **Arduino IDE** from arduino.cc to program your board.
-            `),
+            `,
             imageGridAfterCode: {
             columns: 1,
             width: 900,
@@ -139,10 +122,9 @@ By the end of this lesson, you will have a functioning OLED display and buttons 
           },
           {
             topicTitle: "Digital and Analog Signals",
-            descBeforeCode: processDesc(`
-              @An analog signal is a range and is continuous. 
+            descBeforeCode: `@An analog signal is a range and is continuous. 
               @Digital signal represent only two binary states (like 0/1, yes/no) that are read as high or low states in the program.
-            `),
+            `,
             imageGridAfterCode: {
             columns: 1,
             width: 800,
@@ -162,7 +144,7 @@ By the end of this lesson, you will have a functioning OLED display and buttons 
         codes: [
           {
             topicTitle: "Install the Libraries",
-            descBeforeCode: processDesc(`
+            descBeforeCode: `
               An Arduino library is a collection of ready-made code that reduces the need to write complex code from scratch.
               @Open Arduino IDE → Tools → Manage Libraries
               @Search and install "Adafruit SSD1306"
@@ -171,7 +153,7 @@ By the end of this lesson, you will have a functioning OLED display and buttons 
               **Note**: The simulator Wokwi only has SSD1306 OLED implemented, if trying to use a different OLED model, please install the corresponding library in your local Arduino IDE.
               In this lesson, we will use SSD1306 OLED as an example on wokwi first. Later when building the physical circuit, you can choose a larger OLED screen which is SH1106 model that require Adafruit_SH110X library instead of SSD1306. 
               Be careful, as the model is different, part of the code will need to be adjusted accordingly.
-            `),
+            `,
 
             imageGridAfterCode: {
               columns: 1,
@@ -182,9 +164,7 @@ By the end of this lesson, you will have a functioning OLED display and buttons 
           },
                   {
           topicTitle: "Connect OLED to Arduino",
-          descAfterImage: processDesc(`
-            
-@**Step 1**: Open your wokwi page through wokwi.com and add the arduino uno, breadboard, and SSD1306 OLED
+          descAfterImage: `@**Step 1**: Open your wokwi page through wokwi.com and add the arduino uno, breadboard, and SSD1306 OLED
 @**Step 2**: Connect VCC on OLED to 5V on arduino 
 @**Step 3**: Connect GND on OLED to GND on arduino
 @**Step 4**: Connect SDA on OLED to A4 on arduino
@@ -196,7 +176,7 @@ Once this is done, your OLED has power + data connection.
 @“SSD1306 allocation failed” → wrong display size example
 @Blank screen → wrong SDA/SCL wiring or incorrect address (0x3C/0x3D)
 @Upload stalls → reset Arduino and try again
-          `),
+          `,
 
           imageGridAfterCode: {
             columns: 1,
@@ -219,9 +199,7 @@ Once this is done, your OLED has power + data connection.
         codes: [
           {
             topicTitle: "Confirm the OLED Works",
-            descBeforeCode: processDesc(`
-Before building your own menu, run a known working test.
-
+            descBeforeCode: `Before building your own menu, run a known working test.
 Step 1: Open the example sketch:
 @File → Examples → Adafruit SSD1306 → ssd1306_128x64.i2c
 @ If trying this on wokwi, change the line #define SCREEN_ADDRESS 0x3D into #define SCREEN_ADDRESS 0x3C to make it work
@@ -236,7 +214,7 @@ Step 3: Observe the OLED display:
 @If not displaying correctly, double-check wiring and library installation
 
 Once this is done, you are good to proceed to building your own menu system!
-             `),
+             `,
 
             imageGridAfterCode: {
               columns: 1,
@@ -261,8 +239,7 @@ Once this is done, you are good to proceed to building your own menu system!
         codes: [
           {
             topicTitle: "Button Wiring (INPUT_PULLUP)",
-            descBeforeCode: processDesc(`
-In this project, we will have 3 push buttons for controling the status board menu:
+            descBeforeCode: `In this project, we will have 3 push buttons for controling the status board menu:
 @Button 1: go to Previous Item
 @Button 2: go to Next Item
 @Button 3: Select Item
@@ -281,7 +258,7 @@ Button State Logic:
 2-leg button wiring (similar to 4-leg button):
 @One leg → Arduino D2 / D3 / D4
 @Other leg → GND
-            `),
+            `,
 
             imageGridAfterCode: {
               columns: 1,
