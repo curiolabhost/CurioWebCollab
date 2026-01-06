@@ -33,6 +33,7 @@ export const LESSON_STEPS_CIRCUIT_BEG: Record<number, { phrase: string; steps: a
 @Install necessary libraries in Arduino IDE for OLED functionality
 @Test the OLED with an example sketch to ensure proper operation
 @Wire push buttons with internal pull-up resistors for menu navigation
+@Set up the RTC module for timekeeping
 
 By the end of this lesson, you will have a functioning OLED display and buttons ready for programming the status board menu system.
             `,
@@ -41,17 +42,17 @@ By the end of this lesson, you will have a functioning OLED display and buttons 
       },
       {
         id: "circuit-1",
-        title: "Step 1: Circuit Materials Introduction",
+        title: "Step 1: Circuit Materials Overview",
     codes: [
         {
           topicTitle: "Materials",
           imageGridBeforeCode: {
             columns: 4,
-            width: 170,
-            height: 170,
+            width: 180,
+            height: 180,
             items: [
               {
-                label: "Arduino UNO (or Nano)",
+                label: "Arduino UNO",
                 imageSrc: "/electric-status-board/circuit/arduino_uno.png",
               },
               {
@@ -70,13 +71,18 @@ By the end of this lesson, you will have a functioning OLED display and buttons 
                 label: "Jumper Wires",
                 imageSrc: "/electric-status-board/circuit/jumper_wires.jpg",
               },
+              {
+                label: "RTC DS1307 Module",
+                imageSrc: "/electric-status-board/circuit/RTC_DS1307.jpg",
+              },
+
             ],
           },
         },
 
         {
           topicTitle: "How to use Breadboard",
-          descAfterImage: ` @**Breadboard**: A breadboard is a practice board that lets us build electronic circuits without soldering.
+          descAfterImage: ` A breadboard is a practice board that lets us build electronic circuits without soldering.
 1. Each holes is where you can insert a wire or component lead to make connections.
 2. In the middle, holes in a row of 5 are connected together horizontally.
 3. The two long rows on the sides are used for power (VCC) and ground (GND) connections.
@@ -103,9 +109,8 @@ By the end of this lesson, you will have a functioning OLED display and buttons 
         title: "Step 1: Arduino UNO Setup",
         codes: [
           {
-            topicTitle: "Arduino UNO Introduction",
-            descBeforeCode: `
-              @Arduino connects the hardware and software. 
+            topicTitle: "Arduino UNO Overview",
+            descBeforeCode: `@Arduino connects the hardware and software. 
               @It sends and receives signals from your hardware and the computer or vice versa. 
               @Download **Arduino IDE** from arduino.cc to program your board.
             `,
@@ -122,8 +127,8 @@ By the end of this lesson, you will have a functioning OLED display and buttons 
           },
           {
             topicTitle: "Digital and Analog Signals",
-            descBeforeCode: `@An analog signal is a range and is continuous. 
-              @Digital signal represent only two binary states (like 0/1, yes/no) that are read as high or low states in the program.
+            descBeforeCode: `@Analog signal is a **range** and is **continuous**. 
+              @Digital signal represents only **two binary state** (like 0/1, yes/no) that are read as high or low states in the program.
             `,
             imageGridAfterCode: {
             columns: 1,
@@ -164,13 +169,13 @@ By the end of this lesson, you will have a functioning OLED display and buttons 
           },
                   {
           topicTitle: "Connect OLED to Arduino",
-          descAfterImage: `@**Step 1**: Open your wokwi page through wokwi.com and add the arduino uno, breadboard, and SSD1306 OLED
+          descAfterImage: `@**Step 1**: Open your wokwi page through **wokwi.com** and add the arduino uno, breadboard, and SSD1306 OLED
 @**Step 2**: Connect VCC on OLED to 5V on arduino 
 @**Step 3**: Connect GND on OLED to GND on arduino
 @**Step 4**: Connect SDA on OLED to A4 on arduino
 @**Step 5**: Connect SCL on OLED to A5 on arduino
 
-Once this is done, your OLED has power + data connection.
+Now your OLED has power + data connection.
 
 **Common Issues**:
 @“SSD1306 allocation failed” → wrong display size example
@@ -184,7 +189,7 @@ Once this is done, your OLED has power + data connection.
             height: 500,
             items: [
               {
-                label: "Wokwi Page",
+                label: "Wokwi Page Demoenstration",
                 imageSrc: "/electric-status-board/circuit/wokwipage.png",
               },
             ],
@@ -200,16 +205,16 @@ Once this is done, your OLED has power + data connection.
           {
             topicTitle: "Confirm the OLED Works",
             descBeforeCode: `Before building your own menu, run a known working test.
-Step 1: Open the example sketch:
+**Step 1:** Open the example sketch:
 @File → Examples → Adafruit SSD1306 → ssd1306_128x64.i2c
 @ If trying this on wokwi, change the line #define SCREEN_ADDRESS 0x3D into #define SCREEN_ADDRESS 0x3C to make it work
 
-Step 2: Upload the sketch to your Arduino:
+**Step 2:** Upload the sketch to your Arduino:
 @Tools → Port → Select the correct COM port for your Arduino
 @Tools → Board → Select correct board type (e.g., Arduino Uno)
 @Sketch → Upload
 
-Step 3: Observe the OLED display:
+**Step 3:** Observe the OLED display:
 @You should see a series of test patterns and graphics on the OLED
 @If not displaying correctly, double-check wiring and library installation
 
@@ -244,18 +249,18 @@ Once this is done, you are good to proceed to building your own menu system!
 @Button 2: go to Next Item
 @Button 3: Select Item
 
-4-leg push buttons wiring:
-Step 1: Inside wokwi, add 3 push buttons to your breadboard and place them across breadboard center gap
-Step 2: Wire each button:
+**4-leg push buttons wiring:**
+**Step 1:** Inside wokwi, add 3 push buttons to your breadboard and place them across breadboard center gap
+**Step 2:** Wire each button:
 @Choose one side of the button and connect it to one of the pin (D2/D3/D4) for all 3 buttons
 @Opposite side goes to GND for all three buttons
-Step 3: Configure pins in code as INPUT_PULLUP:
+**Step 3:** Configure pins in code as INPUT_PULLUP:
 @ pinMode(buttonPin, INPUT_PULLUP);
 
 Button State Logic:
 @Press = LOW, Release = HIGH (via pull-up).
 
-2-leg button wiring (similar to 4-leg button):
+**2-leg button wiring** (similar to 4-leg button):
 @One leg → Arduino D2 / D3 / D4
 @Other leg → GND
             `,
@@ -269,6 +274,33 @@ Button State Logic:
                     "https://dummyimage.com/1200x500/ffffff/000000.png&text=Buttons+with+Internal+Pull-Ups",
                 },
               ],
+            },
+          },
+        ],
+      },
+      {
+        id: "RTC-setup",
+        title: "Step 5: RTC Module Setup",
+        codes: [
+          {
+            topicTitle: "RTC DS1307 Wiring",
+            descBeforeCode: `The Real-Time Clock (RTC) module keeps track of the current time even when the Arduino is powered off. This is essential for displaying accurate time on the status board.
+
+**Wiring Steps**:
+@**Step1:** Connect the RTC module (SDA and SCL) to your Arduino using the same port that you use for the OLED (A4 and A5) 
+@**Step2:** Connect VCC to 5V and GND to Ground
+            `,
+
+            imageGridAfterCode: {
+              columns: 1,
+              width: 700,
+              height: 500,
+              items: [
+                {
+                  label: "Final Wiring Diagram with RTC DS1307",
+                  imageSrc: "/electric-status-board/circuit/final_wiring.png",
+                },
+              ],    
             },
           },
         ],
