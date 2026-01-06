@@ -1053,8 +1053,7 @@ React.useEffect(() => {
   }, []);
 
 
-function renderCustomStep(step: any) {
-  const Comp = step?.customComponent;
+function renderCustomComponent(Comp: any, extraProps?: any) {
   if (!Comp) return null;
 
   // we pass embedded so the component doesn't try to be full-screen
@@ -1065,7 +1064,7 @@ function renderCustomStep(step: any) {
         embedded
         onBack={goPrev}
         onContinue={goNext}
-        // (optional) can pass the current project pointer too
+        {...(extraProps || {})}
         // ptr={parseCurioPtr(storagePrefix)}
       />
     </div>
@@ -1313,12 +1312,7 @@ function renderImageGrid(grid: any, keyPrefix = "grid") {
           <div className="w-full">
             {/* If this step has a custom component (ex: ProjectMindMap), render it instead */}
             {step?.customComponent ? (
-              <div className="w-full">
-                {(() => {
-                  const Comp = step.customComponent;
-                  return <Comp embedded onBack={goPrev} onContinue={goNext} />;
-                })()}
-              </div>
+              renderCustomComponent(step.customComponent, step?.componentProps)
             ) : (
               <>
                 {step?.desc ? (
@@ -1341,15 +1335,19 @@ function renderImageGrid(grid: any, keyPrefix = "grid") {
                           </div>
                         ) : null}
 
+                        {block?.imageGridBeforeCode
+                          ? renderImageGrid(block.imageGridBeforeCode, `b-${idx}-before`)
+                          : null}
+
                         {block?.descBetweenBeforeAndCode ? (
                           <div className={styles.stepDescBlock}>
                             {renderInline(block.descBetweenBeforeAndCode)}
                           </div>
                         ) : null}
 
-                        {block?.imageGridBeforeCode
-                          ? renderImageGrid(block.imageGridBeforeCode, `b-${idx}-before`)
-                          : null}
+                        {block?.customComponent
+                        ? renderCustomComponent(block.customComponent, block?.componentProps)
+                        : null}
 
                         {block?.code ? (
                           <GuidedCodeBlock
