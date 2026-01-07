@@ -116,7 +116,7 @@ export const PROJECTS: Project[] = [
   category: "Electronics",
   available: true,
   image:
-    "https://images.unsplash.com/photo-1518770660439-4636190af475?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080",
+    "https://www.nutsvolts.com/uploads/articles/NV_0119_Wierenga_Large.jpg",
   ageRange: "11-18 years",
   hours: "25-35 hours",
   materials: [
