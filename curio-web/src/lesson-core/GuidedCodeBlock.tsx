@@ -77,7 +77,7 @@ type BlankTypedSpec =
   | { type: "identifier" }
   | { type: "range"; min?: number; max?: number }
   | { type: "number" }
-  | { type: "sameAs"; target: string }
+  | { type: "sameAs"; targets: string[] }
   | { type: "string"; regex?: string }
   | { type?: string; values?: any[] }; // fallback: values list
 
@@ -505,12 +505,30 @@ if (Array.isArray(spec)) {
         return !Number.isNaN(num);
       }
 
-      case "sameAs": {
-        const target = String((spec as any).target || "").trim();
-        if (!target) return false;
-        const otherVal = String(allValues?.[target] ?? "").trim();
-        return raw !== "" && raw === otherVal;
-      }
+case "sameAs": {
+  const s: any = spec;
+
+  // allow either target: "X" OR targets: ["X","Y","Z"]
+  const targets: string[] = Array.isArray(s.targets)
+    ? s.targets
+    : typeof s.target === "string"
+      ? [s.target]
+      : [];
+
+  if (targets.length === 0) return false;
+
+  const normalizedUser = normalizeWs(raw);
+  if (!normalizedUser) return false;
+
+  return targets.some((t) => {
+    const key = String(t ?? "").trim();
+    if (!key) return false;
+
+    const otherVal = normalizeWs(String(allValues?.[key] ?? ""));
+    return otherVal !== "" && normalizedUser === otherVal;
+  });
+}
+
 
       case "string": {
         const re = (spec as any).regex;
@@ -898,7 +916,7 @@ export default function GuidedCodeBlock({
     }
   };
 
-  // ✅ restore JS behavior: substitute filled blanks, strip ^^, keep unfixed blanks as _____
+  // restore JS behavior: substitute filled blanks, strip ^^, keep unfixed blanks as _____
   const copyCode = async (raw: string) => {
     try {
       let textToCopy = String(raw || "");
@@ -919,8 +937,8 @@ export default function GuidedCodeBlock({
     }
   };
 
-  // ✅ restores typed specs + arrays + sameAs
-  // ✅ counts attempts ONLY when wrong (per blank), matching your old JS comment
+  // restores typed specs + arrays + sameAs
+  // counts attempts ONLY when wrong (per blank), matching your old JS comment
   const checkBlanks = () => {
     if (!answerKey) return;
 
