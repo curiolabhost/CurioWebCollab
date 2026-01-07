@@ -355,7 +355,7 @@ Configures the button pins as inputs with internal pull-up resistors.
   // LESSON 3
   // =========================================================
   3: {
-    phrase: "Screens: welcome page + status page functions",
+    phrase: "Screens: welcome page",
     advanced: false,
     steps: [
       {
@@ -737,7 +737,49 @@ Arrays are extremely useful when you want your code to handle lots of similar va
 
       {
         id: 4,
-        title: "Step 4: Create Lists for Main Menu Options",
+        title: "Step 4: Establishing Screens",
+        codes: [
+          {
+            topicTitle: "Create Variables for Screens",   
+            descBeforeCode: `We need to create variables to keep track of which screen we are currently on. This will help us know what to display and how to respond to button presses.
+`,           imageGridBeforeCode: null,
+            descBetweenBeforeAndCode: null,
+            code: `^^int __BLANK[SCREENVAR]__ = __BLANK[SCREENTYPENUM]__; //constant for Main Menu screen^^
+const int __BLANK[SCREENVAR1]__ = __BLANK[SCREENTYPENUM1]__;  //constant for Clock screen
+const int __BLANK[SCREENVAR2]__ = __BLANK[SCREENTYPENUM2]__; //constant for Timer/Pomodoro screen^^`,
+            answerKey: {
+              SCREENVAR: { type: "identifier" },
+              SCREENTYPENUM: { type: "integer"},
+              SCREENVAR1: { type: "sameAs", target: "SCREENVAR" },
+              SCREENTYPENUM1: { type: "integer"},
+              SCREENVAR2: { type: "sameAs", target: "SCREENVAR" },
+              SCREENTYPENUM2: { type: "integer"},
+            },
+            blankExplanations: {
+              SCREENVAR:
+                "Pick a variable name to track the current screen (valid identifier).",
+              SCREENTYPENUM:
+                "Use a number to represent the Main Menu screen.",
+              SCREENVAR1:
+                "Use the same variable name as above to represent the Clock screen.", 
+              SCREENTYPENUM1:
+                "Use 1 to represent the Clock screen.",
+              SCREENVAR2:
+                "Use the same variable name as above to represent the Timer/Pomodoro screen.",
+              SCREENTYPENUM2: 
+                "Use 2 to represent the Timer/Pomodoro screen.",
+            },
+            blankDifficulties: {  
+              SCREENVAR: "easy",
+              SCREENTYPENUM: "easy",
+              SCREENVAR1: "easy",
+              SCREENTYPENUM1: "easy",
+              SCREENVAR2: "easy",
+              SCREENTYPENUM2: "easy",
+      },
+      {
+        id: 5,
+        title: "Step 5: Create Lists for Main Menu Options",
         codes: [
           {
             topicTitle: "Create your main options array",
@@ -1307,6 +1349,15 @@ void __BLANK[SHOWMAIN_FN]__() {                // name the function that draws t
   display.__BLANK[FLUSH]__();                 // update OLED to show everything
 }
 ^^`,
+          imageGridBeforeCode: {
+            columns: 1,
+            rows: 1,
+            width: 500,
+            height: 420,
+            items: [
+              { imageSrc: "/electric-status-board/mainMenuButton.gif", label: "Main menu loop" }
+            ],
+          },
           answerKey: {
             // function name
             SHOWMAIN_FN: { type: "identifier" },
@@ -1554,16 +1605,24 @@ You successfully built:
           descBeforeCode: `Students often get stuck because the code is correct, but it’s placed in the wrong spot.
 
 Use this simple rule:
-
 @ **Libraries** go at the very top (they must be first).
-@ **Constants + global variables** go next (pins, arrays, counters, totals).
-@ **setup()** is for one-time initialization (Wire, OLED begin, pinMode, welcome screen).
-@ **loop()** runs forever (later we will read buttons and decide which screen to show).
+@ **Constants (button pin, screen height) + global variables** (index, counters) go next (pins, arrays, counters, totals).
+@ **setup()** is for one-time initialization when the Arduino turns on. (Wire, OLED begin, pinMode, welcome screen).
+@ **loop()** runs forever to interact with users and to create dynamic content (later we will read buttons and decide which screen to show).
 @ **Functions** can go below loop() (or above setup()) — but they must be **outside** setup() and loop().
 
-Below is a “skeleton” that shows the correct order. (No blanks — just a map.)`,
-          imageGridBeforeCode: null,
+Below is a “skeleton” that shows the correct order.`,
+          imageGridBeforeCode: {
+            columns: 1,
+            rows: 1,
+            width: 800,
+            height: 500,
+            items: [
+              { imageSrc: "/electric-status-board/arduinoStructure.png", label: "Sketch structure" }
+            ],
+          },
           descBetweenBeforeAndCode: null,
+          title: "Arduino Sketch Structure",
           code: `^^//<< ===== 1) Libraries (top of file) =====
 #include <Wire.h> 
 #include ...
@@ -1622,6 +1681,7 @@ As a reminder:
 This is a “checkpoint” — you are not adding new logic yet, just organizing what you already wrote.`,
           imageGridBeforeCode: null,
           descBetweenBeforeAndCode: null,
+          title: "Full Sketch Structure So Far",
 
           code: `^^
 //<< ===================== 1) LIBRARIES =======================================
