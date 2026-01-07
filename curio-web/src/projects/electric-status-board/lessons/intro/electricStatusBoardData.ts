@@ -1,4 +1,4 @@
-import { Monitor, Cpu, Code, Zap, LucideIcon } from "lucide-react";
+import { Monitor, Cpu, Code, Zap, LucideIcon, Clock, Timer } from "lucide-react";
 
 export interface ProjectFeature {
   icon: LucideIcon;
@@ -45,208 +45,195 @@ export const electricStatusBoardData: ProjectData = {
   id: "electric-status-board",
   title: "FocusBoard",
   subtitle:
-    "Build an interactive status display that shows your current availability using an OLED screen and Arduino. Perfect for your desk or workspace!",
+    "Build a small desk display with an OLED screen and Arduino. Start with a status display + clock, then level up into a built-in focus timer.",
   headerInfo: {
     difficulty: "Beginner - Advanced",
-    duration: "4-10 hours",
-    components: "Arduino, OLED, Buttons",
+    duration: "25-35 hours",
+    components: "Arduino, OLED, Buttons, Real-Time Clock Module",
   },
   imageUrl:
-    "https://images.unsplash.com/photo-1553406830-ef2513450d76?w=400&h=300&fit=crop",
+    "https://cdn.thewirecutter.com/wp-content/media/2025/09/BEST-ALARM-CLOCKS-2048px-DREAMSKY-INLINE-V1.jpg?auto=webp&quality=75&width=768&dpr=1.5",
+
   features: [
     {
       icon: Monitor,
       title: "OLED Display Integration",
       description:
-        "Learn to control a 128x64 OLED screen to display custom graphics and text",
+        "Learn how to show clear text and simple screens on a small OLED display",
     },
     {
       icon: Cpu,
-      title: "Button Controls",
+      title: "Button Interaction",
       description:
-        "Program interactive buttons to navigate through different status options",
+        "Use physical buttons to move through options and select what the screen should show",
     },
     {
-      icon: Code,
-      title: "Menu System",
+      icon: Clock,
+      title: "Clock Mode",
       description:
-        "Build a dynamic menu system with multiple selectable status options",
+        "Display the current time accurately using a real-time clock module",
     },
     {
-      icon: Zap,
-      title: "Real-time Updates",
+      icon: Timer,
+      title: "Focus Timer Mode",
       description:
-        "Display and update your current status in real-time on the OLED screen",
+        "Add a focus timer with work and break cycles shown as a countdown",
     },
   ],
+
   capabilities: [
-    "Display custom status messages on OLED screen",
-    "Navigate through menu options using physical buttons",
-    "Select from 10+ pre-programmed status options",
-    "Create a personalized status indicator for your workspace",
-    "Learn fundamental programming concepts through hands-on building",
-    "Understand how displays, buttons, and microcontrollers work together",
+    "Show different status messages on a small screen",
+    "Scroll through options and choose one using buttons",
+    "Display the current time using a real-time clock module",
+    "Run a focus timer with a countdown and repeating cycles (Intermediate/Advanced)",
+    "Learn clean code organization with readable structure",
+    "Practice troubleshooting common wiring and logic issues",
   ],
+
   workflows: {
     beginner: [
       {
         step: 1,
-        title: "Setup Arduino IDE",
+        title: "Set Up the Screen and Time Module",
         description:
-          "Install Arduino IDE and learn the basic interface with detailed tutorials",
+          "Connect the OLED screen, buttons, and a time-keeping module, then run startup code so the device can read the current time",
       },
       {
         step: 2,
-        title: "Connect Hardware",
+        title: "Create a Main Menu",
         description:
-          "Follow step-by-step diagrams to connect OLED display and buttons to Arduino",
+          "Build a simple home screen where you can switch between the status display and the clock display",
       },
       {
         step: 3,
-        title: "Upload Example Code",
+        title: "Create the Status Display",
         description:
-          "Load pre-written example code to test your hardware connections",
+          "Make a screen that lets you scroll through different status messages and choose the one you want to show",
       },
       {
         step: 4,
-        title: "Understand the Code",
+        title: "Create the Clock Display",
         description:
-          "Learn how each line of code works with detailed explanations and comments",
-      },
-      {
-        step: 5,
-        title: "Customize Welcome Screen",
-        description: "Modify the welcome message to display your own text",
-      },
-      {
-        step: 6,
-        title: "Add Status Options",
-        description: "Add your personalized status messages to the menu system",
-      },
-      {
-        step: 7,
-        title: "Test & Debug",
-        description:
-          "Test all buttons and menu navigation, fix any issues with guided help",
+          "Make a screen that shows the current time clearly and updates automatically",
       },
     ],
+
+    // Intermediate flow remains:
+    // hardware → init (time module) → menu → clock → focus timer
     intermediate: [
       {
         step: 1,
-        title: "Hardware Assembly",
-        description: "Connect OLED display and buttons using circuit diagrams",
+        title: "Initialize the Screen and Time Module",
+        description:
+          "Write the startup code so the screen turns on and the device can read the current time correctly",
       },
       {
         step: 2,
-        title: "Initialize Display",
+        title: "Create the Main Menu",
         description:
-          "Write code to initialize the OLED display with proper libraries",
+          "Build a home screen where the user can choose between viewing the clock or starting a focus timer",
       },
       {
         step: 3,
-        title: "Create Menu System",
-        description: "Build a dynamic menu array and navigation logic",
+        title: "Add the Clock Screen",
+        description:
+          "Create a clear clock display that updates automatically",
       },
       {
         step: 4,
-        title: "Implement Button Controls",
+        title: "Add the Timer and Pomodoro Setup",
         description:
-          "Program button inputs with debouncing and state management",
+          "Let the user choose focus length, break length, and how many rounds to run",
       },
       {
         step: 5,
-        title: "Design UI Elements",
+        title: "Run the Countdown",
         description:
-          "Create custom graphics and text layouts for different screens",
-      },
-      {
-        step: 6,
-        title: "Add Animations",
-        description: "Implement smooth transitions between menu screens",
-      },
-      {
-        step: 7,
-        title: "Optimize Performance",
-        description: "Refine code for better responsiveness and memory usage",
+          "Show the countdown on screen and automatically move between focus and break periods",
       },
     ],
+
     advanced: [
       {
         step: 1,
-        title: "Custom Circuit Design",
+        title: "Organize Like a Real Project",
         description:
-          "Design and implement your own button configuration and power management",
+          "Restructure the code into clean sections that are easy to expand",
       },
       {
         step: 2,
-        title: "Advanced Display Control",
+        title: "Upgrade the Features",
         description:
-          "Create custom animations, icons, and advanced graphics rendering",
+          "Add custom improvements such as pause, presets, or extra display modes",
       },
       {
         step: 3,
-        title: "State Machine Implementation",
+        title: "Build a Strong Screen System",
         description:
-          "Build a robust state machine for complex menu navigation and modes",
+          "Make screen changes foolproof so the device never gets stuck",
       },
       {
         step: 4,
-        title: "Add WiFi Integration",
-        description: "Connect to WiFi and sync status with online calendar or API",
+        title: "Use Debugging Tools",
+        description:
+          "Apply a repeatable process to diagnose wiring and logic problems",
       },
       {
         step: 5,
-        title: "Create Custom Features",
+        title: "Polish Performance",
         description:
-          "Add features like timer modes, notifications, or sensor integration",
+          "Reduce flicker, keep updates smooth, and improve responsiveness",
       },
       {
         step: 6,
-        title: "Design Enclosure",
-        description: "3D design and print a custom case for your status board",
+        title: "Free-Style Build with Support",
+        description:
+          "Design your own layout and logic with guidance instead of step-by-step instructions",
       },
     ],
   },
+
   levels: [
     {
       id: "beginner",
       title: "Beginner",
-      duration: "8-10 hours",
+      duration: "20-25 hours",
       description:
-        "Perfect for first-time builders. Step-by-step guidance with detailed explanations.",
+        "Best for first-time builders. You’ll build a status display and a clock, and learn how to switch between screens using a simple menu.",
       features: [
-        "Basic Arduino programming concepts",
-        "Simple display control",
-        "Button input basics",
-        "Pre-written code examples",
+        "A main menu that switches between screens",
+        "Status screen with selectable messages",
+        "Clock screen that updates automatically",
+        "Step-by-step guidance with starter code",
       ],
       color: "green",
     },
     {
       id: "intermediate",
       title: "Intermediate",
-      duration: "6-8 hours",
+      duration: "25-30 hours",
       description:
-        "For those with some programming experience. More independence in implementation.",
+        "For builders with some experience. You’ll build a menu-driven device that includes a clock and a focus timer.",
       features: [
-        "Advanced display techniques",
-        "Custom menu creation",
-        "Debugging practice",
-        "Code optimization",
+        "Menu that switches between modes",
+        "Clock screen that updates automatically",
+        "Focus timer with work and break cycles",
+        "A clear multi-screen flow with reliability practice",
       ],
       color: "blue",
     },
     {
       id: "advanced",
       title: "Advanced",
-      duration: "4-6 hours",
+      duration: "20-30 hours",
       description:
-        "Challenge yourself with minimal guidance. Add custom features and modifications.",
+        "Same features as Intermediate, but with more freedom. You design the structure and extend the logic with guidance.",
       features: [
-        "Custom animations",
-        "Advanced state management",
-        "Hardware modifications",
-        "Feature extensions",
+        "Clock mode",
+        "Focus timer mode with repeating cycles",
+        "Greater freedom in code organization",
+        "Stronger logic and structure support",
+        "Debugging guidance and best practices",
       ],
       color: "purple",
     },

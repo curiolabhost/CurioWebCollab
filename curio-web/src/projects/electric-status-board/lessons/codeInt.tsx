@@ -355,7 +355,7 @@ Configures the button pins as inputs with internal pull-up resistors.
   // LESSON 3
   // =========================================================
   3: {
-    phrase: "Screens: welcome page",
+    phrase: "Screen: Welcome message",
     advanced: false,
     steps: [
       {
@@ -364,7 +364,11 @@ Configures the button pins as inputs with internal pull-up resistors.
         codes: [
           {
             topicTitle: "Welcome Screen Function",
-            descBeforeCode: "**Clear the screen, print a big greeting.**",
+            descBeforeCode: `**Clear the screen, print a big greeting.**
+You will create a welcome message by calling it in the setup(). As a reminder, functions are reusable blocks of code that perform a specific task. 
+Since we want the welcome page to show up only **ONCE when we turn the device on**, we will place that function in the **setup()**. Recall the important display functions from Lesson 2 Step 4. Use those functions to fill each blank in the code.`,
+          },{
+            topicTitle: "Understanding How to Print Text",
             imageGridBeforeCode: {
               columns: 1,
               height: 300,
@@ -376,17 +380,13 @@ Configures the button pins as inputs with internal pull-up resistors.
                 },
               ],
             },
-            descBetweenBeforeAndCode: `This is an example of a function named welcomeFunc. You can run this function by calling it in either setup() or loop(). As a reminder, functions are reusable blocks of code that perform a specific task. 
-Since we want the welcome page to show up only ONCE when we turn the device on, we will place that function in the **setup()**.
-
+            descBetweenBeforeAndCode: `
 **Difference between** \`println()\` **and** \`print()\`
 @\`print()\` writes text (or a value) **without** moving to a new line afterward.
 @If you call print() again, the next text continues on the same line.
 @\`println()\` writes text (or a value) and then **moves the cursor to the start of the next line**.
 @The next print() / println() will begin on a new line.
-
-`},{
-            code: `##include <Wire.h>
+`},{code: `##include <Wire.h>
 #include __BLANK[LIB_GFX]__
 #include __BLANK[LIB_SSD]__
 #include __BLANK[LIB_CLOCK]__
@@ -505,7 +505,7 @@ void __BLANK[WELCOMEFUNCTION]__() {
   // =========================================================
 
   4: {
-    phrase: "Variables + lists (arrays) for Main Menu options",
+    phrase: "Variables + lists (arrays) for Main Menu",
     advanced: false,
     steps: [
       {
@@ -741,12 +741,29 @@ Arrays are extremely useful when you want your code to handle lots of similar va
         codes: [
           {
             topicTitle: "Create Variables for Screens",   
-            descBeforeCode: `We need to create variables to keep track of which screen we are currently on. This will help us know what to display and how to respond to button presses.
-`,           imageGridBeforeCode: null,
+            descBeforeCode: `We need to create variables to keep track of which screen we are currently on. This will help us know what to display and how to respond to button presses. So when we press SELECT on an option in the Main Menu, we can change the screen variable to indicate we are now on the Clock screen or Timer/Pomodoro screen. We will use an integer variable to represent the different screens.`,           imageGridBeforeCode: null,
+            imageGridBeforeCode: 
+              {
+                columns: 1,
+                width: 900,
+                height:450,
+                items: [
+                  {
+                    imageSrc:
+                      "/electric-status-board/screenChange.png",  
+                    label: "Screen variable visual",
+                  },
+                ],
+              },
             descBetweenBeforeAndCode: null,
-            code: `^^int __BLANK[SCREENVAR]__ = __BLANK[SCREENTYPENUM]__; //constant for Main Menu screen^^
-const int __BLANK[SCREENVAR1]__ = __BLANK[SCREENTYPENUM1]__;  //constant for Clock screen
-const int __BLANK[SCREENVAR2]__ = __BLANK[SCREENTYPENUM2]__; //constant for Timer/Pomodoro screen^^`,
+            code: `#include __BLANK[LIB_SSD]__
+#include __BLANK[LIB_CLOCK]__
+....
+#define __BLANK[SELVAR]__  __BLANK[SELN]__  
+            
+^^int __BLANK[SCREENVAR]__ = __BLANK[SCREENTYPENUM]__; //constant for Main Menu screen
+const int __BLANK[SCREENVAR1]__ = __BLANK[SCREENTYPENUM1]__;  //constant for another screen (Clock or Timer/Pomodoro screen)
+const int __BLANK[SCREENVAR2]__ = __BLANK[SCREENTYPENUM2]__; //constant for another screen (Clock or Timer/Pomodoro screen^^`,
             answerKey: {
               SCREENVAR: { type: "identifier" },
               SCREENTYPENUM: { type: "integer"},
@@ -759,15 +776,15 @@ const int __BLANK[SCREENVAR2]__ = __BLANK[SCREENTYPENUM2]__; //constant for Time
               SCREENVAR:
                 "Pick a variable name to track the current screen (valid identifier).",
               SCREENTYPENUM:
-                "Use a number to represent the Main Menu screen.",
+                "Use a number to represent the Main Menu screen. (You can start with 0 or 1.)",
               SCREENVAR1:
                 "Use the same variable name as above to represent the Clock screen.", 
               SCREENTYPENUM1:
-                "Use 1 to represent the Clock screen.",
+                "Use a different number to represent the Clock screen.",
               SCREENVAR2:
                 "Use the same variable name as above to represent the Timer/Pomodoro screen.",
               SCREENTYPENUM2: 
-                "Use 2 to represent the Timer/Pomodoro screen.",
+                "Use a different number to represent the Timer/Pomodoro screen.",
             },
             blankDifficulties: {  
               SCREENVAR: "easy",
@@ -776,7 +793,11 @@ const int __BLANK[SCREENVAR2]__ = __BLANK[SCREENTYPENUM2]__; //constant for Time
               SCREENTYPENUM1: "easy",
               SCREENVAR2: "easy",
               SCREENTYPENUM2: "easy",
+            }
+          }
+        ],
       },
+
       {
         id: 5,
         title: "Step 5: Create Lists for Main Menu Options",
@@ -791,7 +812,16 @@ Before we can display a menu, we need to **store the menu options** somewhere. I
 `,
             imageGridBeforeCode: null,
             descBetweenBeforeAndCode: null,
-            code: `^^// List of main menu options
+            code: `#include __BLANK[LIB_SSD]__
+#include __BLANK[LIB_CLOCK]__
+....
+#define __BLANK[SELVAR]__  __BLANK[SELN]__  
+            
+int __BLANK[SCREENVAR]__ = __BLANK[SCREENTYPENUM]__; 
+const int __BLANK[SCREENVAR1]__ = __BLANK[SCREENTYPENUM1]__;  
+const int __BLANK[SCREENVAR2]__ = __BLANK[SCREENTYPENUM2]__; ^^
+            
+//<< List of main menu options
 __BLANK[MMENUTYPE]__  __BLANK[MMENUNAME]__ = { //define array name
   __BLANK[MENULIST2]__, //menu option 1 ("Clock" or "Timer" etc.)
   __BLANK[MENULIST3]__, //menu option 2
@@ -931,13 +961,16 @@ void loop(){
           }
         ],
       },
-
-
     ],
   },
 
+  
+  // =========================================================
+  // LESSON 5
+  // =========================================================
+
   5: {
-  phrase: "Variables + arrays: iterating Main options",
+  phrase: "Looping Main Menu options",
   advanced: false,
   steps: [
     { id: 1,
@@ -1589,11 +1622,11 @@ You successfully built:
   ],
   },
 
-// =========================================================
-// LESSON 6
-// =========================================================
+  // =========================================================
+  // LESSON 6
+  // =========================================================
 6: {
-  phrase: "Putting it all together: full sketch structure + what you have so far",
+  phrase: "Putting it all together: full sketch structure",
   advanced: false,
   steps: [
     {
@@ -2371,9 +2404,9 @@ answerKey: {
           code: `^^
 if (__BLANK[HELPER1C]__(__BLANK[SELVARA]__) == true) { //if the button helper function is true (select button is truly pressed)
   if (__BLANK[INDEX_USEJ]__ == 0) { //if the main menu index is 0 (first item in the menu)
-    screenMode = 1;  // Go to Screen 1: Clock or Pomodoro
+    __BLANK[SCREENVAR1A]__ = __BLANK[SCREENTYPENUM1A]__;  // Go to Screen 1: Clock or Pomodoro, update the screen variable accordingly
   } else if (__BLANK[INDEX_USEK]__ == 1) { //if the main menu index is 1 (second item in the menu)
-    __BLANK[SCREENVAR]__ = __BLANK[SCREENNUM]__; // Go to Screen 2: Clock or Pomodoro
+    __BLANK[SCREENVAR2B]__ = __BLANK[SCREENTYPENUM2B]__; // Go to Screen 2: Clock or Pomodoro
   }
   delay(200);
 }
@@ -2384,8 +2417,10 @@ blankDifficulties: {
   SELVARA: "easy",
   INDEX_USEJ: "easy",
   INDEX_USEK: "easy",
-  SCREENVAR: "medium",
-  SCREENNUM: "medium"
+  SCREENVAR1A: "medium",
+  SCREENVAR2B: "medium",
+  SCREENTYPENUM1A: "medium",
+  SCREENTYPENUM2B: "medium"
 },
 blankExplanations: {
   HELPER1C:
@@ -2396,10 +2431,14 @@ blankExplanations: {
     "This is the SAME main menu index variable again. SELECT uses it to decide which option was chosen.",
   INDEX_USEK:
     "This should still be the SAME main menu index variable again for the second condition.",
-  SCREENVAR:
-    "This should be the variable your program uses to switch screens (a mode/state variable). Use the exact variable name you already use in your loop.",
-  SCREENNUM:
-    "This should be a number that represents the screen you want to go to for option #1. It should match your project’s screen numbering system."
+  SCREENVAR1A:
+    "This should be the variable your program uses to switch screens (a mode/state variable). Use the exact integer variable name you already use in your loop.",
+  SCREENTYPENUM1A:
+    "This should be a number that represents the screen you want to go to for option #1. It should match your project’s screen numbering system.",
+  SCREENVAR2B:
+    "This should be the SAME screen mode variable as before. We are updating it again for option #2.",
+  SCREENTYPENUM2B:
+    "This should be a number that represents the screen you want to go to for option #2. It should match your project’s screen numbering system.",
 },
 answerKey: {
   // must match helper from PREV block
@@ -2410,11 +2449,12 @@ answerKey: {
   // index must match the same main index variable
   INDEX_USEJ: { type: "sameAs", target: "INDEX_USE" },
   INDEX_USEK: { type: "sameAs", target: "INDEX_USE" },
-
-  // screen mode variable: allow any identifier (we cannot force its exact name without giving it)
-  SCREENVAR: { type: "identifier" },
-  // screen number must be numeric
-  SCREENNUM: { type: "number", target: { min: 1, max: 1 }}
+  // screen mode variable must match whatever variable you use in your loop
+  SCREENVAR1A: { type: "sameAs", target: "SSCREENVAR1" },
+  SCREENVAR2B: { type: "sameAs", target: "SCREENVAR2" },
+  // screen type numbers can be any integer literals, but must be consistent with each other
+  SCREENTYPENUM1A: { type: "sameAs", target: "SCREENTYPENUM1" },
+  SCREENTYPENUM2B: { type: "sameAs", target: "SCREENTYPENUM2" }
 }
 
         },
@@ -2459,7 +2499,7 @@ blankDifficulties:{
   ]},
 
   8: {
-  phrase: "Clock screen: printing HH:MM:SS + showing it on the OLED",
+  phrase: "Clock screen: printing time",
   advanced: false,
   steps: [ 
     {
@@ -2828,10 +2868,94 @@ This is a complete screen function because it clears the display and calls \`dis
         },
       ],
     },
-  ],
-},
 
-};
+    {
+      id: 3,
+      title: "Step 3: Make the clock screen show when selected from the Main Menu",
+      codes: [
+        {
+          topicTitle: "Linking Clock Screen to Main Menu",
+          descBeforeCode:`**Goal:** Update your main loop or screen management logic so that when the user selects the Clock option from the Main Menu, it calls your clock screen function.
+We will use an if statement: "if screen mode == X", then show the clock screen.`,
+          code: `^^
+void loop() {
+//<< FIRST: GO TO MAIN MENU AND ALLOW BUTTONS TO TOGGLE OPTIONS
+  if (__BLANK[SCREENVAR]__ == __BLANK[SCREENTYPENUMY]__) { // if the screen mode is Main screen
+    __BLANK[SHOWMAIN_FN2]__();                           // call the main menu function to display 
+    }
+  //<< SECOND: CHECK IF SCREEN MODE WAS SWITCHED TO CLOCK SCREEN MODE AND SHOW IT
+  else if (__BLANK[SCREENVAR]__ == __BLANK[SCREENTYPENUMX]__) { // if the screen mode is Clock screen
+    __BLANK[SHOWTT_FN]__();                             // call the clock screen function to display it
+  }
+  else if (__BLANK[SCREENVAR]__ == __BLANK[SCREENTYPENUMZ]__) { // if the screen mode is Pomodoro screen
+    // call the pomodoro screen function to display it
+  }
+}^^`,
+          answerKey: {
+            SCREENTYPENUMX: { type: "sameAs", targets: ["SCREENTYPENUM1", "SCREENTYPENUM2"] },
+            SHOWTT_FN: { type: "sameAs", target: "SHOWTT" },
+            SCREENVAR: { type: "sameAs", target: "SCREENVAR" },
+            SCREENTYPENUMY: { type: "sameAs", target: "SCREENTYPENUM" },
+            SHOWMAIN_FN2: { type: "sameAs", target: "SHOWMAIN_FN" },
+            SCREENTYPENUMZ: { type: "sameAs", targets: ["SCREENTYPENUM1", "SCREENTYPENUM2"] },
+          },
+          blankExplanations: {
+            SCREENTYPENUMX: 
+              "This should be the screen type number that corresponds to the Clock screen in your program. It must match the screen numbering system you use for your project.",
+            SHOWTT_FN:
+              "This should be the SAME clock screen function name you created earlier. This ensures that when the Clock screen is selected, your function is called to display it.",
+            SCREENVAR:
+              "This should be the variable your program uses to track the current screen mode (the same one you used in the SELECT button logic).",
+            SCREENTYPENUMY:
+              "This should be the screen type number that corresponds to the Main Menu screen in your program. It must match the screen numbering system you use for your project.",
+            SHOWMAIN_FN2:
+              "This should be the SAME main menu function name you created earlier. This ensures that when the Main Menu is selected, your function is called to display it.",
+            SCREENTYPENUMZ:
+              "This should be the screen type number that corresponds to the Pomodoro screen in your program. It must match the screen numbering system you use for your project.",
+          },
+          blankDifficulties: {
+            SCREENTYPENUMX: "medium", 
+            SHOWTT_FN: "easy",
+            SCREENVAR: "easy",
+            SCREENTYPENUMY: "medium",
+            SHOWMAIN_FN2: "easy",
+            SCREENTYPENUMZ: "medium",
+          },
+          descAfterCode: `After adding this code, when the user selects the Clock option from the Main Menu, your program should call the clock screen function you created earlier. This will display the current time in HH:MM:SS format on the OLED.
+Recall that in the Main Menu Function, when the user presses SELECT on the Clock option, you have set a screen mode variable to the corresponding screen type number for the Clock screen. So, after the screen mode is changed, the main loop will check this "if statement" and call your clock screen function accordingly.`,
+    }
+  ], 
+    },
+    {
+      id: 4,
+      title: "Step 4: Test the Clock Screen in the Simulator",
+      codes: [{
+        topicTitle: "Testing the Clock Screen",
+        descBeforeCode:`After implementing the clock screen and linking it to the Main Menu, it's time to test your code using the simulator.
+**What to Test:**
+1) Run the simulator and navigate to the Main Menu.
+2) Use the PREV and NEXT buttons to highlight the Clock option.
+3) Press the SELECT button to enter the Clock screen.
+4) Verify that the current time is displayed correctly in HH:MM:SS format.
+5) Check that the hint at the bottom instructs how to return to the Main Menu.
+`,
+        imageGridBeforeCode: {
+          columns: 1,
+          height:430,
+          width: 500,
+          items: [
+            {
+              imageSrc: "/electric-status-board/maintoClock2.gif",
+              label: "Simulator showing Main Menu with Clock option highlighted",
+            },]}
+          },{
+        topicTitle:`Tips`,
+        descBeforeCode:`Recall how to structure your Arduino codes (see Lesson 6). Make sure your \`void loop()\` calls the main menu function and then the clock screen function as needed based on the screen mode variable. 
+@ Add the new clock helper functions __BLANK[SHOWTIME]__() and __BLANK[SHOWTT]__() at the bottom of your code draft with the rest of the helper functions. 
+@ Place the constants, variables, and definitions at the top of the code draft, before setup(). 
+@ The rest of the code should remain the same from Lesson 6.`
+      }],}
+]}};
 
 export default function CodeIntLesson({
   slug,
