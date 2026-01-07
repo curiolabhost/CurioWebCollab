@@ -71,6 +71,21 @@ export default function ArduinoEditor({ height = "100%", width = "100%", apiBase
     });
   };
 
+  function getCodeContext(code, lineNumber, radius = 3) {
+    const lines = code.split("\n");
+    const start = Math.max(0, lineNumber - radius - 1);
+    const end = Math.min(lines.length, lineNumber + radius);
+
+    return lines
+      .slice(start, end)
+      .map((line, i) => {
+        const actualLine = start + i + 1;
+        const marker = actualLine === lineNumber ? ">> " : "   ";
+        return `${marker}${actualLine}: ${line}`;
+      })
+      .join("\n");
+  }
+
   const beforeMount = (monaco) => {
     monaco.editor.defineTheme("arduino-dark", {
       base: "vs-dark",
@@ -198,6 +213,8 @@ export default function ArduinoEditor({ height = "100%", width = "100%", apiBase
           mode: "arduino-verify",
           code: fullCode,
           errors: [{ line: lineNumber, message: errorMessage }], // only the clicked error
+          sentences: 3,
+          verbosity: "brief",
         }),
       });
 
@@ -263,14 +280,14 @@ export default function ArduinoEditor({ height = "100%", width = "100%", apiBase
       const marker = markers.find(m => line >= m.startLineNumber && line <= m.endLineNumber);
       if (!marker) return;
 
-      const currentCode = editor.getValue(); // full sketch
-
+      const fullCode = editor.getValue();
+      const snippet = getCodeContext(fullCode, marker.startLineNumber, 4);
       const editorDom = editor.getDomNode();
       const rect = editorDom.getBoundingClientRect();
       setPopoverPosition({ top: e.event.posy - rect.top, left: e.event.posx - rect.left });
       setPopoverVisible(true);
 
-      sendErrorToAI(currentCode, marker.message, marker.startLineNumber);
+      sendErrorToAI(snippet, marker.message, marker.startLineNumber);
     });
   };
 
@@ -394,6 +411,8 @@ export default function ArduinoEditor({ height = "100%", width = "100%", apiBase
           mode: "arduino-verify",
           code: value,
           errors: lastErrors,
+          sentences: 20,
+          verbosity: "verbose",
         }),
       });
 
