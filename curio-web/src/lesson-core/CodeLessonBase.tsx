@@ -91,6 +91,40 @@ function makeStepKey(lessonNumber: number, stepIdx: number) {
   return `L${lessonNumber}-S${stepIdx}`;
 }
 
+//for adding bullet points
+function processDesc(text: string): string {
+  return text
+    .split("\n")
+    .map((line) => {
+      const trimmed = line.trim();
+
+      // Existing @ bullet support (outside backticks)
+      if (trimmed.startsWith("@")) {
+        return "\u00A0\u00A0•\u00A0\u00A0" + trimmed.substring(1).trim();
+      }
+
+      return line;
+    })
+    .join("\n")
+    .replace(/`([\s\S]*?)`/g, (match, inner) => {
+      // Only process multiline backtick blocks
+      if (!inner.includes("\n")) return match;
+
+      const lines = inner.split("\n");
+
+      const converted = lines.map((l: string) => {
+        const t = l.trimStart();
+        if (t.startsWith("- ") || t.startsWith("* ")) {
+          return "\u00A0\u00A0•\u00A0\u00A0" + t.substring(2);
+        }
+        return l;
+      });
+
+      return "`" + converted.join("\n") + "`";
+    });
+}
+
+
 function renderWithInlineCode(
   text: string | null | undefined,
   opts: {
@@ -970,10 +1004,11 @@ function isLessonLocked(lessonNum: number) {
   const inlineLocalValuesRef = React.useRef(inlineLocalValues);
   inlineLocalValuesRef.current = inlineLocalValues;
 
-  React.useEffect(() => {
-    const safeMerged = mergedBlanks && typeof mergedBlanks === "object" ? mergedBlanks : {};
-    setInlineLocalValues((prev) => ({ ...safeMerged, ...(prev || {}) }));
-  }, [mergedBlanks]);
+React.useEffect(() => {
+  const safeMerged = mergedBlanks && typeof mergedBlanks === "object" ? mergedBlanks : {};
+  setInlineLocalValues((prev) => ({ ...(prev || {}), ...safeMerged }));
+}, [mergedBlanks]);
+
 
   const inlineRafRef = React.useRef<number | null>(null);
 
@@ -999,7 +1034,7 @@ function isLessonLocked(lessonNum: number) {
     (text: string | null | undefined) => {
       if (!text) return null;
 
-      return renderWithInlineCode(text, {
+      return renderWithInlineCode(processDesc(String(text)), {
         values: inlineLocalValues,
         onChangeBlank: (name, txt) => {
           setInlineLocalValues((prev) => ({ ...(prev || {}), [name]: txt }));
@@ -1016,6 +1051,26 @@ function isLessonLocked(lessonNum: number) {
   const logBlankAnalytics = React.useCallback((_event: any) => {
     // no-op (wire later)
   }, []);
+
+
+function renderCustomComponent(Comp: any, extraProps?: any) {
+  if (!Comp) return null;
+
+  // we pass embedded so the component doesn't try to be full-screen
+  // and pass navigation hooks if we want the mind map to have buttons
+  return (
+    <div className="w-full">
+      <Comp
+        embedded
+        onBack={goPrev}
+        onContinue={goNext}
+        {...(extraProps || {})}
+        // ptr={parseCurioPtr(storagePrefix)}
+      />
+    </div>
+  );
+}
+
 
 function renderImageGrid(grid: any, keyPrefix = "grid") {
   if (!grid || !Array.isArray(grid.items) || grid.items.length === 0) return null;
@@ -1087,14 +1142,32 @@ function renderImageGrid(grid: any, keyPrefix = "grid") {
                     : undefined
                 }
               >
-                {/* renderMedia equivalent */}
+                                {/* renderMedia equivalent */}
                 {isVideo ? (
-                  <video
-                    className={styles.imageGridVideo}
-                    controls
-                    src={it.video}
-                  />
-                ) : src ? (
+                  (() => {
+                    // support video as string or object: { src, controls, loop, muted, poster }
+                    const videoSrc =
+                      typeof it?.video === "string"
+                       ? it.video
+                     : it?.video?.src || it?.video?.uri || it?.video?.url || src;
+                    const videoControls = it?.video?.controls ?? true;
+                    const videoLoop = it?.video?.loop ?? false;
+                    const videoMuted = it?.video?.muted ?? false;
+                    const videoPoster = it?.video?.poster;
+
+                    return (
+                      <video
+                        className={styles.imageGridVideo}
+                      src={videoSrc}
+                        controls={videoControls}
+                          loop={videoLoop}
+                        muted={videoMuted}
+                        poster={videoPoster}
+                        style={{ width: "100%", height: "100%", objectFit: "contain" }}
+                      />
+                    );
+                  })()
+               ) : src ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     className={styles.imageGridImg}
@@ -1177,7 +1250,7 @@ function renderImageGrid(grid: any, keyPrefix = "grid") {
       {/* Main Content */}
       <div className="flex-1 min-w-0 overflow-y-auto">
         {/* Header */}
-        <div className="bg-white border-b border-gray-200 px-12 py-8">
+        <div className="bg-white border-b border-gray-200 px-12 py-9">
           <h1 className="mb-2 text-s font-bold text-sky-600">
             {step?.lessonTitle ?? `Lesson ${lesson}`}
           </h1>
@@ -1237,88 +1310,105 @@ function renderImageGrid(grid: any, keyPrefix = "grid") {
         {/* Lesson Content */}
         <div className="px-12 py-6 w-full">
           <div className="w-full">
-            {step?.desc ? (
-              <div className={styles.stepDescBlock}>{renderInline(step.desc)}</div>
-            ) : null}
+            {/* If this step has a custom component (ex: ProjectMindMap), render it instead */}
+            {step?.customComponent ? (
+              renderCustomComponent(step.customComponent, step?.componentProps)
+            ) : (
+              <>
+                {step?.desc ? (
+                  <div className={styles.stepDescBlock}>{renderInline(step.desc)}</div>
+                ) : null}
 
-            {Array.isArray(step?.codes) && step.codes.length > 0 ? (
-              <div className="space-y-8">
-                {step.codes.map((block: any, idx: number) => (
-                  <div key={idx}>
-                    {block?.descBeforeCode ? (
-                      <div className={styles.stepDescBlock}>
-                        {renderInline(block.descBeforeCode)}
+                {Array.isArray(step?.codes) && step.codes.length > 0 ? (
+                  <div className="space-y-8">
+                    {step.codes.map((block: any, idx: number) => (
+                      <div key={idx}>
+                        {block?.topicTitle ? (
+                          <h3 className={styles.blockTopicTitle}>
+                            {String(block.topicTitle)}
+                          </h3>
+                        ) : null}
+
+                        {block?.descBeforeCode ? (
+                          <div className={styles.stepDescBlock}>
+                            {renderInline(block.descBeforeCode)}
+                          </div>
+                        ) : null}
+
+                        {block?.imageGridBeforeCode
+                          ? renderImageGrid(block.imageGridBeforeCode, `b-${idx}-before`)
+                          : null}
+
+                        {block?.descBetweenBeforeAndCode ? (
+                          <div className={styles.stepDescBlock}>
+                            {renderInline(block.descBetweenBeforeAndCode)}
+                          </div>
+                        ) : null}
+
+                        {block?.customComponent
+                        ? renderCustomComponent(block.customComponent, block?.componentProps)
+                        : null}
+
+                        {block?.code ? (
+                          <GuidedCodeBlock
+                            step={step}
+                            block={block}
+                            blockIndex={idx}
+                            storageKey={localStorageKeyForThisStep}
+                            globalKey={KEYS.globalBlanksKey}
+                            apiBaseUrl={apiBaseUrl}
+                            analyticsTag={analyticsTag}
+                            mergedBlanks={mergedBlanks}
+                            setLocalBlanks={setLocalBlanks}
+                            setGlobalBlanks={setGlobalBlanks}
+                            blankStatus={blankStatus}
+                            setBlankStatus={setBlankStatus}
+                            activeBlankHint={activeBlankHint}
+                            setActiveBlankHint={setActiveBlankHint}
+                            aiHelpByBlank={aiHelpByBlank}
+                            setAiHelpByBlank={setAiHelpByBlank}
+                            aiLoadingKey={aiLoadingKey}
+                            setAiLoadingKey={setAiLoadingKey}
+                            aiLastRequestAtByKey={aiLastRequestAtByKey}
+                            setAiLastRequestAtByKey={setAiLastRequestAtByKey}
+                            aiHintLevelByBlank={aiHintLevelByBlank}
+                            setAiHintLevelByBlank={setAiHintLevelByBlank}
+                            checkAttempts={checkAttempts}
+                            setCheckAttempts={setCheckAttempts}
+                            blankAttemptsByName={blankAttemptsByName}
+                            setBlankAttemptsByName={setBlankAttemptsByName}
+                            logBlankAnalytics={logBlankAnalytics}
+                          />
+                        ) : null}
+
+                        {block?.descAfterCode ? (
+                          <div className={styles.stepDescBlock}>
+                            {renderInline(block.descAfterCode)}
+                          </div>
+                        ) : null}
+
+                        {block?.imageGridAfterCode
+                          ? renderImageGrid(block.imageGridAfterCode, `b-${idx}-after`)
+                          : null}
+
+                        {block?.descAfterImage ? (
+                          <div className={styles.stepDescBlock}>
+                            {renderInline(block.descAfterImage)}
+                          </div>
+                        ) : null}
+
+                        {block?.hint ? (
+                          <div className={styles.hintBox}>
+                            <div className={styles.hintTitle}>Hint</div>
+                            <div className={styles.hintText}>{String(block.hint)}</div>
+                          </div>
+                        ) : null}
                       </div>
-                    ) : null}
-
-                    {block?.topicTitle ? (
-                      <h3 className={styles.blockTopicTitle}>{String(block.topicTitle)}</h3>
-                    ) : null}
-
-                    {block?.descBetweenBeforeAndCode ? (
-                      <div className={styles.stepDescBlock}>
-                        {renderInline(block.descBetweenBeforeAndCode)}
-                      </div>
-                    ) : null}
-
-                    {block?.imageGridBeforeCode
-                      ? renderImageGrid(block.imageGridBeforeCode, `b-${idx}-before`)
-                      : null}
-
-                    {block?.code ? (
-                      <GuidedCodeBlock
-                        step={step}
-                        block={block}
-                        blockIndex={idx}
-                        storageKey={localStorageKeyForThisStep}
-                        globalKey={KEYS.globalBlanksKey}
-                        apiBaseUrl={apiBaseUrl}
-                        analyticsTag={analyticsTag}
-                        mergedBlanks={mergedBlanks}
-                        setLocalBlanks={setLocalBlanks}
-                        setGlobalBlanks={setGlobalBlanks}
-                        blankStatus={blankStatus}
-                        setBlankStatus={setBlankStatus}
-                        activeBlankHint={activeBlankHint}
-                        setActiveBlankHint={setActiveBlankHint}
-                        aiHelpByBlank={aiHelpByBlank}
-                        setAiHelpByBlank={setAiHelpByBlank}
-                        aiLoadingKey={aiLoadingKey}
-                        setAiLoadingKey={setAiLoadingKey}
-                        aiLastRequestAtByKey={aiLastRequestAtByKey}
-                        setAiLastRequestAtByKey={setAiLastRequestAtByKey}
-                        aiHintLevelByBlank={aiHintLevelByBlank}
-                        setAiHintLevelByBlank={setAiHintLevelByBlank}
-                        checkAttempts={checkAttempts}
-                        setCheckAttempts={setCheckAttempts}
-                        blankAttemptsByName={blankAttemptsByName}
-                        setBlankAttemptsByName={setBlankAttemptsByName}
-                        logBlankAnalytics={logBlankAnalytics}
-                      />
-                    ) : null}
-
-                    {block?.descAfterCode ? (
-                      <div className={styles.stepDescBlock}>{renderInline(block.descAfterCode)}</div>
-                    ) : null}
-
-                    {block?.imageGridAfterCode
-                      ? renderImageGrid(block.imageGridAfterCode, `b-${idx}-after`)
-                      : null}
-
-                    {block?.descAfterImage ? (
-                      <div className={styles.stepDescBlock}>{renderInline(block.descAfterImage)}</div>
-                    ) : null}
-
-                    {block?.hint ? (
-                      <div className={styles.hintBox}>
-                        <div className={styles.hintTitle}>Hint</div>
-                        <div className={styles.hintText}>{String(block.hint)}</div>
-                      </div>
-                    ) : null}
+                    ))}
                   </div>
-                ))}
-              </div>
-            ) : null}
+                ) : null}
+              </>
+            )}
 
             <div className="flex justify-between pt-10 border-t border-gray-200 mt-12">
               <button
@@ -1342,6 +1432,7 @@ function renderImageGrid(grid: any, keyPrefix = "grid") {
           </div>
         </div>
       </div>
+
 
       {/* Sidebar */}
       {sidebarExpanded ? (
@@ -1644,7 +1735,7 @@ function renderImageGrid(grid: any, keyPrefix = "grid") {
           defaultWokwiUrl=""
         />
       ) : (
-        <ArduinoEditor apiBaseUrl={apiBaseUrl} storageKey={EDITOR_KEYS.arduinoSketchKey} />
+        <ArduinoEditor apiBaseUrl={apiBaseUrl} />
       )}
     </div>
   );
