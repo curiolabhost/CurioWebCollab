@@ -1,3 +1,6 @@
+
+//https://wokwi.com/projects/452254262742865921
+
 "use client";
 
 import * as React from "react";
@@ -2955,7 +2958,25 @@ Recall that in the Main Menu Function, when the user presses SELECT on the Clock
 @ Place the constants, variables, and definitions at the top of the code draft, before setup(). 
 @ The rest of the code should remain the same from Lesson 6.`
       }],}
-]}};
+]},
+
+  9: {
+  phrase: "Pomodoro screen: printing timer",
+  advanced: true,
+  steps:[
+    {
+      id: 1,
+      title: "Step 1: Pomodoro Timer Function logic",
+      codes: [
+  ]}]
+  }
+
+
+
+
+
+
+};
 
 export default function CodeIntLesson({
   slug,
