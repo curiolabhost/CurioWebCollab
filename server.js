@@ -106,6 +106,8 @@ app.post("/ai/help", async (req, res) => {
     mode = "arduino-verify",
     question = "",
     language = "cpp",
+    verbosity = "brief",
+    sentences = 3,
   } = req.body || {};
 
   if (!code.trim() && !question) {
@@ -121,7 +123,7 @@ app.post("/ai/help", async (req, res) => {
 
   const prompt =
     mode === "arduino-verify"
-      ? `You are a friendly Arduino tutor. Explain these errors with hints only. Do NOT give the students the answer. Limit your responses to only three sentences long.
+      ? `You are a friendly Arduino tutor. Explain these errors with hints only. Do NOT give the students the answer. Keep your responses ${verbosity} and roughly ${sentences} sentences long.
 
 Sketch:
 \`\`\`cpp
