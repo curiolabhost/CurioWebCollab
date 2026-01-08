@@ -263,30 +263,51 @@ export default function ArduinoEditor({ height = "100%", width = "100%", apiBase
       setStatus("AI request failed.");
     }
   };
-
   const onMount = (editor, monaco) => {
-    monaco.editor.setTheme("arduino-dark");
     editorRef.current = editor;
     monacoRef.current = monaco;
-    setStatus("Ready.");
+    monaco.editor.setTheme("arduino-dark");
 
-    // AI popover
+    // Click handler for error lines
     editor.onMouseDown((e) => {
       if (!e.target.position) return;
 
+      const POPOVER_OFFSET = 12;
       const line = e.target.position.lineNumber;
       const model = editor.getModel();
       const markers = monaco.editor.getModelMarkers({ resource: model.uri, owner: "verify" });
       const marker = markers.find(m => line >= m.startLineNumber && line <= m.endLineNumber);
-      if (!marker) return;
 
-      const fullCode = editor.getValue();
-      const snippet = getCodeContext(fullCode, marker.startLineNumber, 4);
+      if (!marker) {
+        setPopoverVisible(false);
+        return;
+      }
+
       const editorDom = editor.getDomNode();
-      const rect = editorDom.getBoundingClientRect();
-      setPopoverPosition({ top: e.event.posy - rect.top, left: e.event.posx - rect.left });
+      if (!editorDom) return;
+
+      const editorRect = editorDom.getBoundingClientRect();
+      const scrollY = window.scrollY || window.pageYOffset;
+      const scrollX = window.scrollX || window.pageXOffset;
+
+      // Calculate vertical position relative to editor + scrolling
+      let top = e.event.posy - editorRect.top + editorDom.scrollTop;
+      // Calculate horizontal position to the right of the editor
+      let left = editorRect.width + POPOVER_OFFSET;
+
+      // Clamp left so the popover never goes off-screen
+      const POPUP_WIDTH = 300; // your popover maxWidth
+      const maxLeft = window.innerWidth - POPUP_WIDTH - 10; // 10px margin
+      if (left + editorRect.left + scrollX > maxLeft) {
+        left = maxLeft - editorRect.left - scrollX;
+      }
+
+      setPopoverPosition({ top, left });
+      setPopoverContent(marker.message || "Loading explanation...");
       setPopoverVisible(true);
 
+      // Send snippet to AI
+      const snippet = getCodeContext(editor.getValue(), marker.startLineNumber, 4);
       sendErrorToAI(snippet, marker.message, marker.startLineNumber);
     });
   };
@@ -501,7 +522,7 @@ export default function ArduinoEditor({ height = "100%", width = "100%", apiBase
         display: "flex",
         flexDirection: "column",
         borderRadius: 8,
-        overflow: "hidden",
+        overflow: "visible",
         border: "1px solid #1f2937",
         background: "#020617",
         position: "relative",
