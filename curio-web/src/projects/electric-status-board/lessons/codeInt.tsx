@@ -1350,7 +1350,6 @@ This new function draws the **Main Menu screen** on the OLED.
 @ Other indicators you can use instead of \`">\` include: \`*\`, \`→\`, \`#\`, and any others. 
     
 You will fill in a few key blanks to make the loop and highlighting work.`,
-          imageGridBeforeCode: null,
           descBetweenBeforeAndCode: null,
 
            code: `
