@@ -314,6 +314,7 @@ export function DashboardHome() {
 
       // Totals/done for BOTH tracks (used for overall progress + time estimates)
       function readTotalsFor(lessonSlug: string) {
+        if (!ptr) return null;
         const totalKey = `curio:${ptr.slug}:${lessonSlug}:totalStepsAllLessons`;
         const doneKey = `curio:${ptr.slug}:${lessonSlug}:doneSet`;
 
