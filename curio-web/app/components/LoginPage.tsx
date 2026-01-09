@@ -355,7 +355,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
           <div className="md:hidden border-t border-gray-200 bg-white">
             <div className="px-4 py-3 space-y-3">
 <Link href="/about" className="text-gray-600 hover:text-primary transition-colors">
-                About us
+                About Us
               </Link>
               {/*<a href="#" className="block text-gray-600">
               <a href="#" className="block text-gray-600">
@@ -368,7 +368,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
                 Blogs
               </a>
               <a href="#" className="block text-gray-600">
-                Curriculum
+                Curriculu
               </a>*/}
 
               <div className="pt-3 border-t border-gray-200 space-y-2">
