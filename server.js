@@ -152,7 +152,7 @@ ${question}`;
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "qwen2.5-coder:7b",
+        model: "qwen2.5-coder:1.5b",
         stream: true,
         messages: [{ role: "user", content: prompt }],
       }),
