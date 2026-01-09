@@ -2,9 +2,22 @@
 
 import * as React from "react";
 import CodeLessonBase from "@/src/lesson-core/CodeLessonBase";
+import ESBProjectMindMapLesson from "./ProjectMindMapLesson";
+import InputPullupCircuitInteractive from "./InputPullupCircuitInteractive";
 
 export const LESSON_STEPS_BEGINNER: Record<number, { phrase: string; advanced?: boolean; steps: any[] }> = {
-  1: {
+
+  1:{
+    phrase: "Understand Project Logic",
+    advanced: false,
+    steps:[{
+      title: "Understand Project Logic",
+      customComponent: ESBProjectMindMapLesson, // wrapper
+    }
+    ]
+  },
+
+  2: {
     phrase: "Arduino basics: setup(), loop(), and your first blink",
     advanced: false,
     steps: [
@@ -62,7 +75,7 @@ This continuous on/off cycle makes the LED blink once per second.`,
     ],
   },
 
-  2: {
+  3: {
     phrase: "OLED setup: libraries, screen dimensions, and button pins",
     advanced: false,
     steps: [
@@ -351,7 +364,7 @@ Configures the button pins as inputs with internal pull-up resistors.
     ],
   },
 
-  3: {
+  4: {
     phrase: "Build your first screens: welcome + status functions",
     advanced: false,
     steps: [
@@ -538,7 +551,7 @@ void __BLANK[STATUSFUNCTION]__{
     ],
   },
 
-  4: {
+  5: {
     phrase: "Variables + arrays: storing menu options and tracking state",
     advanced: false,
     steps: [
@@ -1055,7 +1068,7 @@ Feel free to change how you want the menu to show. You do not need to stick to i
     ],
   },
 
-  5: {
+  6: {
     phrase: "Loops: while loops and iterating through arrays",
     advanced: false,
     steps: [
@@ -1578,7 +1591,7 @@ Feel free to change how you want the menu to show. You do not need to stick to i
     ],
   },
 
-  6: {
+  7: {
     phrase: "Buttons: INPUT_PULLUP, reading presses, and debouncing",
     advanced: false,
     steps: [
@@ -2026,7 +2039,7 @@ bool __BLANK[HELPER1]__(int pin) {^^    // the function returns true or false, s
     ],
   },
 
-  7: {
+  8: {
     phrase: "Navigation logic: scrolling the menu and selecting statuses",
     advanced: false,
     steps: [
