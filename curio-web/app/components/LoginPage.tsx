@@ -322,7 +322,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
                 <a href="#" className="text-gray-600 hover:text-primary transition-colors">
                   About us
                 </a>
-                <a href="#" className="text-gray-600 hover:text-primary transition-colors">
+                {/*<a href="#" className="text-gray-600 hover:text-primary transition-colors">
                   CurioLab
                 </a>
                 <a href="#" className="text-gray-600 hover:text-primary transition-colors">
@@ -334,6 +334,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
                 <a href="#" className="text-gray-600 hover:text-primary transition-colors">
                   Curriculum
                 </a>
+                 */}
               </div>
             </div>
 
@@ -353,9 +354,10 @@ export function LoginPage({ onLogin }: LoginPageProps) {
         {mobileMenuOpen && (
           <div className="md:hidden border-t border-gray-200 bg-white">
             <div className="px-4 py-3 space-y-3">
-              <a href="#" className="block text-gray-600">
+<Link href="/about" className="text-gray-600 hover:text-primary transition-colors">
                 About us
-              </a>
+              </Link>
+              {/*<a href="#" className="block text-gray-600">
               <a href="#" className="block text-gray-600">
                 CurioLab
               </a>
@@ -367,7 +369,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
               </a>
               <a href="#" className="block text-gray-600">
                 Curriculum
-              </a>
+              </a>*/}
 
               <div className="pt-3 border-t border-gray-200 space-y-2">
                 <Button variant="ghost" className="w-full" onClick={resetToLogin}>
