@@ -744,7 +744,7 @@ Arrays are extremely useful when you want your code to handle lots of similar va
         codes: [
           {
             topicTitle: "Create Variables for Screens",   
-            descBeforeCode: `We need to create variables to keep track of which screen we are currently on. This will help us know what to display and how to respond to button presses. So when we press SELECT on an option in the Main Menu, we can change the screen variable to indicate we are now on the Clock screen or Timer/Pomodoro screen. We will use an integer variable to represent the different screens.`,           imageGridBeforeCode: null,
+            descBeforeCode: `We need to create variables to keep track of which screen we are currently on. This will help us know what to display and how to respond to button presses. So when we press SELECT on an option in the Main Menu, we can change the screen variable to indicate we are now on the Clock screen or Timer/Pomodoro screen. We will use an integer variable to represent the different screens.`,           
             imageGridBeforeCode: 
               {
                 columns: 1,
