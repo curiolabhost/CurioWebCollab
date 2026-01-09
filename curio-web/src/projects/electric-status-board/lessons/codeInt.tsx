@@ -1,3 +1,6 @@
+
+//https://wokwi.com/projects/452254262742865921
+
 "use client";
 
 import * as React from "react";
@@ -741,7 +744,7 @@ Arrays are extremely useful when you want your code to handle lots of similar va
         codes: [
           {
             topicTitle: "Create Variables for Screens",   
-            descBeforeCode: `We need to create variables to keep track of which screen we are currently on. This will help us know what to display and how to respond to button presses. So when we press SELECT on an option in the Main Menu, we can change the screen variable to indicate we are now on the Clock screen or Timer/Pomodoro screen. We will use an integer variable to represent the different screens.`,           imageGridBeforeCode: null,
+            descBeforeCode: `We need to create variables to keep track of which screen we are currently on. This will help us know what to display and how to respond to button presses. So when we press SELECT on an option in the Main Menu, we can change the screen variable to indicate we are now on the Clock screen or Timer/Pomodoro screen. We will use an integer variable to represent the different screens.`,           
             imageGridBeforeCode: 
               {
                 columns: 1,
@@ -1347,7 +1350,6 @@ This new function draws the **Main Menu screen** on the OLED.
 @ Other indicators you can use instead of \`">\` include: \`*\`, \`→\`, \`#\`, and any others. 
     
 You will fill in a few key blanks to make the loop and highlighting work.`,
-          imageGridBeforeCode: null,
           descBetweenBeforeAndCode: null,
 
            code: `
@@ -2955,7 +2957,25 @@ Recall that in the Main Menu Function, when the user presses SELECT on the Clock
 @ Place the constants, variables, and definitions at the top of the code draft, before setup(). 
 @ The rest of the code should remain the same from Lesson 6.`
       }],}
-]}};
+]},
+
+  9: {
+  phrase: "Pomodoro screen: printing timer",
+  advanced: true,
+  steps:[
+    {
+      id: 1,
+      title: "Step 1: Pomodoro Timer Function logic",
+      codes: [
+  ]}]
+  }
+
+
+
+
+
+
+};
 
 export default function CodeIntLesson({
   slug,

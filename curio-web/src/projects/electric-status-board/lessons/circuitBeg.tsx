@@ -269,9 +269,9 @@ Button State Logic:
               columns: 1,
               items: [
                 {
-                  label: "Buttons with Internal Pull-Ups",
+                  label: "Buttons connection",
                   imageSrc:
-                    "https://dummyimage.com/1200x500/ffffff/000000.png&text=Buttons+with+Internal+Pull-Ups",
+                    "/electric-status-board/circuit/pushbutton_circuit.png",
                 },
               ],
             },
