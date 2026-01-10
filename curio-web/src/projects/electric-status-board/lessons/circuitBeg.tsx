@@ -131,16 +131,21 @@ By the end of this lesson, you will have a functioning OLED display and buttons 
               @Digital signal represents only **two binary state** (like 0/1, yes/no) that are read as high or low states in the program.
             `,
             imageGridAfterCode: {
-            columns: 1,
-            width: 800,
-            height: 300,
-            items: [
-              {
-                imageSrc: "/electric-status-board/circuit/analog_digital.png",
-              },
-            ],
-          },
-          },
+              columns: 1,
+              width: 800,
+              height: 300,
+              items: [
+                {
+                  imageSrc: "/electric-status-board/circuit/analog_digital.png",
+                },
+              ],
+            },
+        },
+        // Place the quiz as a separate codes entry so it renders after the picture
+        {
+          topicTitle: "Quick Quiz — Analog or Digital?",
+          customComponent: AnalogDigitalQuiz,
+        },
         ],
       },
       {
@@ -253,7 +258,7 @@ Once this is done, you are good to proceed to building your own menu system!
 **Step 1:** Inside wokwi, add 3 push buttons to your breadboard and place them across breadboard center gap
 **Step 2:** Wire each button:
 @Choose one side of the button and connect it to one of the pin (D2/D3/D4) for all 3 buttons
-@Opposite side goes to GND for all three buttons
+@Choose another side that is not connected with the previous pins and connect it to GND for all three buttons
 **Step 3:** Configure pins in code as INPUT_PULLUP:
 @ pinMode(buttonPin, INPUT_PULLUP);
 
@@ -269,10 +274,15 @@ Button State Logic:
               columns: 1,
               items: [
                 {
-                  label: "Buttons connection",
+                  label: "Pushbuttons connection",
                   imageSrc:
                     "/electric-status-board/circuit/pushbutton_circuit.png",
                 },
+                {
+                  label: "Pushbutton circuit flow",
+                  imageSrc:
+                    "/electric-status-board/circuit/pushbutton_demo.gif",
+                }
               ],
             },
           },
@@ -325,5 +335,114 @@ export default function CircuitBegLesson({
       storagePrefix={`curio:${slug}:${lessonSlug}`}
       apiBaseUrl={process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:4000"}
     />
+  );
+}
+
+// Quiz component: students choose Analog or Digital for each item and check answers
+function AnalogDigitalQuiz() {
+  const questions = [
+    {
+      id: "temp",
+      text: "Reading temperature from a temperature sensor",
+      answer: "Analog",
+      explanation: "Temperature sensors usually output a continuous voltage proportional to temperature, not just on/off.",
+    },
+    {
+      id: "led",
+      text: "Turning on/off an LED light",
+      answer: "Digital",
+      explanation: "Turning an LED on or off is a discrete action (high/low), representing a digital state.",
+    },
+    {
+      id: "button",
+      text: "Pressing a push button",
+      answer: "Digital",
+      explanation: "A push button produces a binary state: pressed or not pressed (LOW/HIGH with pull-up).",
+    },
+    {
+      id: "ultra",
+      text: "Measuring distance using an ultrasonic sensor",
+      answer: "Analog",
+      explanation: "Many ultrasonic sensors report distance as a measured value across a range (continuous).",
+    },
+  ];
+
+  const [choices, setChoices] = React.useState<Record<string, string>>({});
+  const [checked, setChecked] = React.useState<boolean>(false);
+
+  function handleChange(id: string, value: string) {
+    setChoices((s) => ({ ...s, [id]: value }));
+  }
+
+  function handleCheck() {
+    setChecked(true);
+  }
+
+  return (
+    <div style={{ border: "1px solid #ddd", padding: 12, borderRadius: 6, marginTop: 12 }}>
+      {questions.map((q) => (
+        <div key={q.id} style={{ marginBottom: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div style={{ flex: 1 }}>{q.text}</div>
+            <select
+              value={choices[q.id] ?? ""}
+              onChange={(e) => handleChange(q.id, e.target.value)}
+              aria-label={q.text}
+              style={{
+                padding: "6px 10px",
+                border: "1px solid rgba(0,0,0,0.12)",
+                background: "#fff",
+                borderRadius: 6,
+                boxShadow: "0 1px 2px rgba(0,0,0,0.06)",
+                cursor: "pointer",
+                fontSize: 13,
+                fontWeight: 600,
+                minWidth: 120,
+                WebkitAppearance: "none",
+                MozAppearance: "none",
+                appearance: "none",
+              }}
+            >
+               <option value="">Choose...</option>
+               <option value="Analog">Analog</option>
+               <option value="Digital">Digital</option>
+             </select>
+            {checked && (
+              <div style={{ minWidth: 140 }}>
+                {choices[q.id] === q.answer ? (
+                  <span style={{ color: "green" }}>Correct</span>
+                ) : (
+                  <span style={{ color: "red" }}>Wrong</span>
+                )}
+              </div>
+            )}
+          </div>
+
+          {checked && (
+            <div style={{ marginTop: 6, fontSize: 13, color: "#444", background: "#f9f9f9", padding: 8, borderRadius: 4 }}>
+              {q.explanation}
+            </div>
+          )}
+        </div>
+      ))}
+      <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 8 }}>
+        <button
+          onClick={handleCheck}
+          style={{
+            padding: "6px 10px",
+            border: "1px solid rgba(0,0,0,0.12)",
+            background: "#fff",
+            borderRadius: 6,
+            boxShadow: "0 1px 2px rgba(0,0,0,0.06)",
+            cursor: "pointer",
+            fontSize: 13,
+            fontWeight: 600,
+          }}
+          aria-label="Check Answers"
+        >
+          Check Answers
+        </button>
+      </div>
+    </div>
   );
 }
