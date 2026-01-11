@@ -1451,7 +1451,7 @@ export default function CodeLessonBase({
     type="button"
     onClick={() => setShowNotes((v) => !v)}
     className="absolute bottom-4 right-6 px-4 py-1.5 rounded-md border text-xs transition-colors
-               border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+               border-indigo-400 bg-indigo-50 text-gray-700 hover:bg-indigo-100"
   >
     {showNotes ? "Hide Notes" : "Show Notes"}
   </button>
