@@ -177,7 +177,7 @@ return (
         flex: 1,
         minHeight: 0, // critical for nested scrolling
         overflow: "hidden", // prevents the document from scrolling
-        maxWidth: 1600,
+        //maxWidth: 1800,
         margin: "0 auto",
         width: "100%",
         padding: "0px", // let CodeLessonBase handle padding
