@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import CodeLessonBase from "@/src/lesson-core/CodeLessonBase";
-import ESBProjectMindMapLesson from "./ProjectMindMapLesson";
+import ESBProjectMindMapLessonBeg from "./ProjectMindMapLessonBeg";
 import { TouchpadIcon } from "lucide-react";
 import TotalCountArrayInteractive from "./counterVariableBeg";
 import InputPullupCircuitInteractive from "./InputPullupCircuitInteractive";
@@ -14,7 +14,7 @@ export const LESSON_STEPS_BEGINNER: Record<number, { phrase: string; advanced?: 
     advanced: false,
     steps:[{
       title: "Understand Project Logic",
-      customComponent: ESBProjectMindMapLesson, // wrapper
+      customComponent: ESBProjectMindMapLessonBeg, // wrapper
     }
     ]
   },
@@ -37,7 +37,7 @@ export const LESSON_STEPS_BEGINNER: Record<number, { phrase: string; advanced?: 
           imageGridBeforeCode: {
             columns: 1,
             width: 300,
-            height: 300,
+            height: 320,
             items: [
               {
                 imageSrc: "/electric-status-board/videos/CurioLabL1S1.gif",
@@ -653,7 +653,7 @@ int __BLANK[NAME2]__ = 365^^;`,
           YEAR: { type: "range", min: 1900, max: 2100 },
           MONTH: { type: "string", regex: "^[A-Za-z]+$" },
           READY: ["true", "false"],
-          TEMP: { type: "number" },
+          TEMP: { type: "range" },
           DATETYPE: ["String"],
           BUTTONTYPE: ["bool"],
           NAME2: { type: "identifier" },

@@ -2,6 +2,7 @@ import CodeBegLesson from "./codeBeg";
 import CircuitBegLesson from "./circuitBeg";
 import CodeAdvLesson from "./codeAdv";
 import CodeIntLesson from "./codeInt";
+import CircuitIntLesson from "./circuitInt";
 
 export const ESB_LESSONS = {
   "code-beg": {
@@ -37,6 +38,15 @@ export const ESB_LESSONS = {
     meta: {
       title: "Focus Board",
       subtitle: "Beginner Circuits",
+      description: "Learn the hardware setup step by step.",
+    },
+  },
+
+  "circuit-int": {
+    Component: CircuitIntLesson,
+    meta: {
+      title: "Focus Board",
+      subtitle: "Intermediate Circuits",
       description: "Learn the hardware setup step by step.",
     },
   },

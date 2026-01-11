@@ -15,7 +15,7 @@ import CodeLessonBase from "@/src/lesson-core/CodeLessonBase";
 // ------------------------------------------------------------
 // CIRCUIT LESSON CONTENT (CodeBeg-style shape)
 // ------------------------------------------------------------
-export const LESSON_STEPS_CIRCUIT_BEG: Record<number, { phrase: string; steps: any[] }> = {
+export const LESSON_STEPS_CIRCUIT_INT: Record<number, { phrase: string; steps: any[] }> = {
   1: {
     phrase: "Circuit setup: parts, OLED wiring, libraries, and button inputs",
     steps: [
@@ -325,7 +325,7 @@ Button State Logic:
 // ------------------------------------------------------------
 // Screen Wrapper
 // ------------------------------------------------------------
-export default function CircuitBegLesson({
+export default function CircuitIntLesson({
   slug,
   lessonSlug,
 }: {
@@ -334,7 +334,7 @@ export default function CircuitBegLesson({
 }) {
   return (
     <CodeLessonBase
-      lessonSteps={LESSON_STEPS_CIRCUIT_BEG}
+      lessonSteps={LESSON_STEPS_CIRCUIT_INT}
       storagePrefix={`curio:${slug}:${lessonSlug}`}
       apiBaseUrl={process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:4000"}
     />

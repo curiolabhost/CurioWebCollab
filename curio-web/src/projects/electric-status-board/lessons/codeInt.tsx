@@ -389,7 +389,9 @@ Since we want the welcome page to show up only **ONCE when we turn the device on
 @If you call print() again, the next text continues on the same line.
 @\`println()\` writes text (or a value) and then **moves the cursor to the start of the next line**.
 @The next print() / println() will begin on a new line.
-`},{code: `##include <Wire.h>
+`},
+{
+  code: `##include <Wire.h>
 #include __BLANK[LIB_GFX]__
 #include __BLANK[LIB_SSD]__
 #include __BLANK[LIB_CLOCK]__
