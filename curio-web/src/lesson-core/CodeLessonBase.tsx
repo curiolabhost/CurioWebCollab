@@ -3,13 +3,14 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronDown, ChevronRight, Check, HelpCircle } from "lucide-react";
-import { type AnswerSpec, evalAnswerSpec } from "./blankCheckUtils";
 
+import { type AnswerSpec, evalAnswerSpec } from "./blankCheckUtils";
 import SplitView from "./SplitView";
 import ArduinoEditor from "./ArduinoEditor";
 import CircuitEditor from "./CircuitEditor";
 import GuidedCodeBlock from "./GuidedCodeBlock";
 import styles from "./CodeLessonBase.module.css";
+import LessonRightRail from "./RightNote";
 
 /* ============================================================
    Storage helpers
@@ -452,6 +453,8 @@ export default function CodeLessonBase({
 
   codingLessonSlug = "code-beg",
   circuitsLessonSlug = "circuit-beg",
+  rightRail,
+  rightRailTitle = "Curio Owl",
 }: any) {
   const router = useRouter();
 
@@ -640,6 +643,7 @@ export default function CodeLessonBase({
   // Done set
   const [doneSet, setDoneSet] = React.useState<Set<string>>(() => new Set());
   const [doneSetLoaded, setDoneSetLoaded] = React.useState(false);
+  const [showNotes, setShowNotes] = React.useState(true);
 
   const doneNormalCount = React.useMemo(() => {
     let n = 0;
@@ -1387,12 +1391,8 @@ export default function CodeLessonBase({
     );
   }
 
-  const lessonUi = (
-    <div className="bg-white flex h-full">
-      {/* Main Content */}
-      <div className="flex-1 min-w-0 overflow-y-auto">
-        {/* Header */}
-        <div className="bg-white border-b border-gray-200 px-12 py-9">
+  const lessonHeader = (
+        <div className="relative bg-white border-b border-gray-200 px-12 pt-7 pb-4 pr-32">
           <h1 className="mb-2 text-s font-bold text-sky-600">
             {step?.lessonTitle ?? `Lesson ${lesson}`}
           </h1>
@@ -1447,9 +1447,19 @@ export default function CodeLessonBase({
               </button>
             </div>
           </div>
+  <button
+    type="button"
+    onClick={() => setShowNotes((v) => !v)}
+    className="absolute bottom-4 right-6 px-4 py-1.5 rounded-md border text-xs transition-colors
+               border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+  >
+    {showNotes ? "Hide Notes" : "Show Notes"}
+  </button>
         </div>
+  );
 
-        {/* Lesson Content */}
+  {/* Lesson Content */}
+  const lessonBody = (
         <div className="px-12 py-6 w-full">
           <div className="w-full">
             {/* If this step has a custom component (ex: ProjectMindMap), render it instead */}
@@ -1571,7 +1581,43 @@ export default function CodeLessonBase({
             </div>
           </div>
         </div>
-      </div>
+  );
+
+  const lessonUi = (
+    <div className="bg-white flex h-full">
+    <div className="flex-1 min-w-0 flex flex-col h-full">
+      {/* Header spans the whole left group */}
+{/* Body row */}
+<div className="flex-1 min-h-0">
+  {showNotes ? (
+    <SplitView
+      left={
+        <div className="flex-1 min-w-0 overflow-y-auto">
+          {lessonHeader}
+          {lessonBody}
+        </div>
+      }
+      right={
+        <LessonRightRail title={rightRailTitle}>
+          {rightRail}
+        </LessonRightRail>
+      }
+      initialLeftRatio={0.72}
+      minLeftPx={520}
+      minRightPx={280}
+      maxLeftRatio={0.85}
+      persistKey="curio:layout:rightnote-width"
+    />
+  ) : (
+    <div className="flex-1 min-w-0 overflow-y-auto">
+      {lessonHeader}
+      {lessonBody}
+    </div>
+  )}
+</div>
+
+
+    </div>
 
       {/* Sidebar */}
       {sidebarExpanded ? (
@@ -1873,7 +1919,7 @@ export default function CodeLessonBase({
           </div>
         </div>
       ) : (
-        <div className="w-6 bg-gray-50 border-l border-gray-200 flex items-start justify-center py-4">
+        <div className="w-6 bg-gray-100 border-l border-gray-200 flex items-start justify-center py-4">
           <button
             type="button"
             onClick={() => setSidebarExpanded(true)}
