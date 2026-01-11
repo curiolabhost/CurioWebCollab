@@ -92,6 +92,8 @@ export function LoginPage({ onLogin }: LoginPageProps) {
       age,
       grade,
       codingExperience,
+      // add isAdmin flag
+      // isAdmin: email.includes("@acuriolab.org"), // example simple check - not very secure
     };
 
     users.push(newUser);
