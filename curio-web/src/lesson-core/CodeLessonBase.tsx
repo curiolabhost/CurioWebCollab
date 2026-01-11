@@ -135,7 +135,14 @@ function renderWithInlineCode(
 ) {
   if (!text) return null;
 
-  const lines = String(text).split(/\n/);
+  // IMPORTANT:
+  // This keeps your original behavior (split by lines),
+  // but removes trailing spaces at end-of-line (the "two spaces" Markdown trick)
+  // so you don't see weird gaps after `...` lines.
+  const lines = String(text)
+    .replace(/\r\n/g, "\n")
+    .split("\n")
+    .map((l) => l.replace(/[ \t]+$/g, "")); // <- removes trailing spaces only
 
   return lines.map((line, lineIdx) => {
     if (line === "") {
@@ -217,6 +224,8 @@ function renderWithInlineCode(
     );
   });
 }
+
+
 
 /* ============================================================
    View mode wiring
