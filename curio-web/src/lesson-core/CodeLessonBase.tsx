@@ -2,7 +2,8 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ChevronDown, ChevronRight, Check } from "lucide-react";
+import { ChevronLeft, ChevronDown, ChevronRight, Check, HelpCircle } from "lucide-react";
+import { type AnswerSpec, evalAnswerSpec } from "./blankCheckUtils";
 
 import SplitView from "./SplitView";
 import ArduinoEditor from "./ArduinoEditor";
@@ -124,6 +125,20 @@ function processDesc(text: string): string {
     });
 }
 
+function getInlineAnswerKey(step: any): Record<string, AnswerSpec> | null {
+  return (
+    step?.inlineAnswerKey ||
+    step?.answerKey ||
+    step?.answers ||
+    step?.blankAnswers ||
+    step?.solution ||
+    null
+  );
+}
+
+function getInlineExplanation(step: any, name: string) {
+  return step?.explanations?.[name] ?? step?.blankExplanations?.[name] ?? "";
+}
 
 function renderWithInlineCode(
   text: string | null | undefined,
@@ -131,6 +146,11 @@ function renderWithInlineCode(
     values: Record<string, any>;
     onChangeBlank: (name: string, value: string) => void;
     onBlurBlank?: (name: string) => void;
+    blankStatus?: Record<string, boolean>;
+    onCheckBlank?: (name: string) => void;
+    onClickExplanation?: (name: string) => void;
+    activeInlineHint?: { name: string; text: string } | null;
+    onCloseInlineHint?: () => void;
   }
 ) {
   if (!text) return null;
@@ -168,18 +188,85 @@ function renderWithInlineCode(
             const v = String(value ?? "");
             const width = inlineWidthPx(v.length) + 18;
 
+            const status = opts.blankStatus?.[name]; // true/false/undefined
+            const hasBeenChecked = Object.prototype.hasOwnProperty.call(
+              opts.blankStatus || {},
+              name
+            );
+
+            const isThisHint = !!opts.activeInlineHint && opts.activeInlineHint.name === name;
+
             return (
-              <input
-                key={`blank-${lineIdx}-${idx}`}
-                value={v}
-                onChange={(e) => opts.onChangeBlank(name, e.target.value)}
-                onBlur={() => opts.onBlurBlank?.(name)}
-                className={styles.inlineBlankInput}
-                style={{ width }}
-                autoCapitalize="none"
-                autoCorrect="off"
-                spellCheck={false}
-              />
+              <span
+                key={`blankwrap-${lineIdx}-${idx}`}
+                className={styles.inlineBlankWrap}
+                style={{
+                  display: "inline-flex",
+                  flexDirection: "column",
+                  alignItems: "flex-start",
+                  gap: 6,
+                }}
+              >
+                {/* row: input + help icon */}
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                  <input
+                    key={`blank-${lineIdx}-${idx}`}
+                    value={v}
+                    onChange={(e) => opts.onChangeBlank(name, e.target.value)}
+                    onBlur={() => opts.onBlurBlank?.(name)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        opts.onBlurBlank?.(name);
+                        opts.onCheckBlank?.(name);
+                      }
+                    }}
+                    className={[
+                      styles.inlineBlankInput,
+                      status === true ? styles.inlineBlankCorrect : "",
+                      status === false ? styles.inlineBlankIncorrect : "",
+                    ].join(" ")}
+                    style={{ width }}
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
+                  />
+
+                  {hasBeenChecked ? (
+                    <button
+                      type="button"
+                      className={styles.inlineBlankHelpBtn}
+                      onClick={() => {
+                        opts.onBlurBlank?.(name);
+                        opts.onCheckBlank?.(name);
+                        opts.onClickExplanation?.(name)}}
+                      aria-label="Show explanation"
+                      title="Show explanation"
+                    >
+                      <HelpCircle className="w-4 h-4" />
+                    </button>
+                  ) : null}
+                </span>
+
+                {/* hint box directly under THIS blank */}
+                {isThisHint ? (
+                  <div className={styles.inlineBlankHintBox}>
+                    <div className={styles.inlineBlankHintText}>
+                      {opts.activeInlineHint?.text}
+                    </div>
+
+                    <button
+                      type="button"
+                      className={styles.inlineBlankHintClose}
+                      onClick={() => opts.onCloseInlineHint?.()}
+                      aria-label="Close hint"
+                      title="Close"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ) : null}
+              </span>
             );
           }
 
@@ -224,8 +311,6 @@ function renderWithInlineCode(
     );
   });
 }
-
-
 
 /* ============================================================
    View mode wiring
@@ -273,7 +358,7 @@ function isLessonEntryAdvanced(entry: any) {
   return !!entry?.advanced;
 }
 
-function isLessonEntryIntermediate(entry: any) { 
+function isLessonEntryIntermediate(entry: any) {
   return !!entry?.intermediate;
 }
 
@@ -320,8 +405,11 @@ function splitStepsForOptionalDropdown(stepsArr: any[]) {
   return { hasOptional: true, before, optionalBlock, after, firstOpt, lastOpt };
 }
 
-
-function countCountedStepsForLesson(getEntry: (n: number) => any, getSteps: (n: number) => any[], lessonNum: number) {
+function countCountedStepsForLesson(
+  getEntry: (n: number) => any,
+  getSteps: (n: number) => any[],
+  lessonNum: number
+) {
   const entry = getEntry(lessonNum);
   if (isLessonEntryOptional(entry)) return 0; // optional lesson excluded
   const arr = getSteps(lessonNum);
@@ -333,7 +421,12 @@ function countCountedStepsForLesson(getEntry: (n: number) => any, getSteps: (n: 
   return c;
 }
 
-function isCountedStep(getEntry: (n: number) => any, getSteps: (n: number) => any[], lessonNum: number, stepIdx: number) {
+function isCountedStep(
+  getEntry: (n: number) => any,
+  getSteps: (n: number) => any[],
+  lessonNum: number,
+  stepIdx: number
+) {
   const entry = getEntry(lessonNum);
   if (isLessonEntryOptional(entry)) return false;
   const arr = getSteps(lessonNum);
@@ -341,8 +434,6 @@ function isCountedStep(getEntry: (n: number) => any, getSteps: (n: number) => an
   if (!st) return false;
   return !isStepOptional(st);
 }
-
-
 
 export default function CodeLessonBase({
   lessonSteps = {},
@@ -389,36 +480,35 @@ export default function CodeLessonBase({
     storageSetString(LESSON_TYPE_KEY, lessonType);
   }, [supportsInlineTracks, LESSON_TYPE_KEY, lessonType]);
 
-const onSelectCircuits = React.useCallback(() => {
-  if (supportsInlineTracks) {
-    setLessonType("circuits");
-    return;
-  }
+  const onSelectCircuits = React.useCallback(() => {
+    if (supportsInlineTracks) {
+      setLessonType("circuits");
+      return;
+    }
 
-  const ptr = parseCurioPtr(storagePrefix);
-  if (!ptr) return;
+    const ptr = parseCurioPtr(storagePrefix);
+    if (!ptr) return;
 
-  const target = siblingLessonSlug(ptr.lessonSlug, "circuits") ?? circuitsLessonSlug;
-  if (ptr.lessonSlug === target) return;
+    const target = siblingLessonSlug(ptr.lessonSlug, "circuits") ?? circuitsLessonSlug;
+    if (ptr.lessonSlug === target) return;
 
-  router.push(`/projects/${ptr.slug}/lessons/${target}`);
-}, [supportsInlineTracks, storagePrefix, circuitsLessonSlug, router]);
+    router.push(`/projects/${ptr.slug}/lessons/${target}`);
+  }, [supportsInlineTracks, storagePrefix, circuitsLessonSlug, router]);
 
-const onSelectCoding = React.useCallback(() => {
-  if (supportsInlineTracks) {
-    setLessonType("coding");
-    return;
-  }
+  const onSelectCoding = React.useCallback(() => {
+    if (supportsInlineTracks) {
+      setLessonType("coding");
+      return;
+    }
 
-  const ptr = parseCurioPtr(storagePrefix);
-  if (!ptr) return;
+    const ptr = parseCurioPtr(storagePrefix);
+    if (!ptr) return;
 
-  const target = siblingLessonSlug(ptr.lessonSlug, "coding") ?? codingLessonSlug;
-  if (ptr.lessonSlug === target) return;
+    const target = siblingLessonSlug(ptr.lessonSlug, "coding") ?? codingLessonSlug;
+    if (ptr.lessonSlug === target) return;
 
-  router.push(`/projects/${ptr.slug}/lessons/${target}`);
-}, [supportsInlineTracks, storagePrefix, codingLessonSlug, router]);
-
+    router.push(`/projects/${ptr.slug}/lessons/${target}`);
+  }, [supportsInlineTracks, storagePrefix, codingLessonSlug, router]);
 
   const trackPrefix = React.useMemo(() => {
     if (!supportsInlineTracks) return storagePrefix;
@@ -560,7 +650,7 @@ const onSelectCoding = React.useCallback(() => {
       if (isLessonEntryOptional(entry)) continue;
 
       const arr = getLessonStepsArray(ln);
-      arr.forEach((_:any, idx:number) => {
+      arr.forEach((_: any, idx: number) => {
         if (!isCountedStep(getLessonEntry, getLessonStepsArray, ln, idx)) return;
         if (doneSet.has(makeStepKey(ln, idx))) n++;
       });
@@ -568,7 +658,6 @@ const onSelectCoding = React.useCallback(() => {
 
     return n;
   }, [doneSet, lessonsList, getLessonEntry, getLessonStepsArray]);
-
 
   const advancedUnlocked =
     totalNormalStepsAllLessons > 0 && doneNormalCount >= totalNormalStepsAllLessons;
@@ -640,15 +729,12 @@ const onSelectCoding = React.useCallback(() => {
   const safeStepIndex = stepIndex < steps.length ? stepIndex : 0;
   const step = steps[safeStepIndex];
   const entryThisLesson = getLessonEntry(lesson);
-const isThisLessonOptional = isLessonEntryOptional(entryThisLesson);
-const isCurrentStepOptional = !!step?.optional; // optional steps have optional:true in content
-
+  const isThisLessonOptional = isLessonEntryOptional(entryThisLesson);
+  const isCurrentStepOptional = !!step?.optional; // optional steps have optional:true in content
 
   // sidebar accordion expanded lessons
   const [expandedLessons, setExpandedLessons] = React.useState<number[]>([lesson]);
-const [optionalExpandedByLesson, setOptionalExpandedByLesson] = React.useState<Record<number, boolean>>({});
-
-
+  const [optionalExpandedByLesson, setOptionalExpandedByLesson] = React.useState<Record<number, boolean>>({});
 
   React.useEffect(() => {
     setExpandedLessons((prev) => (prev.includes(lesson) ? prev : [lesson, ...prev]));
@@ -661,12 +747,11 @@ const [optionalExpandedByLesson, setOptionalExpandedByLesson] = React.useState<R
   };
 
   function toggleOptionalSteps(lessonNum: number) {
-  setOptionalExpandedByLesson((prev) => ({
-    ...(prev || {}),
-    [lessonNum]: !prev?.[lessonNum],
-  }));
-}
-
+    setOptionalExpandedByLesson((prev) => ({
+      ...(prev || {}),
+      [lessonNum]: !prev?.[lessonNum],
+    }));
+  }
 
   /* ============================================================
      PROGRESS (UPDATED)
@@ -676,27 +761,26 @@ const [optionalExpandedByLesson, setOptionalExpandedByLesson] = React.useState<R
 
   const totalStepsForProgress = advancedUnlocked ? totalStepsAllLessons : totalNormalStepsAllLessons;
   const doneCountAllCounted = React.useMemo(() => {
-  let n = 0;
-  for (const ln of lessonsList) {
-    const entry = getLessonEntry(ln);
+    let n = 0;
+    for (const ln of lessonsList) {
+      const entry = getLessonEntry(ln);
 
-    // exclude optional lessons always
-    if (isLessonEntryOptional(entry)) continue;
+      // exclude optional lessons always
+      if (isLessonEntryOptional(entry)) continue;
 
-    // before unlock, exclude advanced required lessons (advanced + not optional)
-    if (!advancedUnlocked && isLessonEntryAdvanced(entry) && !isLessonEntryOptional(entry)) continue;
+      // before unlock, exclude advanced required lessons (advanced + not optional)
+      if (!advancedUnlocked && isLessonEntryAdvanced(entry) && !isLessonEntryOptional(entry)) continue;
 
-    const arr = getLessonStepsArray(ln);
-    for (let i = 0; i < arr.length; i++) {
-      if (!isCountedStep(getLessonEntry, getLessonStepsArray, ln, i)) continue;
-      if (doneSet.has(makeStepKey(ln, i))) n++;
+      const arr = getLessonStepsArray(ln);
+      for (let i = 0; i < arr.length; i++) {
+        if (!isCountedStep(getLessonEntry, getLessonStepsArray, ln, i)) continue;
+        if (doneSet.has(makeStepKey(ln, i))) n++;
+      }
     }
-  }
-  return n;
-}, [doneSet, lessonsList, getLessonEntry, getLessonStepsArray, advancedUnlocked]);
+    return n;
+  }, [doneSet, lessonsList, getLessonEntry, getLessonStepsArray, advancedUnlocked]);
 
-const doneCountForProgress = advancedUnlocked ? doneCountAllCounted : doneNormalCount;
-
+  const doneCountForProgress = advancedUnlocked ? doneCountAllCounted : doneNormalCount;
 
   const overallProgress =
     totalStepsForProgress > 0
@@ -704,59 +788,58 @@ const doneCountForProgress = advancedUnlocked ? doneCountAllCounted : doneNormal
       : 0;
 
   // Lesson progress
-// Lesson progress (counted steps only — excludes optional lessons + optional steps)
-const isThisLessonAdvanced = isLessonEntryAdvanced(entryThisLesson);
-const lessonStepsCountAll = Array.isArray(steps) ? steps.length : 0;
+  // Lesson progress (counted steps only — excludes optional lessons + optional steps)
+  const isThisLessonAdvanced = isLessonEntryAdvanced(entryThisLesson);
+  const lessonStepsCountAll = Array.isArray(steps) ? steps.length : 0;
 
-const countedStepsInThisLesson = React.useMemo(() => {
-  // Advanced required lessons are hidden from progress before unlock
-  if (!advancedUnlocked && isThisLessonAdvanced && !isThisLessonOptional) return 0;
+  const countedStepsInThisLesson = React.useMemo(() => {
+    // Advanced required lessons are hidden from progress before unlock
+    if (!advancedUnlocked && isThisLessonAdvanced && !isThisLessonOptional) return 0;
 
-  // Optional lessons never count toward progress
-  if (isThisLessonOptional) return 0;
+    // Optional lessons never count toward progress
+    if (isThisLessonOptional) return 0;
 
-  let total = 0;
-  for (let i = 0; i < steps.length; i++) {
-    if (!isCountedStep(getLessonEntry, getLessonStepsArray, lesson, i)) continue;
-    total++;
-  }
-  return total;
-}, [
-  steps,
-  lesson,
-  advancedUnlocked,
-  isThisLessonAdvanced,
-  isThisLessonOptional,
-  getLessonEntry,
-  getLessonStepsArray,
-]);
+    let total = 0;
+    for (let i = 0; i < steps.length; i++) {
+      if (!isCountedStep(getLessonEntry, getLessonStepsArray, lesson, i)) continue;
+      total++;
+    }
+    return total;
+  }, [
+    steps,
+    lesson,
+    advancedUnlocked,
+    isThisLessonAdvanced,
+    isThisLessonOptional,
+    getLessonEntry,
+    getLessonStepsArray,
+  ]);
 
-const doneInThisLessonForProgress = React.useMemo(() => {
-  if (!advancedUnlocked && isThisLessonAdvanced && !isThisLessonOptional) return 0;
-  if (isThisLessonOptional) return 0;
+  const doneInThisLessonForProgress = React.useMemo(() => {
+    if (!advancedUnlocked && isThisLessonAdvanced && !isThisLessonOptional) return 0;
+    if (isThisLessonOptional) return 0;
 
-  let n = 0;
-  for (let i = 0; i < steps.length; i++) {
-    if (!isCountedStep(getLessonEntry, getLessonStepsArray, lesson, i)) continue;
-    if (doneSet.has(makeStepKey(lesson, i))) n++;
-  }
-  return n;
-}, [
-  doneSet,
-  steps,
-  lesson,
-  advancedUnlocked,
-  isThisLessonAdvanced,
-  isThisLessonOptional,
-  getLessonEntry,
-  getLessonStepsArray,
-]);
+    let n = 0;
+    for (let i = 0; i < steps.length; i++) {
+      if (!isCountedStep(getLessonEntry, getLessonStepsArray, lesson, i)) continue;
+      if (doneSet.has(makeStepKey(lesson, i))) n++;
+    }
+    return n;
+  }, [
+    doneSet,
+    steps,
+    lesson,
+    advancedUnlocked,
+    isThisLessonAdvanced,
+    isThisLessonOptional,
+    getLessonEntry,
+    getLessonStepsArray,
+  ]);
 
-const lessonProgress =
-  countedStepsInThisLesson > 0
-    ? Math.round((doneInThisLessonForProgress / countedStepsInThisLesson) * 100)
-    : 0;
-
+  const lessonProgress =
+    countedStepsInThisLesson > 0
+      ? Math.round((doneInThisLessonForProgress / countedStepsInThisLesson) * 100)
+      : 0;
 
   React.useEffect(() => {
     if (!doneSetLoaded) return;
@@ -847,14 +930,14 @@ const lessonProgress =
   };
 
   // Step navigation (skip advanced lessons until unlocked)
-function isLessonLocked(lessonNum: number) {
-  const entry = getLessonEntry(lessonNum);
-  const isAdvanced = isLessonEntryAdvanced(entry);
-  const isOptional = isLessonEntryOptional(entry);
+  function isLessonLocked(lessonNum: number) {
+    const entry = getLessonEntry(lessonNum);
+    const isAdvanced = isLessonEntryAdvanced(entry);
+    const isOptional = isLessonEntryOptional(entry);
 
-  // only lock advanced REQUIRED lessons
-  return isAdvanced && !isOptional && !advancedUnlocked;
-}
+    // only lock advanced REQUIRED lessons
+    return isAdvanced && !isOptional && !advancedUnlocked;
+  }
 
   const canPrev = safeStepIndex > 0 || lessonsList.indexOf(lesson) > 0;
 
@@ -936,6 +1019,50 @@ function isLessonLocked(lessonNum: number) {
   const [checkAttempts, setCheckAttempts] = React.useState<number>(0);
   const [blankAttemptsByName, setBlankAttemptsByName] = React.useState<Record<string, number>>({});
 
+  const checkInlineBlank = React.useCallback(
+    (name: string, source?: any) => {
+      const values = inlineLocalValuesRef.current || {};
+      const userValue = String(values[name] ?? "").trim();
+
+      const answerKey = getInlineAnswerKey(source ?? step);
+
+      if (!answerKey || !Object.prototype.hasOwnProperty.call(answerKey, name)) {
+        setBlankStatus((prev) => ({ ...(prev || {}), [name]: false }));
+        return;
+      }
+
+      const spec = (answerKey as any)[name] as AnswerSpec;
+      const ok = evalAnswerSpec(spec, userValue, values);
+
+      setBlankStatus((prev) => ({ ...(prev || {}), [name]: ok }));
+
+      if (!ok) {
+        setBlankAttemptsByName((prev) => ({
+          ...(prev || {}),
+          [name]: (prev?.[name] ?? 0) + 1,
+        }));
+      }
+
+      setCheckAttempts((n) => (Number.isFinite(n) ? n + 1 : 1));
+    },
+    [step]
+  );
+
+  const openInlineExplanation = React.useCallback(
+    (name: string, source?: any) => {
+      const explanation =
+        getInlineExplanation(source ?? step, name) ||
+        "Hint: Re-check what this blank represents.";
+
+      setActiveBlankHint({
+        name,
+        text: explanation,
+        blockIndex: -1,
+      });
+    },
+    [step]
+  );
+
   React.useEffect(() => {
     const raw = storageGetJson<Record<string, any>>(KEYS.globalBlanksKey);
     setGlobalBlanks(raw && typeof raw === "object" ? raw : {});
@@ -1013,11 +1140,10 @@ function isLessonLocked(lessonNum: number) {
   const inlineLocalValuesRef = React.useRef(inlineLocalValues);
   inlineLocalValuesRef.current = inlineLocalValues;
 
-React.useEffect(() => {
-  const safeMerged = mergedBlanks && typeof mergedBlanks === "object" ? mergedBlanks : {};
-  setInlineLocalValues((prev) => ({ ...(prev || {}), ...safeMerged }));
-}, [mergedBlanks]);
-
+  React.useEffect(() => {
+    const safeMerged = mergedBlanks && typeof mergedBlanks === "object" ? mergedBlanks : {};
+    setInlineLocalValues((prev) => ({ ...(prev || {}), ...safeMerged }));
+  }, [mergedBlanks]);
 
   const inlineRafRef = React.useRef<number | null>(null);
 
@@ -1040,7 +1166,7 @@ React.useEffect(() => {
   );
 
   const renderInline = React.useCallback(
-    (text: string | null | undefined) => {
+    (text: string | null | undefined, source?: any) => {
       if (!text) return null;
 
       return renderWithInlineCode(processDesc(String(text)), {
@@ -1052,154 +1178,164 @@ React.useEffect(() => {
         onBlurBlank: (name) => {
           commitInlineToGlobal(name);
         },
+        blankStatus,
+        onCheckBlank: (name) => checkInlineBlank(name, source),
+        onClickExplanation: (name) => openInlineExplanation(name, source),
+        activeInlineHint:
+          activeBlankHint && activeBlankHint.blockIndex === -1
+            ? { name: activeBlankHint.name, text: activeBlankHint.text }
+            : null,
+        onCloseInlineHint: () => setActiveBlankHint(null),
       });
     },
-    [inlineLocalValues, scheduleInlineParentLocalUpdate, commitInlineToGlobal]
+    [
+      inlineLocalValues,
+      scheduleInlineParentLocalUpdate,
+      commitInlineToGlobal,
+      blankStatus,
+      checkInlineBlank,
+      openInlineExplanation,
+      activeBlankHint,
+    ]
   );
 
   const logBlankAnalytics = React.useCallback((_event: any) => {
     // no-op (wire later)
   }, []);
 
+  function renderCustomComponent(Comp: any, extraProps?: any) {
+    if (!Comp) return null;
 
-function renderCustomComponent(Comp: any, extraProps?: any) {
-  if (!Comp) return null;
-
-  // we pass embedded so the component doesn't try to be full-screen
-  // and pass navigation hooks if we want the mind map to have buttons
-  return (
-    <div className="w-full">
-      <Comp
-        embedded
-        onBack={goPrev}
-        onContinue={goNext}
-        {...(extraProps || {})}
-        // ptr={parseCurioPtr(storagePrefix)}
-      />
-    </div>
-  );
-}
-
-
-function renderImageGrid(grid: any, keyPrefix = "grid") {
-  if (!grid || !Array.isArray(grid.items) || grid.items.length === 0) return null;
-
-  const columns = Math.max(1, Number(grid.columns || 3));
-
-  // Allow explicit sizing from lesson content
-  const gridW = grid.width != null ? Number(grid.width) : null; // px
-  const gridH = grid.height != null ? Number(grid.height) : null; // px
-
-  // If any explicit size is provided, don't stretch tiles
-  const useFixedSize = Number.isFinite(gridW) || Number.isFinite(gridH);
-
-  // Responsive tile width when no fixed size is provided
-  const widthPct = `${Math.floor(100 / columns)}%`;
-
-  return (
-    <div className={styles.imageGridWrap} key={keyPrefix}>
-      <div className={styles.imageGrid}>
-        {grid.items.map((it: any, idx: number) => {
-          const isVideo = !!it?.video;
-
-          // Support both { imageSrc } and { src/uri/url } and also string items
-          const src =
-            typeof it === "string"
-              ? it
-              : it?.imageSrc || it?.src || it?.uri || it?.url || "";
-
-          const label = typeof it === "string" ? "" : String(it?.label ?? "");
-
-          // Per-item overrides fall back to grid width/height
-          const itemW = it?.width != null ? Number(it.width) : gridW;
-          const itemH = it?.height != null ? Number(it.height) : gridH;
-
-          const fixedW = Number.isFinite(itemW) ? itemW : null;
-          const fixedH = Number.isFinite(itemH) ? itemH : null;
-
-          const itemUsesFixed = !!(fixedW || fixedH);
-
-          // defaults if only one dimension is provided (matches your old logic)
-          const wrapW = itemUsesFixed ? (fixedW ?? 180) : undefined;
-          const wrapH = itemUsesFixed ? (fixedH ?? 120) : undefined;
-
-          return (
-            <div
-              key={`${keyPrefix}-item-${idx}`}
-              className={styles.imageGridItem}
-              style={{
-                // If fixed sizing exists anywhere, use "auto" tile widths so they don't stretch
-                width: useFixedSize ? "auto" : widthPct,
-              }}
-            >
-
-            {!!label ? (
-                <div className={styles.imageGridLabel}>{label}</div>
-              ) : null}
-              <div
-                className={styles.imageGridImgWrap}
-                style={
-                  itemUsesFixed
-                    ? {
-                        width: wrapW,
-                        height: wrapH,
-                      }
-                    : isVideo
-                    ? {
-                        aspectRatio: "16 / 9",
-                      }
-                    : undefined
-                }
-              >
-                                {/* renderMedia equivalent */}
-                {isVideo ? (
-                  (() => {
-                    // support video as string or object: { src, controls, loop, muted, poster }
-                    const videoSrc =
-                      typeof it?.video === "string"
-                       ? it.video
-                     : it?.video?.src || it?.video?.uri || it?.video?.url || src;
-                    const videoControls = it?.video?.controls ?? true;
-                    const videoLoop = it?.video?.loop ?? false;
-                    const videoMuted = it?.video?.muted ?? false;
-                    const videoPoster = it?.video?.poster;
-
-                    return (
-                      <video
-                        className={styles.imageGridVideo}
-                      src={videoSrc}
-                        controls={videoControls}
-                          loop={videoLoop}
-                        muted={videoMuted}
-                        poster={videoPoster}
-                        style={{ width: "100%", height: "100%", objectFit: "contain" }}
-                      />
-                    );
-                  })()
-               ) : src ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    className={styles.imageGridImg}
-                    src={src}
-                    alt={label || `image-${idx}`}
-                    style={{
-                      width: "100%",
-                      height: "100%",
-                      objectFit: "contain",
-                      // IMPORTANT: in RN you disabled aspectRatio when fixed.
-                      // On web, we simply let the wrapper control dimensions.
-                    }}
-                  />
-                ) : null}
-              </div>
-            </div>
-          );
-        })}
+    // we pass embedded so the component doesn't try to be full-screen
+    // and pass navigation hooks if we want the mind map to have buttons
+    return (
+      <div className="w-full">
+        <Comp
+          embedded
+          onBack={goPrev}
+          onContinue={goNext}
+          {...(extraProps || {})}
+          // ptr={parseCurioPtr(storagePrefix)}
+        />
       </div>
-    </div>
-  );
-}
+    );
+  }
 
+  function renderImageGrid(grid: any, keyPrefix = "grid") {
+    if (!grid || !Array.isArray(grid.items) || grid.items.length === 0) return null;
+
+    const columns = Math.max(1, Number(grid.columns || 3));
+
+    // Allow explicit sizing from lesson content
+    const gridW = grid.width != null ? Number(grid.width) : null; // px
+    const gridH = grid.height != null ? Number(grid.height) : null; // px
+
+    // If any explicit size is provided, don't stretch tiles
+    const useFixedSize = Number.isFinite(gridW) || Number.isFinite(gridH);
+
+    // Responsive tile width when no fixed size is provided
+    const widthPct = `${Math.floor(100 / columns)}%`;
+
+    return (
+      <div className={styles.imageGridWrap} key={keyPrefix}>
+        <div className={styles.imageGrid}>
+          {grid.items.map((it: any, idx: number) => {
+            const isVideo = !!it?.video;
+
+            // Support both { imageSrc } and { src/uri/url } and also string items
+            const src =
+              typeof it === "string"
+                ? it
+                : it?.imageSrc || it?.src || it?.uri || it?.url || "";
+
+            const label = typeof it === "string" ? "" : String(it?.label ?? "");
+
+            // Per-item overrides fall back to grid width/height
+            const itemW = it?.width != null ? Number(it.width) : gridW;
+            const itemH = it?.height != null ? Number(it.height) : gridH;
+
+            const fixedW = Number.isFinite(itemW) ? itemW : null;
+            const fixedH = Number.isFinite(itemH) ? itemH : null;
+
+            const itemUsesFixed = !!(fixedW || fixedH);
+
+            // defaults if only one dimension is provided (matches your old logic)
+            const wrapW = itemUsesFixed ? (fixedW ?? 180) : undefined;
+            const wrapH = itemUsesFixed ? (fixedH ?? 120) : undefined;
+
+            return (
+              <div
+                key={`${keyPrefix}-item-${idx}`}
+                className={styles.imageGridItem}
+                style={{
+                  // If fixed sizing exists anywhere, use "auto" tile widths so they don't stretch
+                  width: useFixedSize ? "auto" : widthPct,
+                }}
+              >
+                {!!label ? <div className={styles.imageGridLabel}>{label}</div> : null}
+                <div
+                  className={styles.imageGridImgWrap}
+                  style={
+                    itemUsesFixed
+                      ? {
+                          width: wrapW,
+                          height: wrapH,
+                        }
+                      : isVideo
+                      ? {
+                          aspectRatio: "16 / 9",
+                        }
+                      : undefined
+                  }
+                >
+                  {/* renderMedia equivalent */}
+                  {isVideo ? (
+                    (() => {
+                      // support video as string or object: { src, controls, loop, muted, poster }
+                      const videoSrc =
+                        typeof it?.video === "string"
+                          ? it.video
+                          : it?.video?.src || it?.video?.uri || it?.video?.url || src;
+                      const videoControls = it?.video?.controls ?? true;
+                      const videoLoop = it?.video?.loop ?? false;
+                      const videoMuted = it?.video?.muted ?? false;
+                      const videoPoster = it?.video?.poster;
+
+                      return (
+                        <video
+                          className={styles.imageGridVideo}
+                          src={videoSrc}
+                          controls={videoControls}
+                          loop={videoLoop}
+                          muted={videoMuted}
+                          poster={videoPoster}
+                          style={{ width: "100%", height: "100%", objectFit: "contain" }}
+                        />
+                      );
+                    })()
+                  ) : src ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      className={styles.imageGridImg}
+                      src={src}
+                      alt={label || `image-${idx}`}
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "contain",
+                        // IMPORTANT: in RN you disabled aspectRatio when fixed.
+                        // On web, we simply let the wrapper control dimensions.
+                      }}
+                    />
+                  ) : null}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
 
   if (!lessonsList.length) {
     return (
@@ -1210,49 +1346,46 @@ function renderImageGrid(grid: any, keyPrefix = "grid") {
   }
 
   function renderStepButton(
-  lessonNum: number,
-  idx: number,
-  st: any,
-  locked: boolean,
-  safeStepIndex: number
-) {
-  const isActive = lessonNum === lesson && idx === safeStepIndex;
-  const stepKey = makeStepKey(lessonNum, idx);
-  const isStepDone = doneSet.has(stepKey);
+    lessonNum: number,
+    idx: number,
+    st: any,
+    locked: boolean,
+    safeStepIndex: number
+  ) {
+    const isActive = lessonNum === lesson && idx === safeStepIndex;
+    const stepKey = makeStepKey(lessonNum, idx);
+    const isStepDone = doneSet.has(stepKey);
 
-  const isOptional = isStepOptional(st);
+    const isOptional = isStepOptional(st);
 
-  return (
-    <button
-      key={idx}
-      type="button"
-      disabled={locked}
-      onClick={() => {
-        if (locked) return;
-        setLesson(lessonNum);
-        setStepIndex(idx);
-      }}
-      className={[
-        "w-full text-left text-sm py-1 px-3 rounded transition-colors",
-        locked
-          ? "bg-gray-100 text-gray-400 cursor-not-allowed opacity-70"
-          : isActive
-          ? "bg-indigo-100 text-indigo-700"
-          : isStepDone
-          ? "bg-transparent text-green-700 hover:bg-gray-100 hover:text-green-800"
-          : "text-gray-600 hover:bg-gray-100 hover:text-gray-900",
-      ].join(" ")}
-    >
-      <span className={`mr-2 text-s ${isOptional ? "text-gray-400" : "text-gray-600"}`}>
-        {idx + 1}.
-      </span>
-      <span>
-        {String(st.title).replace(/^(Step\s*)?\d+\s*:\s*/i, "")}
-      </span>
-    </button>
-  );
-}
-
+    return (
+      <button
+        key={idx}
+        type="button"
+        disabled={locked}
+        onClick={() => {
+          if (locked) return;
+          setLesson(lessonNum);
+          setStepIndex(idx);
+        }}
+        className={[
+          "w-full text-left text-sm py-1 px-3 rounded transition-colors",
+          locked
+            ? "bg-gray-100 text-gray-400 cursor-not-allowed opacity-70"
+            : isActive
+            ? "bg-indigo-100 text-indigo-700"
+            : isStepDone
+            ? "bg-transparent text-green-700 hover:bg-gray-100 hover:text-green-800"
+            : "text-gray-600 hover:bg-gray-100 hover:text-gray-900",
+        ].join(" ")}
+      >
+        <span className={`mr-2 text-s ${isOptional ? "text-gray-400" : "text-gray-600"}`}>
+          {idx + 1}.
+        </span>
+        <span>{String(st.title).replace(/^(Step\s*)?\d+\s*:\s*/i, "")}</span>
+      </button>
+    );
+  }
 
   const lessonUi = (
     <div className="bg-white flex h-full">
@@ -1333,14 +1466,12 @@ function renderImageGrid(grid: any, keyPrefix = "grid") {
                     {step.codes.map((block: any, idx: number) => (
                       <div key={idx}>
                         {block?.topicTitle ? (
-                          <h3 className={styles.blockTopicTitle}>
-                            {String(block.topicTitle)}
-                          </h3>
+                          <h3 className={styles.blockTopicTitle}>{String(block.topicTitle)}</h3>
                         ) : null}
 
                         {block?.descBeforeCode ? (
                           <div className={styles.stepDescBlock}>
-                            {renderInline(block.descBeforeCode)}
+                            {renderInline(block.descBeforeCode,block)}
                           </div>
                         ) : null}
 
@@ -1350,13 +1481,13 @@ function renderImageGrid(grid: any, keyPrefix = "grid") {
 
                         {block?.descBetweenBeforeAndCode ? (
                           <div className={styles.stepDescBlock}>
-                            {renderInline(block.descBetweenBeforeAndCode)}
+                            {renderInline(block.descBetweenBeforeAndCode,block)}
                           </div>
                         ) : null}
 
                         {block?.customComponent
-                        ? renderCustomComponent(block.customComponent, block?.componentProps)
-                        : null}
+                          ? renderCustomComponent(block.customComponent, block?.componentProps)
+                          : null}
 
                         {block?.code ? (
                           <GuidedCodeBlock
@@ -1392,7 +1523,7 @@ function renderImageGrid(grid: any, keyPrefix = "grid") {
 
                         {block?.descAfterCode ? (
                           <div className={styles.stepDescBlock}>
-                            {renderInline(block.descAfterCode)}
+                            {renderInline(block.descAfterCode,block)}
                           </div>
                         ) : null}
 
@@ -1402,7 +1533,7 @@ function renderImageGrid(grid: any, keyPrefix = "grid") {
 
                         {block?.descAfterImage ? (
                           <div className={styles.stepDescBlock}>
-                            {renderInline(block.descAfterImage)}
+                            {renderInline(block.descAfterImage, block)}
                           </div>
                         ) : null}
 
@@ -1442,7 +1573,6 @@ function renderImageGrid(grid: any, keyPrefix = "grid") {
         </div>
       </div>
 
-
       {/* Sidebar */}
       {sidebarExpanded ? (
         <div className={`w-96 bg-gray-50 border-l border-gray-200 overflow-y-auto ${styles.hideScrollbar}`}>
@@ -1456,9 +1586,9 @@ function renderImageGrid(grid: any, keyPrefix = "grid") {
                     "px-3 py-1 rounded-full text-sm border transition-colors",
                     (() => {
                       if (supportsInlineTracks) return lessonType === "circuits";
-                        const ptr = parseCurioPtr(storagePrefix);
-                        const target = ptr ? siblingLessonSlug(ptr.lessonSlug, "circuits") : null;
-                        return ptr?.lessonSlug === (target ?? circuitsLessonSlug);
+                      const ptr = parseCurioPtr(storagePrefix);
+                      const target = ptr ? siblingLessonSlug(ptr.lessonSlug, "circuits") : null;
+                      return ptr?.lessonSlug === (target ?? circuitsLessonSlug);
                     })()
                       ? "bg-sky-700 text-white border-sky-700"
                       : "bg-white text-gray-700 border-gray-200 hover:bg-gray-100",
@@ -1474,10 +1604,9 @@ function renderImageGrid(grid: any, keyPrefix = "grid") {
                     "px-3 py-1 rounded-full text-sm border transition-colors",
                     (() => {
                       if (supportsInlineTracks) return lessonType === "coding";
-                        const ptr = parseCurioPtr(storagePrefix);
-                        const target = ptr ? siblingLessonSlug(ptr.lessonSlug, "coding") : null;
-                        return ptr?.lessonSlug === (target ?? codingLessonSlug);
-
+                      const ptr = parseCurioPtr(storagePrefix);
+                      const target = ptr ? siblingLessonSlug(ptr.lessonSlug, "coding") : null;
+                      return ptr?.lessonSlug === (target ?? codingLessonSlug);
                     })()
                       ? "bg-sky-700 text-white border-sky-700"
                       : "bg-white text-gray-700 border-gray-200 hover:bg-gray-100",
@@ -1530,11 +1659,19 @@ function renderImageGrid(grid: any, keyPrefix = "grid") {
                       }`}
                     >
                       <div className="text-left">
-                        <div className={`text-sm mb-1 ${isLessonActive ? "text-indigo-600" : "text-gray-900"}`}>
+                        <div
+                          className={`text-sm mb-1 ${
+                            isLessonActive ? "text-indigo-600" : "text-gray-900"
+                          }`}
+                        >
                           {isLessonEntryOptional(entry) ? "Optional Lesson" : "Lesson"} {lessonNum}
                         </div>
                         {lessonSubtitle ? (
-                          <div className={`text-xs ${isLessonActive ? "text-indigo-500" : "text-gray-500"}`}>
+                          <div
+                            className={`text-xs ${
+                              isLessonActive ? "text-indigo-500" : "text-gray-500"
+                            }`}
+                          >
                             {lessonSubtitle}
                           </div>
                         ) : null}
@@ -1547,55 +1684,54 @@ function renderImageGrid(grid: any, keyPrefix = "grid") {
                       )}
                     </button>
 
-                      {expanded ? (
-                        <div className="px-4 pb-4 pt-3 space-y-1">
-                          {(() => {
-                            const split = splitStepsForOptionalDropdown(lessonStepsArr);
-                            const optOpen = !!optionalExpandedByLesson[lessonNum];
+                    {expanded ? (
+                      <div className="px-4 pb-4 pt-3 space-y-1">
+                        {(() => {
+                          const split = splitStepsForOptionalDropdown(lessonStepsArr);
+                          const optOpen = !!optionalExpandedByLesson[lessonNum];
 
-                            return (
-                              <>
-                                {/* BEFORE optional */}
-                                {split.before.map(({ st, idx }: any) =>
-                                  renderStepButton(lessonNum, idx, st, locked, safeStepIndex)
-                                )}
+                          return (
+                            <>
+                              {/* BEFORE optional */}
+                              {split.before.map(({ st, idx }: any) =>
+                                renderStepButton(lessonNum, idx, st, locked, safeStepIndex)
+                              )}
 
-                                {/* OPTIONAL dropdown */}
-                                {split.hasOptional && split.optionalBlock.length > 0 ? (
-                                  <div className="mt-2">
-                                    <button
-                                      type="button"
-                                      onClick={() => toggleOptionalSteps(lessonNum)}
-                                      className="w-full flex items-center justify-between py-2 px-3 rounded bg-gray-100 hover:bg-gray-200 text-sm text-gray-700"
-                                    >
-                                      <span className="font-medium">Optional Steps</span>
-                                      {optOpen ? (
-                                        <ChevronDown className="w-4 h-4 text-gray-500" />
-                                      ) : (
-                                        <ChevronRight className="w-4 h-4 text-gray-500" />
-                                      )}
-                                    </button>
-
+                              {/* OPTIONAL dropdown */}
+                              {split.hasOptional && split.optionalBlock.length > 0 ? (
+                                <div className="mt-2">
+                                  <button
+                                    type="button"
+                                    onClick={() => toggleOptionalSteps(lessonNum)}
+                                    className="w-full flex items-center justify-between py-2 px-3 rounded bg-gray-100 hover:bg-gray-200 text-sm text-gray-700"
+                                  >
+                                    <span className="font-medium">Optional Steps</span>
                                     {optOpen ? (
-                                      <div className="mt-1 space-y-1 pl-2 border-l border-gray-200">
-                                        {split.optionalBlock.map(({ st, idx }: any) =>
-                                          renderStepButton(lessonNum, idx, st, locked, safeStepIndex)
-                                        )}
-                                      </div>
-                                    ) : null}
-                                  </div>
-                                ) : null}
+                                      <ChevronDown className="w-4 h-4 text-gray-500" />
+                                    ) : (
+                                      <ChevronRight className="w-4 h-4 text-gray-500" />
+                                    )}
+                                  </button>
 
-                                {/* AFTER optional */}
-                                {split.after.map(({ st, idx }: any) =>
-                                  renderStepButton(lessonNum, idx, st, locked, safeStepIndex)
-                                )}
-                              </>
-                            );
-                          })()}
-                        </div>
-                      ) : null}
+                                  {optOpen ? (
+                                    <div className="mt-1 space-y-1 pl-2 border-l border-gray-200">
+                                      {split.optionalBlock.map(({ st, idx }: any) =>
+                                        renderStepButton(lessonNum, idx, st, locked, safeStepIndex)
+                                      )}
+                                    </div>
+                                  ) : null}
+                                </div>
+                              ) : null}
 
+                              {/* AFTER optional */}
+                              {split.after.map(({ st, idx }: any) =>
+                                renderStepButton(lessonNum, idx, st, locked, safeStepIndex)
+                              )}
+                            </>
+                          );
+                        })()}
+                      </div>
+                    ) : null}
                   </div>
                 );
               })}
@@ -1635,7 +1771,9 @@ function renderImageGrid(grid: any, keyPrefix = "grid") {
                             type="button"
                             className={[
                               "w-full flex items-center justify-between p-4 transition-colors",
-                              locked ? "bg-gray-100 hover:bg-gray-100 cursor-not-allowed" : "hover:bg-gray-50",
+                              locked
+                                ? "bg-gray-100 hover:bg-gray-100 cursor-not-allowed"
+                                : "hover:bg-gray-50",
                               isLessonActive && !locked ? "bg-indigo-50 hover:bg-indigo-100" : "",
                               allStepsDone && !locked ? "bg-green-50 hover:bg-green-100" : "",
                             ].join(" ")}
@@ -1643,11 +1781,28 @@ function renderImageGrid(grid: any, keyPrefix = "grid") {
                             title={locked ? "Finish all normal lessons to unlock Advanced (Optional)." : ""}
                           >
                             <div className="text-left">
-                              <div className={`text-sm mb-1 ${locked ? "text-gray-400" : isLessonActive ? "text-indigo-600" : "text-gray-900"}`}>
-                                {isLessonEntryOptional(entry) ? "Optional Lesson" : "Lesson"} {lessonNum}
+                              <div
+                                className={`text-sm mb-1 ${
+                                  locked
+                                    ? "text-gray-400"
+                                    : isLessonActive
+                                    ? "text-indigo-600"
+                                    : "text-gray-900"
+                                }`}
+                              >
+                                {isLessonEntryOptional(entry) ? "Optional Lesson" : "Lesson"}{" "}
+                                {lessonNum}
                               </div>
                               {lessonSubtitle ? (
-                                <div className={`text-xs ${locked ? "text-gray-400" : isLessonActive ? "text-indigo-500" : "text-gray-500"}`}>
+                                <div
+                                  className={`text-xs ${
+                                    locked
+                                      ? "text-gray-400"
+                                      : isLessonActive
+                                      ? "text-indigo-500"
+                                      : "text-gray-500"
+                                  }`}
+                                >
                                   {lessonSubtitle}
                                 </div>
                               ) : null}
@@ -1708,7 +1863,6 @@ function renderImageGrid(grid: any, keyPrefix = "grid") {
                               })()}
                             </div>
                           ) : null}
-
                         </div>
                       );
                     })}

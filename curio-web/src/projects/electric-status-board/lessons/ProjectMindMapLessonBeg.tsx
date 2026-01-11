@@ -11,7 +11,7 @@ import {
   nodePositions,
 } from "@/src/projects/electric-status-board/assets/mindMapBeg";
 
-export default function ESBProjectMindMapLesson(props: {
+export default function ESBProjectMindMapLessonBeg(props: {
   onBack?: () => void;
   onContinue?: () => void;
   embedded?: boolean;

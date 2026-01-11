@@ -3,6 +3,9 @@
 import * as React from "react";
 import styles from "./GuidedCodeBlock.module.css";
 
+// keep ONLY these from the shared util
+import { type AnswerSpec, evalAnswerSpec, BlankRule, BlankTypedSpec} from "./blankCheckUtils";
+
 // --- Simple Arduino-style syntax groups for example boxes ---
 const TYPE_KEYWORDS = [
   "void",
@@ -64,24 +67,6 @@ const ARDUINO_BUILTINS = [
   "fillCircle",
   "display",
 ];
-
-type BlankRule = {
-  equals?: string;
-  oneOf?: string[];
-  contains?: string;
-  matches?: string; // regex string
-};
-
-// ---- Restored "JS-era" typed specs (range / sameAs / etc.) ----
-type BlankTypedSpec =
-  | { type: "identifier" }
-  | { type: "range"; min?: number; max?: number }
-  | { type: "number" }
-  | { type: "sameAs"; targets: string[] }
-  | { type: "string"; regex?: string }
-  | { type?: string; values?: any[] }; // fallback: values list
-
-type AnswerSpec = BlankRule | BlankTypedSpec | string[] | string;
 
 type Props = {
   step: any;
@@ -157,24 +142,6 @@ function storageSetJson(key: string, value: any) {
 
 function nowMs() {
   return Date.now();
-}
-
-function isValidRegex(re: string) {
-  try {
-    // eslint-disable-next-line no-new
-    new RegExp(re);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-function normalizeWs(s: string) {
-  return String(s ?? "").replace(/\s+/g, " ").trim();
-}
-
-function isPlainObject(x: any) {
-  return x != null && typeof x === "object" && !Array.isArray(x);
 }
 
 // ============================================================
@@ -291,7 +258,6 @@ function splitComment(lineTokens: TemplateTok[]) {
 
   return { codeTokens, comment: comment.trimEnd() };
 }
-
 
 function estimateTemplateTokenWidthPx(tok: TemplateTok, valueLen: number) {
   if (!tok) return 0;
@@ -437,117 +403,6 @@ function getCompletedBlankSyntaxClass(v: any) {
     default:
       return styles.blankSyntaxText;
   }
-}
-
-// ============================================================
-// Blank evaluation (current TS rule format)
-// ============================================================
-function evalBlank(rule: BlankRule, value: string): boolean {
-  const v = String(value ?? "");
-  if (!rule) return false;
-
-  if (typeof rule.equals === "string") {
-    return normalizeWs(v) === normalizeWs(rule.equals);
-  }
-
-  if (Array.isArray(rule.oneOf)) {
-    const nv = normalizeWs(v);
-    return rule.oneOf.some((x) => normalizeWs(x) === nv);
-  }
-
-  if (typeof rule.contains === "string") {
-    return normalizeWs(v).includes(normalizeWs(rule.contains));
-  }
-
-  if (typeof rule.matches === "string" && isValidRegex(rule.matches)) {
-    const re = new RegExp(rule.matches);
-    return re.test(v);
-  }
-
-  return false;
-}
-
-// ============================================================
-// AnswerSpec evaluation (restores JS-era typed specs + arrays)
-// ============================================================
-function evalAnswerSpec(spec: AnswerSpec, value: string, allValues: Record<string, any>): boolean {
-  const raw = String(value ?? "").trim();
-
-  // arrays: ["begin", "start"]
-if (Array.isArray(spec)) {
-  return spec.some((entry) => evalAnswerSpec(entry as any, raw, allValues));
-}
-
-
-  // string shorthand: "begin"
-  if (typeof spec === "string") {
-    return raw === spec.trim();
-  }
-
-  // typed objects (old JS)
-  if (isPlainObject(spec) && typeof (spec as any).type === "string") {
-    const t = String((spec as any).type);
-
-    switch (t) {
-      case "identifier":
-        return /^[A-Za-z_][A-Za-z0-9_]*$/.test(raw);
-
-      case "range": {
-        const num = Number(raw);
-        if (Number.isNaN(num)) return false;
-        const min = (spec as any).min ?? -Infinity;
-        const max = (spec as any).max ?? Infinity;
-        return num >= min && num <= max;
-      }
-
-      case "number": {
-        const num = Number(raw);
-        return !Number.isNaN(num);
-      }
-
-case "sameAs": {
-  const s: any = spec;
-
-  // allow either target: "X" OR targets: ["X","Y","Z"]
-  const targets: string[] = Array.isArray(s.targets)
-    ? s.targets
-    : typeof s.target === "string"
-      ? [s.target]
-      : [];
-
-  if (targets.length === 0) return false;
-
-  const normalizedUser = normalizeWs(raw);
-  if (!normalizedUser) return false;
-
-  return targets.some((t) => {
-    const key = String(t ?? "").trim();
-    if (!key) return false;
-
-    const otherVal = normalizeWs(String(allValues?.[key] ?? ""));
-    return otherVal !== "" && normalizedUser === otherVal;
-  });
-}
-
-
-      case "string": {
-        const re = (spec as any).regex;
-        if (!raw) return false;
-        if (typeof re === "string" && re.length > 0 && isValidRegex(re)) {
-          return new RegExp(re).test(raw);
-        }
-        return true;
-      }
-
-      default: {
-        const arr = Array.isArray((spec as any).values) ? (spec as any).values : [];
-        return arr.some((v: any) => raw === String(v).trim());
-      }
-    }
-  }
-
-  // otherwise treat as BlankRule
-  return evalBlank(spec as BlankRule, raw);
 }
 
 export default function GuidedCodeBlock({
@@ -937,8 +792,7 @@ export default function GuidedCodeBlock({
     }
   };
 
-  // restores typed specs + arrays + sameAs
-  // counts attempts ONLY when wrong (per blank), matching your old JS comment
+  // counts attempts ONLY when wrong (per blank)
   const checkBlanks = () => {
     if (!answerKey) return;
 
