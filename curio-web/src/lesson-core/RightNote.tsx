@@ -33,14 +33,32 @@ export default function LessonRightRail({
       ].join(" ")}
     >
       {showHeader ? (
-        <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-4 py-3">
+        <div
+            className={[
+                "sticky top-0 z-10 border-b px-4 py-3 transition-colors",
+                expanded
+                ? "bg-white border-gray-200"
+                : "bg-indigo-200 border-indigo-300",
+            ].join(" ")}
+            >
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-sm font-semibold text-gray-900">
+            <div
+                className={[
+                    "flex items-center gap-2 text-sm font-semibold",
+                    expanded ? "text-gray-800" : "text-indigo-900",
+                ].join(" ")}
+>
               {/* Toggle arrow */}
               <button
                 type="button"
                 onClick={() => setExpanded((v) => !v)}
-                className="text-gray-500 hover:text-gray-800 font-mono"
+                className={[
+                    "font-mono transition-colors",
+                    expanded
+                        ? "text-gray-500 hover:text-gray-800"
+                        : "text-indigo-900/80 hover:text-indigo-800",
+                    ].join(" ")}
+                                    
                 aria-label={expanded ? "Collapse My Notes" : "Expand My Notes"}
               >
                 {expanded ? "<" : ">"}
@@ -90,9 +108,26 @@ export default function LessonRightRail({
     ].join(" ")}
   />
 </div>
-        ) : (
-          <div className="space-y-3">{children ?? null}</div>
-        )}
+) : (
+  <div className="flex flex-col items-center justify-center h-full text-center px-4 space-y-20">
+    <img
+      src="/curio-owl-sleep.png"
+      alt="Pluto sleeping"
+      className="w-28 h-30 opacity-90"
+    />
+
+    <div className="text-medium text-indigo-600 leading-relaxed">
+      <div className="font-medium text-gray-700 mb-1">
+        Pluto the Star has not woken up yet.
+      </div>
+      <div>
+        Look forward to our new AI helper.
+      </div>
+    </div>
+  </div>
+)
+
+        }
       </div>
     </aside>
   );
