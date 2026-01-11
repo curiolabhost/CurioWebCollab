@@ -180,6 +180,7 @@ return (
         //maxWidth: 1800,
         margin: "0 auto",
         width: "100%",
+        minWidth: 890,
         padding: "0px", // let CodeLessonBase handle padding
       }}
     >
