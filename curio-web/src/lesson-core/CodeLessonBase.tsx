@@ -454,7 +454,7 @@ export default function CodeLessonBase({
   codingLessonSlug = "code-beg",
   circuitsLessonSlug = "circuit-beg",
   rightRail,
-  rightRailTitle = "Curio Owl",
+  rightRailTitle = "Pluto",
 }: any) {
   const router = useRouter();
 
