@@ -172,7 +172,7 @@ void loop(){
     {
       id: 3,
       title: "Step 3: Button Pins",
-      desc: `Next, we create names for the three buttons so the code knows which Arduino pins they are connected to, and so the program is easier to read and understand than if we used raw pin numbers. For this project, we need one button to move the cursor to the next option, one button to move to the previous option, and one button to select the highlighted option. If you want more practice working with buttons, review Lesson 1.`,
+      desc: `Next, we name the three buttons to identify their Arduino pins as well as improve code readability. For this project, we need one button to move the cursor to the next option, one button to move to the previous option, and one button to select the highlighted option. If you want more practice working with buttons, review Lesson 1.`,
       hint: "Later, we'll set these pins to INPUT_PULLUP, which means the button will read LOW when pressed and HIGH when released.",
 
       codes: [
@@ -481,6 +481,17 @@ blankDifficulties: {
 
           descAfterCode: `Try to modify your welcome message to say something different! You can also change the text size and cursor positions to make it look unique.`,
         },
+          {
+            topicTitle: "Useful Functions",
+            descBeforeCode:`**Here are some useful functions to help you create your welcome message:**
+            display.begin(A, B);
+            display.clearDisplay();
+            display.setTextSize(A);
+            display.setTextColor(A);
+            display.setCursor(A,B);
+            display.print("text");
+            display.display();`
+          },
                 {
             topicTitle: "Try Simulation",
             descBeforeCode:`Paste the code into simaulator and run it to check if the welcome message displays as intended. Here is an example of a welcome message. 
@@ -2420,7 +2431,7 @@ customComponent: InputPullupCircuitInteractive,
       id: 4,
       title: "Step 4: Create a Helper Function for Button",
       desc:
-        "Real buttons can be noisy. When you press them, they may rapidly flicker between HIGH and LOW for a few milliseconds. This is called 'bouncing'. A **debounce helper function** makes sure we only react to a clean, stable press.",
+        "Real buttons can be noisy. When you press them, they may rapidly flicker between HIGH and LOW for a few milliseconds. This is called 'bouncing'. A **debounce helper function** makes sure we only react to a clean, stable press. The code will tell the computer to wait a little bit, and only count the button if it stays pressed.",
       hint:
         "The helper checks the pin, waits a bit, and checks again to confirm the press. Make sure variable names match in this example.",
       codes: [
