@@ -13,6 +13,7 @@
     "lucide-react": "^0.562.0",
     "monaco-editor": "^0.55.1",
     "next": "^16.1.1",
+    "openai": "^6.16.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3"
   },

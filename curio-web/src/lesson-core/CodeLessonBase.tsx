@@ -1944,7 +1944,7 @@ export default function CodeLessonBase({
           defaultWokwiUrl=""
         />
       ) : (
-        <ArduinoEditor apiBaseUrl={apiBaseUrl} />
+        <ArduinoEditor/>
       )}
     </div>
   );
