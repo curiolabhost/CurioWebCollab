@@ -47,12 +47,12 @@ export default function AccountSetupPage() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
         <HomePage
-          // ✅ go to the real login route so the URL becomes /account-setup/login
+          // go to the real login route so the URL becomes /account-setup/login
           onNavigateToLogin={() => router.push("/account-setup/login")}
           onNavigateToDashboard={() => {
             const stored = localStorage.getItem("currentUser");
             if (stored) router.push("/dashboard");
-            else router.push("/account-setup/login"); // ✅ URL updates
+            else router.push("/account-setup/login"); // URL updates
           }}
         />
       </div>
