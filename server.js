@@ -20,12 +20,17 @@ const ollamaClient = new Ollama({ host: OLLAMA_HOST });
 // ----------------------
 // Arduino CLI config
 // ----------------------
-const ARDUINO_CLI = '"/home/paul/bin/arduino-cli"';
+const ARDUINO_CLI = "arduino-cli";
 const FQBN = "arduino:avr:uno";
 
 // ----------------------
 // Stub headers
 // ----------------------
+
+process.on("uncaughtException", (e) => console.error("uncaughtException:", e));
+process.on("unhandledRejection", (e) => console.error("unhandledRejection:", e));
+
+
 const STUB_LIBRARY_HEADERS = {
   "Adafruit_GFX.h": `#pragma once
 #include <stdint.h>
@@ -78,7 +83,15 @@ app.post("/verify-arduino", (req, res) => {
 
     const cmd = `${ARDUINO_CLI} compile --fqbn ${FQBN} --build-property compiler.cpp.extra_flags="-I${stubDir}" "${sketchDir}"`;
 
+    console.log("VERIFY: starting compile");
+    console.log("VERIFY: cmd =", cmd);
+
     exec(cmd, { timeout: 20000 }, (err, stdout, stderr) => {
+        console.log("VERIFY: done");
+        console.log("VERIFY: err =", err?.message);
+        console.log("VERIFY: stdout =", stdout);
+        console.log("VERIFY: stderr =", stderr);
+
       if (!err) return res.json({ ok: true, errors: [] });
 
       const errors = [];
@@ -95,6 +108,7 @@ app.post("/verify-arduino", (req, res) => {
     res.status(500).json({ ok: false, error: "Internal error." });
   }
 });
+
 
 // ----------------------
 // /ai/help - proper Ollama streaming (Node SDK compatible)

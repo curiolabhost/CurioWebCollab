@@ -274,7 +274,13 @@ export default function ArduinoEditor({
         }),
       });
 
-      if (!res.body) throw new Error("No response body");
+      if (!res.ok) {
+        const t = await res.text().catch(() => "");
+        throw new Error(`AI route failed (${res.status}): ${t}`);
+      }
+      if (!res.body) {
+        throw new Error("AI route returned no body (streaming not enabled).");
+      }
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
@@ -510,7 +516,13 @@ export default function ArduinoEditor({
         }),
       });
 
-      if (!res.ok || !res.body) throw new Error("No response body");
+      if (!res.ok) {
+        const t = await res.text().catch(() => "");
+        throw new Error(`AI route failed (${res.status}): ${t}`);
+      }
+      if (!res.body) {
+        throw new Error("AI route returned no body (streaming not enabled).");
+      }
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
