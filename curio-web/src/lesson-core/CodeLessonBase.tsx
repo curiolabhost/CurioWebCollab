@@ -1592,7 +1592,7 @@ export default function CodeLessonBase({
   {showNotes ? (
     <SplitView
       left={
-        <div className="flex-1 min-w-0 overflow-y-auto">
+        <div className="h-full min-h-0 min-w-0 overflow-y-auto">
           {lessonHeader}
           {lessonBody}
         </div>
@@ -1609,14 +1609,12 @@ export default function CodeLessonBase({
       persistKey="curio:layout:rightnote-width"
     />
   ) : (
-    <div className="flex-1 min-w-0 overflow-y-auto">
+    <div className="h-full min-h-0 min-w-0 overflow-y-auto">
       {lessonHeader}
       {lessonBody}
     </div>
   )}
 </div>
-
-
     </div>
 
       {/* Sidebar */}
