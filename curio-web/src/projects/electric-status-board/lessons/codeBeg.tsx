@@ -9,6 +9,7 @@ import { TouchpadIcon } from "lucide-react";
 import TotalCountArrayInteractive from "./counterVariableBeg";
 import InputPullupCircuitInteractive from "./InputPullupCircuitInteractive";
 
+
 export const LESSON_STEPS_BEGINNER: Record<number, { phrase: string; advanced?: boolean; steps: any[] }> = {
 
   1:{
@@ -2801,6 +2802,8 @@ export default function CodeBegLesson({
       lessonSteps={LESSON_STEPS_BEGINNER}
       storagePrefix={`curio:${slug}:${lessonSlug}`}
       apiBaseUrl={process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:4000"}
+      rightRailTitle="My Notes"
+      rightRailScopeId="mynotes"
     />
   );
 }
