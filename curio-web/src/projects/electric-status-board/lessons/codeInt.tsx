@@ -109,7 +109,7 @@ This is for a real-time clock module. The exact header depends on which clock mo
 #include __BLANK[LIB_CLOCK]__
 ^^
 #define __BLANK[WVAR]__  __BLANK[WIDTH]__ // Define width pixels
-#define __BLANK[HVAREMILY]__ __BLANK[HEIGHTSONG]__ // Define height pixels
+#define __BLANK[HVAR]__ __BLANK[HEIGHT]__ // Define height pixels
 #define RESET  -1
 Adafruit_SSD1306 display (__BLANK[WIDTH2]__, __BLANK[HEIGHT2]__ , &Wire, RESET);^^
 
@@ -1731,7 +1731,7 @@ This is a “checkpoint” — you are not adding new logic yet, just organizing
 
 //<< --- OLED setup ---
 #define __BLANK[WVAR]__  __BLANK[WIDTH]__ // Define width pixels
-#define __BLANK[HVAREMILY]__ __BLANK[HEIGHTSONG]__ // Define height pixels
+#define __BLANK[HVAR]__ __BLANK[HEIGHT]__ // Define height pixels
 #define RESET -1                                  // no reset pin wired
 Adafruit_SSD1306 display(__BLANK[WIDTH2]__, __BLANK[HEIGHT2]__, &Wire, RESET);
 
@@ -2991,6 +2991,8 @@ export default function CodeIntLesson({
       lessonSteps={LESSON_STEPS_INTERMEDIATE}
       storagePrefix={`curio:${slug}:${lessonSlug}`}
       apiBaseUrl={process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:4000"}
+      rightRailTitle="My Notes"
+      rightRailScopeId="mynotes"
     />
   );
 }

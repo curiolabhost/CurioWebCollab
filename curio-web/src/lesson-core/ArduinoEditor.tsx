@@ -1,12 +1,9 @@
-// app/projects/electric-status-board/components/ArduinoEditor.tsx
+// src/lesson-core/ArduinoEditor.tsx
 "use client";
 
 import * as React from "react";
 import Editor from "@monaco-editor/react";
 import styles from "./AruinoEditor.module.css";
-
-
-const STORAGE_KEY = "esb:arduino:sketch";
 
 const DEFAULT_SKETCH = `/* Electric Board Code Editor */
 void setup() {
@@ -37,6 +34,12 @@ const ARDUINO_FUNCS = [
 type ArduinoEditorProps = {
   height?: string | number;
   width?: string | number;
+
+  // Lesson-mode persistence (localStorage, per lesson)
+  storageKey?: string;
+
+  // File-mode (opened from Files > Open; content handed off via localStorage token)
+  fileToken?: string;
 };
 
 type VerifyError = {
@@ -47,7 +50,7 @@ type VerifyError = {
 
 const toolbarButtonStyle: React.CSSProperties = {
   fontSize: 12,
-  padding: "4px 8px",
+  padding: "4px 10px",
   borderRadius: 15,
   border: "1px solid #374151",
   background: "#111827",
@@ -55,10 +58,22 @@ const toolbarButtonStyle: React.CSSProperties = {
   cursor: "pointer",
 };
 
+function safeNameFromPath(name: string) {
+  const s = String(name || "").trim();
+  return s || "ElectricBoard.ino";
+}
+
+const FILE_TOKEN_PREFIX = "curio:fileopen:";
+const FILE_TOKEN_CACHE_PREFIX = "curio:fileopen-cache:"; // sessionStorage per tab
+
 export default function ArduinoEditor({
   height = "100%",
   width = "100%",
+  storageKey,
+  fileToken,
 }: ArduinoEditorProps) {
+  const isFileMode = !!fileToken;
+
   const [isExplaining, setIsExplaining] = React.useState(false);
   const [value, setValue] = React.useState("");
   const [status, setStatus] = React.useState("Ready.");
@@ -82,35 +97,171 @@ export default function ArduinoEditor({
   const monacoRef = React.useRef<any>(null);
   const rafRef = React.useRef<number | null>(null);
 
+  // -------- Files menu state --------
+  const [filesMenuOpen, setFilesMenuOpen] = React.useState(false);
+  const filesBtnRef = React.useRef<HTMLButtonElement | null>(null);
+  const filesMenuRef = React.useRef<HTMLDivElement | null>(null);
+
+  // Currently opened/saved file handle (only works in Chromium w/ File System Access API)
+  const [fileHandle, setFileHandle] = React.useState<any>(null);
+  const [fileName, setFileName] = React.useState<string>("ElectricBoard.ino");
+
+  // hidden <input type=file> fallback
+  const fileInputRef = React.useRef<HTMLInputElement | null>(null);
+
+  /* ============================================================
+     Load editor content
+     - File mode: load from localStorage token payload (with sessionStorage cache to survive Strict Mode)
+     - Lesson mode: load from localStorage storageKey
+  ============================================================ */
   React.useEffect(() => {
-    const saved =
-      typeof window !== "undefined" ? window.localStorage.getItem(STORAGE_KEY) : null;
-    setValue(saved ?? DEFAULT_SKETCH);
-  }, []);
+    if (typeof window === "undefined") return;
+
+    // FILE MODE: load payload passed from opener via localStorage
+    if (fileToken) {
+      try {
+        // 1) Try localStorage (cross-tab handoff)
+        let raw = window.localStorage.getItem(FILE_TOKEN_PREFIX + fileToken);
+
+        // 2) If missing (Strict Mode double-mount, or cleanup already happened), fall back to sessionStorage cache
+        if (!raw) {
+          raw = window.sessionStorage.getItem(FILE_TOKEN_CACHE_PREFIX + fileToken);
+        }
+
+        if (!raw) {
+          // IMPORTANT: don’t clobber if we already have something in state
+          setStatus("Could not load file (missing token).");
+          setFileHandle(null);
+          setFileName("ElectricBoard.ino");
+          setValue((prev) => (prev ? prev : DEFAULT_SKETCH));
+          return;
+        }
+
+        const payload = JSON.parse(raw) as { name: string; text: string };
+
+        // Cache for this tab so Strict Mode remount still works
+        try {
+          window.sessionStorage.setItem(
+            FILE_TOKEN_CACHE_PREFIX + fileToken,
+            JSON.stringify({ name: payload.name, text: payload.text })
+          );
+        } catch {
+          // ignore
+        }
+
+        setFileName(safeNameFromPath(payload.name || "Sketch.ino"));
+        setValue(payload.text ?? DEFAULT_SKETCH);
+
+        // File handles cannot be transferred
+        setFileHandle(null);
+        setStatus(`Opened: ${payload.name}`);
+
+        // Cleanup localStorage token AFTER we’ve cached it (and don’t do it synchronously)
+        // This prevents Strict Mode remount from immediately losing the payload.
+        if (window.localStorage.getItem(FILE_TOKEN_PREFIX + fileToken)) {
+          window.setTimeout(() => {
+            try {
+              window.localStorage.removeItem(FILE_TOKEN_PREFIX + fileToken);
+            } catch {
+              // ignore
+            }
+          }, 750);
+        }
+      } catch {
+        setStatus("Failed to open file.");
+        setFileHandle(null);
+        setFileName("ElectricBoard.ino");
+        setValue((prev) => (prev ? prev : DEFAULT_SKETCH));
+      }
+      return;
+    }
+
+    // LESSON MODE
+    if (storageKey) {
+      const saved = window.localStorage.getItem(storageKey);
+      setValue(saved ?? DEFAULT_SKETCH);
+      setStatus("Ready.");
+      setFileHandle(null);
+      setFileName("ElectricBoard.ino");
+      return;
+    }
+
+    // no storageKey + no fileToken
+    setValue(DEFAULT_SKETCH);
+    setStatus("Ready.");
+    setFileHandle(null);
+    setFileName("ElectricBoard.ino");
+  }, [storageKey, fileToken]);
+
+  /* ============================================================
+     Sync across tabs (LESSON MODE ONLY)
+     - If lesson sketch changes in another tab, reflect it here.
+  ============================================================ */
+  React.useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!storageKey) return;
+    if (isFileMode) return;
+
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== storageKey) return;
+      const next = e.newValue ?? "";
+      setValue(next || DEFAULT_SKETCH);
+      setStatus("Synced from other tab.");
+    };
+
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, [storageKey, isFileMode]);
+
+  // Close Files menu on outside click / escape
+  React.useEffect(() => {
+    if (!filesMenuOpen) return;
+
+    const onDown = (e: MouseEvent) => {
+      const t = e.target as Node | null;
+      if (!t) return;
+
+      const btn = filesBtnRef.current;
+      const menu = filesMenuRef.current;
+
+      if (btn && btn.contains(t)) return;
+      if (menu && menu.contains(t)) return;
+
+      setFilesMenuOpen(false);
+    };
+
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setFilesMenuOpen(false);
+    };
+
+    window.addEventListener("mousedown", onDown);
+    window.addEventListener("keydown", onKey);
+
+    return () => {
+      window.removeEventListener("mousedown", onDown);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [filesMenuOpen]);
 
   const onChange = (v: string | undefined) => {
     const text = v ?? "";
     setValue(text);
     setStatus("Editing...");
 
-    if (rafRef.current !== null) {
-      cancelAnimationFrame(rafRef.current);
-    }
+    // Only lesson mode autosaves to localStorage
+    if (!storageKey || isFileMode) return;
 
-    if (typeof window !== "undefined") {
-      rafRef.current = window.requestAnimationFrame(() => {
-        try {
-          window.localStorage.setItem(STORAGE_KEY, text);
-          setLastSaved(new Date());
-          setStatus("Saved.");
-        } catch (e) {
-          console.error(e);
-          setStatus("Save failed (storage).");
-        }
-      });
-    } else {
-      rafRef.current = null;
-    }
+    if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+
+    rafRef.current = window.requestAnimationFrame(() => {
+      try {
+        window.localStorage.setItem(storageKey, text);
+        setLastSaved(new Date());
+        setStatus("Saved (lesson).");
+      } catch {
+        setStatus("Save failed (storage).");
+      }
+    });
   };
 
   function getCodeContext(code: string, lineNumber: number, radius = 3) {
@@ -160,7 +311,6 @@ export default function ArduinoEditor({
 
     monaco.languages.setMonarchTokensProvider("cpp", {
       keywords: ["for", "while", "do", "switch", "case", "break", "continue", "if", "else", "return"],
-
       arduinoKeywords: [
         "setup",
         "loop",
@@ -177,9 +327,7 @@ export default function ArduinoEditor({
         "Serial.print",
         "Serial.println",
       ],
-
       arduinoConstants: ["HIGH", "LOW", "INPUT", "OUTPUT", "INPUT_PULLUP"],
-
       typeKeywords: [
         "void",
         "int",
@@ -197,11 +345,13 @@ export default function ArduinoEditor({
         "static",
         "const",
       ],
-
       tokenizer: {
         root: [
           [/^\s*#\s*\w+/, "preprocessor"],
-          [/\b(pinMode|digitalWrite|digitalRead|analogWrite|analogRead|delay|millis|micros)\b(?=\s*\()/, "function"],
+          [
+            /\b(pinMode|digitalWrite|digitalRead|analogWrite|analogRead|delay|millis|micros)\b(?=\s*\()/,
+            "function",
+          ],
           [
             /[a-zA-Z_]\w*(?:\.[a-zA-Z_]\w*)*/,
             {
@@ -352,7 +502,6 @@ export default function ArduinoEditor({
 
       const editorRect = editorDom.getBoundingClientRect();
       const scrollX = window.scrollX || window.pageXOffset;
-      const scrollY = window.scrollY || window.pageYOffset;
 
       // Vertical position relative to editor + its own internal scroll
       const top = e.event.posy - editorRect.top + editorDom.scrollTop;
@@ -441,11 +590,9 @@ export default function ArduinoEditor({
         return;
       }
 
-
       if (data.ok) {
         setStatus("Done verifying.");
         if (data.notices?.length) setCompilerOutput(data.notices.join("\n\n"));
-        // clear markers
         monacoRef.current.editor.setModelMarkers(editorRef.current.getModel(), "verify", []);
         return;
       }
@@ -569,26 +716,218 @@ export default function ArduinoEditor({
     }
   };
 
-  const handleUpload = () => {
-    setStatus("Uploading (simulated)...");
-    setTimeout(() => setStatus("Upload complete (simulated)."), 600);
-  };
-
   const handleReset = () => {
     setValue(DEFAULT_SKETCH);
     setCompilerOutput("");
     setAiHelpMap({});
     setLastErrors([]);
     setPopoverVisible(false);
-    try {
-      if (typeof window !== "undefined") window.localStorage.setItem(STORAGE_KEY, DEFAULT_SKETCH);
-    } catch (e) {
-      console.error(e);
+
+    // Only lesson mode should write back to the lesson sketch key
+    if (!isFileMode && storageKey) {
+      try {
+        if (typeof window !== "undefined") window.localStorage.setItem(storageKey, DEFAULT_SKETCH);
+      } catch (e) {
+        console.error(e);
+      }
     }
+
     setStatus("Sketch reset to default.");
     if (editorRef.current && monacoRef.current) {
       monacoRef.current.editor.setModelMarkers(editorRef.current.getModel(), "verify", []);
     }
+  };
+
+  // ---------------- Expand ----------------
+  const handleExpand = () => {
+    if (typeof window === "undefined") return;
+
+    if (fileToken) {
+      window.open(
+        `/editor/arduino?fileToken=${encodeURIComponent(fileToken)}`,
+        "_blank",
+        "noopener,noreferrer"
+      );
+      return;
+    }
+
+    if (!storageKey) return;
+    const url = `/editor/arduino?key=${encodeURIComponent(storageKey)}`;
+    window.open(url, "_blank", "noopener,noreferrer");
+  };
+
+  // ---------------- Files actions ----------------
+
+  function closeFilesMenu() {
+    setFilesMenuOpen(false);
+  }
+
+  async function writeToFileHandle(handle: any, text: string) {
+    const writable = await handle.createWritable();
+    await writable.write(text);
+    await writable.close();
+  }
+
+  function downloadAsFile(text: string, name: string) {
+    const blob = new Blob([text], { type: "text/plain" });
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = name || "ElectricBoard.ino";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 500);
+  }
+
+  const handleOpen = async () => {
+    closeFilesMenu();
+
+    try {
+      const anyWin = window as any;
+
+      // Prefer File System Access API
+      if (anyWin?.showOpenFilePicker) {
+        const [handle] = await anyWin.showOpenFilePicker({
+          multiple: false,
+          types: [
+            {
+              description: "Arduino sketch",
+              accept: { "text/plain": [".ino", ".cpp", ".h", ".txt"] },
+            },
+          ],
+        });
+        if (!handle) return;
+
+        const file = await handle.getFile();
+        const text = await file.text();
+
+        const token =
+          (crypto as any)?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+        window.localStorage.setItem(FILE_TOKEN_PREFIX + token, JSON.stringify({ name: file.name, text }));
+
+        window.open(`/editor/arduino?fileToken=${encodeURIComponent(token)}`, "_blank", "noopener,noreferrer");
+        return;
+      }
+
+      // Fallback: hidden input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+        fileInputRef.current.click();
+      }
+    } catch (e) {
+      console.error(e);
+      setStatus("Open cancelled or failed.");
+    }
+  };
+
+  const onFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+
+    try {
+      const text = await f.text();
+      const token =
+        (crypto as any)?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+      window.localStorage.setItem(FILE_TOKEN_PREFIX + token, JSON.stringify({ name: f.name, text }));
+
+      window.open(`/editor/arduino?fileToken=${encodeURIComponent(token)}`, "_blank", "noopener,noreferrer");
+    } catch (err) {
+      console.error(err);
+      setStatus("Failed to open file.");
+    }
+  };
+
+  const handleSaveAs = async () => {
+    closeFilesMenu();
+
+    try {
+      const anyWin = window as any;
+      if (anyWin?.showSaveFilePicker) {
+        const handle = await anyWin.showSaveFilePicker({
+          suggestedName: fileName || "ElectricBoard.ino",
+          types: [
+            {
+              description: "Arduino sketch",
+              accept: { "text/plain": [".ino", ".cpp", ".h", ".txt"] },
+            },
+          ],
+        });
+
+        if (!handle) return;
+
+        await writeToFileHandle(handle, value);
+        setFileHandle(handle);
+
+        try {
+          const file = await handle.getFile();
+          setFileName(safeNameFromPath(file.name));
+        } catch {}
+
+        setLastSaved(new Date());
+        setStatus("Saved to disk.");
+        return;
+      }
+
+      downloadAsFile(value, fileName || "ElectricBoard.ino");
+      setLastSaved(new Date());
+      setStatus("Downloaded (Save As).");
+    } catch (e) {
+      console.error(e);
+      setStatus("Save As cancelled or failed.");
+    }
+  };
+
+  const handleSave = async () => {
+    closeFilesMenu();
+
+    try {
+      if (fileHandle) {
+        await writeToFileHandle(fileHandle, value);
+        setLastSaved(new Date());
+        setStatus("Saved to disk.");
+        return;
+      }
+
+      await handleSaveAs();
+    } catch (e) {
+      console.error(e);
+      setStatus("Save failed.");
+    }
+  };
+
+  const handleCreateNew = () => {
+    closeFilesMenu();
+    if (typeof window === "undefined") return;
+
+    const token =
+      (crypto as any)?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+    window.localStorage.setItem(
+      FILE_TOKEN_PREFIX + token,
+      JSON.stringify({ name: "NewSketch.ino", text: DEFAULT_SKETCH })
+    );
+
+    window.open(`/editor/arduino?fileToken=${encodeURIComponent(token)}`, "_blank", "noopener,noreferrer");
+    setStatus("Created new sketch in a new tab.");
+  };
+
+  const filesMenuItemStyle: React.CSSProperties = {
+    width: "100%",
+    textAlign: "left",
+    padding: "8px 10px",
+    fontSize: 12,
+    color: "#e5e7eb",
+    background: "transparent",
+    border: "none",
+    cursor: "pointer",
+  };
+
+  const filesMenuItemHintStyle: React.CSSProperties = {
+    fontSize: 11,
+    color: "#9ca3af",
+    marginLeft: 10,
   };
 
   return (
@@ -600,13 +939,22 @@ export default function ArduinoEditor({
         display: "flex",
         flexDirection: "column",
         borderRadius: 8,
-        overflow: "visible", // IMPORTANT: don't clip the AI popover
+        overflow: "visible",
         border: "1px solid #1f2937",
         background: "#020617",
         position: "relative",
         userSelect: isResizing ? "none" : "auto",
       }}
     >
+      {/* hidden file input fallback */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".ino,.cpp,.h,.txt,text/plain"
+        style={{ display: "none" }}
+        onChange={onFileInputChange}
+      />
+
       {/* Top bar */}
       <div
         style={{
@@ -619,16 +967,24 @@ export default function ArduinoEditor({
           fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
           fontSize: 12,
           color: "#e5e7eb",
+          position: "relative",
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <div style={{ width: 8, height: 8, borderRadius: "999px", background: "#10b981" }} />
-          <span>ElectricBoard.ino</span>
+          <span>{safeNameFromPath(fileName)}</span>
+          {isFileMode ? (
+            <span style={{ marginLeft: 8, fontSize: 11, color: "#94a3b8" }}>(File)</span>
+          ) : (
+            <span style={{ marginLeft: 8, fontSize: 11, color: "#94a3b8" }}>(Lesson)</span>
+          )}
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
+
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           <button type="button" onClick={handleVerify} style={toolbarButtonStyle}>
             Verify
           </button>
+
           <button
             type="button"
             onClick={explainErrorsWithAI}
@@ -641,14 +997,72 @@ export default function ArduinoEditor({
           >
             Explain Error
           </button>
-          <button type="button" onClick={handleUpload} style={toolbarButtonStyle}>
-            Upload
+
+          {/* Files dropdown */}
+          <div style={{ position: "relative" }}>
+            <button
+              ref={filesBtnRef}
+              type="button"
+              onClick={() => setFilesMenuOpen((v) => !v)}
+              style={{
+                ...toolbarButtonStyle,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+              aria-haspopup="menu"
+              aria-expanded={filesMenuOpen}
+            >
+              Files <span style={{ opacity: 0.8 }}>▾</span>
+            </button>
+
+            {filesMenuOpen ? (
+              <div
+                ref={filesMenuRef}
+                role="menu"
+                style={{
+                  position: "absolute",
+                  right: 0,
+                  top: "calc(100% + 8px)",
+                  width: 220,
+                  background: "#0b1220",
+                  border: "1px solid #1f2937",
+                  borderRadius: 10,
+                  boxShadow: "0 10px 30px rgba(0,0,0,0.45)",
+                  padding: 6,
+                  zIndex: 2000,
+                }}
+              >
+                <button role="menuitem" type="button" onClick={handleOpen} style={filesMenuItemStyle}>
+                  Open…
+                  <span style={filesMenuItemHintStyle}>from computer</span>
+                </button>
+
+                <button role="menuitem" type="button" onClick={handleSave} style={filesMenuItemStyle}>
+                  Save
+                  <span style={filesMenuItemHintStyle}>{fileHandle ? "overwrite" : "Save As"}</span>
+                </button>
+
+                <button role="menuitem" type="button" onClick={handleSaveAs} style={filesMenuItemStyle}>
+                  Save As…
+                  <span style={filesMenuItemHintStyle}>choose location</span>
+                </button>
+
+                <div style={{ height: 1, background: "#1f2937", margin: "6px 0" }} />
+
+                <button role="menuitem" type="button" onClick={handleCreateNew} style={filesMenuItemStyle}>
+                  Create New
+                  <span style={filesMenuItemHintStyle}>new tab</span>
+                </button>
+              </div>
+            ) : null}
+          </div>
+
+          <button type="button" onClick={handleExpand} style={toolbarButtonStyle}>
+            Expand
           </button>
-          <button
-            type="button"
-            onClick={handleReset}
-            style={{ ...toolbarButtonStyle, opacity: 0.8 }}
-          >
+
+          <button type="button" onClick={handleReset} style={{ ...toolbarButtonStyle, opacity: 0.8 }}>
             Reset
           </button>
         </div>
@@ -727,10 +1141,11 @@ export default function ArduinoEditor({
               alignItems: "center",
               justifyContent: "space-between",
               flexShrink: 0,
+              gap: 10,
             }}
           >
             <span>{status}</span>
-            <span>
+            <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
               Board: Arduino Uno • Port: Not connected
               {lastSaved && (
                 <span style={{ marginLeft: 12 }}>| Last saved: {lastSaved.toLocaleTimeString()}</span>
