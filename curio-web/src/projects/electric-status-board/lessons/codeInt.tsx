@@ -1142,7 +1142,7 @@ while (__BLANK[P3_CONDVAR]__ < __BLANK[P3_LIMIT]__) {
             P3_CONDVAR: { type: "sameAs", target: "P3_VAR" },
             P3_LIMIT: { type: "range", min: 6, max: 200 },
             P3_PRINT: { type: "sameAs", target: "P3_VAR" },
-            P3_NEXT: { type: "expression" }, // should represent counter + 1
+            P3_NEXT: { type: "expression" , template: "{P3_VAR} + 1"}, // should represent counter + 1
           },
           blankExplanations: {
             P3_VAR:
@@ -1278,7 +1278,7 @@ while (__BLANK[P6_IDXVAR]__ < total2) {
             P6_TOTAL: ["6"],
             P6_DESNAME: { type: "identifier" },
             P6_DESVAL: { type: "range", min: 0, max: 20 },
-            P6_IDXVAR: ["k"],
+            P6_IDXVAR: {type: "identifier" },
             P6_STARTIDX: ["0"],
             P6_READ: { type: "expression" }, // array[index]
             P6_COMPARE: { type: "sameAs", target: "P6_DESNAME" },
@@ -1383,7 +1383,7 @@ void __BLANK[SHOWMAIN_FN]__() {                // name the function that draws t
     __BLANK[INC_I]__;                          // move to the next menu item
   }
 
-  display.__BLANK[FLUSH]__();                 // update OLED to show everything
+  display.__BLANK[FLUSH]__;                 // update OLED to show everything
 }
 ^^`,
           imageGridBeforeCode: {
