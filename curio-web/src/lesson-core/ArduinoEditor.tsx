@@ -2,8 +2,11 @@
 "use client";
 
 import * as React from "react";
-import Editor from "@monaco-editor/react";
-import styles from "./AruinoEditor.module.css";
+import dynamic from "next/dynamic";
+const Editor = dynamic(() => import("@monaco-editor/react"), {
+  ssr: false,
+});
+import styles from "./ArduinoEditor.module.css";
 
 const DEFAULT_SKETCH = `/* Electric Board Code Editor */
 void setup() {
@@ -412,7 +415,7 @@ export default function ArduinoEditor({
     setStatus("Requesting AI explanation...");
 
     try {
-      const res = await fetch("/api/ai/help", {
+      const res = await fetch("/api/help", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -486,7 +489,7 @@ export default function ArduinoEditor({
     editor.onMouseDown((e: any) => {
       if (!e?.target?.position) return;
 
-      const POPOVER_OFFSET = 12;
+      const POPOVER_OFFSET = 20;
       const line = e.target.position.lineNumber;
       const model = editor.getModel();
       const markers = monaco.editor.getModelMarkers({ resource: model.uri, owner: "verify" }) || [];
@@ -651,7 +654,7 @@ export default function ArduinoEditor({
     setIsExplaining(true);
 
     try {
-      const res = await fetch("/api/ai/help", {
+      const res = await fetch("/api/help", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
