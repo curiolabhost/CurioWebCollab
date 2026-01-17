@@ -466,8 +466,8 @@ export default function GuidedCodeBlock({
   React.useEffect(() => {
     const safeMerged = mergedBlanks && typeof mergedBlanks === "object" ? mergedBlanks : {};
     setLocalValues((prev) => ({
-      ...(prev || {}),
       ...safeMerged,
+      ...(prev || {}),
     }));
   }, [mergedBlanks]);
 
@@ -502,6 +502,28 @@ export default function GuidedCodeBlock({
       }
     };
   }, []);
+
+  function flushPendingNow() {
+  if (!setLocalBlanks) return;
+
+  // stop the timer
+  if (flushTimerRef.current && typeof window !== "undefined") {
+    window.clearTimeout(flushTimerRef.current);
+    flushTimerRef.current = null;
+  }
+
+  const patch = pendingRef.current || {};
+  pendingRef.current = {};
+
+  if (Object.keys(patch).length === 0) return;
+
+  // ensure parent/local storage gets the latest typed values
+  setLocalBlanks((prev) => ({
+    ...(prev || {}),
+    ...patch,
+  }));
+}
+
 
   /* ==========================================================
      Tokenize once per code change

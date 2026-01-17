@@ -4,13 +4,6 @@
 import * as React from "react";
 import CodeLessonBase from "@/src/lesson-core/CodeLessonBase";
 
-/**
- * Notes (matching codeBeg conventions):
- * - lessonSteps is: Record<number, { phrase: string; steps: any[] }>
- * - Any local images should be served from /public/lesson-assets/
- *   Example: "/lesson-assets/arduino_uno.png"
- */
-
 
 // ------------------------------------------------------------
 // CIRCUIT LESSON CONTENT (CodeBeg-style shape)

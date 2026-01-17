@@ -83,8 +83,12 @@ export default function SplitView({
 
   const containerWRef = React.useRef(0);
   const leftPxRef = React.useRef<number | null>(null);
+
   const dragStartXRef = React.useRef(0);
   const dragStartLeftRef = React.useRef(0);
+
+  // This holds the user's *intended* ratio (from storage or last drag).
+  // IMPORTANT: we do NOT overwrite this during mount/clamp/resizes.
   const persistedRatioRef = React.useRef<number | null>(null);
 
   /* ===============================
@@ -114,6 +118,14 @@ export default function SplitView({
   React.useEffect(() => {
     leftPxRef.current = effectiveLeftPx;
   }, [effectiveLeftPx]);
+
+  const [ready, setReady] = React.useState(false);
+
+  React.useEffect(() => {
+    if (leftPx != null || internalLeftPx != null || fixedRightPx != null) {
+      setReady(true);
+    }
+  }, [leftPx, internalLeftPx, fixedRightPx]);
 
   /* ===============================
      Constraints
@@ -147,9 +159,10 @@ export default function SplitView({
   ]);
 
   /* ===============================
-     Load persisted ratio
+     Load persisted ratio (do NOT write here)
   =============================== */
   React.useEffect(() => {
+    // When key changes, load user's last ratio once.
     persistedRatioRef.current = readPersistedRatio(persistKey);
   }, [persistKey]);
 
@@ -169,15 +182,14 @@ export default function SplitView({
       return;
     }
 
-    // controlled mode
+    // controlled mode: parent owns it
     if (leftPx != null) return;
 
+    // already initialized
     if (internalLeftPx != null) return;
 
     const ratio =
-      persistedRatioRef.current != null
-        ? persistedRatioRef.current
-        : initialLeftRatio;
+      persistedRatioRef.current != null ? persistedRatioRef.current : initialLeftRatio;
 
     const next = clamp(containerW * ratio, constraints.minLeft, constraints.maxLeft);
     setInternalLeftPx(next);
@@ -193,18 +205,52 @@ export default function SplitView({
     onLeftPxChange,
   ]);
 
+  /* ===============================
+     Keep visual ratio on container resize (NO persistence)
+     This is what prevents nested splitviews from "snapping".
+  =============================== */
+  React.useEffect(() => {
+    if (!containerW) return;
+    if (dragging) return;
+
+    // fixed right forces left
+    if (fixedRightPx != null) return;
+
+    // controlled mode: parent owns it
+    if (leftPx != null) return;
+
+    // only adjust if we have a user ratio saved
+    const r = persistedRatioRef.current;
+    if (r == null) return;
+
+    const next = clamp(containerW * r, constraints.minLeft, constraints.maxLeft);
+
+    // avoid useless state churn
+    setInternalLeftPx((prev) => {
+      if (prev == null) return next;
+      if (Math.abs(prev - next) < 0.5) return prev;
+      return next;
+    });
+  }, [
+    containerW,
+    dragging,
+    fixedRightPx,
+    leftPx,
+    constraints.minLeft,
+    constraints.maxLeft,
+  ]);
+
   function commitLeftPx(px: number) {
     if (leftPx != null) onLeftPxChange?.(px);
     else setInternalLeftPx(px);
   }
 
-  function persistCurrentRatio() {
+  function persistRatioFromLeftPx(px: number) {
     if (!persistKey) return;
     const w = containerWRef.current;
-    const lw = leftPxRef.current;
-    if (!w || lw == null) return;
+    if (!w) return;
 
-    const ratio = lw / w;
+    const ratio = px / w;
     if (!(ratio > 0 && ratio < 1)) return;
 
     persistedRatioRef.current = ratio;
@@ -242,10 +288,12 @@ export default function SplitView({
     if (!dragging) return;
     setDragging(false);
 
-    persistCurrentRatio();
-
     const px = leftPxRef.current;
-    if (typeof px === "number") onResizeEnd?.(px);
+    if (typeof px === "number") {
+      // ✅ Persist ONLY on user intent (drag end)
+      persistRatioFromLeftPx(px);
+      onResizeEnd?.(px);
+    }
   }
 
   /* ===============================
@@ -302,92 +350,92 @@ export default function SplitView({
     userSelect: "none",
   };
 
-return (
-  <div
-    ref={containerRef}
-    style={{
-      display: "flex",
-      flexDirection: "row",
-      height: "100%",
-      minHeight: 0, // ✅ critical for nested scrolling
-      width: "100%",
-      position: "relative",
-      overflow: "hidden", // ✅ prevent the document/page from scrolling
-    }}
-  >
-    {/* LEFT */}
+  return (
     <div
+      ref={containerRef}
       style={{
-        width: leftWidth,
-        minWidth: constraints.minLeft,
-        minHeight: 0, // ✅ critical
-        overflow: "hidden", // ✅ let the LEFT child decide scroll
-        display: "flex", // ✅ keeps child stretch-friendly
-        flexDirection: "column",
-      }}
-    >
-      {left}
-    </div>
-
-    {/* HANDLE */}
-    <div
-      onMouseDown={(e) => {
-        e.preventDefault();
-        startDrag(e.clientX);
-      }}
-      onTouchStart={(e) => {
-        const t = e.touches?.[0];
-        if (!t) return;
-        startDrag(t.clientX);
-      }}
-      style={{
-        width: handleWidth,
-        background: "rgba(0,0,0,0.08)",
         display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 10,
-        opacity: locked || fixedRightPx != null ? 0.3 : 1,
-        flex: "0 0 auto",
-        ...handleCursor,
+        flexDirection: "row",
+        height: "100%",
+        minHeight: 0,
+        width: "100%",
+        position: "relative",
+        overflow: "hidden",
+        visibility: ready ? "visible" : "hidden",
       }}
-      aria-hidden={locked || fixedRightPx != null}
     >
+      {/* LEFT */}
       <div
         style={{
-          width: 2,
-          height: 30,
-          borderRadius: 2,
-          background: "rgba(0,0,0,0.32)",
-          pointerEvents: "none",
+          width: leftWidth,
+          minWidth: constraints.minLeft,
+          minHeight: 0,
+          overflow: "hidden",
+          display: "flex",
+          flexDirection: "column",
         }}
-      />
-    </div>
+      >
+        {left}
+      </div>
 
-    {/* RIGHT */}
-    <div
-      style={{
-        ...rightStyle,
-        minHeight: 0, // ✅ critical
-        overflow: "hidden", // ✅ let the RIGHT child decide scroll
-        display: "flex",
-        flexDirection: "column",
-      }}
-    >
-      {right}
-    </div>
+      {/* HANDLE */}
+      <div
+        onMouseDown={(e) => {
+          e.preventDefault();
+          startDrag(e.clientX);
+        }}
+        onTouchStart={(e) => {
+          const t = e.touches?.[0];
+          if (!t) return;
+          startDrag(t.clientX);
+        }}
+        style={{
+          width: handleWidth,
+          background: "rgba(0,0,0,0.08)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 10,
+          opacity: locked || fixedRightPx != null ? 0.3 : 1,
+          flex: "0 0 auto",
+          ...handleCursor,
+        }}
+        aria-hidden={locked || fixedRightPx != null}
+      >
+        <div
+          style={{
+            width: 2,
+            height: 30,
+            borderRadius: 2,
+            background: "rgba(0,0,0,0.32)",
+            pointerEvents: "none",
+          }}
+        />
+      </div>
 
-    {/* overlay while dragging */}
-    {dragging && (
+      {/* RIGHT */}
       <div
         style={{
-          position: "absolute",
-          inset: 0,
-          zIndex: 999,
+          ...rightStyle,
+          minHeight: 0,
+          overflow: "hidden",
+          display: "flex",
+          flexDirection: "column",
         }}
-      />
-    )}
-  </div>
-);
+      >
+        {right}
+      </div>
 
+      {/* overlay while dragging */}
+      {dragging && (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            zIndex: 999,
+          }}
+        />
+      )}
+    </div>
+  );
 }

@@ -1142,7 +1142,7 @@ while (__BLANK[P3_CONDVAR]__ < __BLANK[P3_LIMIT]__) {
             P3_CONDVAR: { type: "sameAs", target: "P3_VAR" },
             P3_LIMIT: { type: "range", min: 6, max: 200 },
             P3_PRINT: { type: "sameAs", target: "P3_VAR" },
-            P3_NEXT: { type: "expression" }, // should represent counter + 1
+            P3_NEXT: { type: "expression" , template: "{P3_VAR} + 1"}, // should represent counter + 1
           },
           blankExplanations: {
             P3_VAR:
@@ -1278,7 +1278,7 @@ while (__BLANK[P6_IDXVAR]__ < total2) {
             P6_TOTAL: ["6"],
             P6_DESNAME: { type: "identifier" },
             P6_DESVAL: { type: "range", min: 0, max: 20 },
-            P6_IDXVAR: ["k"],
+            P6_IDXVAR: {type: "identifier" },
             P6_STARTIDX: ["0"],
             P6_READ: { type: "expression" }, // array[index]
             P6_COMPARE: { type: "sameAs", target: "P6_DESNAME" },
@@ -1383,7 +1383,7 @@ void __BLANK[SHOWMAIN_FN]__() {                // name the function that draws t
     __BLANK[INC_I]__;                          // move to the next menu item
   }
 
-  display.__BLANK[FLUSH]__();                 // update OLED to show everything
+  display.__BLANK[FLUSH]__;                 // update OLED to show everything
 }
 ^^`,
           imageGridBeforeCode: {
@@ -1730,8 +1730,8 @@ This is a “checkpoint” — you are not adding new logic yet, just organizing
 //<< ===================== 2) CONSTANTS + GLOBAL VARIABLES =====================
 
 //<< --- OLED setup ---
-#define __BLANK[WVAR]__  __BLANK[WIDTH]__          // screen width in pixels
-#define __BLANK[HVAR]__  __BLANK[HEIGHT]__         // screen height in pixels
+#define __BLANK[WVAR]__  __BLANK[WIDTH]__ // Define width pixels
+#define __BLANK[HVAR]__ __BLANK[HEIGHT]__ // Define height pixels
 #define RESET -1                                  // no reset pin wired
 Adafruit_SSD1306 display(__BLANK[WIDTH2]__, __BLANK[HEIGHT2]__, &Wire, RESET);
 
@@ -2988,6 +2988,8 @@ export default function CodeIntLesson({
       lessonSteps={LESSON_STEPS_INTERMEDIATE}
       storagePrefix={`curio:${slug}:${lessonSlug}`}
       apiBaseUrl={process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:4000"}
+      rightRailTitle="My Notes"
+      rightRailScopeId="mynotes"
     />
   );
 }

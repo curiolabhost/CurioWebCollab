@@ -13,7 +13,7 @@ const LESSON_STEPS_BEGINNER = {
         "Arduino is an open-source electronics platform used to create interactive projects. Every Arduino sketch has two main functions: setup() runs once when the board is powered on or reset, loop() runs continuously as long as the board has power.",
       hint: "pinMode() configures a pin as INPUT or OUTPUT",
 
-      // ✅ NEW: all visual content goes through imageGrid, inside codes blocks
+      // NEW: all visual content goes through imageGrid, inside codes blocks
       codes: [
         {
           // this used to be step.gif

@@ -10,7 +10,7 @@ import ArduinoEditor from "./ArduinoEditor";
 import CircuitEditor from "./CircuitEditor";
 import GuidedCodeBlock from "./GuidedCodeBlock";
 import styles from "./CodeLessonBase.module.css";
-import LessonRightRail from "./RightNote";
+import RightNote from "./RightNote";
 
 /* ============================================================
    Storage helpers
@@ -155,11 +155,6 @@ function renderWithInlineCode(
   }
 ) {
   if (!text) return null;
-
-  // IMPORTANT:
-  // This keeps your original behavior (split by lines),
-  // but removes trailing spaces at end-of-line (the "two spaces" Markdown trick)
-  // so you don't see weird gaps after `...` lines.
   const lines = String(text)
     .replace(/\r\n/g, "\n")
     .split("\n")
@@ -454,7 +449,6 @@ export default function CodeLessonBase({
   codingLessonSlug = "code-beg",
   circuitsLessonSlug = "circuit-beg",
   rightRail,
-  rightRailTitle = "Pluto",
 }: any) {
   const router = useRouter();
 
@@ -517,6 +511,34 @@ export default function CodeLessonBase({
     if (!supportsInlineTracks) return storagePrefix;
     return `${storagePrefix}:${lessonType}`;
   }, [supportsInlineTracks, storagePrefix, lessonType]);
+
+    /* ============================================================
+     Notes (My Notes) visibility + persistence
+  ============================================================ */
+
+  const NOTES_VISIBLE_KEY = React.useMemo(() => `${trackPrefix}:ui:notesVisible`, [trackPrefix]);
+
+  const [notesVisible, setNotesVisible] = React.useState<boolean>(true);
+  const [notesVisibleLoaded, setNotesVisibleLoaded] = React.useState(false);
+
+  React.useEffect(() => {
+    const raw = storageGetJson<boolean>(NOTES_VISIBLE_KEY);
+    // default: show notes
+    const next = raw == null ? true : !!raw;
+    setNotesVisible(next);
+    setNotesVisibleLoaded(true);
+  }, [NOTES_VISIBLE_KEY]);
+
+  React.useEffect(() => {
+    if (!notesVisibleLoaded) return;
+    storageSetJson(NOTES_VISIBLE_KEY, notesVisible);
+  }, [NOTES_VISIBLE_KEY, notesVisible, notesVisibleLoaded]);
+
+  // one scope + one split key (no Pluto)
+  const notesScopeKey = React.useMemo(() => trackPrefix, [trackPrefix]);
+  const notesSplitKey = React.useMemo(() => `${trackPrefix}:split:notes`, [trackPrefix]);
+
+
 
   const activeLessonSteps = React.useMemo(() => {
     if (!supportsInlineTracks) return lessonSteps || {};
@@ -643,7 +665,7 @@ export default function CodeLessonBase({
   // Done set
   const [doneSet, setDoneSet] = React.useState<Set<string>>(() => new Set());
   const [doneSetLoaded, setDoneSetLoaded] = React.useState(false);
-  const [showNotes, setShowNotes] = React.useState(true);
+
 
   const doneNormalCount = React.useMemo(() => {
     let n = 0;
@@ -677,22 +699,26 @@ export default function CodeLessonBase({
     storageSetJson(KEYS.doneSetKey, Array.from(doneSet));
   }, [KEYS.doneSetKey, doneSet, doneSetLoaded]);
 
-  // Hydration-safe sidebar state:
-  // - Server and first client render always assume "expanded = true"
-  // - After mount, we read localStorage and update (no hydration mismatch)
-  const [sidebarExpanded, setSidebarExpanded] = React.useState<boolean>(true);
-  const [sidebarLoaded, setSidebarLoaded] = React.useState(false);
 
-  React.useEffect(() => {
-    const raw = storageGetJson<boolean>(KEYS.sidebarKey);
-    setSidebarExpanded(raw == null ? true : !!raw);
-    setSidebarLoaded(true);
-  }, [KEYS.sidebarKey]);
+  // Sidebar state (NO flash on refresh):
+const [sidebarExpanded, setSidebarExpanded] = React.useState<boolean>(false);
+const [sidebarLoaded, setSidebarLoaded] = React.useState(false);
 
-  React.useEffect(() => {
-    if (!sidebarLoaded) return;
-    storageSetJson(KEYS.sidebarKey, sidebarExpanded);
-  }, [KEYS.sidebarKey, sidebarExpanded, sidebarLoaded]);
+React.useEffect(() => {
+  const raw = storageGetJson<boolean>(KEYS.sidebarKey);
+
+  // default if nothing saved: true (expanded)
+  const next = raw == null ? true : !!raw;
+
+  setSidebarExpanded(next);
+  setSidebarLoaded(true);
+}, [KEYS.sidebarKey]);
+
+React.useEffect(() => {
+  if (!sidebarLoaded) return;
+  storageSetJson(KEYS.sidebarKey, sidebarExpanded);
+}, [KEYS.sidebarKey, sidebarExpanded, sidebarLoaded]);
+
 
   // View mode (scoped by trackPrefix)
   const readViewMode = React.useCallback((): ViewMode => {
@@ -1447,14 +1473,14 @@ export default function CodeLessonBase({
               </button>
             </div>
           </div>
-  <button
-    type="button"
-    onClick={() => setShowNotes((v) => !v)}
-    className="absolute bottom-4 right-6 px-4 py-1.5 rounded-md border text-xs transition-colors
-               border-indigo-400 bg-indigo-50 text-gray-700 hover:bg-indigo-100"
-  >
-    {showNotes ? "Hide Notes" : "Show Notes"}
-  </button>
+          <button
+            type="button"
+            onClick={() => setNotesVisible((v) => !v)}
+            className="mt-4 text-sm text-indigo-700 hover:text-indigo-900 underline"
+          >
+            {notesVisible ? "Hide Notes" : "Show Notes"}
+          </button>
+
         </div>
   );
 
@@ -1589,34 +1615,33 @@ export default function CodeLessonBase({
       {/* Header spans the whole left group */}
 {/* Body row */}
 <div className="flex-1 min-h-0">
-  {showNotes ? (
-    <SplitView
-      left={
-        <div className="flex-1 min-w-0 overflow-y-auto">
-          {lessonHeader}
-          {lessonBody}
-        </div>
-      }
-      right={
-        <LessonRightRail title={rightRailTitle}>
-          {rightRail}
-        </LessonRightRail>
-      }
+{notesVisible ? (
+            <SplitView
+              left={
+                <div className="h-full min-h-0 min-w-0 overflow-y-auto">
+                  {lessonHeader}
+                  {lessonBody}
+                </div>
+              }
+              right={
+                <RightNote
+                  scopeKey={notesScopeKey}
+                  defaultNotesTitle="My Notes"
+                />
+              }
       initialLeftRatio={0.72}
       minLeftPx={520}
-      minRightPx={280}
-      maxLeftRatio={0.85}
-      persistKey="curio:layout:rightnote-width"
+      minRightPx={10}
+      maxLeftRatio={0.9}
+      persistKey={notesSplitKey}
     />
   ) : (
-    <div className="flex-1 min-w-0 overflow-y-auto">
+    <div className="h-full min-h-0 min-w-0 overflow-y-auto">
       {lessonHeader}
       {lessonBody}
     </div>
   )}
 </div>
-
-
     </div>
 
       {/* Sidebar */}
@@ -1944,7 +1969,8 @@ export default function CodeLessonBase({
           defaultWokwiUrl=""
         />
       ) : (
-        <ArduinoEditor/>
+        <ArduinoEditor storageKey={EDITOR_KEYS.arduinoSketchKey} />
+
       )}
     </div>
   );
