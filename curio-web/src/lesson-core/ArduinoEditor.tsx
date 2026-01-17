@@ -1,11 +1,10 @@
-// src/lesson-core/ArduinoEditor.tsx
+
 "use client";
 
 import * as React from "react";
 import dynamic from "next/dynamic";
-const Editor = dynamic(() => import("@monaco-editor/react"), {
-  ssr: false,
-});
+const Editor = dynamic(() => import("@monaco-editor/react"), { ssr: false });
+
 import styles from "./ArduinoEditor.module.css";
 
 const DEFAULT_SKETCH = `/* Electric Board Code Editor */
@@ -34,6 +33,22 @@ const ARDUINO_FUNCS = [
   "loop",
 ];
 
+type CoachItem = {
+  tag: "OK" | "WARN" | "TIP" | "NEXT" | "IDEA";
+  line: number | null;
+  text: string;
+  why: string;
+  recommendation: string;
+  code: string | null;
+};
+
+type CoachPayload = {
+  summary: string;
+  hasErrors: boolean;
+  sections: { title: string; items: CoachItem[] }[];
+};
+
+
 type ArduinoEditorProps = {
   height?: string | number;
   width?: string | number;
@@ -49,6 +64,19 @@ type VerifyError = {
   line: number;
   column?: number;
   message: string;
+};
+
+type HelpMode = "popup" | "popup-more" | "popup-lesson" | "arduino-verify" |"project-coach";
+
+type PopoverItem = {
+  id: string;
+  errorKey: string;
+  top: number;
+  left: number;
+  content: string;
+  mode: HelpMode;
+  busy: boolean;
+  ctx: { code: string; snippet: string; message: string; line: number };
 };
 
 const toolbarButtonStyle: React.CSSProperties = {
@@ -84,12 +112,22 @@ export default function ArduinoEditor({
   const [lastErrors, setLastErrors] = React.useState<VerifyError[]>([]);
   const [compilerOutput, setCompilerOutput] = React.useState("");
 
-  // (kept from your TSX even though it isn’t used yet)
   const [aiHelpMap, setAiHelpMap] = React.useState<Record<string, string>>({});
+  const [aiCooldownUntil, setAiCooldownUntil] = React.useState<number>(0);
 
-  const [popoverContent, setPopoverContent] = React.useState("");
-  const [popoverPosition, setPopoverPosition] = React.useState({ top: 0, left: 0 });
-  const [popoverVisible, setPopoverVisible] = React.useState(false);
+  const [popovers, setPopovers] = React.useState<PopoverItem[]>([]);
+  const [coachJson, setCoachJson] = React.useState<CoachPayload | null>(null);
+  const [coachRaw, setCoachRaw] = React.useState<string>(""); // optional for debugging
+
+
+  const popoversRef = React.useRef<PopoverItem[]>([]);
+    React.useEffect(() => {
+      popoversRef.current = popovers;
+    }, [popovers]);
+
+  // Multi-popover drag refs
+  const dragPopoverIdRef = React.useRef<string | null>(null);
+  const dragOffsetRef = React.useRef({ x: 0, y: 0 });
 
   const [bottomHeight, setBottomHeight] = React.useState(90);
   const [isResizing, setIsResizing] = React.useState(false);
@@ -114,25 +152,16 @@ export default function ArduinoEditor({
 
   /* ============================================================
      Load editor content
-     - File mode: load from localStorage token payload (with sessionStorage cache to survive Strict Mode)
-     - Lesson mode: load from localStorage storageKey
   ============================================================ */
   React.useEffect(() => {
     if (typeof window === "undefined") return;
 
-    // FILE MODE: load payload passed from opener via localStorage
     if (fileToken) {
       try {
-        // 1) Try localStorage (cross-tab handoff)
         let raw = window.localStorage.getItem(FILE_TOKEN_PREFIX + fileToken);
-
-        // 2) If missing (Strict Mode double-mount, or cleanup already happened), fall back to sessionStorage cache
-        if (!raw) {
-          raw = window.sessionStorage.getItem(FILE_TOKEN_CACHE_PREFIX + fileToken);
-        }
+        if (!raw) raw = window.sessionStorage.getItem(FILE_TOKEN_CACHE_PREFIX + fileToken);
 
         if (!raw) {
-          // IMPORTANT: don’t clobber if we already have something in state
           setStatus("Could not load file (missing token).");
           setFileHandle(null);
           setFileName("ElectricBoard.ino");
@@ -142,32 +171,23 @@ export default function ArduinoEditor({
 
         const payload = JSON.parse(raw) as { name: string; text: string };
 
-        // Cache for this tab so Strict Mode remount still works
         try {
           window.sessionStorage.setItem(
             FILE_TOKEN_CACHE_PREFIX + fileToken,
             JSON.stringify({ name: payload.name, text: payload.text })
           );
-        } catch {
-          // ignore
-        }
+        } catch {}
 
         setFileName(safeNameFromPath(payload.name || "Sketch.ino"));
         setValue(payload.text ?? DEFAULT_SKETCH);
-
-        // File handles cannot be transferred
         setFileHandle(null);
         setStatus(`Opened: ${payload.name}`);
 
-        // Cleanup localStorage token AFTER we’ve cached it (and don’t do it synchronously)
-        // This prevents Strict Mode remount from immediately losing the payload.
         if (window.localStorage.getItem(FILE_TOKEN_PREFIX + fileToken)) {
           window.setTimeout(() => {
             try {
               window.localStorage.removeItem(FILE_TOKEN_PREFIX + fileToken);
-            } catch {
-              // ignore
-            }
+            } catch {}
           }, 750);
         }
       } catch {
@@ -179,7 +199,6 @@ export default function ArduinoEditor({
       return;
     }
 
-    // LESSON MODE
     if (storageKey) {
       const saved = window.localStorage.getItem(storageKey);
       setValue(saved ?? DEFAULT_SKETCH);
@@ -189,7 +208,6 @@ export default function ArduinoEditor({
       return;
     }
 
-    // no storageKey + no fileToken
     setValue(DEFAULT_SKETCH);
     setStatus("Ready.");
     setFileHandle(null);
@@ -198,7 +216,6 @@ export default function ArduinoEditor({
 
   /* ============================================================
      Sync across tabs (LESSON MODE ONLY)
-     - If lesson sketch changes in another tab, reflect it here.
   ============================================================ */
   React.useEffect(() => {
     if (typeof window === "undefined") return;
@@ -251,7 +268,6 @@ export default function ArduinoEditor({
     setValue(text);
     setStatus("Editing...");
 
-    // Only lesson mode autosaves to localStorage
     if (!storageKey || isFileMode) return;
 
     if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
@@ -266,6 +282,102 @@ export default function ArduinoEditor({
       }
     });
   };
+
+
+  type CoachLine = { tag: "OK" | "WARN" | "TIP" | "NEXT" | "IDEA" | "PLAIN"; text: string };
+
+  function parseCoachLines(raw: string): CoachLine[] {
+    return String(raw || "")
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => {
+        const m = line.match(/^\[(OK|WARN|TIP|NEXT|IDEA)\]\s*(.*)$/i);
+        if (!m) return { tag: "PLAIN", text: line };
+        return { tag: m[1].toUpperCase() as CoachLine["tag"], text: m[2] || "" };
+      });
+  }
+
+  type CoachTag = CoachItem["tag"];
+
+function coachTagColor(tag: CoachTag) {
+  switch (tag) {
+    case "OK":
+      return "#86efac";
+    case "WARN":
+      return "#fca5a5";
+    case "TIP":
+      return "#93c5fd";
+    case "NEXT":
+      return "#fcd34d";
+    case "IDEA":
+      return "#c4b5fd";
+    default:
+      return "#e5e7eb";
+  }
+}
+
+function coachTagBg(tag: CoachTag) {
+  switch (tag) {
+    case "OK":
+      return "rgba(34,197,94,0.15)";
+    case "WARN":
+      return "rgba(239,68,68,0.15)";
+    case "TIP":
+      return "rgba(59,130,246,0.15)";
+    case "NEXT":
+      return "rgba(245,158,11,0.18)";
+    case "IDEA":
+      return "rgba(139,92,246,0.15)";
+    default:
+      return "rgba(148,163,184,0.10)";
+  }
+}
+
+
+  function makeId() {
+    return (globalThis.crypto as any)?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  }
+
+  function startPopoverDrag(id: string, e: React.MouseEvent) {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const p = popovers.find((x) => x.id === id);
+    if (!p) return;
+
+    dragPopoverIdRef.current = id;
+    dragOffsetRef.current = {
+      x: e.clientX - p.left,
+      y: e.clientY - p.top,
+    };
+
+    window.addEventListener("mousemove", onPopoverDragMove);
+    window.addEventListener("mouseup", stopPopoverDrag);
+  }
+
+  function onPopoverDragMove(e: MouseEvent) {
+    const id = dragPopoverIdRef.current;
+    if (!id) return;
+
+    setPopovers((prev) =>
+      prev.map((p) => {
+        if (p.id !== id) return p;
+
+        const W = 320;
+        const H = 220;
+        const left = Math.max(10, Math.min(window.innerWidth - W - 10, e.clientX - dragOffsetRef.current.x));
+        const top = Math.max(10, Math.min(window.innerHeight - H - 10, e.clientY - dragOffsetRef.current.y));
+        return { ...p, left, top };
+      })
+    );
+  }
+
+  function stopPopoverDrag() {
+    dragPopoverIdRef.current = null;
+    window.removeEventListener("mousemove", onPopoverDragMove);
+    window.removeEventListener("mouseup", stopPopoverDrag);
+  }
 
   function getCodeContext(code: string, lineNumber: number, radius = 3) {
     const lines = code.split("\n");
@@ -351,10 +463,7 @@ export default function ArduinoEditor({
       tokenizer: {
         root: [
           [/^\s*#\s*\w+/, "preprocessor"],
-          [
-            /\b(pinMode|digitalWrite|digitalRead|analogWrite|analogRead|delay|millis|micros)\b(?=\s*\()/,
-            "function",
-          ],
+          [/\b(pinMode|digitalWrite|digitalRead|analogWrite|analogRead|delay|millis|micros)\b(?=\s*\()/, "function"],
           [
             /[a-zA-Z_]\w*(?:\.[a-zA-Z_]\w*)*/,
             {
@@ -404,80 +513,243 @@ export default function ArduinoEditor({
     });
   };
 
-  // Send the clicked error (with snippet context) to AI, streaming into popover
-  const sendErrorToAI = async (snippetOrCode: string, errorMessage: string, lineNumber: number) => {
+  async function streamHelpSSE(payload: any, onToken: (t: string) => void) {
+    const res = await fetch("/api/help", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      const t = await res.text().catch(() => "");
+      throw new Error(`AI route failed (${res.status}): ${t}`);
+    }
+    if (!res.body) {
+      throw new Error("AI route returned no body (streaming not enabled).");
+    }
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    while (true) {
+      const { value: chunk, done } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(chunk, { stream: true });
+
+      const events = buffer.split("\n\n");
+      buffer = events.pop() ?? "";
+
+      for (const evt of events) {
+        const lines = evt.split("\n");
+        let eventType = "message";
+        let data = "";
+
+        for (const line of lines) {
+          if (line.startsWith("event:")) eventType = line.slice(6).trim();
+          else if (line.startsWith("data:")) data += line.slice(5).trim();
+        }
+
+        if (eventType === "token") {
+          try {
+            const parsed = JSON.parse(data || "{}");
+            if (parsed?.token) onToken(parsed.token);
+          } catch {
+            // ignore malformed chunks
+          }
+        }
+
+        if (eventType === "done") setStatus("AI explanation complete.");
+        if (eventType === "error") {
+          let msg = "AI request failed.";
+          try {
+            msg = JSON.parse(data || "{}")?.error || msg;
+          } catch {}
+
+          const isRateLimit =
+            /rate limit/i.test(msg) ||
+            /Limit \d+, Used \d+/i.test(msg) ||
+            /Please try again/i.test(msg);
+
+          // Throw, but tag it so callers can show a friendly message
+          const err = new Error(msg) as Error & { code?: string };
+          if (isRateLimit) err.code = "RATE_LIMIT";
+          throw err;
+        }
+
+      }
+    }
+  }
+
+  function updatePopover(popoverId: string, patch: Partial<PopoverItem>) {
+    setPopovers((prev) => {
+      if (!prev.some((p) => p.id === popoverId)) return prev; // popover was closed
+      return prev.map((p) => (p.id === popoverId ? { ...p, ...patch } : p));
+    });
+  }
+
+
+  // One function for BOTH popup + verify
+  const sendErrorToAI = async (
+    mode: HelpMode,
+    snippetOrCode: string,
+    errorMessageOrErrors: string | VerifyError[],
+    lineNumber?: number,
+    target: "popover" | "bottom" = "popover",
+    popoverId?: string
+  ) => {
     if (!snippetOrCode) {
-      setPopoverContent("Cannot explain: code is empty.");
+      if (target === "bottom") setCompilerOutput("Cannot explain: code is empty.");
+      else if (popoverId) {
+        setPopovers((prev) =>
+          prev.map((p) => (p.id === popoverId ? { ...p, content: "Cannot explain: code is empty.", busy: false } : p))
+        );
+      }
       return;
     }
 
-    setPopoverContent("Loading explanation...");
-    setStatus("Requesting AI explanation...");
+    if (Date.now() < aiCooldownUntil) {
+      const secs = Math.ceil((aiCooldownUntil - Date.now()) / 1000);
+      const msg = `AI is cooling down (${secs}s).`;
+      if (target === "bottom") setCompilerOutput(msg);
+      else if (popoverId) setPopovers((prev) => prev.map((p) => (p.id === popoverId ? { ...p, content: msg, busy: false } : p)));
+      return;
+    }
+    setStatus("Requesting help...");
 
-    try {
-      const res = await fetch("/api/help", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          mode: "arduino-verify",
-          code: snippetOrCode,
-          errors: [{ line: lineNumber, message: errorMessage }],
-          sentences: 3,
-          verbosity: "brief",
-        }),
-      });
+    // --- Initial UI text ---
+    if (target === "bottom") {
+      setCompilerOutput("");
+    } else if (popoverId) {
+      const loading =
+        mode === "popup"
+          ? "Loading diagnosis..."
+          : mode === "popup-more"
+          ? "Loading fix suggestion..."
+          : mode === "popup-lesson"
+          ? "Loading full help..."
+          : "Loading explanation...";
 
-      if (!res.ok) {
-        const t = await res.text().catch(() => "");
-        throw new Error(`AI route failed (${res.status}): ${t}`);
+      setPopovers((prev) =>
+        prev.map((p) => (p.id === popoverId ? { ...p, mode, busy: true, content: loading } : p))
+      );
+    }
+
+    const errors: VerifyError[] = Array.isArray(errorMessageOrErrors)
+      ? errorMessageOrErrors
+      : [{ line: lineNumber || 1, message: errorMessageOrErrors }];
+
+    // --- Payload selection ---
+    const payload =
+      mode === "popup"
+        ? { mode: "popup", code: snippetOrCode, errors, sentences: 1, verbosity: "brief" }
+        : mode === "popup-more"
+        ? { mode: "popup-more", code: snippetOrCode, errors, sentences: 2, verbosity: "brief" }
+        : mode === "popup-lesson"
+        ? { mode: "popup-lesson", code: snippetOrCode, errors, sentences: 4, verbosity: "brief" }
+        : mode === "project-coach"
+        ? { mode: "project-coach", code: snippetOrCode, errors, sentences: 8, verbosity: "brief" }
+        : { mode: "arduino-verify", code: snippetOrCode, errors, sentences: 3, verbosity: "brief" };
+
+    // --- Stream into the right target ---
+
+if (target === "bottom") {
+  setCompilerOutput("");
+  setCoachJson(null);
+  setCoachRaw("");
+
+  let acc = "";
+
+  try {
+    await streamHelpSSE(payload, (t) => {
+      acc += t;
+      setCoachRaw(acc); // shows progress if you want
+    });
+
+    const trimmed = acc.trim();
+
+    if (mode === "project-coach") {
+      // ✅ never crash UI on bad output
+      if (!trimmed.startsWith("{")) {
+        setCoachJson(null);
+        setCompilerOutput(trimmed);
+        setStatus("AI feedback (text).");
+        return;
       }
-      if (!res.body) {
-        throw new Error("AI route returned no body (streaming not enabled).");
+
+      try {
+        const parsed = JSON.parse(trimmed) as CoachPayload;
+        setCoachJson(parsed);
+        setCompilerOutput("");
+        setStatus("AI feedback ready.");
+        return;
+      } catch {
+        setCoachJson(null);
+        setCompilerOutput(trimmed);
+        setStatus("AI feedback parse failed (showing text).");
+        return;
       }
+    }
 
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-      const popoverRef = { current: "" };
+    // fallback for non-JSON modes
+    setCompilerOutput(trimmed);
+    setStatus("AI explanation complete.");
+  } catch (e: any) {
+    const msg = e?.message || "AI request failed.";
 
-      while (true) {
-        const { value: chunk, done } = await reader.read();
-        if (done) break;
+    const isRate =
+      e?.code === "RATE_LIMIT" ||
+      /rate limit/i.test(msg) ||
+      /Please try again/i.test(msg);
 
-        buffer += decoder.decode(chunk, { stream: true });
-
-        const events = buffer.split("\n\n");
-        buffer = events.pop() ?? "";
-
-        for (const evt of events) {
-          const lines = evt.split("\n");
-          let eventType = "message";
-          let data = "";
-
-          for (const line of lines) {
-            if (line.startsWith("event:")) eventType = line.slice(6).trim();
-            else if (line.startsWith("data:")) data += line.slice(5).trim();
-          }
-
-          if (eventType === "token") {
-            const { token } = JSON.parse(data);
-            popoverRef.current += token;
-            setPopoverContent(popoverRef.current);
-          }
-
-          if (eventType === "done") setStatus("AI explanation complete.");
-          if (eventType === "error") {
-            const { error } = JSON.parse(data);
-            setPopoverContent(error);
-            setStatus("AI request failed.");
-          }
-        }
-      }
-    } catch (err) {
-      console.error("❌ AI error:", err);
-      setPopoverContent("Something went wrong while asking the AI helper.");
+    if (isRate) {
+      setCompilerOutput("AI is rate-limited right now. Try again in ~20 seconds.");
+      setStatus("AI rate-limited.");
+      setAiCooldownUntil(Date.now() + 22_000);
+    } else {
+      setCompilerOutput(msg);
       setStatus("AI request failed.");
     }
+  }
+
+  return;
+}
+
+
+    if (!popoverId) return;
+
+    let acc = "";
+    try {
+      await streamHelpSSE(payload, (t) => {
+        acc += t;
+        updatePopover(popoverId, { content: acc });
+      });
+    } catch (e: any) {
+      const msg = e?.message || "AI request failed.";
+
+      const isRate =
+        e?.code === "RATE_LIMIT" ||
+        /rate limit/i.test(msg) ||
+        /Please try again/i.test(msg);
+
+      const nice = isRate
+        ? "AI is rate-limited right now. Try again in ~20 seconds."
+        : msg;
+
+      updatePopover(popoverId, { content: nice });
+
+      setStatus(isRate ? "AI rate-limited." : "AI request failed.");
+
+      if (isRate) {
+        setAiCooldownUntil(Date.now() + 22_000);
+      }
+    } finally {
+      updatePopover(popoverId, { busy: false });
+    }
+
+
+
   };
 
   const onMount = (editor: any, monaco: any) => {
@@ -489,43 +761,95 @@ export default function ArduinoEditor({
     editor.onMouseDown((e: any) => {
       if (!e?.target?.position) return;
 
-      const POPOVER_OFFSET = 20;
-      const line = e.target.position.lineNumber;
+      const pos = e.target.position;
+      const line = pos.lineNumber;
+
       const model = editor.getModel();
       const markers = monaco.editor.getModelMarkers({ resource: model.uri, owner: "verify" }) || [];
       const marker = markers.find((m: any) => line >= m.startLineNumber && line <= m.endLineNumber);
+      if (!marker) return;
+      const errorKey = `${marker.startLineNumber}:${marker.startColumn || 1}:${marker.message || ""}`;
 
-      if (!marker) {
-        setPopoverVisible(false);
-        return;
-      }
-
-      const editorDom = editor.getDomNode();
-      if (!editorDom) return;
-
-      const editorRect = editorDom.getBoundingClientRect();
-      const scrollX = window.scrollX || window.pageXOffset;
-
-      // Vertical position relative to editor + its own internal scroll
-      const top = e.event.posy - editorRect.top + editorDom.scrollTop;
-
-      // Place popover to the right of editor
-      let left = editorRect.width + POPOVER_OFFSET;
-
-      // Clamp popover so it doesn't go off-screen
-      const POPUP_WIDTH = 300;
-      const maxLeft = window.innerWidth - POPUP_WIDTH - 10;
-      if (left + editorRect.left + scrollX > maxLeft) {
-        left = maxLeft - editorRect.left - scrollX;
-      }
-
-      setPopoverPosition({ top, left });
-      setPopoverContent(marker.message || "Loading explanation...");
-      setPopoverVisible(true);
 
       const full = editor.getValue() as string;
       const snippet = getCodeContext(full, marker.startLineNumber, 4);
-      sendErrorToAI(snippet, marker.message, marker.startLineNumber);
+
+      // Position near the error token INSIDE the editor (close to code)
+      const anchorPos = { lineNumber: marker.startLineNumber, column: marker.startColumn || 1 };
+      const scrolled = editor.getScrolledVisiblePosition(anchorPos);
+
+      const POPOVER_W = 320;
+      const POPOVER_H = 220;
+      const OFFSET_X = 250;
+      const OFFSET_Y = 20;
+
+      let left = (scrolled?.left ?? 20) + OFFSET_X;
+      let top = (scrolled?.top ?? 20) + OFFSET_Y;
+
+      const editorDom = editor.getDomNode();
+      if (editorDom) {
+        const rect = editorDom.getBoundingClientRect();
+        const maxLeft = rect.width - POPOVER_W - 10;
+        const maxTop = rect.height - POPOVER_H - 10;
+
+        if (left > maxLeft) left = Math.max(10, left - POPOVER_W - OFFSET_X);
+        if (top > maxTop) top = Math.max(10, top - POPOVER_H - OFFSET_Y);
+      }
+
+const existing = popoversRef.current.find((p) => p.errorKey === errorKey);
+
+if (existing) {
+  // Refresh existing popover instead of creating a new one
+  if (existing.busy) return;
+  setPopovers((prev) =>
+    prev.map((p) =>
+      p.id === existing.id
+        ? {
+            ...p,
+            top,
+            left,
+            mode: "popup",
+            busy: true,
+            content: "Loading diagnosis...",
+            ctx: {
+              code: full,
+              snippet,
+              message: marker.message,
+              line: marker.startLineNumber,
+            },
+          }
+        : p
+    )
+  );
+
+  sendErrorToAI("popup", snippet, marker.message, marker.startLineNumber, "popover", existing.id);
+  return;
+}
+
+// Otherwise create a brand new popover
+    const id = makeId();
+
+    setPopovers((prev) => [
+      ...prev,
+      {
+        id,
+        errorKey, 
+        top,
+        left,
+        content: "Loading diagnosis...",
+        mode: "popup",
+        busy: true,
+        ctx: {
+          code: full,
+          snippet,
+          message: marker.message,
+          line: marker.startLineNumber,
+        },
+      },
+    ]);
+
+    sendErrorToAI("popup", snippet, marker.message, marker.startLineNumber, "popover", id);
+
     });
   };
 
@@ -542,8 +866,8 @@ export default function ArduinoEditor({
   function handleDragMove(e: MouseEvent) {
     const deltaY = dragStartYRef.current - e.clientY;
     let newHeight = dragStartHeightRef.current + deltaY;
-    const MIN = 40,
-      MAX = 500;
+    const MIN = 40;
+      const MAX = Math.floor(window.innerHeight * 0.92);
     if (newHeight < MIN) newHeight = MIN;
     if (newHeight > MAX) newHeight = MAX;
     setBottomHeight(newHeight);
@@ -555,13 +879,17 @@ export default function ArduinoEditor({
     window.removeEventListener("mouseup", handleDragEnd as any);
   }
 
-  const hasFooterContent = !!compilerOutput;
+  const hasFooterContent = !!compilerOutput || !!coachJson || !!coachRaw;
+
 
   const handleVerify = async () => {
     if (!editorRef.current || !monacoRef.current) return;
 
     setStatus("Verifying sketch...");
     setCompilerOutput("");
+    setCoachJson(null);
+    setCoachRaw("");
+
     setLastErrors([]);
     setAiHelpMap({});
 
@@ -613,8 +941,6 @@ export default function ArduinoEditor({
           endColumn: (err.column || 1) + 1,
           message: err.message,
           severity: monacoRef.current.MarkerSeverity.Error,
-          aiKey: `${err.line}:${err.column || 1}`,
-          tags: [monacoRef.current.MarkerTag.Unnecessary],
         }))
       );
 
@@ -630,9 +956,7 @@ export default function ArduinoEditor({
         }))
       );
 
-      const outputText = errors
-        .map((err) => `Sketch.ino:${err.line}:${err.column || 1}: error: ${err.message}`)
-        .join("\n");
+      const outputText = errors.map((err) => `Sketch.ino:${err.line}:${err.column || 1}: error: ${err.message}`).join("\n");
 
       setCompilerOutput(outputText);
       setStatus(`Found ${errors.length} error(s).`);
@@ -644,72 +968,17 @@ export default function ArduinoEditor({
   };
 
   const explainErrorsWithAI = async () => {
-    if (!lastErrors || lastErrors.length === 0) {
-      setCompilerOutput("No errors to explain. Run Verify first.");
-      return;
-    }
+    const code = value || "";
 
-    setStatus("Requesting AI explanation...");
+    setStatus("Requesting suggestions...");
     setCompilerOutput("");
     setIsExplaining(true);
 
     try {
-      const res = await fetch("/api/help", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          mode: "arduino-verify",
-          code: value,
-          errors: lastErrors,
-          sentences: 20,
-          verbosity: "verbose",
-        }),
-      });
+      // If the user hasn't verified, lastErrors will be empty — that's fine.
+      // We still send full code and ask for general improvements.
 
-      if (!res.ok) {
-        const t = await res.text().catch(() => "");
-        throw new Error(`AI route failed (${res.status}): ${t}`);
-      }
-      if (!res.body) {
-        throw new Error("AI route returned no body (streaming not enabled).");
-      }
-
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-
-      while (true) {
-        const { value: chunk, done } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(chunk, { stream: true });
-
-        const events = buffer.split("\n\n");
-        buffer = events.pop() ?? "";
-
-        for (const evt of events) {
-          const lines = evt.split("\n");
-          let eventType = "message";
-          let data = "";
-
-          for (const line of lines) {
-            if (line.startsWith("event:")) eventType = line.slice(6).trim();
-            else if (line.startsWith("data:")) data += line.slice(5).trim();
-          }
-
-          if (eventType === "token") {
-            const { token } = JSON.parse(data);
-            setCompilerOutput((prev) => prev + token);
-          }
-
-          if (eventType === "done") setStatus("AI explanation complete.");
-          if (eventType === "error") {
-            const { error } = JSON.parse(data);
-            setCompilerOutput(error);
-            setStatus("AI request failed.");
-          }
-        }
-      }
+      await sendErrorToAI("project-coach", value, lastErrors, undefined, "bottom");
     } catch (err) {
       console.error("❌ AI error:", err);
       setCompilerOutput("Something went wrong while asking the AI helper.");
@@ -722,11 +991,12 @@ export default function ArduinoEditor({
   const handleReset = () => {
     setValue(DEFAULT_SKETCH);
     setCompilerOutput("");
+    setCoachJson(null);
+    setCoachRaw("");
     setAiHelpMap({});
     setLastErrors([]);
-    setPopoverVisible(false);
+    setPopovers([]);
 
-    // Only lesson mode should write back to the lesson sketch key
     if (!isFileMode && storageKey) {
       try {
         if (typeof window !== "undefined") window.localStorage.setItem(storageKey, DEFAULT_SKETCH);
@@ -746,11 +1016,7 @@ export default function ArduinoEditor({
     if (typeof window === "undefined") return;
 
     if (fileToken) {
-      window.open(
-        `/editor/arduino?fileToken=${encodeURIComponent(fileToken)}`,
-        "_blank",
-        "noopener,noreferrer"
-      );
+      window.open(`/editor/arduino?fileToken=${encodeURIComponent(fileToken)}`, "_blank", "noopener,noreferrer");
       return;
     }
 
@@ -788,7 +1054,6 @@ export default function ArduinoEditor({
     try {
       const anyWin = window as any;
 
-      // Prefer File System Access API
       if (anyWin?.showOpenFilePicker) {
         const [handle] = await anyWin.showOpenFilePicker({
           multiple: false,
@@ -804,16 +1069,13 @@ export default function ArduinoEditor({
         const file = await handle.getFile();
         const text = await file.text();
 
-        const token =
-          (crypto as any)?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-
+        const token = (crypto as any)?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`;
         window.localStorage.setItem(FILE_TOKEN_PREFIX + token, JSON.stringify({ name: file.name, text }));
 
         window.open(`/editor/arduino?fileToken=${encodeURIComponent(token)}`, "_blank", "noopener,noreferrer");
         return;
       }
 
-      // Fallback: hidden input
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
         fileInputRef.current.click();
@@ -830,8 +1092,7 @@ export default function ArduinoEditor({
 
     try {
       const text = await f.text();
-      const token =
-        (crypto as any)?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      const token = (crypto as any)?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
       window.localStorage.setItem(FILE_TOKEN_PREFIX + token, JSON.stringify({ name: f.name, text }));
 
@@ -904,13 +1165,9 @@ export default function ArduinoEditor({
     closeFilesMenu();
     if (typeof window === "undefined") return;
 
-    const token =
-      (crypto as any)?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    const token = (crypto as any)?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
-    window.localStorage.setItem(
-      FILE_TOKEN_PREFIX + token,
-      JSON.stringify({ name: "NewSketch.ino", text: DEFAULT_SKETCH })
-    );
+    window.localStorage.setItem(FILE_TOKEN_PREFIX + token, JSON.stringify({ name: "NewSketch.ino", text: DEFAULT_SKETCH }));
 
     window.open(`/editor/arduino?fileToken=${encodeURIComponent(token)}`, "_blank", "noopener,noreferrer");
     setStatus("Created new sketch in a new tab.");
@@ -949,7 +1206,6 @@ export default function ArduinoEditor({
         userSelect: isResizing ? "none" : "auto",
       }}
     >
-      {/* hidden file input fallback */}
       <input
         ref={fileInputRef}
         type="file"
@@ -988,18 +1244,18 @@ export default function ArduinoEditor({
             Verify
           </button>
 
-          <button
-            type="button"
-            onClick={explainErrorsWithAI}
-            style={{
-              ...toolbarButtonStyle,
-              opacity: lastErrors.length === 0 || isExplaining ? 0.5 : 1,
-              cursor: lastErrors.length === 0 || isExplaining ? "not-allowed" : "pointer",
-            }}
-            disabled={lastErrors.length === 0 || isExplaining}
-          >
-            Explain Error
-          </button>
+        <button
+          type="button"
+          onClick={explainErrorsWithAI}
+          style={{
+            ...toolbarButtonStyle,
+            opacity: isExplaining ? 0.5 : 1,
+            cursor: isExplaining ? "not-allowed" : "pointer",
+          }}
+          disabled={isExplaining}
+        >
+          Check Code
+        </button>
 
           {/* Files dropdown */}
           <div style={{ position: "relative" }}>
@@ -1127,7 +1383,7 @@ export default function ArduinoEditor({
           style={{
             height: bottomHeight,
             minHeight: 40,
-            maxHeight: "60vh",
+            //maxHeight: "60vh",
             borderTop: "1px solid #1f2937",
             background: "#020617",
             fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
@@ -1150,9 +1406,7 @@ export default function ArduinoEditor({
             <span>{status}</span>
             <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
               Board: Arduino Uno • Port: Not connected
-              {lastSaved && (
-                <span style={{ marginLeft: 12 }}>| Last saved: {lastSaved.toLocaleTimeString()}</span>
-              )}
+              {lastSaved && <span style={{ marginLeft: 12 }}>| Last saved: {lastSaved.toLocaleTimeString()}</span>}
             </span>
           </div>
 
@@ -1163,48 +1417,209 @@ export default function ArduinoEditor({
               padding: hasFooterContent ? "4px 10px 6px" : "0 10px 4px",
             }}
           >
-            {compilerOutput && (
+{coachJson ? (
+  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+    <div style={{ fontSize: 12, fontWeight: 700, color: "#e5e7eb" }}>
+      {coachJson.summary}
+    </div>
+
+    {coachJson.sections.map((sec, i) => (
+      <div key={i} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8" }}>
+          {sec.title}
+        </div>
+
+        {sec.items.map((it, j) => (
+          <div
+            key={j}
+            style={{
+              border: "1px solid #1f2937",
+              borderRadius: 10,
+              padding: "8px 10px",
+              background: "#0b1220",
+            }}
+          >
+            <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 6 }}>
+              <span
+                style={{
+                  fontSize: 10,
+                  padding: "2px 8px",
+                  borderRadius: 999,
+                  border: "1px solid #1f2937",
+                  background: coachTagBg(it.tag),
+                  color: coachTagColor(it.tag),
+                  fontWeight: 700,
+                  flexShrink: 0,
+                }}
+              >
+                {it.tag}
+              </span>
+
+              {it.line != null ? (
+                <span style={{ fontSize: 10, color: "#9ca3af" }}>Line {it.line}</span>
+              ) : null}
+            </div>
+
+            <div style={{ color: "#e5e7eb", fontSize: 11, lineHeight: 1.35 }}>
+              <strong style={{ color: "#e5e7eb" }}>{it.text}</strong>
+            </div>
+
+            <div style={{ color: "#9ca3af", fontSize: 11, marginTop: 6, lineHeight: 1.35 }}>
+              <div><span style={{ color: "#cbd5e1", fontWeight: 700 }}>Why:</span> {it.why}</div>
+              <div style={{ marginTop: 4 }}>
+                <span style={{ color: "#cbd5e1", fontWeight: 700 }}>Recommendation:</span> {it.recommendation}
+              </div>
+            </div>
+
+            {it.code ? (
               <pre
                 style={{
-                  margin: 0,
+                  marginTop: 8,
+                  marginBottom: 0,
                   whiteSpace: "pre-wrap",
                   fontFamily:
                     "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
                   fontSize: 11,
-                  color: "#fca5a5",
-                  lineHeight: 1.3,
+                  color: "#e5e7eb",
+                  background: "#060b16",
+                  border: "1px solid #1f2937",
+                  borderRadius: 10,
+                  padding: "8px 10px",
                 }}
               >
-                {compilerOutput}
+                {it.code}
               </pre>
-            )}
+            ) : null}
+          </div>
+        ))}
+      </div>
+    ))}
+  </div>
+) : compilerOutput ? (
+  <pre
+    style={{
+      margin: 0,
+      whiteSpace: "pre-wrap",
+      fontFamily:
+        "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
+      fontSize: 11,
+      color: "#fca5a5",
+      lineHeight: 1.3,
+    }}
+  >
+    {compilerOutput}
+  </pre>
+) : null}
+
+
           </div>
         </div>
       </div>
 
-      {/* AI popover */}
-      {popoverVisible && (
+      {/* AI popovers (multiple) */}
+      {popovers.map((p) => (
         <div
+          key={p.id}
           style={{
             position: "absolute",
-            top: popoverPosition.top,
-            left: popoverPosition.left,
-            background: "#1f2937",
-            color: "#d1d5db",
-            padding: "8px 12px",
-            borderRadius: 6,
-            maxWidth: 300,
+            top: p.top,
+            left: p.left,
+            width: 320,
+            background: "#0b1220",
+            color: "#e5e7eb",
+            border: "1px solid #1f2937",
+            padding: 10,
+            borderRadius: 10,
             fontSize: 12,
-            boxShadow: "0 0 10px rgba(0,0,0,0.5)",
+            boxShadow: "0 12px 30px rgba(0,0,0,0.15)",
             zIndex: 1000,
-            cursor: "pointer",
+            cursor: "default",
           }}
-          onClick={() => setPopoverVisible(false)}
-          title="Click to close"
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
         >
-          {popoverContent}
+          {/* Header (drag handle) */}
+          <div
+            onMouseDown={(e) => startPopoverDrag(p.id, e)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 10,
+              cursor: "grab",
+              userSelect: "none",
+              paddingBottom: 4,
+            }}
+          >
+            <div style={{ fontSize: 11, color: "#94a3b8" }}>
+              {p.mode === "popup" ? "Diagnosis" : p.mode === "popup-more" ? "Fix suggestion" : "Why it happened"}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setPopovers((prev) => prev.filter((x) => x.id !== p.id))}
+              aria-label="Close"
+              style={{
+                width: 26,
+                height: 26,
+                borderRadius: 8,
+                border: "1px solid #1f2937",
+                background: "#111827",
+                color: "#e5e7eb",
+                cursor: "pointer",
+                lineHeight: 1,
+              }}
+            >
+              ✕
+            </button>
+          </div>
+
+          {/* Content */}
+          <div style={{ marginTop: 8, color: "#e5e7eb", lineHeight: 1.35, whiteSpace: "pre-wrap" }}>{p.content}</div>
+
+          {/* Actions */}
+          <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+            <button
+              type="button"
+              disabled={p.busy}
+              onClick={() => sendErrorToAI("popup-more", p.ctx.snippet, p.ctx.message, p.ctx.line, "popover", p.id)}
+              style={{
+                flex: 1,
+                padding: "6px 10px",
+                borderRadius: 10,
+                border: "1px solid #1f2937",
+                background: "#111827",
+                color: "#e5e7eb",
+                cursor: p.busy ? "not-allowed" : "pointer",
+                opacity: p.busy ? 0.55 : 1,
+                fontSize: 12,
+              }}
+            >
+              Explain more
+            </button>
+
+            <button
+              type="button"
+              disabled={p.busy}
+              onClick={() => sendErrorToAI("popup-lesson", p.ctx.code, p.ctx.message, p.ctx.line, "popover", p.id)}
+              style={{
+                flex: 1,
+                padding: "6px 10px",
+                borderRadius: 10,
+                border: "1px solid #1f2937",
+                background: "#111827",
+                color: "#e5e7eb",
+                cursor: p.busy ? "not-allowed" : "pointer",
+                opacity: p.busy ? 0.55 : 1,
+                fontSize: 12,
+              }}
+            >
+              Open full help
+            </button>
+          </div>
         </div>
-      )}
+      ))}
     </div>
   );
 }
+
