@@ -165,13 +165,15 @@ void loop(){
           {
             topicTitle: "Define button pins",
             descBeforeCode:
-              "Next, we create names for the three buttons so the code knows which Arduino pins they are connected to, and so the program is easier to read and understand than if we used raw pin numbers. For this project, we need one button to move the cursor to the next option, one button to move to the previous option, and one button to select the highlighted option. If you want more practice working with buttons, review Lesson 1.",
+              "Next, we create names for the three buttons so the code knows which Arduino pins they are connected to, and so the program is easier to read and understand than if we used raw pin numbers. For this project, we need one button to move the cursor to the next option, one button to move to the previous option, and one button to select the highlighted option. If you want more practice working with buttons, review Lesson 1. \n**Fill in the blanks using the pin numbers from your circuit design.**",
             imageGridBeforeCode: {
               columns: 1,
+              width: 600,
+              height:400,
               items: [
                 {
-                  imageSrc: "/electric-status-board/images/example-circuit.png",
-                  label: "Example Circuit Image",
+                  imageSrc: "/electric-status-board/circuit/final_wiring.png",
+                  label: "Example Circuit Image Reference",
                 },
               ],
             },
