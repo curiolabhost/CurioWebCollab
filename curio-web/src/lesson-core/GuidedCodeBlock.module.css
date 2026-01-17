@@ -102,7 +102,7 @@
 ============================================================ */
 
 .codeNormal {
-  color: rgb(152, 154, 152);
+  color: #989a98;
   font-weight: 400;
   font-family: ui-monospace, Menlo, Monaco, Consolas, "Courier New", monospace;
   font-size: 14px;
@@ -185,11 +185,11 @@
   padding: 0.5px 2px;
   margin-right: 2px;
   border: none;
-  border-bottom: 1px solid #262e3f6a;
+  border-bottom: 1px solid #1f1f216a;
   background: transparent;
 
   /* make blank input font match code text EXACTLY */
-  color: #a3a5a3ff;
+  color: #989a98;
   font-family: ui-monospace, Menlo, Monaco, Consolas, "Courier New", monospace;
   font-size: 14px;
   line-height: 20px;
@@ -205,7 +205,7 @@
 
 .codeBlankInputHighlight {
   color: #cdced1ff;
-  border-bottom-color: #2c39526a;
+  border-bottom-color: #9c9ea26a;
 }
 
 .blankCorrect {
