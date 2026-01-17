@@ -2023,7 +2023,7 @@ customComponent: InputPullupCircuitInteractive,
 ^^int index = 0;^^
 
 ^^void setup() {^^
-^^  __BLANK[BUTTON9]__  __BLANK[BUTTON10]__ = __BLANK[BUTTON11]__;^^   // define button pin number
+^^  pinMode(__BLANK[BUTTON9]__, __BLANK[BUTTON10]__);^^   // pin mode for button
 ^^  Serial.begin(9600);^^
 ^^  Serial.println(options[index]);^^
 ^^}^^
@@ -2041,19 +2041,16 @@ customComponent: InputPullupCircuitInteractive,
 ^^  }^^
 ^^}^^`,
           answerKey: {
-            BUTTON9: ["int"],
-            BUTTON10: ["BUTTON"],
-            BUTTON11: ["10"],
+            BUTTON9: ["BUTTON"],
+            BUTTON10: ["INPUT_PULLUP"],
             BUTTON12: ["digitalRead(BUTTON)"],
             BUTTON13: ["LOW"],
           },
           blankExplanations: {
             BUTTON9:
-              "Choose a numeric type for storing a pin number constant.",
+              "Use the constant name you defined for the button pin.",
             BUTTON10:
-              "Use the constant name for the button pin.",
-            BUTTON11:
-              "Choose a valid digital pin number for the button connection.",
+              "Choose the button pin mode that uses the internal pull-up resistor.",
             BUTTON12:
               "Read the button pin so you can check if it’s pressed.",
             BUTTON13:
@@ -2094,7 +2091,7 @@ customComponent: InputPullupCircuitInteractive,
           answerKey: {
             BUTTON14: ["#define"],
             BUTTON15: ["BUTTON"],
-            BUTTON16: ["10"],
+            BUTTON16: { type: "range", min: 0, max: 13 },
             BUTTON17: ["LOW"],
             BUTTON18: ["LOW"],
           },
