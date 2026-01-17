@@ -564,7 +564,10 @@ Variables let the Arduino remember things like button states, menu positions, or
             optional: true,
         answerKey: {
           NAMETYPE: ["String"],
-          NAME1: ["Emily"],
+          NAME1: {
+    type: "string",
+    regex: "^[A-Za-z][A-Za-z0-9]*$",  // any word starting with a letter
+  },
           YEAR: { type: "range", min: 1900, max: 2100 },
           MONTH: [
             "January",
@@ -584,7 +587,10 @@ Variables let the Arduino remember things like button states, menu positions, or
           TEMP: { type: "range", min: -50, max: 150 },
           DATETYPE: ["String"],
           BUTTONTYPE: ["bool"],
-          NAME2: ["daysInYear"],
+          NAME2: {
+    type: "string",
+    regex: "^[A-Za-z_][A-Za-z0-9_]*$",  // valid C identifier (variable name)
+  },
           COUNTER: ["3"],
           LEVEL: ["4"],
         },
@@ -670,14 +676,14 @@ What does the level now read?    __BLANK[LEVEL]__`,
             optional: true,
         answerKey: {
           ARRAYTYPE: ["String"],
-          ARRAYNAME: { type: "regex", pattern: "^[A-Za-z_]\\w*\\[\\]$" },
+          ARRAYNAME: { type: "regex", regex: "^[A-Za-z_]\\w*\\[\\]$" },
           ARRAY: {
             type: "regex",
-            pattern: '^\\{\\s*".+"\\s*,\\s*".+"\\s*,\\s*".+"\\s*,\\s*".+"\\s*\\}$',
+            regex: '^\\{\\s*".+"\\s*,\\s*".+"\\s*,\\s*".+"\\s*,\\s*".+"\\s*\\}$',
           },
           VARRAYTYPE: ["String"],
           VARRAYNAME: { type: "identifier" },
-          CALL: { type: "regex", pattern: "^[A-Za-z_]\\w*\\[\\d+\\]$" },
+          CALL: { type: "regex", regex: "^[A-Za-z_]\\w*\\[\\d+\\]$" },
         },
         blankExplanations: {
           ARRAYTYPE:

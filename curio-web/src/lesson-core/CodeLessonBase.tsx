@@ -1195,6 +1195,33 @@ React.useEffect(() => {
     [setGlobalBlanks]
   );
 
+  // Cancel any pending rAF on unmount
+  React.useEffect(() => {
+    return () => {
+      if (inlineRafRef.current) {
+        cancelAnimationFrame(inlineRafRef.current);
+        inlineRafRef.current = null;
+      }
+    };
+  }, []);
+
+  // Persist all current inline values when the active step key changes or on unmount.
+  // This ensures answers you typed are saved into the step's local storage and merged into global blanks.
+  React.useEffect(() => {
+    return () => {
+      try {
+        const data = inlineLocalValuesRef.current || {};
+        // Save to this step's local storage
+        storageSetJson(localStorageKeyForThisStep, data);
+        // Update in-memory localBlanks so next render sees them immediately
+        setLocalBlanks((prev: any) => ({ ...(prev || {}), ...(data || {}) }));
+        // Merge into global blanks so shared identifiers persist across steps/lessons
+        setGlobalBlanks((prev: any) => ({ ...(prev || {}), ...(data || {}) }));
+      } catch {}
+    };
+    // NOTE: effect runs cleanup when localStorageKeyForThisStep changes (i.e. on step/lesson nav)
+  }, [localStorageKeyForThisStep]);
+
   const renderInline = React.useCallback(
     (text: string | null | undefined, source?: any) => {
       if (!text) return null;
