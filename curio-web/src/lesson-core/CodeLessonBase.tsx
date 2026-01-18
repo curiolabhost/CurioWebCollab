@@ -1048,10 +1048,8 @@ React.useEffect(() => {
      GuidedCodeBlock shared state + persistence (per step)
   ============================================================ */
 
-  const localStorageKeyForThisStep = `${KEYS.localBlanksPrefixKey}:${currentStepKey}`;
   const guidedUiKeyForThisStep = `${KEYS.localBlanksPrefixKey}:UI:${currentStepKey}`;
-
-  const [localBlanks, setLocalBlanks] = React.useState<Record<string, any>>({});
+  const [globalLoaded, setGlobalLoaded] = React.useState(false);
   const [globalBlanks, setGlobalBlanks] = React.useState<Record<string, any>>({});
 
   const [blankStatus, setBlankStatus] = React.useState<Record<string, boolean>>({});
@@ -1111,45 +1109,33 @@ React.useEffect(() => {
     [step]
   );
 
-  React.useEffect(() => {
-    const raw = storageGetJson<Record<string, any>>(KEYS.globalBlanksKey);
-    setGlobalBlanks(raw && typeof raw === "object" ? raw : {});
-  }, [KEYS.globalBlanksKey]);
+React.useEffect(() => {
+  const raw = storageGetJson<Record<string, any>>(KEYS.globalBlanksKey);
+  setGlobalBlanks(raw && typeof raw === "object" ? raw : {});
+  setGlobalLoaded(true);
+}, [KEYS.globalBlanksKey]);
+
+
+React.useEffect(() => {
+  if (!globalLoaded) return;  // prevents wipe on refresh
+  storageSetJson(KEYS.globalBlanksKey, globalBlanks || {});
+}, [KEYS.globalBlanksKey, globalBlanks, globalLoaded]);
+
 
   React.useEffect(() => {
-    storageSetJson(KEYS.globalBlanksKey, globalBlanks || {});
-  }, [KEYS.globalBlanksKey, globalBlanks]);
+  const ui = storageGetJson<any>(guidedUiKeyForThisStep);
 
-  React.useEffect(() => {
-    const raw = storageGetJson<Record<string, any>>(localStorageKeyForThisStep);
-    setLocalBlanks(raw && typeof raw === "object" ? raw : {});
+  setBlankStatus(ui?.blankStatus && typeof ui.blankStatus === "object" ? ui.blankStatus : {});
+  setActiveBlankHint(ui?.activeBlankHint ?? null);
+  setAiHelpByBlank(ui?.aiHelpByBlank && typeof ui.aiHelpByBlank === "object" ? ui.aiHelpByBlank : {});
+  setAiHintLevelByBlank(ui?.aiHintLevelByBlank && typeof ui.aiHintLevelByBlank === "object" ? ui.aiHintLevelByBlank : {});
+  setCheckAttempts(Number.isFinite(ui?.checkAttempts) ? ui.checkAttempts : 0);
+  setBlankAttemptsByName(ui?.blankAttemptsByName && typeof ui.blankAttemptsByName === "object" ? ui.blankAttemptsByName : {});
 
-    const ui = storageGetJson<any>(guidedUiKeyForThisStep);
+  setAiLoadingKey(null);
+  setAiLastRequestAtByKey({});
+}, [guidedUiKeyForThisStep]);
 
-    setBlankStatus(ui?.blankStatus && typeof ui.blankStatus === "object" ? ui.blankStatus : {});
-    setActiveBlankHint(ui?.activeBlankHint ?? null);
-    setAiHelpByBlank(
-      ui?.aiHelpByBlank && typeof ui.aiHelpByBlank === "object" ? ui.aiHelpByBlank : {}
-    );
-    setAiHintLevelByBlank(
-      ui?.aiHintLevelByBlank && typeof ui.aiHintLevelByBlank === "object"
-        ? ui.aiHintLevelByBlank
-        : {}
-    );
-    setCheckAttempts(Number.isFinite(ui?.checkAttempts) ? ui.checkAttempts : 0);
-    setBlankAttemptsByName(
-      ui?.blankAttemptsByName && typeof ui.blankAttemptsByName === "object"
-        ? ui.blankAttemptsByName
-        : {}
-    );
-
-    setAiLoadingKey(null);
-    setAiLastRequestAtByKey({});
-  }, [localStorageKeyForThisStep, guidedUiKeyForThisStep]);
-
-  React.useEffect(() => {
-    storageSetJson(localStorageKeyForThisStep, localBlanks || {});
-  }, [localStorageKeyForThisStep, localBlanks]);
 
   React.useEffect(() => {
     const payload = {
@@ -1176,10 +1162,8 @@ React.useEffect(() => {
     blankAttemptsByName,
   ]);
 
-  const mergedBlanks = React.useMemo(
-    () => ({ ...(globalBlanks || {}), ...(localBlanks || {}) }),
-    [globalBlanks, localBlanks]
-  );
+const mergedBlanks = React.useMemo(() => (globalBlanks || {}), [globalBlanks]);
+
 
   // PERFORMANCE: inline typing should not trigger parent-wide setState on every keypress
   const [inlineLocalValues, setInlineLocalValues] = React.useState<Record<string, any>>(() =>
@@ -1193,25 +1177,41 @@ React.useEffect(() => {
     setInlineLocalValues((prev) => ({ ...(prev || {}), ...safeMerged }));
   }, [mergedBlanks]);
 
-  const inlineRafRef = React.useRef<number | null>(null);
+const inlinePendingGlobalRef = React.useRef<Record<string, any>>({});
+const inlineFlushTimerRef = React.useRef<any>(null);
 
-  const scheduleInlineParentLocalUpdate = React.useCallback(
-    (name: string, value: string) => {
-      if (inlineRafRef.current) cancelAnimationFrame(inlineRafRef.current);
-      inlineRafRef.current = requestAnimationFrame(() => {
-        setLocalBlanks((prev: any) => ({ ...(prev || {}), [name]: value }));
-      });
-    },
-    [setLocalBlanks]
-  );
+const scheduleInlineGlobalUpdate = React.useCallback(
+  (name: string, value: string) => {
+    inlinePendingGlobalRef.current[name] = value;
 
-  const commitInlineToGlobal = React.useCallback(
-    (name: string) => {
-      const committed = String((inlineLocalValuesRef.current || {})[name] ?? "");
-      setGlobalBlanks((prev: any) => ({ ...(prev || {}), [name]: committed }));
-    },
-    [setGlobalBlanks]
-  );
+    if (inlineFlushTimerRef.current) return;
+    inlineFlushTimerRef.current = window.setTimeout(() => {
+      const patch = inlinePendingGlobalRef.current;
+      inlinePendingGlobalRef.current = {};
+      inlineFlushTimerRef.current = null;
+
+      if (Object.keys(patch).length) {
+        setGlobalBlanks((prev: any) => ({ ...(prev || {}), ...patch }));
+      }
+    }, 200);
+  },
+  [setGlobalBlanks]
+);
+
+const flushInlineGlobalNow = React.useCallback(() => {
+  if (inlineFlushTimerRef.current) {
+    window.clearTimeout(inlineFlushTimerRef.current);
+    inlineFlushTimerRef.current = null;
+  }
+  const patch = inlinePendingGlobalRef.current || {};
+  inlinePendingGlobalRef.current = {};
+  if (Object.keys(patch).length) {
+    setGlobalBlanks((prev: any) => ({ ...(prev || {}), ...patch }));
+  }
+}, [setGlobalBlanks]);
+
+
+const inlineRafRef = React.useRef<number | null>(null);
 
   // Cancel any pending rAF on unmount
   React.useEffect(() => {
@@ -1223,22 +1223,6 @@ React.useEffect(() => {
     };
   }, []);
 
-  // Persist all current inline values when the active step key changes or on unmount.
-  // This ensures answers you typed are saved into the step's local storage and merged into global blanks.
-  React.useEffect(() => {
-    return () => {
-      try {
-        const data = inlineLocalValuesRef.current || {};
-        // Save to this step's local storage
-        storageSetJson(localStorageKeyForThisStep, data);
-        // Update in-memory localBlanks so next render sees them immediately
-        setLocalBlanks((prev: any) => ({ ...(prev || {}), ...(data || {}) }));
-        // Merge into global blanks so shared identifiers persist across steps/lessons
-        setGlobalBlanks((prev: any) => ({ ...(prev || {}), ...(data || {}) }));
-      } catch {}
-    };
-    // NOTE: effect runs cleanup when localStorageKeyForThisStep changes (i.e. on step/lesson nav)
-  }, [localStorageKeyForThisStep]);
 
   const renderInline = React.useCallback(
     (text: string | null | undefined, source?: any) => {
@@ -1248,10 +1232,10 @@ React.useEffect(() => {
         values: inlineLocalValues,
         onChangeBlank: (name, txt) => {
           setInlineLocalValues((prev) => ({ ...(prev || {}), [name]: txt }));
-          scheduleInlineParentLocalUpdate(name, txt);
+          scheduleInlineGlobalUpdate(name, txt);   // global-only
         },
         onBlurBlank: (name) => {
-          commitInlineToGlobal(name);
+          flushInlineGlobalNow();                
         },
         blankStatus,
         onCheckBlank: (name) => checkInlineBlank(name, source),
@@ -1263,15 +1247,16 @@ React.useEffect(() => {
         onCloseInlineHint: () => setActiveBlankHint(null),
       });
     },
-    [
-      inlineLocalValues,
-      scheduleInlineParentLocalUpdate,
-      commitInlineToGlobal,
-      blankStatus,
-      checkInlineBlank,
-      openInlineExplanation,
-      activeBlankHint,
-    ]
+      [
+        inlineLocalValues,
+        scheduleInlineGlobalUpdate,
+        flushInlineGlobalNow,
+        blankStatus,
+        checkInlineBlank,
+        openInlineExplanation,
+        activeBlankHint,
+      ]
+
   );
 
   const logBlankAnalytics = React.useCallback((_event: any) => {
@@ -1568,12 +1553,11 @@ React.useEffect(() => {
                             step={step}
                             block={block}
                             blockIndex={idx}
-                            storageKey={localStorageKeyForThisStep}
+                            storageKey={guidedUiKeyForThisStep}
                             globalKey={KEYS.globalBlanksKey}
                             apiBaseUrl={apiBaseUrl}
                             analyticsTag={analyticsTag}
                             mergedBlanks={mergedBlanks}
-                            setLocalBlanks={setLocalBlanks}
                             setGlobalBlanks={setGlobalBlanks}
                             blankStatus={blankStatus}
                             setBlankStatus={setBlankStatus}
