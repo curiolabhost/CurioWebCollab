@@ -113,6 +113,70 @@ const CHAR_W = 8.6;
 // ============================================================
 // Utilities
 // ============================================================
+
+async function streamHelpSSE(payload: any, onToken: (t: string) => void) {
+  const res = await fetch("/api/help", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    const t = await res.text().catch(() => "");
+    throw new Error(`AI route failed (${res.status}): ${t}`);
+  }
+  if (!res.body) throw new Error("AI route returned no body (streaming not enabled).");
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+
+    const events = buffer.split("\n\n");
+    buffer = events.pop() ?? "";
+
+    for (const evt of events) {
+      const lines = evt.split("\n");
+      let eventType = "message";
+      let data = "";
+
+      for (const line of lines) {
+        if (line.startsWith("event:")) eventType = line.slice(6).trim();
+        else if (line.startsWith("data:")) data += line.slice(5).trim();
+      }
+
+      if (eventType === "token") {
+        try {
+          const parsed = JSON.parse(data || "{}");
+          if (parsed?.token) onToken(parsed.token);
+        } catch {}
+      }
+
+      if (eventType === "error") {
+        let msg = "AI request failed.";
+        try {
+          msg = JSON.parse(data || "{}")?.error || msg;
+        } catch {}
+
+        const isRateLimit =
+          /rate limit/i.test(msg) ||
+          /Limit \d+, Used \d+/i.test(msg) ||
+          /Please try again/i.test(msg);
+
+        const err = new Error(msg) as Error & { code?: string };
+        if (isRateLimit) err.code = "RATE_LIMIT";
+        throw err;
+      }
+    }
+  }
+}
+
+
 function safeJsonParse<T>(raw: string | null): T | null {
   if (!raw) return null;
   try {
@@ -411,7 +475,7 @@ export default function GuidedCodeBlock({
   blockIndex,
   storageKey,
   globalKey, // (kept for signature compatibility)
-  apiBaseUrl = "http://localhost:4000",
+  apiBaseUrl = "",
   analyticsTag,
 
   mergedBlanks,
@@ -706,92 +770,115 @@ export default function GuidedCodeBlock({
   const loadingThis = !!aiKey && aiLoadingKey === aiKey;
   const showHintBox = !!activeBlankHint && activeBlankHint.blockIndex === blockIndex;
 
-  const requestAiBlankHelpForBlank = async ({
-    blankName,
-    code: fullCode,
-  }: {
-    blankName: string;
-    code: string;
-  }) => {
-    if (!blankName) return;
+const requestAiBlankHelpForBlank = async ({ blankName, code }: { blankName: string; code: string }) => {
+  if (!step) return;
+  
+  const key = `${blockIndex}:${blankName}`;
 
-    const key = `${blockIndex}:${blankName}`;
-    const lastAt = (aiLastRequestAtByKey || {})[key] ?? 0;
-    const since = nowMs() - lastAt;
+  const usedHints = (aiHintLevelByBlank || {})[key] ?? 0;
+  if (usedHints >= MAX_HINT_LEVEL) return;
 
-    // cooldown
-    if (since < AI_COOLDOWN_MS) {
-      const secsLeft = Math.ceil((AI_COOLDOWN_MS - since) / 1000);
-      setAiHelpByBlank?.((prev) => ({
-        ...(prev || {}),
-        [key]: `Try again in about ${secsLeft} second${secsLeft === 1 ? "" : "s"} after thinking it through.`,
-      }));
-      return;
-    }
+  const studentAnswer = ((localValuesRef.current || {})[blankName] ?? "").trim();
+  const rule = answerKey?.[blankName];
+  if (!rule) return;
 
-    // hint level cap
-    const lvl = (aiHintLevelByBlank || {})[key] ?? 0;
-    if (lvl >= MAX_HINT_LEVEL) {
-      setAiHelpByBlank?.((prev) => ({
-        ...(prev || {}),
-        [key]: "You’ve reached the maximum number of AI hints for this blank.",
-      }));
-      return;
-    }
+  const previousHintText = (aiHelpByBlank || {})[key] || null;
 
-    setAiLoadingKey?.(key);
+  const now = Date.now();
+  const last = (aiLastRequestAtByKey || {})[key] || 0;
+  if (now - last < AI_COOLDOWN_MS) {
+    const secondsLeft = Math.ceil((AI_COOLDOWN_MS - (now - last)) / 1000);
+    setAiHelpByBlank?.((prev) => ({
+      ...(prev || {}),
+      [key]:
+        (prev || {})[key] ||
+        `Try tweaking your answer or re-reading the hint first. You can ask AI again in about ${secondsLeft} second${
+          secondsLeft === 1 ? "" : "s"
+        }.`,
+    }));
+    return;
+  }
 
-    try {
-      const payload = {
-        blankName,
-        userValue: String((localValuesRef.current || {})[blankName] ?? ""),
-        code: String(fullCode || ""),
-        explanations: blockExplanations || {},
-        lessonPhrase: step?.phrase || "",
-        stepTitle: step?.title || "",
-        analyticsTag: analyticsTag || "",
-      };
+  const upcomingHintNumber = usedHints + 1;
 
-      const res = await fetch(`${apiBaseUrl}/api/lesson/blank-hint`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+  let hintStyle: "gentle_nudge" | "conceptual_explanation" | "analogy_based" = "gentle_nudge";
+  if (upcomingHintNumber === 2) hintStyle = "conceptual_explanation";
+  else if (upcomingHintNumber === 3) hintStyle = "analogy_based";
 
-      const data = await res.json().catch(() => ({}));
-      const hintText = String(data?.hint || data?.message || "No hint returned.");
+  // Send to SAME /api/help route
+  const payload = {
+    mode: "blank-help",
+    sentences: 4,
+    verbosity: "brief",
 
-      setAiHelpByBlank?.((prev) => ({
-        ...(prev || {}),
-        [key]: hintText,
-      }));
+    lessonId: step?.id,
+    title: step?.title,
+    description: step?.desc || null,
+    codeSnippet: code || step?.code || null,
 
-      setAiHintLevelByBlank?.((prev) => ({
-        ...(prev || {}),
-        [key]: lvl + 1,
-      }));
+    blank: {
+      name: blankName,
+      displayName: "blank",
+      studentAnswer,
+      rule,
+      allBlanks: localValuesRef.current || {},
+      previousHint: previousHintText,
+    },
 
-      setAiLastRequestAtByKey?.((prev) => ({
-        ...(prev || {}),
-        [key]: nowMs(),
-      }));
+    hintStyle,
+    hintLevel: upcomingHintNumber,
 
-      logBlankAnalytics?.({
-        type: "ai_hint",
-        blankName,
-        blockIndex,
-        level: lvl + 1,
-        tag: analyticsTag,
-      });
-    } catch (e: any) {
-      setAiHelpByBlank?.((prev) => ({
-        ...(prev || {}),
-        [key]: `Error requesting AI hint: ${String(e?.message || e)}`,
-      }));
-    } finally {
-      setAiLoadingKey?.(null);
-    }
+    // keep /api/help contract consistent
+    code: code || step?.code || "",
+    errors: [],
   };
+
+  try {
+    setAiLoadingKey?.(key);
+    setAiLastRequestAtByKey?.((prev) => ({ ...(prev || {}), [key]: now }));
+
+    // stream into the blank help UI
+    let acc = "";
+    setAiHelpByBlank?.((prev) => ({ ...(prev || {}), [key]: "" }));
+
+    await streamHelpSSE(payload, (t) => {
+      acc += t;
+      setAiHelpByBlank?.((prev) => ({ ...(prev || {}), [key]: acc }));
+    });
+
+    setAiHintLevelByBlank?.((prev) => ({ ...(prev || {}), [key]: upcomingHintNumber }));
+
+    const difficulty = (step?.blankDifficulties || {})[blankName] || null;
+
+    logBlankAnalytics?.({
+      type: "AI_HINT",
+      blankName,
+      blockIndex,
+      hintLevel: upcomingHintNumber,
+      studentAnswer,
+      previousHintUsed: !!previousHintText,
+      difficulty,
+      analyticsTag: analyticsTag || null,
+      stepId: step?.id,
+      stepTitle: step?.title,
+      storageKey: storageKey || null,
+      globalKey: globalKey || null,
+    });
+  } catch (err: any) {
+    const msg = String(err?.message || err || "AI request failed.");
+    const isRate = err?.code === "RATE_LIMIT" || /rate limit/i.test(msg) || /Please try again/i.test(msg);
+
+    setAiHelpByBlank?.((prev) => ({
+      ...(prev || {}),
+      [key]: isRate
+        ? "AI is rate-limited right now. Try again in ~20 seconds."
+        : (prev || {})[key] || "I had trouble generating more help right now. Try adjusting your answer slightly and re-checking.",
+    }));
+  } finally {
+    setAiLoadingKey?.((prev) => (prev === key ? null : prev));
+  }
+};
+
 
   // restore JS behavior: substitute filled blanks, strip ^^, keep unfixed blanks as _____
   const copyCode = async (raw: string) => {
