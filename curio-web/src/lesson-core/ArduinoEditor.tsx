@@ -867,7 +867,7 @@ if (existing) {
     const deltaY = dragStartYRef.current - e.clientY;
     let newHeight = dragStartHeightRef.current + deltaY;
     const MIN = 40;
-      const MAX = Math.floor(window.innerHeight * 0.92);
+      const MAX = Math.floor(window.innerHeight * 0.88);
     if (newHeight < MIN) newHeight = MIN;
     if (newHeight > MAX) newHeight = MAX;
     setBottomHeight(newHeight);
