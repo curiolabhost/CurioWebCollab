@@ -165,13 +165,15 @@ void loop(){
           {
             topicTitle: "Define button pins",
             descBeforeCode:
-              "Next, we create names for the three buttons so the code knows which Arduino pins they are connected to, and so the program is easier to read and understand than if we used raw pin numbers. For this project, we need one button to move the cursor to the next option, one button to move to the previous option, and one button to select the highlighted option. If you want more practice working with buttons, review Lesson 1.",
+              "Next, we create names for the three buttons so the code knows which Arduino pins they are connected to, and so the program is easier to read and understand than if we used raw pin numbers. For this project, we need one button to move the cursor to the next option, one button to move to the previous option, and one button to select the highlighted option. If you want more practice working with buttons, review Lesson 1. \n**Fill in the blanks using the pin numbers from your circuit design.**",
             imageGridBeforeCode: {
               columns: 1,
+              width: 600,
+              height:400,
               items: [
                 {
-                  imageSrc: "/electric-status-board/images/example-circuit.png",
-                  label: "Example Circuit Image",
+                  imageSrc: "/electric-status-board/circuit/final_wiring.png",
+                  label: "Example Circuit Image Reference",
                 },
               ],
             },
@@ -562,7 +564,10 @@ Variables let the Arduino remember things like button states, menu positions, or
             optional: true,
         answerKey: {
           NAMETYPE: ["String"],
-          NAME1: ["Emily"],
+          NAME1: {
+    type: "string",
+    regex: "^[A-Za-z][A-Za-z0-9]*$",  // any word starting with a letter
+  },
           YEAR: { type: "range", min: 1900, max: 2100 },
           MONTH: [
             "January",
@@ -582,7 +587,10 @@ Variables let the Arduino remember things like button states, menu positions, or
           TEMP: { type: "range", min: -50, max: 150 },
           DATETYPE: ["String"],
           BUTTONTYPE: ["bool"],
-          NAME2: ["daysInYear"],
+          NAME2: {
+    type: "string",
+    regex: "^[A-Za-z_][A-Za-z0-9_]*$",  // valid C identifier (variable name)
+  },
           COUNTER: ["3"],
           LEVEL: ["4"],
         },
@@ -668,14 +676,14 @@ What does the level now read?    __BLANK[LEVEL]__`,
             optional: true,
         answerKey: {
           ARRAYTYPE: ["String"],
-          ARRAYNAME: { type: "regex", pattern: "^[A-Za-z_]\\w*\\[\\]$" },
+          ARRAYNAME: { type: "regex", regex: "^[A-Za-z_]\\w*\\[\\]$" },
           ARRAY: {
             type: "regex",
-            pattern: '^\\{\\s*".+"\\s*,\\s*".+"\\s*,\\s*".+"\\s*,\\s*".+"\\s*\\}$',
+            regex: '^\\{\\s*".+"\\s*,\\s*".+"\\s*,\\s*".+"\\s*,\\s*".+"\\s*\\}$',
           },
           VARRAYTYPE: ["String"],
           VARRAYNAME: { type: "identifier" },
-          CALL: { type: "regex", pattern: "^[A-Za-z_]\\w*\\[\\d+\\]$" },
+          CALL: { type: "regex", regex: "^[A-Za-z_]\\w*\\[\\d+\\]$" },
         },
         blankExplanations: {
           ARRAYTYPE:
