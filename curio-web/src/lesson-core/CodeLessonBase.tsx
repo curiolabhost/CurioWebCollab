@@ -11,6 +11,7 @@ import CircuitEditor from "./CircuitEditor";
 import GuidedCodeBlock from "./GuidedCodeBlock";
 import styles from "./CodeLessonBase.module.css";
 import RightNote from "./RightNote";
+import {LessonSidebar} from "./LessonSidebar";
 
 /* ============================================================
    Storage helpers
@@ -516,28 +517,45 @@ export default function CodeLessonBase({
      Notes (My Notes) visibility + persistence
   ============================================================ */
 
-  const NOTES_VISIBLE_KEY = React.useMemo(() => `${trackPrefix}:ui:notesVisible`, [trackPrefix]);
-
-  const [notesVisible, setNotesVisible] = React.useState<boolean>(true);
-  const [notesVisibleLoaded, setNotesVisibleLoaded] = React.useState(false);
-
-  React.useEffect(() => {
-    const raw = storageGetJson<boolean>(NOTES_VISIBLE_KEY);
-    // default: show notes
-    const next = raw == null ? true : !!raw;
-    setNotesVisible(next);
-    setNotesVisibleLoaded(true);
-  }, [NOTES_VISIBLE_KEY]);
-
-  React.useEffect(() => {
-    if (!notesVisibleLoaded) return;
-    storageSetJson(NOTES_VISIBLE_KEY, notesVisible);
-  }, [NOTES_VISIBLE_KEY, notesVisible, notesVisibleLoaded]);
 
   // one scope + one split key (no Pluto)
   const notesScopeKey = React.useMemo(() => trackPrefix, [trackPrefix]);
   const notesSplitKey = React.useMemo(() => `${trackPrefix}:split:notes`, [trackPrefix]);
 
+/* ============================================================
+   Notes (My Notes) visibility + persistence (driven by header)
+============================================================ */
+
+const NOTES_VISIBLE_EVENT = "curio:notesVisible";
+const NOTES_VISIBLE_KEY = React.useMemo(() => `${storagePrefix}:notesVisible`, [storagePrefix]);
+
+
+function readNotesVisible(): boolean {
+  const raw = storageGetString(NOTES_VISIBLE_KEY);
+  if (raw === "1") return true;
+  if (raw === "0") return false;
+  return true; // default: show notes
+}
+
+const [notesVisible, setNotesVisible] = React.useState<boolean>(() => readNotesVisible());
+
+React.useEffect(() => {
+  const update = () => setNotesVisible(readNotesVisible());
+
+  const onStorage = (e: StorageEvent) => {
+    if (e.key === NOTES_VISIBLE_KEY) update();
+  };
+
+  window.addEventListener("storage", onStorage);
+  window.addEventListener(NOTES_VISIBLE_EVENT, update as any);
+
+  update();
+
+  return () => {
+    window.removeEventListener("storage", onStorage);
+    window.removeEventListener(NOTES_VISIBLE_EVENT, update as any);
+  };
+}, [NOTES_VISIBLE_KEY]);
 
 
   const activeLessonSteps = React.useMemo(() => {
@@ -1500,13 +1518,6 @@ React.useEffect(() => {
               </button>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => setNotesVisible((v) => !v)}
-            className="mt-4 text-sm text-indigo-700 hover:text-indigo-900 underline"
-          >
-            {notesVisible ? "Hide Notes" : "Show Notes"}
-          </button>
 
         </div>
   );
@@ -1670,318 +1681,49 @@ React.useEffect(() => {
   )}
 </div>
     </div>
+    
 
       {/* Sidebar */}
-      {sidebarExpanded ? (
-        <div className={`w-96 bg-gray-50 border-l border-gray-200 overflow-y-auto ${styles.hideScrollbar}`}>
-          <div className="p-5">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={onSelectCircuits}
-                  className={[
-                    "px-3 py-1 rounded-full text-sm border transition-colors",
-                    (() => {
-                      if (supportsInlineTracks) return lessonType === "circuits";
-                      const ptr = parseCurioPtr(storagePrefix);
-                      const target = ptr ? siblingLessonSlug(ptr.lessonSlug, "circuits") : null;
-                      return ptr?.lessonSlug === (target ?? circuitsLessonSlug);
-                    })()
-                      ? "bg-sky-700 text-white border-sky-700"
-                      : "bg-white text-gray-700 border-gray-200 hover:bg-gray-100",
-                  ].join(" ")}
-                >
-                  Circuits
-                </button>
+<LessonSidebar
+  sidebarExpanded={sidebarExpanded}
+  onHide={() => setSidebarExpanded(false)}
+  onShow={() => setSidebarExpanded(true)}
 
-                <button
-                  type="button"
-                  onClick={onSelectCoding}
-                  className={[
-                    "px-3 py-1 rounded-full text-sm border transition-colors",
-                    (() => {
-                      if (supportsInlineTracks) return lessonType === "coding";
-                      const ptr = parseCurioPtr(storagePrefix);
-                      const target = ptr ? siblingLessonSlug(ptr.lessonSlug, "coding") : null;
-                      return ptr?.lessonSlug === (target ?? codingLessonSlug);
-                    })()
-                      ? "bg-sky-700 text-white border-sky-700"
-                      : "bg-white text-gray-700 border-gray-200 hover:bg-gray-100",
-                  ].join(" ")}
-                >
-                  Coding
-                </button>
-              </div>
+  supportsInlineTracks={supportsInlineTracks}
+  lessonType={lessonType}
+  storagePrefix={storagePrefix}
+  circuitsLessonSlug={circuitsLessonSlug}
+  codingLessonSlug={codingLessonSlug}
+  onSelectCircuits={onSelectCircuits}
+  onSelectCoding={onSelectCoding}
+  parseCurioPtr={parseCurioPtr}
+  siblingLessonSlug={siblingLessonSlug}
 
-              <button
-                type="button"
-                onClick={() => setSidebarExpanded(false)}
-                className="text-xs text-gray-500 hover:text-gray-700"
-              >
-                Hide
-              </button>
-            </div>
+  normalLessonNums={normalLessonNums}
+  advancedLessonNums={advancedLessonNums}
+  lesson={lesson}
 
-            {/* ========= LESSON LIST (NORMAL then ADVANCED OPTIONAL) ========= */}
-            <div className="space-y-4">
-              {normalLessonNums.map((lessonNum) => {
-                const entry = getLessonEntry(lessonNum);
-                const lessonStepsArr = getLessonStepsArray(lessonNum);
-                const expanded = expandedLessons.includes(lessonNum);
-                const lessonSubtitle = getLessonPhrase(lessonNum);
+  getLessonEntry={getLessonEntry}
+  getLessonStepsArray={getLessonStepsArray}
+  getLessonPhrase={getLessonPhrase}
 
-                const isLessonActive = lessonNum === lesson;
-                const allStepsDone =
-                  lessonStepsArr.length > 0 &&
-                  lessonStepsArr.every((_: any, idx: number) =>
-                    doneSet.has(makeStepKey(lessonNum, idx))
-                  );
+  doneSet={doneSet}
+  makeStepKey={makeStepKey}
+  advancedUnlocked={advancedUnlocked}
 
-                const locked = false;
+  expandedLessons={expandedLessons}
+  toggleLesson={toggleLesson}
 
-                return (
-                  <div
-                    key={lessonNum}
-                    className="bg-white rounded-lg border border-gray-200 overflow-hidden"
-                  >
-                    <button
-                      onClick={() => toggleLesson(lessonNum)}
-                      type="button"
-                      className={`w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors ${
-                        isLessonActive
-                          ? "bg-indigo-50 hover:bg-indigo-100"
-                          : allStepsDone
-                          ? "bg-green-50 hover:bg-green-100"
-                          : "bg-white"
-                      }`}
-                    >
-                      <div className="text-left">
-                        <div
-                          className={`text-sm mb-1 ${
-                            isLessonActive ? "text-indigo-600" : "text-gray-900"
-                          }`}
-                        >
-                          {isLessonEntryOptional(entry) ? "Optional Lesson" : "Lesson"} {lessonNum}
-                        </div>
-                        {lessonSubtitle ? (
-                          <div
-                            className={`text-xs ${
-                              isLessonActive ? "text-indigo-500" : "text-gray-500"
-                            }`}
-                          >
-                            {lessonSubtitle}
-                          </div>
-                        ) : null}
-                      </div>
+  optionalExpandedByLesson={optionalExpandedByLesson}
+  toggleOptionalSteps={toggleOptionalSteps}
+  splitStepsForOptionalDropdown={splitStepsForOptionalDropdown}
 
-                      {expanded ? (
-                        <ChevronDown className="w-4 h-4 text-gray-400" />
-                      ) : (
-                        <ChevronRight className="w-4 h-4 text-gray-400" />
-                      )}
-                    </button>
+  renderStepButton={renderStepButton}
+  safeStepIndex={safeStepIndex}
 
-                    {expanded ? (
-                      <div className="px-4 pb-4 pt-3 space-y-1">
-                        {(() => {
-                          const split = splitStepsForOptionalDropdown(lessonStepsArr);
-                          const optOpen = !!optionalExpandedByLesson[lessonNum];
+  isLessonEntryOptional={isLessonEntryOptional}
+/>
 
-                          return (
-                            <>
-                              {/* BEFORE optional */}
-                              {split.before.map(({ st, idx }: any) =>
-                                renderStepButton(lessonNum, idx, st, locked, safeStepIndex)
-                              )}
-
-                              {/* OPTIONAL dropdown */}
-                              {split.hasOptional && split.optionalBlock.length > 0 ? (
-                                <div className="mt-2">
-                                  <button
-                                    type="button"
-                                    onClick={() => toggleOptionalSteps(lessonNum)}
-                                    className="w-full flex items-center justify-between py-2 px-3 rounded bg-gray-100 hover:bg-gray-200 text-sm text-gray-700"
-                                  >
-                                    <span className="font-medium">Optional Steps</span>
-                                    {optOpen ? (
-                                      <ChevronDown className="w-4 h-4 text-gray-500" />
-                                    ) : (
-                                      <ChevronRight className="w-4 h-4 text-gray-500" />
-                                    )}
-                                  </button>
-
-                                  {optOpen ? (
-                                    <div className="mt-1 space-y-1 pl-2 border-l border-gray-200">
-                                      {split.optionalBlock.map(({ st, idx }: any) =>
-                                        renderStepButton(lessonNum, idx, st, locked, safeStepIndex)
-                                      )}
-                                    </div>
-                                  ) : null}
-                                </div>
-                              ) : null}
-
-                              {/* AFTER optional */}
-                              {split.after.map(({ st, idx }: any) =>
-                                renderStepButton(lessonNum, idx, st, locked, safeStepIndex)
-                              )}
-                            </>
-                          );
-                        })()}
-                      </div>
-                    ) : null}
-                  </div>
-                );
-              })}
-
-              {advancedLessonNums.length > 0 ? (
-                <div className="pt-4 mt-2 border-t border-gray-200">
-                  <div className="text-xs font-semibold text-gray-500 mb-3">
-                    Advanced (Optional)
-                  </div>
-
-                  <div className="space-y-4">
-                    {advancedLessonNums.map((lessonNum) => {
-                      const entry = getLessonEntry(lessonNum);
-                      const lessonStepsArr = getLessonStepsArray(lessonNum);
-                      const expanded = expandedLessons.includes(lessonNum);
-                      const lessonSubtitle = getLessonPhrase(lessonNum);
-
-                      const isLessonActive = lessonNum === lesson;
-                      const allStepsDone =
-                        lessonStepsArr.length > 0 &&
-                        lessonStepsArr.every((_: any, idx: number) =>
-                          doneSet.has(makeStepKey(lessonNum, idx))
-                        );
-
-                      const locked = !advancedUnlocked;
-
-                      return (
-                        <div
-                          key={lessonNum}
-                          className={[
-                            "bg-white rounded-lg border overflow-hidden",
-                            locked ? "border-gray-200 opacity-70" : "border-gray-200",
-                          ].join(" ")}
-                        >
-                          <button
-                            onClick={() => toggleLesson(lessonNum)}
-                            type="button"
-                            className={[
-                              "w-full flex items-center justify-between p-4 transition-colors",
-                              locked
-                                ? "bg-gray-100 hover:bg-gray-100 cursor-not-allowed"
-                                : "hover:bg-gray-50",
-                              isLessonActive && !locked ? "bg-indigo-50 hover:bg-indigo-100" : "",
-                              allStepsDone && !locked ? "bg-green-50 hover:bg-green-100" : "",
-                            ].join(" ")}
-                            disabled={locked}
-                            title={locked ? "Finish all normal lessons to unlock Advanced (Optional)." : ""}
-                          >
-                            <div className="text-left">
-                              <div
-                                className={`text-sm mb-1 ${
-                                  locked
-                                    ? "text-gray-400"
-                                    : isLessonActive
-                                    ? "text-indigo-600"
-                                    : "text-gray-900"
-                                }`}
-                              >
-                                {isLessonEntryOptional(entry) ? "Optional Lesson" : "Lesson"}{" "}
-                                {lessonNum}
-                              </div>
-                              {lessonSubtitle ? (
-                                <div
-                                  className={`text-xs ${
-                                    locked
-                                      ? "text-gray-400"
-                                      : isLessonActive
-                                      ? "text-indigo-500"
-                                      : "text-gray-500"
-                                  }`}
-                                >
-                                  {lessonSubtitle}
-                                </div>
-                              ) : null}
-                            </div>
-
-                            {expanded ? (
-                              <ChevronDown className="w-4 h-4 text-gray-400" />
-                            ) : (
-                              <ChevronRight className="w-4 h-4 text-gray-400" />
-                            )}
-                          </button>
-
-                          {expanded ? (
-                            <div className="px-4 pb-4 pt-3 space-y-1">
-                              {(() => {
-                                const split = splitStepsForOptionalDropdown(lessonStepsArr);
-                                const optOpen = !!optionalExpandedByLesson[lessonNum];
-
-                                return (
-                                  <>
-                                    {/* BEFORE optional */}
-                                    {split.before.map(({ st, idx }: any) =>
-                                      renderStepButton(lessonNum, idx, st, locked, safeStepIndex)
-                                    )}
-
-                                    {/* OPTIONAL dropdown */}
-                                    {split.hasOptional && split.optionalBlock.length > 0 ? (
-                                      <div className="mt-2">
-                                        <button
-                                          type="button"
-                                          onClick={() => toggleOptionalSteps(lessonNum)}
-                                          className="w-full flex items-center justify-between py-2 px-3 rounded bg-gray-100 hover:bg-gray-200 text-sm text-gray-700"
-                                        >
-                                          <span className="font-medium">Optional Steps</span>
-                                          {optOpen ? (
-                                            <ChevronDown className="w-4 h-4 text-gray-500" />
-                                          ) : (
-                                            <ChevronRight className="w-4 h-4 text-gray-500" />
-                                          )}
-                                        </button>
-
-                                        {optOpen ? (
-                                          <div className="mt-1 space-y-1 pl-2 border-l border-gray-200">
-                                            {split.optionalBlock.map(({ st, idx }: any) =>
-                                              renderStepButton(lessonNum, idx, st, locked, safeStepIndex)
-                                            )}
-                                          </div>
-                                        ) : null}
-                                      </div>
-                                    ) : null}
-
-                                    {/* AFTER optional */}
-                                    {split.after.map(({ st, idx }: any) =>
-                                      renderStepButton(lessonNum, idx, st, locked, safeStepIndex)
-                                    )}
-                                  </>
-                                );
-                              })()}
-                            </div>
-                          ) : null}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              ) : null}
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="w-6 bg-gray-100 border-l border-gray-200 flex items-start justify-center py-4">
-          <button
-            type="button"
-            onClick={() => setSidebarExpanded(true)}
-            className="text-xs text-gray-500 hover:text-gray-700 rotate-90 origin-center"
-            title="Show sidebar"
-          >
-            Show
-          </button>
-        </div>
-      )}
     </div>
   );
 
