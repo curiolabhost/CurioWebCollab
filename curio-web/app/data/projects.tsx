@@ -64,7 +64,7 @@ export const PROJECTS: Project[] = [
       "Start your Arduino journey with this comprehensive introduction course. You'll learn the fundamentals of electronics, circuit building, and programming through hands-on projects. By the end of this course, you'll have the confidence to explore more advanced Arduino projects and bring your creative ideas to life.",
     difficulties: ["Beginner"],
     category: "Electronics",
-    available: true,
+    available: false,
     image:
       "https://images.unsplash.com/photo-1553408226-42ecf81a214c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080",
     ageRange: "10-18 years",

@@ -6,9 +6,11 @@ import { Code2, CircuitBoard, BookOpen } from "lucide-react";
 type ViewMode = "lesson" | "code" | "circuit";
 
 const VIEW_MODE_EVENT = "curio:viewMode";
+const NOTES_VISIBLE_EVENT = "curio:notesVisible";
 
 type LessonHeaderControlsProps = {
-  viewModeKey: string; // must match CodeLessonBase's `${storagePrefix}:viewMode`
+  viewModeKey: string;        // must match CodeLessonBase's `${storagePrefix}:viewMode`
+  notesVisibleKey: string;   // `${storagePrefix}:notesVisible`
 };
 
 function safeSetViewMode(viewModeKey: string, mode: ViewMode) {
@@ -26,12 +28,41 @@ function safeReadViewMode(viewModeKey: string): ViewMode {
   return "lesson";
 }
 
-export default function LessonHeaderControls({ viewModeKey }: LessonHeaderControlsProps) {
+function safeSetNotesVisible(notesVisibleKey: string, visible: boolean) {
+  try {
+    window.localStorage.setItem(notesVisibleKey, visible ? "1" : "0");
+    window.dispatchEvent(new Event(NOTES_VISIBLE_EVENT));
+  } catch {}
+}
+
+function safeReadNotesVisible(notesVisibleKey: string, defaultValue = true): boolean {
+  try {
+    const raw = window.localStorage.getItem(notesVisibleKey);
+    if (raw === "1") return true;
+    if (raw === "0") return false;
+  } catch {}
+  return defaultValue;
+}
+
+export default function LessonHeaderControls({
+  viewModeKey,
+  notesVisibleKey,
+}: LessonHeaderControlsProps) {
   const [active, setActive] = React.useState<ViewMode>("lesson");
+  const [notesVisible, setNotesVisible] = React.useState<boolean>(true);
 
   React.useEffect(() => {
     setActive(safeReadViewMode(viewModeKey));
-  }, [viewModeKey]);
+    setNotesVisible(safeReadNotesVisible(notesVisibleKey, true));
+  }, [viewModeKey, notesVisibleKey]);
+
+  React.useEffect(() => {
+    const onNotes = () => {
+      setNotesVisible(safeReadNotesVisible(notesVisibleKey, true));
+    };
+    window.addEventListener(NOTES_VISIBLE_EVENT, onNotes);
+    return () => window.removeEventListener(NOTES_VISIBLE_EVENT, onNotes);
+  }, [notesVisibleKey]);
 
   const baseBtn: React.CSSProperties = {
     display: "inline-flex",
@@ -39,12 +70,9 @@ export default function LessonHeaderControls({ viewModeKey }: LessonHeaderContro
     gap: 8,
     padding: "8px 12px",
     borderRadius: 10,
-
-    // longhand border only (no shorthand "border")
     borderWidth: 1,
     borderStyle: "solid",
     borderColor: "#e5e7eb",
-
     background: "white",
     fontSize: 13,
     fontWeight: 600,
@@ -60,10 +88,11 @@ export default function LessonHeaderControls({ viewModeKey }: LessonHeaderContro
 
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      {/* Lesson */}
       <button
         type="button"
         onClick={() => {
-          safeSetViewMode(viewModeKey,"lesson");
+          safeSetViewMode(viewModeKey, "lesson");
           setActive("lesson");
         }}
         style={{ ...baseBtn, ...(active === "lesson" ? activeBtn : {}) }}
@@ -73,10 +102,25 @@ export default function LessonHeaderControls({ viewModeKey }: LessonHeaderContro
         Lesson
       </button>
 
+      {/* Notes toggle */}
       <button
         type="button"
         onClick={() => {
-          safeSetViewMode(viewModeKey,"code");
+          const next = !notesVisible;
+          safeSetNotesVisible(notesVisibleKey, next);
+          setNotesVisible(next);
+        }}
+        style={baseBtn}
+        title={notesVisible ? "Hide Notes" : "Show Notes"}
+      >
+        {notesVisible ? "Hide Notes" : "Show Notes"}
+      </button>
+
+      {/* Code */}
+      <button
+        type="button"
+        onClick={() => {
+          safeSetViewMode(viewModeKey, "code");
           setActive("code");
         }}
         style={{ ...baseBtn, ...(active === "code" ? activeBtn : {}) }}
@@ -86,10 +130,11 @@ export default function LessonHeaderControls({ viewModeKey }: LessonHeaderContro
         Code Editor
       </button>
 
+      {/* Circuit */}
       <button
         type="button"
         onClick={() => {
-          safeSetViewMode(viewModeKey,"circuit");
+          safeSetViewMode(viewModeKey, "circuit");
           setActive("circuit");
         }}
         style={{ ...baseBtn, ...(active === "circuit" ? activeBtn : {}) }}

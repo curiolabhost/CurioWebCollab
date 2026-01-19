@@ -313,31 +313,34 @@ export function DashboardHome() {
       }
 
       // Totals/done for BOTH tracks (used for overall progress + time estimates)
-      function readTotalsFor(lessonSlug: string) {
-        const totalKey = `curio:${ptr.slug}:${lessonSlug}:totalStepsAllLessons`;
-        const doneKey = `curio:${ptr.slug}:${lessonSlug}:doneSet`;
+function readTotalsFor(lessonSlug: string): { total: number; done: number } {
+  if (!ptr) return { total: 0, done: 0 };
 
-        let total = 0;
-        let done = 0;
+  const totalKey = `curio:${ptr.slug}:${lessonSlug}:totalStepsAllLessons`;
+  const doneKey  = `curio:${ptr.slug}:${lessonSlug}:doneSet`;
 
-        try {
-          const raw = localStorage.getItem(totalKey);
-          const n = raw ? JSON.parse(raw) : 0;
-          total = typeof n === "number" && Number.isFinite(n) ? n : 0;
-        } catch {
-          total = 0;
-        }
+  let total = 0;
+  let done = 0;
 
-        try {
-          const raw = localStorage.getItem(doneKey);
-          const arr = raw ? JSON.parse(raw) : [];
-          done = Array.isArray(arr) ? arr.length : 0;
-        } catch {
-          done = 0;
-        }
+  try {
+    const raw = localStorage.getItem(totalKey);
+    const n = raw ? JSON.parse(raw) : 0;
+    total = typeof n === "number" && Number.isFinite(n) ? n : 0;
+  } catch {
+    total = 0;
+  }
 
-        return { total, done };
-      }
+  try {
+    const raw = localStorage.getItem(doneKey);
+    const arr = raw ? JSON.parse(raw) : [];
+    done = Array.isArray(arr) ? arr.length : 0;
+  } catch {
+    done = 0;
+  }
+
+  return { total, done };
+}
+
 
             const level = levelSuffixFromLessonSlug(ptr.lessonSlug);
 
@@ -750,6 +753,15 @@ useEffect(() => {
 
             {/* Right */}
             <div className="flex items-center gap-4">
+
+              {/* Admin panel button  -- possibly add a check for isAdmin here later*/}
+              <button
+                onClick={() => router.push('/admin')}
+                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 text-gray-700 rounded-lg transition-colors">
+                <Settings className="w-5 h-5" />
+                <span>Admin Panel</span>
+              </button>
+
               <span className="text-gray-600">Welcome, Student!</span>
 
               <div className="relative">
