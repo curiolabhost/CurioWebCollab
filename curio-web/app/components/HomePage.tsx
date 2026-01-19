@@ -34,21 +34,15 @@ export function HomePage({ onNavigateToLogin, onNavigateToDashboard }: HomePageP
               <h1 className="text-primary cursor-pointer">Curio</h1>
 
               <div className="hidden md:flex items-center gap-6">
-                <a href="#" className="text-gray-600 hover:text-primary transition-colors">
-                  About us
-                </a>
-                <a href="#" className="text-gray-600 hover:text-primary transition-colors">
-                  CurioLab
-                </a>
-                <a href="#" className="text-gray-600 hover:text-primary transition-colors">
+              <Link href="/about" className="text-gray-600 hover:text-primary transition-colors">
+                About us
+              </Link>
+                {/*<a href="#" className="text-gray-600 hover:text-primary transition-colors">
                   Store
-                </a>
-                <a href="#" className="text-gray-600 hover:text-primary transition-colors">
+                </a>*/}
+                {/*<a href="#" className="text-gray-600 hover:text-primary transition-colors">
                   Blogs
-                </a>
-                <a href="#" className="text-gray-600 hover:text-primary transition-colors">
-                  Curriculum
-                </a>
+                </a>*/}
               </div>
             </div>
 
@@ -75,9 +69,9 @@ export function HomePage({ onNavigateToLogin, onNavigateToDashboard }: HomePageP
               <a href="#" className="block text-gray-600">
                 Blogs
               </a>
-              <a href="#" className="block text-gray-600">
+              <Link href="/about" className="block text-gray-600">
                 About us
-              </a>
+              </Link>
               <a href="#" className="block text-gray-600">
                 Curricula
               </a>

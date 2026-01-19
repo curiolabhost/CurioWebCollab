@@ -266,7 +266,6 @@ export function ProjectMindmap({
                           isSelected || isHovered ? "z-20 scale-110" : isConnected ? "z-10" : "z-0"
                         }`}
                         style={{ left: `${pos.x}%`, top: `${pos.y}%` }}
-                        onClick={() => setSelectedNode(node.id === selectedNode ? null : node.id)}
                         onMouseEnter={() => setHoveredNode(node.id)}
                         onMouseLeave={() => setHoveredNode(null)}
                       >

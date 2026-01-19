@@ -17,6 +17,8 @@ type SplitViewProps = {
   // Optional: persist the ratio across close/reopen
   persistKey?: string | null;
 
+  overlayAfterLeftPx?: number;
+
   // Constraints
   minLeftPx?: number;
   minRightPx?: number;
@@ -64,6 +66,7 @@ export default function SplitView({
 
   initialLeftRatio = 0.6,
   persistKey = null,
+  overlayAfterLeftPx = 720,
 
   minLeftPx = 200,
   minRightPx = 0,
@@ -83,9 +86,19 @@ export default function SplitView({
 
   const containerWRef = React.useRef(0);
   const leftPxRef = React.useRef<number | null>(null);
+
   const dragStartXRef = React.useRef(0);
   const dragStartLeftRef = React.useRef(0);
+
+  // This holds the user's *intended* ratio (from storage or last drag).
+  // IMPORTANT: we do NOT overwrite this during mount/clamp/resizes.
   const persistedRatioRef = React.useRef<number | null>(null);
+
+  // Track previous fixedRightPx so we can detect transitions.
+  const prevFixedRightRef = React.useRef<number | null>(null);
+
+  // Treat "no right" as: right is null/undefined OR fixedRightPx === 0
+  const hasRightPane = right != null && fixedRightPx !== 0;
 
   /* ===============================
      Measure container width
@@ -115,8 +128,21 @@ export default function SplitView({
     leftPxRef.current = effectiveLeftPx;
   }, [effectiveLeftPx]);
 
+  const [ready, setReady] = React.useState(false);
+
+  React.useEffect(() => {
+    // When there's no right pane, we can show immediately as soon as we have any width.
+    if (!hasRightPane && containerW > 0) {
+      setReady(true);
+      return;
+    }
+    if (leftPx != null || internalLeftPx != null || fixedRightPx != null) {
+      setReady(true);
+    }
+  }, [hasRightPane, containerW, leftPx, internalLeftPx, fixedRightPx]);
+
   /* ===============================
-     Constraints
+     Constraints (only meaningful when right exists)
   =============================== */
   const constraints = React.useMemo(() => {
     const w = containerW || 0;
@@ -147,17 +173,24 @@ export default function SplitView({
   ]);
 
   /* ===============================
-     Load persisted ratio
+     Load persisted ratio (do NOT write here)
   =============================== */
   React.useEffect(() => {
     persistedRatioRef.current = readPersistedRatio(persistKey);
   }, [persistKey]);
 
   /* ===============================
-     Initialize left width
+     Initialize / update left width
   =============================== */
   React.useEffect(() => {
     if (!containerW) return;
+
+    // If no right pane, just fill.
+    if (!hasRightPane) {
+      if (leftPx != null) onLeftPxChange?.(containerW);
+      else setInternalLeftPx(containerW);
+      return;
+    }
 
     // fixed right forces left
     if (fixedRightPx != null) {
@@ -169,20 +202,20 @@ export default function SplitView({
       return;
     }
 
-    // controlled mode
+    // controlled mode: parent owns it
     if (leftPx != null) return;
 
+    // already initialized
     if (internalLeftPx != null) return;
 
     const ratio =
-      persistedRatioRef.current != null
-        ? persistedRatioRef.current
-        : initialLeftRatio;
+      persistedRatioRef.current != null ? persistedRatioRef.current : initialLeftRatio;
 
     const next = clamp(containerW * ratio, constraints.minLeft, constraints.maxLeft);
     setInternalLeftPx(next);
   }, [
     containerW,
+    hasRightPane,
     fixedRightPx,
     handleWidth,
     constraints.minLeft,
@@ -193,18 +226,90 @@ export default function SplitView({
     onLeftPxChange,
   ]);
 
+  /* ===============================
+     Restore ratio when coming BACK from fixedRightPx mode
+     (so re-expanding from "collapsed right piece" feels right)
+  =============================== */
+  React.useEffect(() => {
+    const prev = prevFixedRightRef.current;
+    prevFixedRightRef.current = fixedRightPx;
+
+    if (!containerW) return;
+    if (!hasRightPane) return;
+
+    // If we were forced (number) and now we're not (null), restore from persisted ratio.
+    if (prev != null && fixedRightPx == null) {
+      // controlled mode: parent owns it
+      if (leftPx != null) return;
+
+      const ratio =
+        persistedRatioRef.current != null ? persistedRatioRef.current : initialLeftRatio;
+
+      const next = clamp(containerW * ratio, constraints.minLeft, constraints.maxLeft);
+      setInternalLeftPx(next);
+    }
+  }, [
+    fixedRightPx,
+    hasRightPane,
+    containerW,
+    leftPx,
+    constraints.minLeft,
+    constraints.maxLeft,
+    initialLeftRatio,
+  ]);
+
+  /* ===============================
+     Keep visual ratio on container resize (NO persistence)
+     This prevents nested splitviews from "snapping".
+  =============================== */
+  React.useEffect(() => {
+    if (!containerW) return;
+    if (dragging) return;
+
+    if (!hasRightPane) {
+      // if right gone, always fill
+      if (leftPx != null) onLeftPxChange?.(containerW);
+      else setInternalLeftPx(containerW);
+      return;
+    }
+
+    // fixed right forces left
+    if (fixedRightPx != null) return;
+
+    // controlled mode: parent owns it
+    if (leftPx != null) return;
+
+    const r = persistedRatioRef.current;
+    if (r == null) return;
+
+    const next = clamp(containerW * r, constraints.minLeft, constraints.maxLeft);
+    setInternalLeftPx((prev) => {
+      if (prev == null) return next;
+      if (Math.abs(prev - next) < 0.5) return prev;
+      return next;
+    });
+  }, [
+    containerW,
+    dragging,
+    hasRightPane,
+    fixedRightPx,
+    leftPx,
+    constraints.minLeft,
+    constraints.maxLeft,
+    onLeftPxChange,
+  ]);
+
   function commitLeftPx(px: number) {
     if (leftPx != null) onLeftPxChange?.(px);
     else setInternalLeftPx(px);
   }
 
-  function persistCurrentRatio() {
+  function persistRatioFromLeftPx(px: number) {
     if (!persistKey) return;
     const w = containerWRef.current;
-    const lw = leftPxRef.current;
-    if (!w || lw == null) return;
+    if (!w) return;
 
-    const ratio = lw / w;
+    const ratio = px / w;
     if (!(ratio > 0 && ratio < 1)) return;
 
     persistedRatioRef.current = ratio;
@@ -212,6 +317,7 @@ export default function SplitView({
   }
 
   function startDrag(clientX: number) {
+    if (!hasRightPane) return;
     if (locked || fixedRightPx != null) return;
     if (!containerWRef.current) return;
 
@@ -242,10 +348,12 @@ export default function SplitView({
     if (!dragging) return;
     setDragging(false);
 
-    persistCurrentRatio();
-
     const px = leftPxRef.current;
-    if (typeof px === "number") onResizeEnd?.(px);
+    if (typeof px === "number") {
+      // Persist ONLY on user intent (drag end)
+      persistRatioFromLeftPx(px);
+      onResizeEnd?.(px);
+    }
   }
 
   /* ===============================
@@ -277,11 +385,43 @@ export default function SplitView({
     return () => {
       window.removeEventListener("mousemove", onMouseMove);
       window.removeEventListener("mouseup", onMouseUp);
-      window.removeEventListener("touchmove", onTouchMove);
+      window.removeEventListener("touchmove", onTouchMove as any);
       window.removeEventListener("touchend", onTouchEnd);
       window.removeEventListener("touchcancel", onTouchEnd);
     };
   }, [dragging, constraints.minLeft, constraints.maxLeft]);
+
+  // If there is no right pane: render left full width, no handle, no overlay logic.
+  if (!hasRightPane) {
+    return (
+      <div
+        ref={containerRef}
+        style={{
+          display: "flex",
+          flexDirection: "row",
+          height: "100%",
+          minHeight: 0,
+          width: "100%",
+          position: "relative",
+          overflow: "hidden",
+          visibility: ready ? "visible" : "hidden",
+        }}
+      >
+        <div
+          style={{
+            flex: 1,
+            minWidth: 0,
+            minHeight: 0,
+            overflow: "hidden",
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
+          {left}
+        </div>
+      </div>
+    );
+  }
 
   const resolvedLeft =
     effectiveLeftPx != null
@@ -291,6 +431,23 @@ export default function SplitView({
       : 0;
 
   const leftWidth = clamp(resolvedLeft, constraints.minLeft, constraints.maxLeft);
+
+  // ===============================
+  // Overlay mode: prevent lesson from squeezing too much
+  // ===============================
+  const overlayFloor = Math.max(constraints.minLeft, overlayAfterLeftPx);
+
+  const isOverlay =
+    fixedRightPx == null && resolvedLeft <= overlayFloor && containerW > 0;
+
+  // Visual left width: pinned in overlay mode
+  const pinnedLeftWidth = isOverlay ? overlayFloor : leftWidth;
+
+  // In overlay mode, the right panel width should expand based on the *virtual* leftWidth,
+  // not pinnedLeftWidth. This makes overlap increase as you drag left more.
+  const overlayRightWidth = isOverlay
+    ? Math.max(0, containerW - handleWidth - leftWidth)
+    : 0;
 
   const rightStyle: React.CSSProperties =
     fixedRightPx != null
@@ -302,92 +459,153 @@ export default function SplitView({
     userSelect: "none",
   };
 
-return (
-  <div
-    ref={containerRef}
-    style={{
-      display: "flex",
-      flexDirection: "row",
-      height: "100%",
-      minHeight: 0, // ✅ critical for nested scrolling
-      width: "100%",
-      position: "relative",
-      overflow: "hidden", // ✅ prevent the document/page from scrolling
-    }}
-  >
-    {/* LEFT */}
+  return (
     <div
+      ref={containerRef}
       style={{
-        width: leftWidth,
-        minWidth: constraints.minLeft,
-        minHeight: 0, // ✅ critical
-        overflow: "hidden", // ✅ let the LEFT child decide scroll
-        display: "flex", // ✅ keeps child stretch-friendly
-        flexDirection: "column",
-      }}
-    >
-      {left}
-    </div>
-
-    {/* HANDLE */}
-    <div
-      onMouseDown={(e) => {
-        e.preventDefault();
-        startDrag(e.clientX);
-      }}
-      onTouchStart={(e) => {
-        const t = e.touches?.[0];
-        if (!t) return;
-        startDrag(t.clientX);
-      }}
-      style={{
-        width: handleWidth,
-        background: "rgba(0,0,0,0.08)",
         display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 10,
-        opacity: locked || fixedRightPx != null ? 0.3 : 1,
-        flex: "0 0 auto",
-        ...handleCursor,
+        flexDirection: "row",
+        height: "100%",
+        minHeight: 0,
+        width: "100%",
+        position: "relative",
+        overflow: "hidden",
+        visibility: ready ? "visible" : "hidden",
       }}
-      aria-hidden={locked || fixedRightPx != null}
     >
+      {/* LEFT */}
       <div
         style={{
-          width: 2,
-          height: 30,
-          borderRadius: 2,
-          background: "rgba(0,0,0,0.32)",
-          pointerEvents: "none",
+          width: pinnedLeftWidth,
+          minWidth: pinnedLeftWidth,
+          minHeight: 0,
+          overflow: "hidden",
+          display: "flex",
+          flexDirection: "column",
         }}
-      />
+      >
+        {left}
+      </div>
+
+      {/* HANDLE */}
+      {!isOverlay ? (
+        <div
+          onMouseDown={(e) => {
+            e.preventDefault();
+            startDrag(e.clientX);
+          }}
+          onTouchStart={(e) => {
+            const t = e.touches?.[0];
+            if (!t) return;
+            startDrag(t.clientX);
+          }}
+          style={{
+            width: handleWidth,
+            background: "rgba(0,0,0,0.08)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 10,
+            opacity: locked || fixedRightPx != null ? 0.3 : 1,
+            flex: "0 0 auto",
+            ...handleCursor,
+          }}
+          aria-hidden={locked || fixedRightPx != null}
+        >
+          <div
+            style={{
+              width: 2,
+              height: 30,
+              borderRadius: 2,
+              background: "rgba(0,0,0,0.32)",
+              pointerEvents: "none",
+            }}
+          />
+        </div>
+      ) : (
+        // In overlay mode, make the handle float and keep moving with the user's drag (virtual leftWidth)
+        <div
+          onMouseDown={(e) => {
+            e.preventDefault();
+            startDrag(e.clientX);
+          }}
+          onTouchStart={(e) => {
+            const t = e.touches?.[0];
+            if (!t) return;
+            startDrag(t.clientX);
+          }}
+          style={{
+            position: "absolute",
+            top: 0,
+            bottom: 0,
+            left: leftWidth, // virtual divider position
+            width: handleWidth,
+            background: "rgba(0,0,0,0.08)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 40,
+            opacity: locked || fixedRightPx != null ? 0.3 : 1,
+            ...handleCursor,
+          }}
+          aria-hidden={locked || fixedRightPx != null}
+        >
+          <div
+            style={{
+              width: 2,
+              height: 30,
+              borderRadius: 2,
+              background: "rgba(0,0,0,0.32)",
+              pointerEvents: "none",
+            }}
+          />
+        </div>
+      )}
+
+      {/* RIGHT */}
+      {!isOverlay ? (
+        <div
+          style={{
+            ...rightStyle,
+            minHeight: 0,
+            overflow: "hidden",
+            display: "flex",
+            flexDirection: "column",
+          }}
+        >
+          {right}
+        </div>
+      ) : (
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            right: 0,
+            bottom: 0,
+            width: overlayRightWidth,
+            minWidth: 0,
+            minHeight: 0,
+            overflow: "hidden",
+            display: "flex",
+            flexDirection: "column",
+            background: "white",
+            zIndex: 30,
+          }}
+        >
+          {right}
+        </div>
+      )}
+
+      {/* overlay while dragging */}
+      {dragging && (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            zIndex: 999,
+          }}
+        />
+      )}
     </div>
-
-    {/* RIGHT */}
-    <div
-      style={{
-        ...rightStyle,
-        minHeight: 0, // ✅ critical
-        overflow: "hidden", // ✅ let the RIGHT child decide scroll
-        display: "flex",
-        flexDirection: "column",
-      }}
-    >
-      {right}
-    </div>
-
-    {/* overlay while dragging */}
-    {dragging && (
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          zIndex: 999,
-        }}
-      />
-    )}
-  </div>
-);
-
+  );
 }

@@ -435,7 +435,7 @@ export default function GuidedCodeBlock({
   const code = block?.code || step?.code || "";
   const blockExplanations = block?.blankExplanations || step?.blankExplanations || null;
 
-  // ✅ answerKey can live on block OR step
+  // answerKey can live on block OR step
   const answerKey = block?.answerKey || step?.answerKey || null;
 
   const difficulties = step?.blankDifficulties || {};
@@ -506,7 +506,7 @@ export default function GuidedCodeBlock({
     return pieces;
   };
 
-  // ✅ NEW: if blank value EXACTLY matches a special token, apply syntax style
+  // NEW: if blank value EXACTLY matches a special token, apply syntax style
   const getCompletedBlankSyntaxStyle = (rawValue) => {
     const v = (rawValue ?? "").trim();
     if (!v) return null;

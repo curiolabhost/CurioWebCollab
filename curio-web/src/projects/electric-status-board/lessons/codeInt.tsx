@@ -1,3 +1,6 @@
+
+//https://wokwi.com/projects/452254262742865921
+
 "use client";
 
 import * as React from "react";
@@ -162,13 +165,15 @@ void loop(){
           {
             topicTitle: "Define button pins",
             descBeforeCode:
-              "Next, we create names for the three buttons so the code knows which Arduino pins they are connected to, and so the program is easier to read and understand than if we used raw pin numbers. For this project, we need one button to move the cursor to the next option, one button to move to the previous option, and one button to select the highlighted option. If you want more practice working with buttons, review Lesson 1.",
+              "Next, we create names for the three buttons so the code knows which Arduino pins they are connected to, and so the program is easier to read and understand than if we used raw pin numbers. For this project, we need one button to move the cursor to the next option, one button to move to the previous option, and one button to select the highlighted option. If you want more practice working with buttons, review Lesson 1. \n**Fill in the blanks using the pin numbers from your circuit design.**",
             imageGridBeforeCode: {
               columns: 1,
+              width: 600,
+              height:400,
               items: [
                 {
-                  imageSrc: "/electric-status-board/images/example-circuit.png",
-                  label: "Example Circuit Image",
+                  imageSrc: "/electric-status-board/circuit/final_wiring.png",
+                  label: "Example Circuit Image Reference",
                 },
               ],
             },
@@ -386,7 +391,9 @@ Since we want the welcome page to show up only **ONCE when we turn the device on
 @If you call print() again, the next text continues on the same line.
 @\`println()\` writes text (or a value) and then **moves the cursor to the start of the next line**.
 @The next print() / println() will begin on a new line.
-`},{code: `##include <Wire.h>
+`},
+{
+  code: `##include <Wire.h>
 #include __BLANK[LIB_GFX]__
 #include __BLANK[LIB_SSD]__
 #include __BLANK[LIB_CLOCK]__
@@ -557,7 +564,10 @@ Variables let the Arduino remember things like button states, menu positions, or
             optional: true,
         answerKey: {
           NAMETYPE: ["String"],
-          NAME1: ["Emily"],
+          NAME1: {
+    type: "string",
+    regex: "^[A-Za-z][A-Za-z0-9]*$",  // any word starting with a letter
+  },
           YEAR: { type: "range", min: 1900, max: 2100 },
           MONTH: [
             "January",
@@ -577,7 +587,10 @@ Variables let the Arduino remember things like button states, menu positions, or
           TEMP: { type: "range", min: -50, max: 150 },
           DATETYPE: ["String"],
           BUTTONTYPE: ["bool"],
-          NAME2: ["daysInYear"],
+          NAME2: {
+    type: "string",
+    regex: "^[A-Za-z_][A-Za-z0-9_]*$",  // valid C identifier (variable name)
+  },
           COUNTER: ["3"],
           LEVEL: ["4"],
         },
@@ -663,14 +676,14 @@ What does the level now read?    __BLANK[LEVEL]__`,
             optional: true,
         answerKey: {
           ARRAYTYPE: ["String"],
-          ARRAYNAME: { type: "regex", pattern: "^[A-Za-z_]\\w*\\[\\]$" },
+          ARRAYNAME: { type: "regex", regex: "^[A-Za-z_]\\w*\\[\\]$" },
           ARRAY: {
             type: "regex",
-            pattern: '^\\{\\s*".+"\\s*,\\s*".+"\\s*,\\s*".+"\\s*,\\s*".+"\\s*\\}$',
+            regex: '^\\{\\s*".+"\\s*,\\s*".+"\\s*,\\s*".+"\\s*,\\s*".+"\\s*\\}$',
           },
           VARRAYTYPE: ["String"],
           VARRAYNAME: { type: "identifier" },
-          CALL: { type: "regex", pattern: "^[A-Za-z_]\\w*\\[\\d+\\]$" },
+          CALL: { type: "regex", regex: "^[A-Za-z_]\\w*\\[\\d+\\]$" },
         },
         blankExplanations: {
           ARRAYTYPE:
@@ -741,7 +754,7 @@ Arrays are extremely useful when you want your code to handle lots of similar va
         codes: [
           {
             topicTitle: "Create Variables for Screens",   
-            descBeforeCode: `We need to create variables to keep track of which screen we are currently on. This will help us know what to display and how to respond to button presses. So when we press SELECT on an option in the Main Menu, we can change the screen variable to indicate we are now on the Clock screen or Timer/Pomodoro screen. We will use an integer variable to represent the different screens.`,           imageGridBeforeCode: null,
+            descBeforeCode: `We need to create variables to keep track of which screen we are currently on. This will help us know what to display and how to respond to button presses. So when we press SELECT on an option in the Main Menu, we can change the screen variable to indicate we are now on the Clock screen or Timer/Pomodoro screen. We will use an integer variable to represent the different screens.`,           
             imageGridBeforeCode: 
               {
                 columns: 1,
@@ -766,11 +779,11 @@ const int __BLANK[SCREENVAR1]__ = __BLANK[SCREENTYPENUM1]__;  //constant for ano
 const int __BLANK[SCREENVAR2]__ = __BLANK[SCREENTYPENUM2]__; //constant for another screen (Clock or Timer/Pomodoro screen^^`,
             answerKey: {
               SCREENVAR: { type: "identifier" },
-              SCREENTYPENUM: { type: "integer"},
-              SCREENVAR1: { type: "sameAs", target: "SCREENVAR" },
-              SCREENTYPENUM1: { type: "integer"},
-              SCREENVAR2: { type: "sameAs", target: "SCREENVAR" },
-              SCREENTYPENUM2: { type: "integer"},
+              SCREENTYPENUM: { type: "integer", parse: true },
+              SCREENVAR1: { type: "identifier" },
+              SCREENTYPENUM1: { type: "integer", parse: true },
+              SCREENVAR2: { type: "identifier" },
+              SCREENTYPENUM2: { type: "integer", parse: true},
             },
             blankExplanations: {
               SCREENVAR:
@@ -839,9 +852,9 @@ void loop(){
                 // (We allow several common valid choices to keep it flexible.)
                 MMENUTYPE: {
                   type: "string",
-                  // Accept: const char*  | char* | String
+                  // Accept: const char  | char| String
                   // (regex is a STRING in this system)
-                  regex: "^(const\\s+char\\s*\\*|char\\s*\\*|String)\\s*$",
+                  regex: "^(const\\s+char|char|String)\\s*$",
                 },
 
                 // Array name must be a valid identifier AND include [] at the end in the code.
@@ -929,6 +942,7 @@ void loop(){
 
               // should start at 0
               MINDEXNUM: { type: "range", min: 0, max: 0 },
+              
             },
 
             blankExplanations: {
@@ -954,9 +968,20 @@ void loop(){
 
           },{
             title: `Practice: Calling array item`,
-            code: `// Practice how you can use the array using the index counter variable you just made. ^^
-  String practice = __BLANK[MMENUNAME]__ [__BLANK[MINDEX1]__];^^`,
-            descAfterCode: `What would the String \`practice\` read?   __BLANK[OPTION]__`,
+            code: `//<< Practice how you can use the array using the index counter variable you just made. ^^
+  String practice = __BLANK[MMENUNAME1]__ [__BLANK[MINDEX1]__];^^`,
+    answerKey: {
+      MMENUNAME1: {
+  type: "sameAs",
+  target: "MMENUNAME",
+  regex: "^(.*)\\[\\]$", // capture everything before []
+  transform: "$1"         // remove the brackets
+},
+      MINDEX1: { type: "sameAs", target: "MINDEX" },
+      MENULIST2: { type: "sameAs", target: "MENULIST2" },
+    },
+
+            descAfterCode: `What would the String \`practice\` read?   __BLANK[MENULIST2]__`,
 
           }
         ],
@@ -1042,7 +1067,7 @@ What does the \`i\` read after while loop ends?    __BLANK[ANSWER_I]__`,
           title: `Loop Practice 1`,
           descBeforeCode:
             `**Practice 1: Print Even Numbers**
-Start at 2 and keep printing even numbers by adding the same step each time.`,
+Start at 2 and keep printing even numbers by adding the same step each time until 10.`,
           imageGridBeforeCode: null,
           descBetweenBeforeAndCode: null,
           code: `^^int num = 2;
@@ -1051,7 +1076,7 @@ while (num < __BLANK[P1_LIMIT]__) {
   num = num + __BLANK[P1_STEP]__;
 }^^`,
           answerKey: {
-            P1_LIMIT: { type: "range", min: 3, max: 50 },
+            P1_LIMIT: ["10"],
             P1_PRINT: ["num"],
             P1_STEP: ["2"],
           },
@@ -1092,7 +1117,7 @@ while (__BLANK[P2_CONDVAR]__ < __BLANK[P2_LIMIT]__) {
             P2_CONDVAR: ["x"],
             P2_LIMIT: { type: "range", min: 10, max: 100 },
             P2_PRINT: ["x"],
-            P2_UPDATE: ["x = x + 3", "x += 3"],
+            P2_UPDATE: ["x=x+3", "x+=3"],
           },
           blankExplanations: {
             P2_START:
@@ -1117,7 +1142,7 @@ while (__BLANK[P2_CONDVAR]__ < __BLANK[P2_LIMIT]__) {
             "As long as x increases by 3 each time, the loop will eventually reach the limit and stop.",
           imageGridAfterCode: null,
           descAfterImage: null,
-          hint: "Make sure the update changes x by 3.",
+          hint: "Make sure the update changes x by 3 (no space needed).",
         },
 
         {
@@ -1130,14 +1155,15 @@ Create a counter variable, print it, and increase it by 1 each loop until it rea
           code: `^^int __BLANK[P3_VAR]__ = 5;
 while (__BLANK[P3_CONDVAR]__ < __BLANK[P3_LIMIT]__) {
   Serial.println(__BLANK[P3_PRINT]__);
-  __BLANK[P3_VAR]__ = __BLANK[P3_NEXT]__;
+  __BLANK[P3_VAR]__ = __BLANK[P3_NEXT]__ + __BLANK[P3_NUM]__;
 }^^`,
           answerKey: {
             P3_VAR: { type: "identifier" },
             P3_CONDVAR: { type: "sameAs", target: "P3_VAR" },
             P3_LIMIT: { type: "range", min: 6, max: 200 },
             P3_PRINT: { type: "sameAs", target: "P3_VAR" },
-            P3_NEXT: { type: "expression" }, // should represent counter + 1
+            P3_NEXT: {type: "sameAs", target: "P3_VAR"},
+            P3_NUM: ["1"],
           },
           blankExplanations: {
             P3_VAR:
@@ -1162,7 +1188,7 @@ while (__BLANK[P3_CONDVAR]__ < __BLANK[P3_LIMIT]__) {
             "This is the same pattern: start value → condition → update. The update must move the counter forward.",
           imageGridAfterCode: null,
           descAfterImage: null,
-          hint: "Your update should increase the counter by exactly 1.",
+          hint: "Your update should increase the counter by exactly 1 (no space needed).",
         },
 
         {
@@ -1180,7 +1206,10 @@ while (__BLANK[P4_FLAG]__ == false) {
             P4_TYPE: ["bool"],
             P4_VALUE: ["true", "false"],
             P4_FLAG: { type: "identifier" },
-            P4_PRINT: ['"Waiting..."', '"Pressed?"', '"Not ready yet"', '"..."'],
+            P4_PRINT: {
+  type: "string",
+  regex: '^".*"$',
+},
           },
           blankExplanations: {
             P4_TYPE:
@@ -1273,7 +1302,7 @@ while (__BLANK[P6_IDXVAR]__ < total2) {
             P6_TOTAL: ["6"],
             P6_DESNAME: { type: "identifier" },
             P6_DESVAL: { type: "range", min: 0, max: 20 },
-            P6_IDXVAR: ["k"],
+            P6_IDXVAR: {type: "identifier" },
             P6_STARTIDX: ["0"],
             P6_READ: { type: "expression" }, // array[index]
             P6_COMPARE: { type: "sameAs", target: "P6_DESNAME" },
@@ -1347,7 +1376,6 @@ This new function draws the **Main Menu screen** on the OLED.
 @ Other indicators you can use instead of \`">\` include: \`*\`, \`→\`, \`#\`, and any others. 
     
 You will fill in a few key blanks to make the loop and highlighting work.`,
-          imageGridBeforeCode: null,
           descBetweenBeforeAndCode: null,
 
            code: `
@@ -1379,7 +1407,7 @@ void __BLANK[SHOWMAIN_FN]__() {                // name the function that draws t
     __BLANK[INC_I]__;                          // move to the next menu item
   }
 
-  display.__BLANK[FLUSH]__();                 // update OLED to show everything
+  display.__BLANK[FLUSH]__;                 // update OLED to show everything
 }
 ^^`,
           imageGridBeforeCode: {
@@ -1726,8 +1754,8 @@ This is a “checkpoint” — you are not adding new logic yet, just organizing
 //<< ===================== 2) CONSTANTS + GLOBAL VARIABLES =====================
 
 //<< --- OLED setup ---
-#define __BLANK[WVAR]__  __BLANK[WIDTH]__          // screen width in pixels
-#define __BLANK[HVAR]__  __BLANK[HEIGHT]__         // screen height in pixels
+#define __BLANK[WVAR]__  __BLANK[WIDTH]__ // Define width pixels
+#define __BLANK[HVAR]__ __BLANK[HEIGHT]__ // Define height pixels
 #define RESET -1                                  // no reset pin wired
 Adafruit_SSD1306 display(__BLANK[WIDTH2]__, __BLANK[HEIGHT2]__, &Wire, RESET);
 
@@ -2955,7 +2983,25 @@ Recall that in the Main Menu Function, when the user presses SELECT on the Clock
 @ Place the constants, variables, and definitions at the top of the code draft, before setup(). 
 @ The rest of the code should remain the same from Lesson 6.`
       }],}
-]}};
+]},
+
+  9: {
+  phrase: "Pomodoro screen: printing timer",
+  advanced: true,
+  steps:[
+    {
+      id: 1,
+      title: "Step 1: Pomodoro Timer Function logic",
+      codes: [
+  ]}]
+  }
+
+
+
+
+
+
+};
 
 export default function CodeIntLesson({
   slug,
@@ -2969,6 +3015,8 @@ export default function CodeIntLesson({
       lessonSteps={LESSON_STEPS_INTERMEDIATE}
       storagePrefix={`curio:${slug}:${lessonSlug}`}
       apiBaseUrl={process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:4000"}
+      rightRailTitle="My Notes"
+      rightRailScopeId="mynotes"
     />
   );
 }

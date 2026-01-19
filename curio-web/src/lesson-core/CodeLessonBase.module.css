@@ -191,6 +191,32 @@
   margin-bottom: 6px;
 }
 
+.inlineCodeBlock {
+  background-color: #e2e6f1;
+  padding: 2px 4px;
+  border-radius: 6px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace;
+  font-size: 15px;
+
+  white-space: pre-wrap; 
+}
+
+.stepDescText {
+  white-space: pre-wrap; /* keeps any intentional spacing in normal text too */
+}
+
+.inlineCodeStrong {
+  white-space: pre-wrap;
+  font-weight: 800;
+  background-color: #e2e6f1;
+  padding: 2px 4px;
+  border-radius: 6px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace;
+  font-size: 15px;
+}
+
 .inlineCode {
   background-color: #e2e6f1;
   padding: 2px 4px;
@@ -198,6 +224,8 @@
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
     "Courier New", monospace;
   font-size: 15px;
+  white-space: pre-wrap; 
+
 }
 
 .boldGeneral {
@@ -218,6 +246,61 @@
     "Courier New", monospace;
 font-size: 14px;
 }
+
+.inlineBlankCorrect {
+  outline: 2px solid #22c55e;
+  outline-offset: 1px;
+}
+
+.inlineBlankIncorrect {
+  outline: 2px solid #ef4444;
+  outline-offset: 1px;
+}
+
+.inlineBlankHelpBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  padding: 2px;
+  color: #6b7280;
+}
+
+.inlineBlankHelpBtn:hover {
+  color: #111827;
+  background: rgba(0, 0, 0, 0.04);
+}
+
+.inlineBlankHintBox {
+  width: 100%;
+  background: #fff7ed;
+  border: 1px solid #fdba74;
+  border-radius: 10px;
+  padding: 9px 12px;
+  display: flex;
+  gap: 5px;
+  align-items: flex-start;
+}
+
+.inlineBlankHintText {
+  font-size: 12px;
+  line-height: 1.7;
+  color: #7c2d12;
+  flex: 1;
+  white-space: pre-wrap;
+  padding: 0;
+}
+
+.inlineBlankHintClose {
+  font-size: 12px;
+  color: #9a3412;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  padding: 0 8px;
+}
+
+
 
 /* Mark Done action */
 .stepActionOuter {

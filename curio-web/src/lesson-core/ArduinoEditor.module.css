@@ -1,0 +1,7 @@
+
+.errorLineHighlight {
+  background: rgba(239, 68, 68, 0.12) !important;
+}
+.errorGlyph {
+  background: rgba(239, 68, 68, 0.9) !important;
+}

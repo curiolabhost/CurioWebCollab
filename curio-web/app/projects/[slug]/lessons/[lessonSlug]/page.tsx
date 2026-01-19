@@ -1,3 +1,6 @@
+//Layout control for project lessons
+
+
 import * as React from "react";
 import Link from "next/link";
 import LessonHeaderControls from "./LessonHeaderControls";
@@ -120,6 +123,7 @@ export default async function LessonSlugPage({ params }: PageProps) {
 
         <LessonHeaderControls
   viewModeKey={`curio:${slug}:${lessonSlug}:viewMode`}
+    notesVisibleKey={`curio:${slug}:${lessonSlug}:notesVisible`}
 />
       </div>
     </div>
@@ -177,9 +181,10 @@ return (
         flex: 1,
         minHeight: 0, // critical for nested scrolling
         overflow: "hidden", // prevents the document from scrolling
-        maxWidth: 1600,
+        //maxWidth: 1800,
         margin: "0 auto",
         width: "100%",
+        minWidth: 890,
         padding: "0px", // let CodeLessonBase handle padding
       }}
     >

@@ -20,12 +20,17 @@ const ollamaClient = new Ollama({ host: OLLAMA_HOST });
 // ----------------------
 // Arduino CLI config
 // ----------------------
-const ARDUINO_CLI = '"/home/paul/bin/arduino-cli"';
+const ARDUINO_CLI = "arduino-cli";
 const FQBN = "arduino:avr:uno";
 
 // ----------------------
 // Stub headers
 // ----------------------
+
+process.on("uncaughtException", (e) => console.error("uncaughtException:", e));
+process.on("unhandledRejection", (e) => console.error("unhandledRejection:", e));
+
+
 const STUB_LIBRARY_HEADERS = {
   "Adafruit_GFX.h": `#pragma once
 #include <stdint.h>
@@ -78,7 +83,15 @@ app.post("/verify-arduino", (req, res) => {
 
     const cmd = `${ARDUINO_CLI} compile --fqbn ${FQBN} --build-property compiler.cpp.extra_flags="-I${stubDir}" "${sketchDir}"`;
 
+    console.log("VERIFY: starting compile");
+    console.log("VERIFY: cmd =", cmd);
+
     exec(cmd, { timeout: 20000 }, (err, stdout, stderr) => {
+        console.log("VERIFY: done");
+        console.log("VERIFY: err =", err?.message);
+        console.log("VERIFY: stdout =", stdout);
+        console.log("VERIFY: stderr =", stderr);
+
       if (!err) return res.json({ ok: true, errors: [] });
 
       const errors = [];
@@ -96,6 +109,7 @@ app.post("/verify-arduino", (req, res) => {
   }
 });
 
+
 // ----------------------
 // /ai/help - proper Ollama streaming (Node SDK compatible)
 // ----------------------
@@ -106,6 +120,8 @@ app.post("/ai/help", async (req, res) => {
     mode = "arduino-verify",
     question = "",
     language = "cpp",
+    verbosity = "brief",
+    sentences = 3,
   } = req.body || {};
 
   if (!code.trim() && !question) {
@@ -121,7 +137,7 @@ app.post("/ai/help", async (req, res) => {
 
   const prompt =
     mode === "arduino-verify"
-      ? `You are a friendly Arduino tutor. Explain these errors with hints only. Do NOT give the students the answer. Limit your responses to only three sentences long.
+      ? `You are a friendly Arduino tutor. Explain these errors with hints only. Do NOT give the students the answer. Keep your responses ${verbosity} and roughly ${sentences} sentences long.
 
 Sketch:
 \`\`\`cpp
@@ -150,7 +166,7 @@ ${question}`;
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "qwen2.5-coder:7b",
+        model: "qwen2.5-coder:1.5b",
         stream: true,
         messages: [{ role: "user", content: prompt }],
       }),

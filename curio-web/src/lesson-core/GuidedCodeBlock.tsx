@@ -3,6 +3,9 @@
 import * as React from "react";
 import styles from "./GuidedCodeBlock.module.css";
 
+// keep ONLY these from the shared util
+import { type AnswerSpec, evalAnswerSpec, BlankRule, BlankTypedSpec } from "./blankCheckUtils";
+
 // --- Simple Arduino-style syntax groups for example boxes ---
 const TYPE_KEYWORDS = [
   "void",
@@ -65,24 +68,6 @@ const ARDUINO_BUILTINS = [
   "display",
 ];
 
-type BlankRule = {
-  equals?: string;
-  oneOf?: string[];
-  contains?: string;
-  matches?: string; // regex string
-};
-
-// ---- Restored "JS-era" typed specs (range / sameAs / etc.) ----
-type BlankTypedSpec =
-  | { type: "identifier" }
-  | { type: "range"; min?: number; max?: number }
-  | { type: "number" }
-  | { type: "sameAs"; targets: string[] }
-  | { type: "string"; regex?: string }
-  | { type?: string; values?: any[] }; // fallback: values list
-
-type AnswerSpec = BlankRule | BlankTypedSpec | string[] | string;
-
 type Props = {
   step: any;
   block: any;
@@ -128,20 +113,71 @@ const CHAR_W = 8.6;
 // ============================================================
 // Utilities
 // ============================================================
+
+async function streamHelpSSE(payload: any, onToken: (t: string) => void) {
+  const res = await fetch("/api/help", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    const t = await res.text().catch(() => "");
+    throw new Error(`AI route failed (${res.status}): ${t}`);
+  }
+  if (!res.body) throw new Error("AI route returned no body (streaming not enabled).");
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+
+    const events = buffer.split("\n\n");
+    buffer = events.pop() ?? "";
+
+    for (const evt of events) {
+      const lines = evt.split("\n");
+      let eventType = "message";
+      let data = "";
+
+      for (const line of lines) {
+        if (line.startsWith("event:")) eventType = line.slice(6).trim();
+        else if (line.startsWith("data:")) data += line.slice(5).trim();
+      }
+
+      if (eventType === "token") {
+        try {
+          const parsed = JSON.parse(data || "{}");
+          if (parsed?.token) onToken(parsed.token);
+        } catch {}
+      }
+
+      if (eventType === "error") {
+        let msg = "AI request failed.";
+        try {
+          msg = JSON.parse(data || "{}")?.error || msg;
+        } catch {}
+
+        const isRateLimit =
+          /rate limit/i.test(msg) || /Limit \d+, Used \d+/i.test(msg) || /Please try again/i.test(msg);
+
+        const err = new Error(msg) as Error & { code?: string };
+        if (isRateLimit) err.code = "RATE_LIMIT";
+        throw err;
+      }
+    }
+  }
+}
+
 function safeJsonParse<T>(raw: string | null): T | null {
   if (!raw) return null;
   try {
     return JSON.parse(raw) as T;
-  } catch {
-    return null;
-  }
-}
-
-function storageGetJson<T>(key: string): T | null {
-  if (!key) return null;
-  if (typeof window === "undefined") return null;
-  try {
-    return safeJsonParse<T>(window.localStorage.getItem(key));
   } catch {
     return null;
   }
@@ -157,24 +193,6 @@ function storageSetJson(key: string, value: any) {
 
 function nowMs() {
   return Date.now();
-}
-
-function isValidRegex(re: string) {
-  try {
-    // eslint-disable-next-line no-new
-    new RegExp(re);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-function normalizeWs(s: string) {
-  return String(s ?? "").replace(/\s+/g, " ").trim();
-}
-
-function isPlainObject(x: any) {
-  return x != null && typeof x === "object" && !Array.isArray(x);
 }
 
 // ============================================================
@@ -256,17 +274,12 @@ function splitComment(lineTokens: TemplateTok[]) {
 
         // "//<<" means: keep this comment inline (do NOT split)
         if (after.startsWith("//<<")) {
-          // Optionally normalize the directive so it still looks like a normal comment:
-          // "code //<< note" -> "code // note"
           const normalized = s.replace("//<<", "//");
           codeTokens.push({ ...tok, content: normalized });
           continue;
         }
 
-        // Otherwise: split to right column on normal "//"
         const before = s.slice(0, idx);
-
-        // keep the comment text as-is (including the "//")
         const commentPart = after;
 
         if (before.length > 0) {
@@ -292,7 +305,6 @@ function splitComment(lineTokens: TemplateTok[]) {
   return { codeTokens, comment: comment.trimEnd() };
 }
 
-
 function estimateTemplateTokenWidthPx(tok: TemplateTok, valueLen: number) {
   if (!tok) return 0;
   if (tok.type === "blank") return Math.max(40, Math.max(1, valueLen) * CHAR_W);
@@ -303,9 +315,6 @@ function estimateTemplateTokenWidthPx(tok: TemplateTok, valueLen: number) {
 // ============================================================
 // Syntax highlighting for "^^...^^" segments (simple keyword coloring)
 // ============================================================
-function escapeRegex(s: string) {
-  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
 
 // --- keep these sets somewhere above (same as original) ---
 const TYPE_SET = new Set(TYPE_KEYWORDS);
@@ -365,7 +374,6 @@ function renderSyntaxHighlightedSegment(text: string) {
 
 function stripOuterWrappers(s: string) {
   let t = String(s ?? "").trim();
-  // remove common surrounding punctuation
   t = t.replace(/^[([{\s]+/g, "").replace(/[;,)\]}]+$/g, "").trim();
   return t;
 }
@@ -387,31 +395,24 @@ function computeSyntaxTag(v: any) {
   const trimmed = raw.trim();
   if (!trimmed) return "empty";
 
-  // Strings (keep before wrapper stripping)
   if (isQuotedLiteral(trimmed)) return "string";
 
   const core = stripOuterWrappers(trimmed);
 
-  // Preprocessor / Comment
   if (core.startsWith("#")) return "pre";
   if (core.startsWith("//")) return "comment";
 
-  // Bool
   if (/^(true|false)$/i.test(core)) return "bool";
 
-  // Numbers
   if (isNumberLiteral(core)) return "number";
 
-  // Builtins: allow Serial.print style or direct matches
   const serialMember = core.match(/^Serial\.(begin|print|println)$/);
   if (serialMember) return "builtin";
 
   if (ARDUINO_SET.has(core)) return "builtin";
 
-  // Types
   if (TYPE_SET.has(core)) return "type";
 
-  // Control words: treat as text by default
   if (CONTROL_SET.has(core)) return "text";
 
   return "text";
@@ -439,128 +440,17 @@ function getCompletedBlankSyntaxClass(v: any) {
   }
 }
 
-// ============================================================
-// Blank evaluation (current TS rule format)
-// ============================================================
-function evalBlank(rule: BlankRule, value: string): boolean {
-  const v = String(value ?? "");
-  if (!rule) return false;
-
-  if (typeof rule.equals === "string") {
-    return normalizeWs(v) === normalizeWs(rule.equals);
-  }
-
-  if (Array.isArray(rule.oneOf)) {
-    const nv = normalizeWs(v);
-    return rule.oneOf.some((x) => normalizeWs(x) === nv);
-  }
-
-  if (typeof rule.contains === "string") {
-    return normalizeWs(v).includes(normalizeWs(rule.contains));
-  }
-
-  if (typeof rule.matches === "string" && isValidRegex(rule.matches)) {
-    const re = new RegExp(rule.matches);
-    return re.test(v);
-  }
-
-  return false;
-}
-
-// ============================================================
-// AnswerSpec evaluation (restores JS-era typed specs + arrays)
-// ============================================================
-function evalAnswerSpec(spec: AnswerSpec, value: string, allValues: Record<string, any>): boolean {
-  const raw = String(value ?? "").trim();
-
-  // arrays: ["begin", "start"]
-if (Array.isArray(spec)) {
-  return spec.some((entry) => evalAnswerSpec(entry as any, raw, allValues));
-}
-
-
-  // string shorthand: "begin"
-  if (typeof spec === "string") {
-    return raw === spec.trim();
-  }
-
-  // typed objects (old JS)
-  if (isPlainObject(spec) && typeof (spec as any).type === "string") {
-    const t = String((spec as any).type);
-
-    switch (t) {
-      case "identifier":
-        return /^[A-Za-z_][A-Za-z0-9_]*$/.test(raw);
-
-      case "range": {
-        const num = Number(raw);
-        if (Number.isNaN(num)) return false;
-        const min = (spec as any).min ?? -Infinity;
-        const max = (spec as any).max ?? Infinity;
-        return num >= min && num <= max;
-      }
-
-      case "number": {
-        const num = Number(raw);
-        return !Number.isNaN(num);
-      }
-
-case "sameAs": {
-  const s: any = spec;
-
-  // allow either target: "X" OR targets: ["X","Y","Z"]
-  const targets: string[] = Array.isArray(s.targets)
-    ? s.targets
-    : typeof s.target === "string"
-      ? [s.target]
-      : [];
-
-  if (targets.length === 0) return false;
-
-  const normalizedUser = normalizeWs(raw);
-  if (!normalizedUser) return false;
-
-  return targets.some((t) => {
-    const key = String(t ?? "").trim();
-    if (!key) return false;
-
-    const otherVal = normalizeWs(String(allValues?.[key] ?? ""));
-    return otherVal !== "" && normalizedUser === otherVal;
-  });
-}
-
-
-      case "string": {
-        const re = (spec as any).regex;
-        if (!raw) return false;
-        if (typeof re === "string" && re.length > 0 && isValidRegex(re)) {
-          return new RegExp(re).test(raw);
-        }
-        return true;
-      }
-
-      default: {
-        const arr = Array.isArray((spec as any).values) ? (spec as any).values : [];
-        return arr.some((v: any) => raw === String(v).trim());
-      }
-    }
-  }
-
-  // otherwise treat as BlankRule
-  return evalBlank(spec as BlankRule, raw);
-}
-
 export default function GuidedCodeBlock({
   step,
   block,
   blockIndex,
   storageKey,
-  globalKey, // (kept for signature compatibility)
-  apiBaseUrl = "http://localhost:4000",
+  globalKey, // kept for signature/analytics
+  apiBaseUrl = "",
   analyticsTag,
 
-  mergedBlanks,
-  setLocalBlanks,
+  mergedBlanks, // now treated as GLOBAL blanks only (source of truth)
+  setLocalBlanks, // ignored (kept for compatibility)
   setGlobalBlanks,
 
   blankStatus,
@@ -599,53 +489,72 @@ export default function GuidedCodeBlock({
   const difficulties: Record<string, any> = step?.blankDifficulties || {};
 
   /* ==========================================================
-     PERFORMANCE: localValues updates instantly (no parent setState per keystroke)
+     GLOBAL-ONLY blank values
+
+     - UI uses a fast local "draft" state for typing
+     - We debounce writes to setGlobalBlanks so navigation doesn't drop values
+     - We flush on unmount
   ========================================================== */
-  const [localValues, setLocalValues] = React.useState<Record<string, any>>(
+  const [draftValues, setDraftValues] = React.useState<Record<string, any>>(
     () => (mergedBlanks && typeof mergedBlanks === "object" ? mergedBlanks : {})
   );
-  const localValuesRef = React.useRef(localValues);
-  localValuesRef.current = localValues;
+  const draftRef = React.useRef(draftValues);
+  draftRef.current = draftValues;
 
-  // merge-in on navigation/restore WITHOUT clobbering current typing
+  // On navigation/restore: sync draft to latest GLOBAL values (do not keep old step-local merges)
   React.useEffect(() => {
-    const safeMerged = mergedBlanks && typeof mergedBlanks === "object" ? mergedBlanks : {};
-    setLocalValues((prev) => ({
-      ...(prev || {}),
-      ...safeMerged,
-    }));
+    const safe = mergedBlanks && typeof mergedBlanks === "object" ? mergedBlanks : {};
+    setDraftValues(safe);
   }, [mergedBlanks]);
 
-  // Parent local update (throttled) so sidebar "blank done" etc can reflect without global writes
-  const pendingRef = React.useRef<Record<string, any>>({});
+  const pendingGlobalRef = React.useRef<Record<string, any>>({});
   const flushTimerRef = React.useRef<any>(null);
 
-  function scheduleParentLocalUpdate(name: string, value: string) {
-    if (!setLocalBlanks) return;
+  function scheduleGlobalUpdate(name: string, value: string) {
+    if (!setGlobalBlanks) return;
     if (typeof window === "undefined") return;
 
-    pendingRef.current[name] = value;
+    pendingGlobalRef.current[name] = value;
 
     if (flushTimerRef.current) return;
     flushTimerRef.current = window.setTimeout(() => {
-      const patch = pendingRef.current;
-      pendingRef.current = {};
+      const patch = pendingGlobalRef.current;
+      pendingGlobalRef.current = {};
       flushTimerRef.current = null;
 
-      setLocalBlanks((prev) => ({
+      if (Object.keys(patch).length) {
+        setGlobalBlanks((prev) => ({
+          ...(prev || {}),
+          ...patch,
+        }));
+      }
+    }, 200);
+  }
+
+  function flushGlobalNow() {
+    if (!setGlobalBlanks) return;
+
+    if (flushTimerRef.current && typeof window !== "undefined") {
+      window.clearTimeout(flushTimerRef.current);
+      flushTimerRef.current = null;
+    }
+
+    const patch = pendingGlobalRef.current || {};
+    pendingGlobalRef.current = {};
+
+    if (Object.keys(patch).length) {
+      setGlobalBlanks((prev) => ({
         ...(prev || {}),
         ...patch,
       }));
-    }, 200);
+    }
   }
 
   React.useEffect(() => {
     return () => {
-      if (flushTimerRef.current && typeof window !== "undefined") {
-        window.clearTimeout(flushTimerRef.current);
-        flushTimerRef.current = null;
-      }
+      flushGlobalNow();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   /* ==========================================================
@@ -673,7 +582,7 @@ export default function GuidedCodeBlock({
         if (t.type === "text") {
           lineW += estimateTemplateTokenWidthPx(t, 0);
         } else if (t.type === "blank") {
-          const v = String((localValues || {})[t.name] ?? "");
+          const v = String((draftValues || {})[t.name] ?? "");
           lineW += estimateTemplateTokenWidthPx(t, v.length);
         } else {
           lineW += estimateTemplateTokenWidthPx(t as any, 0);
@@ -683,13 +592,13 @@ export default function GuidedCodeBlock({
     }
 
     return maxCodePx + 12;
-  }, [templateLineSplits, localValues]);
+  }, [templateLineSplits, draftValues]);
 
   /* ==========================================================
      RENDER CODE FROM TEMPLATE (NO re-tokenize per keystroke)
   ========================================================== */
   const renderCodeFromTemplate = () => {
-    const values = localValues || {};
+    const values = draftValues || {};
 
     return templateLineSplits.map(({ codeTokens, comment }, lineIdx) => {
       const emptyLine = !codeTokens.length && !comment;
@@ -743,14 +652,14 @@ export default function GuidedCodeBlock({
                         onChange={(e) => {
                           const txt = e.target.value;
 
-                          // instant local update
-                          setLocalValues((prev) => ({
+                          // instant UI update
+                          setDraftValues((prev) => ({
                             ...(prev || {}),
                             [name]: txt,
                           }));
 
-                          // optional: lightweight parent local update (not global)
-                          scheduleParentLocalUpdate(name, txt);
+                          // persist globally (debounced)
+                          scheduleGlobalUpdate(name, txt);
 
                           // clear correctness while typing (only for this blank)
                           if ((blankStatus || {})[name] != null) {
@@ -762,12 +671,8 @@ export default function GuidedCodeBlock({
                           }
                         }}
                         onBlur={() => {
-                          // commit to global only once
-                          const committed = String((localValuesRef.current || {})[name] ?? "");
-                          setGlobalBlanks?.((prev) => ({
-                            ...(prev || {}),
-                            [name]: committed,
-                          }));
+                          // ensure any pending writes flush (navigation/blur edge cases)
+                          flushGlobalNow();
                         }}
                         autoCapitalize="none"
                         autoCorrect="off"
@@ -829,90 +734,110 @@ export default function GuidedCodeBlock({
   const loadingThis = !!aiKey && aiLoadingKey === aiKey;
   const showHintBox = !!activeBlankHint && activeBlankHint.blockIndex === blockIndex;
 
-  const requestAiBlankHelpForBlank = async ({
-    blankName,
-    code: fullCode,
-  }: {
-    blankName: string;
-    code: string;
-  }) => {
-    if (!blankName) return;
+  const requestAiBlankHelpForBlank = async ({ blankName, code }: { blankName: string; code: string }) => {
+    if (!step) return;
 
     const key = `${blockIndex}:${blankName}`;
-    const lastAt = (aiLastRequestAtByKey || {})[key] ?? 0;
-    const since = nowMs() - lastAt;
 
-    // cooldown
-    if (since < AI_COOLDOWN_MS) {
-      const secsLeft = Math.ceil((AI_COOLDOWN_MS - since) / 1000);
+    const usedHints = (aiHintLevelByBlank || {})[key] ?? 0;
+    if (usedHints >= MAX_HINT_LEVEL) return;
+
+    const studentAnswer = ((draftRef.current || {})[blankName] ?? "").trim();
+    const rule = answerKey?.[blankName];
+    if (!rule) return;
+
+    const previousHintText = (aiHelpByBlank || {})[key] || null;
+
+    const now = Date.now();
+    const last = (aiLastRequestAtByKey || {})[key] || 0;
+    if (now - last < AI_COOLDOWN_MS) {
+      const secondsLeft = Math.ceil((AI_COOLDOWN_MS - (now - last)) / 1000);
       setAiHelpByBlank?.((prev) => ({
         ...(prev || {}),
-        [key]: `Try again in about ${secsLeft} second${secsLeft === 1 ? "" : "s"} after thinking it through.`,
+        [key]:
+          (prev || {})[key] ||
+          `Try tweaking your answer or re-reading the hint first. You can ask AI again in about ${secondsLeft} second${
+            secondsLeft === 1 ? "" : "s"
+          }.`,
       }));
       return;
     }
 
-    // hint level cap
-    const lvl = (aiHintLevelByBlank || {})[key] ?? 0;
-    if (lvl >= MAX_HINT_LEVEL) {
-      setAiHelpByBlank?.((prev) => ({
-        ...(prev || {}),
-        [key]: "You’ve reached the maximum number of AI hints for this blank.",
-      }));
-      return;
-    }
+    const upcomingHintNumber = usedHints + 1;
 
-    setAiLoadingKey?.(key);
+    let hintStyle: "gentle_nudge" | "conceptual_explanation" | "analogy_based" = "gentle_nudge";
+    if (upcomingHintNumber === 2) hintStyle = "conceptual_explanation";
+    else if (upcomingHintNumber === 3) hintStyle = "analogy_based";
+
+    const payload = {
+      mode: "blank-help",
+      sentences: 4,
+      verbosity: "brief",
+
+      lessonId: step?.id,
+      title: step?.title,
+      description: step?.desc || null,
+      codeSnippet: code || step?.code || null,
+
+      blank: {
+        name: blankName,
+        displayName: "blank",
+        studentAnswer,
+        rule,
+        allBlanks: draftRef.current || {},
+        previousHint: previousHintText,
+      },
+
+      hintStyle,
+      hintLevel: upcomingHintNumber,
+
+      code: code || step?.code || "",
+      errors: [],
+    };
 
     try {
-      const payload = {
-        blankName,
-        userValue: String((localValuesRef.current || {})[blankName] ?? ""),
-        code: String(fullCode || ""),
-        explanations: blockExplanations || {},
-        lessonPhrase: step?.phrase || "",
-        stepTitle: step?.title || "",
-        analyticsTag: analyticsTag || "",
-      };
+      setAiLoadingKey?.(key);
+      setAiLastRequestAtByKey?.((prev) => ({ ...(prev || {}), [key]: now }));
 
-      const res = await fetch(`${apiBaseUrl}/api/lesson/blank-hint`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+      let acc = "";
+      setAiHelpByBlank?.((prev) => ({ ...(prev || {}), [key]: "" }));
+
+      await streamHelpSSE(payload, (t) => {
+        acc += t;
+        setAiHelpByBlank?.((prev) => ({ ...(prev || {}), [key]: acc }));
       });
 
-      const data = await res.json().catch(() => ({}));
-      const hintText = String(data?.hint || data?.message || "No hint returned.");
+      setAiHintLevelByBlank?.((prev) => ({ ...(prev || {}), [key]: upcomingHintNumber }));
 
-      setAiHelpByBlank?.((prev) => ({
-        ...(prev || {}),
-        [key]: hintText,
-      }));
-
-      setAiHintLevelByBlank?.((prev) => ({
-        ...(prev || {}),
-        [key]: lvl + 1,
-      }));
-
-      setAiLastRequestAtByKey?.((prev) => ({
-        ...(prev || {}),
-        [key]: nowMs(),
-      }));
+      const difficulty = (step?.blankDifficulties || {})[blankName] || null;
 
       logBlankAnalytics?.({
-        type: "ai_hint",
+        type: "AI_HINT",
         blankName,
         blockIndex,
-        level: lvl + 1,
-        tag: analyticsTag,
+        hintLevel: upcomingHintNumber,
+        studentAnswer,
+        previousHintUsed: !!previousHintText,
+        difficulty,
+        analyticsTag: analyticsTag || null,
+        stepId: step?.id,
+        stepTitle: step?.title,
+        storageKey: storageKey || null,
+        globalKey: globalKey || null,
       });
-    } catch (e: any) {
+    } catch (err: any) {
+      const msg = String(err?.message || err || "AI request failed.");
+      const isRate = err?.code === "RATE_LIMIT" || /rate limit/i.test(msg) || /Please try again/i.test(msg);
+
       setAiHelpByBlank?.((prev) => ({
         ...(prev || {}),
-        [key]: `Error requesting AI hint: ${String(e?.message || e)}`,
+        [key]: isRate
+          ? "AI is rate-limited right now. Try again in ~20 seconds."
+          : (prev || {})[key] ||
+            "I had trouble generating more help right now. Try adjusting your answer slightly and re-checking.",
       }));
     } finally {
-      setAiLoadingKey?.(null);
+      setAiLoadingKey?.((prev) => (prev === key ? null : prev));
     }
   };
 
@@ -920,7 +845,7 @@ export default function GuidedCodeBlock({
   const copyCode = async (raw: string) => {
     try {
       let textToCopy = String(raw || "");
-      const values = localValuesRef.current || mergedBlanks || {};
+      const values = draftRef.current || mergedBlanks || {};
 
       for (const [name, value] of Object.entries(values || {})) {
         const placeholder = `__BLANK[${name}]__`;
@@ -937,12 +862,14 @@ export default function GuidedCodeBlock({
     }
   };
 
-  // restores typed specs + arrays + sameAs
-  // counts attempts ONLY when wrong (per blank), matching your old JS comment
+  // counts attempts ONLY when wrong (per blank)
   const checkBlanks = () => {
     if (!answerKey) return;
 
-    const values = localValuesRef.current || {};
+    // ensure we don't validate stale keystrokes that haven't flushed yet
+    flushGlobalNow();
+
+    const values = draftRef.current || {};
     const nextStatus: Record<string, boolean> = {};
     const nextAttemptsByName = { ...(blankAttemptsByName || {}) };
 
@@ -951,7 +878,6 @@ export default function GuidedCodeBlock({
       const ok = evalAnswerSpec(spec, v, values);
       nextStatus[name] = ok;
 
-      // wrong-only counting (so "attempts" means "wrong attempts")
       if (!ok) {
         nextAttemptsByName[name] = (nextAttemptsByName[name] || 0) + 1;
       }
@@ -974,10 +900,6 @@ export default function GuidedCodeBlock({
     setBlankAttemptsByName?.(nextAttemptsByName);
     setCheckAttempts?.((n) => (n || 0) + 1);
 
-    storageSetJson(`${storageKey}:blankStatus`, nextStatus);
-    storageSetJson(`${storageKey}:blankAttemptsByName`, nextAttemptsByName);
-
-    // optional: clear hint state if everything correct
     const anyWrong = Object.values(nextStatus).some((x) => x === false);
     if (!anyWrong) {
       setActiveBlankHint?.(null);
@@ -989,9 +911,7 @@ export default function GuidedCodeBlock({
     <>
       <div className={styles.codeCard}>
         <div className={styles.codeCardHeader}>
-          <div className={styles.codeCardTitle}>
-            {String(block?.title || step?.codeTitle || "Example Code")}
-          </div>
+          <div className={styles.codeCardTitle}>{String(block?.title || step?.codeTitle || "Example Code")}</div>
 
           <div className={styles.codeCardHeaderActions}>
             {answerKey && (
@@ -1028,8 +948,8 @@ export default function GuidedCodeBlock({
 
             {!aiText && !loadingThis && (
               <div className={styles.hintSubText}>
-                More AI hints are allowed after you’ve thought it through for at least 6 seconds.
-                You are allowed up to 3 hints per blank.
+                More AI hints are allowed after you’ve thought it through for at least 6 seconds. You are allowed up to 3
+                hints per blank.
               </div>
             )}
 
@@ -1093,6 +1013,16 @@ export default function GuidedCodeBlock({
     </>
   );
 }
+
+/**
+ * ============================================================
+Notes
+ * ============================================================
+ *
+ * This file is now GLOBAL-ONLY for blank VALUES:
+ *    - It never calls setLocalBlanks.
+ *    - It treats mergedBlanks as the global blanks dictionary (source of truth).
+
 
 /**
  * ============================================================
