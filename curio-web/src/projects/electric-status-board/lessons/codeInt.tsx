@@ -3133,7 +3133,7 @@ blankDifficulties:{
 }
 },
 {
-    topicTitle:`Timer Completion Message`,
+  topicTitle:`Timer Completion Message`,
     descBeforeCode:`You will also need to create a function that displays a message when the Pomodoro timer completes.
     
     This function should:
@@ -3150,46 +3150,96 @@ blankDifficulties:{
   __BLANK[POMOLINE1_CURSOR]__; // cursor for message
   __BLANK[POMOPRINT_LINE1]__(__BLANK[POMOLINE1]__); // print first line of message
   __BLANK[POMOLINE2_CURSOR]__; // cursor for second line
-  __BLANK[POMOPRINT_LINE2](__BLANK[POMOLINE2]__); // print second line of message
+  __BLANK[POMOPRINT_LINE2]__(__BLANK[POMOLINE2]__); // print second line of message
 
   __BLANK[POMOSIZE1_2]__; // small text for hint
   __BLANK[POMOHINT2_CURSOR]__; // cursor near bottom
-  __BLANK[POMOPRINT_HINT2](__BLANK[POMOHINT2]); // print hint
+  __BLANK[POMOPRINT_HINT2]__(__BLANK[POMOHINT2]__); // print hint
 
-  display.__BLANK[POMOFLUSH2]; // update OLED display
+  display.__BLANK[POMOFLUSH2]__; // update OLED display
 }^^`,
 
-    // answerKey:{
-    //   POMOLINE1: { type: "string" },
-    //   POMOLINE2: { type: "string" },
-    //   POMOHINT2: { type: "string" },
+    answerKey:{
+      POMOLINE1: { type: "string" },
+      POMOLINE2: { type: "string" },
+      POMOHINT2: { type: "string" },
 
-    //   POMOCLEAR2: ["clearDisplay()"],
+      POMOCLEAR2: ["clearDisplay()"],
 
-    //   POMOCOLOR2: ["display.setTextColor(SSD1306_WHITE)"],
+      POMOCOLOR2: ["display.setTextColor(SSD1306_WHITE)"],
 
-    //   // allow ANY numeric text size (1,2,3,4,...)
-    //   POMOSIZE1_1: { type: "string", regex: "^display\\.setTextSize\\(\\s*\\d+\\s*\\)\\s*;?$" },
-    //   POMOSIZE1_2: { type: "string", regex: "^display\\.setTextSize\\(\\s*\\d+\\s*\\)\\s*;?$" },
-    //   POMOSIZE1_3: { type: "string", regex: "^display\\.setTextSize\\(\\s*\\d+\\s*\\)\\s*;?$" },
+      // allow ANY numeric text size (1,2,3,4,...)
+      POMOSIZE1_1: { type: "string", regex: "^display\\.setTextSize\\(\\s*\\d+\\s*\\)\\s*;?$" },
+      POMOSIZE1_2: { type: "string", regex: "^display\\.setTextSize\\(\\s*\\d+\\s*\\)\\s*;?$" },
+      POMOSIZE1_3: { type: "string", regex: "^display\\.setTextSize\\(\\s*\\d+\\s*\\)\\s*;?$" },
 
-    //   // allow ANY cursor position (x,y integers)
-    //   POMOLINE1_CURSOR: { type: "string", regex: "^display\\.setCursor\\(\\s*\\d+\\s*,\\s*\\d+\\s*\\)\\s*;?$" },
-    //   POMOLINE2_CURSOR: { type: "string", regex: "^display\\.setCursor\\(\\s*\\d+\\s*,\\s*\\d+\\s*\\)\\s*;?$" },
+      // allow ANY cursor position (x,y integers)
+      POMOLINE1_CURSOR: { type: "string", regex: "^display\\.setCursor\\(\\s*\\d+\\s*,\\s*\\d+\\s*\\)\\s*;?$" },
+      POMOLINE2_CURSOR: { type: "string", regex: "^display\\.setCursor\\(\\s*\\d+\\s*,\\s*\\d+\\s*\\)\\s*;?$" },
+      POMOHINT2_CURSOR: { type: "string", regex: "^display\\.setCursor\\(\\s*\\d+\\s*,\\s*\\d+\\s*\\)\\s*;?$" },
 
-    //   // just require display.print/println(...) (don’t check the content)
-    //   POMOPRINT_LINE1: { type: "string", regex: "^display\\.(print|println)\\s*;?$" },
-    //   POMOPRINT_LINE2: { type: "string", regex: "^display\\.(print|println)\\s*;?$" },
-    //   POMOPRINT_HINT2: { type: "string", regex: "^display\\.(print|println)\\(s*;?$"},
+      // just require display.print/println(...) (don’t check the content)
+      POMOPRINT_LINE1: { type: "string", regex: "^display\\.(print|println)\\s*;?$" },
+      POMOPRINT_LINE2: { type: "string", regex: "^display\\.(print|println)\\s*;?$" },
+      POMOPRINT_HINT2: { type: "string", regex: "^display\\.(print|println)\\(s*;?$"},
 
-    // POMOFLUSH2: ["display()"],
-    // },
-    // blankExplanations:{
+    POMOFLUSH2: ["display()"],
+    },
+    blankExplanations:{
+      POMOLINE1:
+        "This is the first line of the time-up message (e.g., 'Time's Up!'). It will be printed at the top of the screen.",
+      POMOLINE2:
+        "This is the second line of the time-up message (e.g., 'Take a Break!'). It will be printed below the first line.",
+      POMOHINT2:
+        "This is the hint text to display at the bottom of the screen (e.g., 'Press SELECT to return to Menu').",
 
-    // },
-    // blankDifficulties:{
+      POMOCLEAR2:
+        "This clears the OLED’s drawing buffer at the start so old text doesn’t remain on the screen.",
 
-    // }
+      POMOCOLOR2:
+        "This sets the text drawing color mode for the OLED so the text is visible.",
+
+      POMOSIZE1_1:
+        "Set the text size for the first line of the message. Any valid number is accepted as long as you use the correct function format.",
+      POMOSIZE1_2:
+        "Set the text size for the second line of the message. Any valid number is accepted as long as you use the correct function format.",
+
+      POMOLINE1_CURSOR:
+        "Move the cursor to where you want the first line of the message to appear before you print it (x and y are pixel coordinates).",
+      POMOLINE2_CURSOR:
+        "Move the cursor to where you want the second line of the message to appear before you print it (x and y are pixel coordinates).",
+
+      POMOPRINT_LINE1:
+        "Print the first line of the time-up message using a display print function. The grader only checks that you used a print/println call correctly.",
+      POMOPRINT_LINE2:
+        "Print the second line of the time-up message using a display print function. The grader only checks that you used a print/println call correctly.",
+      POMOPRINT_HINT2:
+        "Print the hint message that includes navigation instructions. The grader only checks that you used a print/println call correctly.",
+
+      POMOFLUSH2:
+        "This updates the physical OLED screen so everything you drew becomes visible.",
+    },
+    blankDifficulties:{
+      POMOLINE1: "easy",
+      POMOLINE2: "easy",
+      POMOHINT2: "easy",
+
+      POMOCLEAR2: "easy",
+
+      POMOCOLOR2: "easy",
+
+      POMOSIZE1_1: "easy",
+      POMOSIZE1_2: "easy",
+
+      POMOLINE1_CURSOR: "easy",
+      POMOLINE2_CURSOR: "easy",
+
+      POMOPRINT_LINE1: "easy",
+      POMOPRINT_LINE2: "easy",
+      POMOPRINT_HINT2: "easy",
+
+      POMOFLUSH2: "easy",
+    }
 }
   ]}]
   }
