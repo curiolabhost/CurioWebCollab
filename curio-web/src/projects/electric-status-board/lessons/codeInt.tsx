@@ -3241,7 +3241,18 @@ blankDifficulties:{
       POMOFLUSH2: "easy",
     }
 }
-  ]}]
+  ]},
+{
+      id: 5,
+      title: "Place holder",
+      codes: [{
+        topicTitle: "Place holder",
+        descBeforeCode:`Place holder`,
+        code: `^^
+  // Place holder
+  ^^`,
+      }]
+}]
   }
 
 
