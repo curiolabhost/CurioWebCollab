@@ -1,3 +1,6 @@
+//Layout control for project lessons
+
+
 import * as React from "react";
 import Link from "next/link";
 import LessonHeaderControls from "./LessonHeaderControls";
@@ -120,6 +123,7 @@ export default async function LessonSlugPage({ params }: PageProps) {
 
         <LessonHeaderControls
   viewModeKey={`curio:${slug}:${lessonSlug}:viewMode`}
+    notesVisibleKey={`curio:${slug}:${lessonSlug}:notesVisible`}
 />
       </div>
     </div>

@@ -779,11 +779,11 @@ const int __BLANK[SCREENVAR1]__ = __BLANK[SCREENTYPENUM1]__;  //constant for ano
 const int __BLANK[SCREENVAR2]__ = __BLANK[SCREENTYPENUM2]__; //constant for another screen (Clock or Timer/Pomodoro screen^^`,
             answerKey: {
               SCREENVAR: { type: "identifier" },
-              SCREENTYPENUM: { type: "integer"},
-              SCREENVAR1: { type: "sameAs", target: "SCREENVAR" },
-              SCREENTYPENUM1: { type: "integer"},
-              SCREENVAR2: { type: "sameAs", target: "SCREENVAR" },
-              SCREENTYPENUM2: { type: "integer"},
+              SCREENTYPENUM: { type: "integer", parse: true },
+              SCREENVAR1: { type: "identifier" },
+              SCREENTYPENUM1: { type: "integer", parse: true },
+              SCREENVAR2: { type: "identifier" },
+              SCREENTYPENUM2: { type: "integer", parse: true},
             },
             blankExplanations: {
               SCREENVAR:
@@ -852,9 +852,9 @@ void loop(){
                 // (We allow several common valid choices to keep it flexible.)
                 MMENUTYPE: {
                   type: "string",
-                  // Accept: const char*  | char* | String
+                  // Accept: const char  | char| String
                   // (regex is a STRING in this system)
-                  regex: "^(const\\s+char\\s*\\*|char\\s*\\*|String)\\s*$",
+                  regex: "^(const\\s+char|char|String)\\s*$",
                 },
 
                 // Array name must be a valid identifier AND include [] at the end in the code.
@@ -942,6 +942,7 @@ void loop(){
 
               // should start at 0
               MINDEXNUM: { type: "range", min: 0, max: 0 },
+              
             },
 
             blankExplanations: {
@@ -967,9 +968,20 @@ void loop(){
 
           },{
             title: `Practice: Calling array item`,
-            code: `// Practice how you can use the array using the index counter variable you just made. ^^
-  String practice = __BLANK[MMENUNAME]__ [__BLANK[MINDEX1]__];^^`,
-            descAfterCode: `What would the String \`practice\` read?   __BLANK[OPTION]__`,
+            code: `//<< Practice how you can use the array using the index counter variable you just made. ^^
+  String practice = __BLANK[MMENUNAME1]__ [__BLANK[MINDEX1]__];^^`,
+    answerKey: {
+      MMENUNAME1: {
+  type: "sameAs",
+  target: "MMENUNAME",
+  regex: "^(.*)\\[\\]$", // capture everything before []
+  transform: "$1"         // remove the brackets
+},
+      MINDEX1: { type: "sameAs", target: "MINDEX" },
+      MENULIST2: { type: "sameAs", target: "MENULIST2" },
+    },
+
+            descAfterCode: `What would the String \`practice\` read?   __BLANK[MENULIST2]__`,
 
           }
         ],
@@ -1055,7 +1067,7 @@ What does the \`i\` read after while loop ends?    __BLANK[ANSWER_I]__`,
           title: `Loop Practice 1`,
           descBeforeCode:
             `**Practice 1: Print Even Numbers**
-Start at 2 and keep printing even numbers by adding the same step each time.`,
+Start at 2 and keep printing even numbers by adding the same step each time until 10.`,
           imageGridBeforeCode: null,
           descBetweenBeforeAndCode: null,
           code: `^^int num = 2;
@@ -1064,7 +1076,7 @@ while (num < __BLANK[P1_LIMIT]__) {
   num = num + __BLANK[P1_STEP]__;
 }^^`,
           answerKey: {
-            P1_LIMIT: { type: "range", min: 3, max: 50 },
+            P1_LIMIT: ["10"],
             P1_PRINT: ["num"],
             P1_STEP: ["2"],
           },
@@ -1105,7 +1117,7 @@ while (__BLANK[P2_CONDVAR]__ < __BLANK[P2_LIMIT]__) {
             P2_CONDVAR: ["x"],
             P2_LIMIT: { type: "range", min: 10, max: 100 },
             P2_PRINT: ["x"],
-            P2_UPDATE: ["x = x + 3", "x += 3"],
+            P2_UPDATE: ["x=x+3", "x+=3"],
           },
           blankExplanations: {
             P2_START:
@@ -1130,7 +1142,7 @@ while (__BLANK[P2_CONDVAR]__ < __BLANK[P2_LIMIT]__) {
             "As long as x increases by 3 each time, the loop will eventually reach the limit and stop.",
           imageGridAfterCode: null,
           descAfterImage: null,
-          hint: "Make sure the update changes x by 3.",
+          hint: "Make sure the update changes x by 3 (no space needed).",
         },
 
         {
@@ -1143,14 +1155,15 @@ Create a counter variable, print it, and increase it by 1 each loop until it rea
           code: `^^int __BLANK[P3_VAR]__ = 5;
 while (__BLANK[P3_CONDVAR]__ < __BLANK[P3_LIMIT]__) {
   Serial.println(__BLANK[P3_PRINT]__);
-  __BLANK[P3_VAR]__ = __BLANK[P3_NEXT]__;
+  __BLANK[P3_VAR]__ = __BLANK[P3_NEXT]__ + __BLANK[P3_NUM]__;
 }^^`,
           answerKey: {
             P3_VAR: { type: "identifier" },
             P3_CONDVAR: { type: "sameAs", target: "P3_VAR" },
             P3_LIMIT: { type: "range", min: 6, max: 200 },
             P3_PRINT: { type: "sameAs", target: "P3_VAR" },
-            P3_NEXT: { type: "expression" , template: "{P3_VAR} + 1"}, // should represent counter + 1
+            P3_NEXT: {type: "sameAs", target: "P3_VAR"},
+            P3_NUM: ["1"],
           },
           blankExplanations: {
             P3_VAR:
@@ -1175,7 +1188,7 @@ while (__BLANK[P3_CONDVAR]__ < __BLANK[P3_LIMIT]__) {
             "This is the same pattern: start value → condition → update. The update must move the counter forward.",
           imageGridAfterCode: null,
           descAfterImage: null,
-          hint: "Your update should increase the counter by exactly 1.",
+          hint: "Your update should increase the counter by exactly 1 (no space needed).",
         },
 
         {
@@ -1193,7 +1206,10 @@ while (__BLANK[P4_FLAG]__ == false) {
             P4_TYPE: ["bool"],
             P4_VALUE: ["true", "false"],
             P4_FLAG: { type: "identifier" },
-            P4_PRINT: ['"Waiting..."', '"Pressed?"', '"Not ready yet"', '"..."'],
+            P4_PRINT: {
+  type: "string",
+  regex: '^".*"$',
+},
           },
           blankExplanations: {
             P4_TYPE:

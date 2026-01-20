@@ -11,6 +11,7 @@ import CircuitEditor from "./CircuitEditor";
 import GuidedCodeBlock from "./GuidedCodeBlock";
 import styles from "./CodeLessonBase.module.css";
 import RightNote from "./RightNote";
+import {LessonSidebar} from "./LessonSidebar";
 
 /* ============================================================
    Storage helpers
@@ -516,28 +517,45 @@ export default function CodeLessonBase({
      Notes (My Notes) visibility + persistence
   ============================================================ */
 
-  const NOTES_VISIBLE_KEY = React.useMemo(() => `${trackPrefix}:ui:notesVisible`, [trackPrefix]);
-
-  const [notesVisible, setNotesVisible] = React.useState<boolean>(true);
-  const [notesVisibleLoaded, setNotesVisibleLoaded] = React.useState(false);
-
-  React.useEffect(() => {
-    const raw = storageGetJson<boolean>(NOTES_VISIBLE_KEY);
-    // default: show notes
-    const next = raw == null ? true : !!raw;
-    setNotesVisible(next);
-    setNotesVisibleLoaded(true);
-  }, [NOTES_VISIBLE_KEY]);
-
-  React.useEffect(() => {
-    if (!notesVisibleLoaded) return;
-    storageSetJson(NOTES_VISIBLE_KEY, notesVisible);
-  }, [NOTES_VISIBLE_KEY, notesVisible, notesVisibleLoaded]);
 
   // one scope + one split key (no Pluto)
   const notesScopeKey = React.useMemo(() => trackPrefix, [trackPrefix]);
   const notesSplitKey = React.useMemo(() => `${trackPrefix}:split:notes`, [trackPrefix]);
 
+/* ============================================================
+   Notes (My Notes) visibility + persistence (driven by header)
+============================================================ */
+
+const NOTES_VISIBLE_EVENT = "curio:notesVisible";
+const NOTES_VISIBLE_KEY = React.useMemo(() => `${storagePrefix}:notesVisible`, [storagePrefix]);
+
+
+function readNotesVisible(): boolean {
+  const raw = storageGetString(NOTES_VISIBLE_KEY);
+  if (raw === "1") return true;
+  if (raw === "0") return false;
+  return true; // default: show notes
+}
+
+const [notesVisible, setNotesVisible] = React.useState<boolean>(() => readNotesVisible());
+
+React.useEffect(() => {
+  const update = () => setNotesVisible(readNotesVisible());
+
+  const onStorage = (e: StorageEvent) => {
+    if (e.key === NOTES_VISIBLE_KEY) update();
+  };
+
+  window.addEventListener("storage", onStorage);
+  window.addEventListener(NOTES_VISIBLE_EVENT, update as any);
+
+  update();
+
+  return () => {
+    window.removeEventListener("storage", onStorage);
+    window.removeEventListener(NOTES_VISIBLE_EVENT, update as any);
+  };
+}, [NOTES_VISIBLE_KEY]);
 
 
   const activeLessonSteps = React.useMemo(() => {
@@ -1030,10 +1048,8 @@ React.useEffect(() => {
      GuidedCodeBlock shared state + persistence (per step)
   ============================================================ */
 
-  const localStorageKeyForThisStep = `${KEYS.localBlanksPrefixKey}:${currentStepKey}`;
   const guidedUiKeyForThisStep = `${KEYS.localBlanksPrefixKey}:UI:${currentStepKey}`;
-
-  const [localBlanks, setLocalBlanks] = React.useState<Record<string, any>>({});
+  const [globalLoaded, setGlobalLoaded] = React.useState(false);
   const [globalBlanks, setGlobalBlanks] = React.useState<Record<string, any>>({});
 
   const [blankStatus, setBlankStatus] = React.useState<Record<string, boolean>>({});
@@ -1093,45 +1109,33 @@ React.useEffect(() => {
     [step]
   );
 
-  React.useEffect(() => {
-    const raw = storageGetJson<Record<string, any>>(KEYS.globalBlanksKey);
-    setGlobalBlanks(raw && typeof raw === "object" ? raw : {});
-  }, [KEYS.globalBlanksKey]);
+React.useEffect(() => {
+  const raw = storageGetJson<Record<string, any>>(KEYS.globalBlanksKey);
+  setGlobalBlanks(raw && typeof raw === "object" ? raw : {});
+  setGlobalLoaded(true);
+}, [KEYS.globalBlanksKey]);
+
+
+React.useEffect(() => {
+  if (!globalLoaded) return;  // prevents wipe on refresh
+  storageSetJson(KEYS.globalBlanksKey, globalBlanks || {});
+}, [KEYS.globalBlanksKey, globalBlanks, globalLoaded]);
+
 
   React.useEffect(() => {
-    storageSetJson(KEYS.globalBlanksKey, globalBlanks || {});
-  }, [KEYS.globalBlanksKey, globalBlanks]);
+  const ui = storageGetJson<any>(guidedUiKeyForThisStep);
 
-  React.useEffect(() => {
-    const raw = storageGetJson<Record<string, any>>(localStorageKeyForThisStep);
-    setLocalBlanks(raw && typeof raw === "object" ? raw : {});
+  setBlankStatus(ui?.blankStatus && typeof ui.blankStatus === "object" ? ui.blankStatus : {});
+  setActiveBlankHint(ui?.activeBlankHint ?? null);
+  setAiHelpByBlank(ui?.aiHelpByBlank && typeof ui.aiHelpByBlank === "object" ? ui.aiHelpByBlank : {});
+  setAiHintLevelByBlank(ui?.aiHintLevelByBlank && typeof ui.aiHintLevelByBlank === "object" ? ui.aiHintLevelByBlank : {});
+  setCheckAttempts(Number.isFinite(ui?.checkAttempts) ? ui.checkAttempts : 0);
+  setBlankAttemptsByName(ui?.blankAttemptsByName && typeof ui.blankAttemptsByName === "object" ? ui.blankAttemptsByName : {});
 
-    const ui = storageGetJson<any>(guidedUiKeyForThisStep);
+  setAiLoadingKey(null);
+  setAiLastRequestAtByKey({});
+}, [guidedUiKeyForThisStep]);
 
-    setBlankStatus(ui?.blankStatus && typeof ui.blankStatus === "object" ? ui.blankStatus : {});
-    setActiveBlankHint(ui?.activeBlankHint ?? null);
-    setAiHelpByBlank(
-      ui?.aiHelpByBlank && typeof ui.aiHelpByBlank === "object" ? ui.aiHelpByBlank : {}
-    );
-    setAiHintLevelByBlank(
-      ui?.aiHintLevelByBlank && typeof ui.aiHintLevelByBlank === "object"
-        ? ui.aiHintLevelByBlank
-        : {}
-    );
-    setCheckAttempts(Number.isFinite(ui?.checkAttempts) ? ui.checkAttempts : 0);
-    setBlankAttemptsByName(
-      ui?.blankAttemptsByName && typeof ui.blankAttemptsByName === "object"
-        ? ui.blankAttemptsByName
-        : {}
-    );
-
-    setAiLoadingKey(null);
-    setAiLastRequestAtByKey({});
-  }, [localStorageKeyForThisStep, guidedUiKeyForThisStep]);
-
-  React.useEffect(() => {
-    storageSetJson(localStorageKeyForThisStep, localBlanks || {});
-  }, [localStorageKeyForThisStep, localBlanks]);
 
   React.useEffect(() => {
     const payload = {
@@ -1158,10 +1162,8 @@ React.useEffect(() => {
     blankAttemptsByName,
   ]);
 
-  const mergedBlanks = React.useMemo(
-    () => ({ ...(globalBlanks || {}), ...(localBlanks || {}) }),
-    [globalBlanks, localBlanks]
-  );
+const mergedBlanks = React.useMemo(() => (globalBlanks || {}), [globalBlanks]);
+
 
   // PERFORMANCE: inline typing should not trigger parent-wide setState on every keypress
   const [inlineLocalValues, setInlineLocalValues] = React.useState<Record<string, any>>(() =>
@@ -1175,25 +1177,41 @@ React.useEffect(() => {
     setInlineLocalValues((prev) => ({ ...(prev || {}), ...safeMerged }));
   }, [mergedBlanks]);
 
-  const inlineRafRef = React.useRef<number | null>(null);
+const inlinePendingGlobalRef = React.useRef<Record<string, any>>({});
+const inlineFlushTimerRef = React.useRef<any>(null);
 
-  const scheduleInlineParentLocalUpdate = React.useCallback(
-    (name: string, value: string) => {
-      if (inlineRafRef.current) cancelAnimationFrame(inlineRafRef.current);
-      inlineRafRef.current = requestAnimationFrame(() => {
-        setLocalBlanks((prev: any) => ({ ...(prev || {}), [name]: value }));
-      });
-    },
-    [setLocalBlanks]
-  );
+const scheduleInlineGlobalUpdate = React.useCallback(
+  (name: string, value: string) => {
+    inlinePendingGlobalRef.current[name] = value;
 
-  const commitInlineToGlobal = React.useCallback(
-    (name: string) => {
-      const committed = String((inlineLocalValuesRef.current || {})[name] ?? "");
-      setGlobalBlanks((prev: any) => ({ ...(prev || {}), [name]: committed }));
-    },
-    [setGlobalBlanks]
-  );
+    if (inlineFlushTimerRef.current) return;
+    inlineFlushTimerRef.current = window.setTimeout(() => {
+      const patch = inlinePendingGlobalRef.current;
+      inlinePendingGlobalRef.current = {};
+      inlineFlushTimerRef.current = null;
+
+      if (Object.keys(patch).length) {
+        setGlobalBlanks((prev: any) => ({ ...(prev || {}), ...patch }));
+      }
+    }, 200);
+  },
+  [setGlobalBlanks]
+);
+
+const flushInlineGlobalNow = React.useCallback(() => {
+  if (inlineFlushTimerRef.current) {
+    window.clearTimeout(inlineFlushTimerRef.current);
+    inlineFlushTimerRef.current = null;
+  }
+  const patch = inlinePendingGlobalRef.current || {};
+  inlinePendingGlobalRef.current = {};
+  if (Object.keys(patch).length) {
+    setGlobalBlanks((prev: any) => ({ ...(prev || {}), ...patch }));
+  }
+}, [setGlobalBlanks]);
+
+
+const inlineRafRef = React.useRef<number | null>(null);
 
   // Cancel any pending rAF on unmount
   React.useEffect(() => {
@@ -1205,22 +1223,6 @@ React.useEffect(() => {
     };
   }, []);
 
-  // Persist all current inline values when the active step key changes or on unmount.
-  // This ensures answers you typed are saved into the step's local storage and merged into global blanks.
-  React.useEffect(() => {
-    return () => {
-      try {
-        const data = inlineLocalValuesRef.current || {};
-        // Save to this step's local storage
-        storageSetJson(localStorageKeyForThisStep, data);
-        // Update in-memory localBlanks so next render sees them immediately
-        setLocalBlanks((prev: any) => ({ ...(prev || {}), ...(data || {}) }));
-        // Merge into global blanks so shared identifiers persist across steps/lessons
-        setGlobalBlanks((prev: any) => ({ ...(prev || {}), ...(data || {}) }));
-      } catch {}
-    };
-    // NOTE: effect runs cleanup when localStorageKeyForThisStep changes (i.e. on step/lesson nav)
-  }, [localStorageKeyForThisStep]);
 
   const renderInline = React.useCallback(
     (text: string | null | undefined, source?: any) => {
@@ -1230,10 +1232,10 @@ React.useEffect(() => {
         values: inlineLocalValues,
         onChangeBlank: (name, txt) => {
           setInlineLocalValues((prev) => ({ ...(prev || {}), [name]: txt }));
-          scheduleInlineParentLocalUpdate(name, txt);
+          scheduleInlineGlobalUpdate(name, txt);   // global-only
         },
         onBlurBlank: (name) => {
-          commitInlineToGlobal(name);
+          flushInlineGlobalNow();                
         },
         blankStatus,
         onCheckBlank: (name) => checkInlineBlank(name, source),
@@ -1245,15 +1247,16 @@ React.useEffect(() => {
         onCloseInlineHint: () => setActiveBlankHint(null),
       });
     },
-    [
-      inlineLocalValues,
-      scheduleInlineParentLocalUpdate,
-      commitInlineToGlobal,
-      blankStatus,
-      checkInlineBlank,
-      openInlineExplanation,
-      activeBlankHint,
-    ]
+      [
+        inlineLocalValues,
+        scheduleInlineGlobalUpdate,
+        flushInlineGlobalNow,
+        blankStatus,
+        checkInlineBlank,
+        openInlineExplanation,
+        activeBlankHint,
+      ]
+
   );
 
   const logBlankAnalytics = React.useCallback((_event: any) => {
@@ -1500,13 +1503,6 @@ React.useEffect(() => {
               </button>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => setNotesVisible((v) => !v)}
-            className="mt-4 text-sm text-indigo-700 hover:text-indigo-900 underline"
-          >
-            {notesVisible ? "Hide Notes" : "Show Notes"}
-          </button>
 
         </div>
   );
@@ -1557,12 +1553,11 @@ React.useEffect(() => {
                             step={step}
                             block={block}
                             blockIndex={idx}
-                            storageKey={localStorageKeyForThisStep}
+                            storageKey={guidedUiKeyForThisStep}
                             globalKey={KEYS.globalBlanksKey}
                             apiBaseUrl={apiBaseUrl}
                             analyticsTag={analyticsTag}
                             mergedBlanks={mergedBlanks}
-                            setLocalBlanks={setLocalBlanks}
                             setGlobalBlanks={setGlobalBlanks}
                             blankStatus={blankStatus}
                             setBlankStatus={setBlankStatus}
@@ -1670,318 +1665,49 @@ React.useEffect(() => {
   )}
 </div>
     </div>
+    
 
       {/* Sidebar */}
-      {sidebarExpanded ? (
-        <div className={`w-96 bg-gray-50 border-l border-gray-200 overflow-y-auto ${styles.hideScrollbar}`}>
-          <div className="p-5">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={onSelectCircuits}
-                  className={[
-                    "px-3 py-1 rounded-full text-sm border transition-colors",
-                    (() => {
-                      if (supportsInlineTracks) return lessonType === "circuits";
-                      const ptr = parseCurioPtr(storagePrefix);
-                      const target = ptr ? siblingLessonSlug(ptr.lessonSlug, "circuits") : null;
-                      return ptr?.lessonSlug === (target ?? circuitsLessonSlug);
-                    })()
-                      ? "bg-sky-700 text-white border-sky-700"
-                      : "bg-white text-gray-700 border-gray-200 hover:bg-gray-100",
-                  ].join(" ")}
-                >
-                  Circuits
-                </button>
+<LessonSidebar
+  sidebarExpanded={sidebarExpanded}
+  onHide={() => setSidebarExpanded(false)}
+  onShow={() => setSidebarExpanded(true)}
 
-                <button
-                  type="button"
-                  onClick={onSelectCoding}
-                  className={[
-                    "px-3 py-1 rounded-full text-sm border transition-colors",
-                    (() => {
-                      if (supportsInlineTracks) return lessonType === "coding";
-                      const ptr = parseCurioPtr(storagePrefix);
-                      const target = ptr ? siblingLessonSlug(ptr.lessonSlug, "coding") : null;
-                      return ptr?.lessonSlug === (target ?? codingLessonSlug);
-                    })()
-                      ? "bg-sky-700 text-white border-sky-700"
-                      : "bg-white text-gray-700 border-gray-200 hover:bg-gray-100",
-                  ].join(" ")}
-                >
-                  Coding
-                </button>
-              </div>
+  supportsInlineTracks={supportsInlineTracks}
+  lessonType={lessonType}
+  storagePrefix={storagePrefix}
+  circuitsLessonSlug={circuitsLessonSlug}
+  codingLessonSlug={codingLessonSlug}
+  onSelectCircuits={onSelectCircuits}
+  onSelectCoding={onSelectCoding}
+  parseCurioPtr={parseCurioPtr}
+  siblingLessonSlug={siblingLessonSlug}
 
-              <button
-                type="button"
-                onClick={() => setSidebarExpanded(false)}
-                className="text-xs text-gray-500 hover:text-gray-700"
-              >
-                Hide
-              </button>
-            </div>
+  normalLessonNums={normalLessonNums}
+  advancedLessonNums={advancedLessonNums}
+  lesson={lesson}
 
-            {/* ========= LESSON LIST (NORMAL then ADVANCED OPTIONAL) ========= */}
-            <div className="space-y-4">
-              {normalLessonNums.map((lessonNum) => {
-                const entry = getLessonEntry(lessonNum);
-                const lessonStepsArr = getLessonStepsArray(lessonNum);
-                const expanded = expandedLessons.includes(lessonNum);
-                const lessonSubtitle = getLessonPhrase(lessonNum);
+  getLessonEntry={getLessonEntry}
+  getLessonStepsArray={getLessonStepsArray}
+  getLessonPhrase={getLessonPhrase}
 
-                const isLessonActive = lessonNum === lesson;
-                const allStepsDone =
-                  lessonStepsArr.length > 0 &&
-                  lessonStepsArr.every((_: any, idx: number) =>
-                    doneSet.has(makeStepKey(lessonNum, idx))
-                  );
+  doneSet={doneSet}
+  makeStepKey={makeStepKey}
+  advancedUnlocked={advancedUnlocked}
 
-                const locked = false;
+  expandedLessons={expandedLessons}
+  toggleLesson={toggleLesson}
 
-                return (
-                  <div
-                    key={lessonNum}
-                    className="bg-white rounded-lg border border-gray-200 overflow-hidden"
-                  >
-                    <button
-                      onClick={() => toggleLesson(lessonNum)}
-                      type="button"
-                      className={`w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors ${
-                        isLessonActive
-                          ? "bg-indigo-50 hover:bg-indigo-100"
-                          : allStepsDone
-                          ? "bg-green-50 hover:bg-green-100"
-                          : "bg-white"
-                      }`}
-                    >
-                      <div className="text-left">
-                        <div
-                          className={`text-sm mb-1 ${
-                            isLessonActive ? "text-indigo-600" : "text-gray-900"
-                          }`}
-                        >
-                          {isLessonEntryOptional(entry) ? "Optional Lesson" : "Lesson"} {lessonNum}
-                        </div>
-                        {lessonSubtitle ? (
-                          <div
-                            className={`text-xs ${
-                              isLessonActive ? "text-indigo-500" : "text-gray-500"
-                            }`}
-                          >
-                            {lessonSubtitle}
-                          </div>
-                        ) : null}
-                      </div>
+  optionalExpandedByLesson={optionalExpandedByLesson}
+  toggleOptionalSteps={toggleOptionalSteps}
+  splitStepsForOptionalDropdown={splitStepsForOptionalDropdown}
 
-                      {expanded ? (
-                        <ChevronDown className="w-4 h-4 text-gray-400" />
-                      ) : (
-                        <ChevronRight className="w-4 h-4 text-gray-400" />
-                      )}
-                    </button>
+  renderStepButton={renderStepButton}
+  safeStepIndex={safeStepIndex}
 
-                    {expanded ? (
-                      <div className="px-4 pb-4 pt-3 space-y-1">
-                        {(() => {
-                          const split = splitStepsForOptionalDropdown(lessonStepsArr);
-                          const optOpen = !!optionalExpandedByLesson[lessonNum];
+  isLessonEntryOptional={isLessonEntryOptional}
+/>
 
-                          return (
-                            <>
-                              {/* BEFORE optional */}
-                              {split.before.map(({ st, idx }: any) =>
-                                renderStepButton(lessonNum, idx, st, locked, safeStepIndex)
-                              )}
-
-                              {/* OPTIONAL dropdown */}
-                              {split.hasOptional && split.optionalBlock.length > 0 ? (
-                                <div className="mt-2">
-                                  <button
-                                    type="button"
-                                    onClick={() => toggleOptionalSteps(lessonNum)}
-                                    className="w-full flex items-center justify-between py-2 px-3 rounded bg-gray-100 hover:bg-gray-200 text-sm text-gray-700"
-                                  >
-                                    <span className="font-medium">Optional Steps</span>
-                                    {optOpen ? (
-                                      <ChevronDown className="w-4 h-4 text-gray-500" />
-                                    ) : (
-                                      <ChevronRight className="w-4 h-4 text-gray-500" />
-                                    )}
-                                  </button>
-
-                                  {optOpen ? (
-                                    <div className="mt-1 space-y-1 pl-2 border-l border-gray-200">
-                                      {split.optionalBlock.map(({ st, idx }: any) =>
-                                        renderStepButton(lessonNum, idx, st, locked, safeStepIndex)
-                                      )}
-                                    </div>
-                                  ) : null}
-                                </div>
-                              ) : null}
-
-                              {/* AFTER optional */}
-                              {split.after.map(({ st, idx }: any) =>
-                                renderStepButton(lessonNum, idx, st, locked, safeStepIndex)
-                              )}
-                            </>
-                          );
-                        })()}
-                      </div>
-                    ) : null}
-                  </div>
-                );
-              })}
-
-              {advancedLessonNums.length > 0 ? (
-                <div className="pt-4 mt-2 border-t border-gray-200">
-                  <div className="text-xs font-semibold text-gray-500 mb-3">
-                    Advanced (Optional)
-                  </div>
-
-                  <div className="space-y-4">
-                    {advancedLessonNums.map((lessonNum) => {
-                      const entry = getLessonEntry(lessonNum);
-                      const lessonStepsArr = getLessonStepsArray(lessonNum);
-                      const expanded = expandedLessons.includes(lessonNum);
-                      const lessonSubtitle = getLessonPhrase(lessonNum);
-
-                      const isLessonActive = lessonNum === lesson;
-                      const allStepsDone =
-                        lessonStepsArr.length > 0 &&
-                        lessonStepsArr.every((_: any, idx: number) =>
-                          doneSet.has(makeStepKey(lessonNum, idx))
-                        );
-
-                      const locked = !advancedUnlocked;
-
-                      return (
-                        <div
-                          key={lessonNum}
-                          className={[
-                            "bg-white rounded-lg border overflow-hidden",
-                            locked ? "border-gray-200 opacity-70" : "border-gray-200",
-                          ].join(" ")}
-                        >
-                          <button
-                            onClick={() => toggleLesson(lessonNum)}
-                            type="button"
-                            className={[
-                              "w-full flex items-center justify-between p-4 transition-colors",
-                              locked
-                                ? "bg-gray-100 hover:bg-gray-100 cursor-not-allowed"
-                                : "hover:bg-gray-50",
-                              isLessonActive && !locked ? "bg-indigo-50 hover:bg-indigo-100" : "",
-                              allStepsDone && !locked ? "bg-green-50 hover:bg-green-100" : "",
-                            ].join(" ")}
-                            disabled={locked}
-                            title={locked ? "Finish all normal lessons to unlock Advanced (Optional)." : ""}
-                          >
-                            <div className="text-left">
-                              <div
-                                className={`text-sm mb-1 ${
-                                  locked
-                                    ? "text-gray-400"
-                                    : isLessonActive
-                                    ? "text-indigo-600"
-                                    : "text-gray-900"
-                                }`}
-                              >
-                                {isLessonEntryOptional(entry) ? "Optional Lesson" : "Lesson"}{" "}
-                                {lessonNum}
-                              </div>
-                              {lessonSubtitle ? (
-                                <div
-                                  className={`text-xs ${
-                                    locked
-                                      ? "text-gray-400"
-                                      : isLessonActive
-                                      ? "text-indigo-500"
-                                      : "text-gray-500"
-                                  }`}
-                                >
-                                  {lessonSubtitle}
-                                </div>
-                              ) : null}
-                            </div>
-
-                            {expanded ? (
-                              <ChevronDown className="w-4 h-4 text-gray-400" />
-                            ) : (
-                              <ChevronRight className="w-4 h-4 text-gray-400" />
-                            )}
-                          </button>
-
-                          {expanded ? (
-                            <div className="px-4 pb-4 pt-3 space-y-1">
-                              {(() => {
-                                const split = splitStepsForOptionalDropdown(lessonStepsArr);
-                                const optOpen = !!optionalExpandedByLesson[lessonNum];
-
-                                return (
-                                  <>
-                                    {/* BEFORE optional */}
-                                    {split.before.map(({ st, idx }: any) =>
-                                      renderStepButton(lessonNum, idx, st, locked, safeStepIndex)
-                                    )}
-
-                                    {/* OPTIONAL dropdown */}
-                                    {split.hasOptional && split.optionalBlock.length > 0 ? (
-                                      <div className="mt-2">
-                                        <button
-                                          type="button"
-                                          onClick={() => toggleOptionalSteps(lessonNum)}
-                                          className="w-full flex items-center justify-between py-2 px-3 rounded bg-gray-100 hover:bg-gray-200 text-sm text-gray-700"
-                                        >
-                                          <span className="font-medium">Optional Steps</span>
-                                          {optOpen ? (
-                                            <ChevronDown className="w-4 h-4 text-gray-500" />
-                                          ) : (
-                                            <ChevronRight className="w-4 h-4 text-gray-500" />
-                                          )}
-                                        </button>
-
-                                        {optOpen ? (
-                                          <div className="mt-1 space-y-1 pl-2 border-l border-gray-200">
-                                            {split.optionalBlock.map(({ st, idx }: any) =>
-                                              renderStepButton(lessonNum, idx, st, locked, safeStepIndex)
-                                            )}
-                                          </div>
-                                        ) : null}
-                                      </div>
-                                    ) : null}
-
-                                    {/* AFTER optional */}
-                                    {split.after.map(({ st, idx }: any) =>
-                                      renderStepButton(lessonNum, idx, st, locked, safeStepIndex)
-                                    )}
-                                  </>
-                                );
-                              })()}
-                            </div>
-                          ) : null}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              ) : null}
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="w-6 bg-gray-100 border-l border-gray-200 flex items-start justify-center py-4">
-          <button
-            type="button"
-            onClick={() => setSidebarExpanded(true)}
-            className="text-xs text-gray-500 hover:text-gray-700 rotate-90 origin-center"
-            title="Show sidebar"
-          >
-            Show
-          </button>
-        </div>
-      )}
     </div>
   );
 
