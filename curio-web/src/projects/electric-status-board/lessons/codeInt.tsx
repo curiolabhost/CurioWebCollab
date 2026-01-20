@@ -2968,12 +2968,213 @@ Recall that in the Main Menu Function, when the user presses SELECT on the Clock
 
   9: {
   phrase: "Pomodoro screen: printing timer",
-  advanced: true,
+  advanced: false,
   steps:[
     {
       id: 1,
       title: "Step 1: Pomodoro Timer Function logic",
-      codes: [
+      codes: [{
+        topicTitle: "Formatting Pomodoro Timer and Display",
+        descBeforeCode:`For our Pomodoro screen, certain elements such as the overall layout and formatting should remain consistent, while others, like titles or timers, will change dynamically. To support this behavior and keep our code organized, we will create and use functions.
+        
+        This function should:
+        1) Format the timer selection screens (Ex: It will show whether you are selecting a timer for Work, Short Break, or Long Break)
+        2) Display the timer on the OLED screen in MM:SS format
+        3) Display a hint at the bottom on how to naviagte the screen
+        
+        Notice that this function will take in several parameters to customize the display for different timer types. This way, we can reuse the same function for different Pomodoro timer screens by simply passing in different arguments.`,
+        code: `^^ 
+  void showTimerScreen(const char* __BLANK[POMOTITLE]__, const char* __BLANK[POMOLABEL]__, int __BLANK[POMOMIN]__, int __BLANK[POMOSEC]__, const char* __BLANK[POMOHINT]__) {
+  display.__BLANK[POMOCLEAR]__; // clear old pixels/text
+  __BLANK[POMOCOLOR]__; // set text color (white)
+
+  __BLANK[POMOSIZE1]__; // small text for title
+  __BLANK[POMOTITLE_CURSOR]__;  // cursor for title
+  __BLANK[POMOPRINT_TITLE]__(__BLANK[POMOTITLE]__); // print title
+
+  __BLANK[POMOLABEL_CURSOR]__; // cursor for label
+  __BLANK[POMOPRINT_LABEL]__(__BLANK[POMOLABEL]__); // print label
+
+  __BLANK[POMOSIZE2]__; // bigger text for timer
+  __BLANK[POMOTIMER_CURSOR]__;  // cursor for timer
+
+  if (__BLANK[POMOMIN]__ < 10) { // if minutes is 0-9
+  display.print("0"); // print leading 0
+  } 
+  display.print(__BLANK[POMOMIN]__); // print minutes
+  display.print(":"); // print ":"
+
+  if (__BLANK[POMOSEC]__ < 10){ // if seconds is 0-9
+  display.print("0"); // print leading 0
+  }
+  display.print(__BLANK[POMOSEC]__); // print seconds
+
+  __BLANK[POMOSIZE3]__; // small text for hint
+  __BLANK[POMOHINT_CURSOR]__; // cursor near bottom
+  __BLANK[POMOPRINT_HINT]__(__BLANK[POMOHINT]__); // print hint
+
+  display.__BLANK[POMOFLUSH]__; // update OLED display
+}^^`,
+answerKey:{
+    POMOTITLE: { type: "string" },
+    POMOLABEL: { type: "string" },
+    POMOMIN: { type: "string" },
+    POMOSEC: { type: "string" },
+    POMOHINT: { type: "string" },
+
+    POMOCLEAR: ["clearDisplay()"],
+
+    POMOCOLOR: ["display.setTextColor(SSD1306_WHITE)"],
+
+    // allow ANY numeric text size (1,2,3,4,...)
+    POMOSIZE1: { type: "string", regex: "^display\\.setTextSize\\(\\s*\\d+\\s*\\)\\s*;?$" },
+    POMOSIZE2: { type: "string", regex: "^display\\.setTextSize\\(\\s*\\d+\\s*\\)\\s*;?$" },
+    POMOSIZE3: { type: "string", regex: "^display\\.setTextSize\\(\\s*\\d+\\s*\\)\\s*;?$" },
+
+    // allow ANY cursor position (x,y integers)
+    POMOTITLE_CURSOR: { type: "string", regex: "^display\\.setCursor\\(\\s*\\d+\\s*,\\s*\\d+\\s*\\)\\s*;?$" },
+    POMOLABEL_CURSOR: { type: "string", regex: "^display\\.setCursor\\(\\s*\\d+\\s*,\\s*\\d+\\s*\\)\\s*;?$" },
+    POMOTIMER_CURSOR: { type: "string", regex: "^display\\.setCursor\\(\\s*\\d+\\s*,\\s*\\d+\\s*\\)\\s*;?$" },
+    POMOHINT_CURSOR: { type: "string", regex: "^display\\.setCursor\\(\\s*\\d+\\s*,\\s*\\d+\\s*\\)\\s*;?$" },
+
+    // just require display.print/println(...) (don’t check the content)
+    POMOPRINT_TITLE: { type: "string", regex: "^display\\.(print|println)\\s*;?$" },
+    POMOPRINT_LABEL: { type: "string", regex: "^display\\.(print|println)\\s*;?$" },
+    POMOPRINT_HINT: { type: "string", regex: "^display\\.(print|println)\\(s*;?$"},
+
+    POMOFLUSH: ["display()"],
+
+},
+blankExplanations:{
+  POMOTITLE:
+    "This is the title of the Pomodoro screen (e.g., 'Pomodoro Timer'). It will be printed at the top of the screen.",
+  POMOLABEL:
+    "This is the label for the timer (e.g., 'Work Time', 'Short Break'). It will be printed below the title.",
+  POMOMIN:
+    "This is the number of minutes to display on the timer. It should be an integer value.",
+  POMOSEC:
+    "This is the number of seconds to display on the timer. It should be an integer value.",
+  POMOHINT:
+    "This is the hint text to display at the bottom of the screen (e.g., 'PREV: Menu').",
+
+  POMOCLEAR:
+    "This clears the OLED’s drawing buffer at the start so old text doesn’t remain on the screen.",
+
+  POMOCOLOR:
+    "This sets the text drawing color mode for the OLED so the text is visible.",
+
+  POMOSIZE1:
+    "Set the text size for the title line. Any valid number is accepted as long as you use the correct function format.",
+  POMOSIZE2:
+    "Set the text size for the timer line. Any valid number is accepted as long as you use the correct function format.",
+  POMOSIZE3:
+    "Set the text size for the hint line. Any valid number is accepted as long as you use the correct function format.",
+
+  POMOTITLE_CURSOR:
+    "Move the cursor to where you want the title to appear before you print it (x and y are pixel coordinates).",
+  POMOLABEL_CURSOR:
+    "Move the cursor to where you want the label to appear before you print it (x and y are pixel coordinates).",
+  POMOTIMER_CURSOR:
+    "Move the cursor to where you want the timer to start before printing minutes and seconds (x and y are pixel coordinates).",
+  POMOHINT_CURSOR:
+    "Move the cursor near the bottom portion of the screen so the hint prints at the bottom area.",
+
+  POMOPRINT_TITLE:
+    "Print the title for the Pomodoro screen using a display print function. The grader only checks that you used a print/println call correctly.",
+  POMOPRINT_LABEL:
+    "Print the label for the timer using a display print function. The grader only checks that you used a print/println call correctly.",
+  POMOPRINT_HINT:
+    "Print the hint message that includes navigation instructions. The grader only checks that you used a print/println call correctly.",
+
+  POMOFLUSH:
+    "This updates the physical OLED screen so everything you drew becomes visible.",
+},
+blankDifficulties:{
+  POMOTITLE: "easy",
+  POMOLABEL: "easy",
+  POMOMIN: "easy",
+  POMOSEC: "easy",
+  POMOHINT: "easy",
+
+  POMOCLEAR: "easy",
+
+  POMOCOLOR: "easy",
+
+  POMOSIZE1: "easy",
+  POMOSIZE2: "easy",
+  POMOSIZE3: "easy",
+
+  POMOTITLE_CURSOR: "easy",
+  POMOLABEL_CURSOR: "easy",
+  POMOTIMER_CURSOR: "medium",
+  POMOHINT_CURSOR: "easy",
+
+  POMOPRINT_TITLE: "easy",
+  POMOPRINT_LABEL: "easy",
+  POMOPRINT_HINT: "easy",
+
+  POMOFLUSH: "easy",
+}
+},
+{
+    topicTitle:`Timer Completion Message`,
+    descBeforeCode:`You will also need to create a function that displays a message when the Pomodoro timer completes.
+    
+    This function should:
+    1) Display a message indicating that the timer has completed (e.g., "Time's Up!").
+    2) Provide a hint on what to do next (e.g., "Press SELECT to return to Menu").
+    
+    The logic for writing this function is very similar to the previous function`,
+    code: `^^
+  void showTimeUpScreen(const char* __BLANK[POMOLINE1]__, const char* __BLANK[POMOLINE2]__, const char* __BLANK[POMOHINT2]__) {
+  display.__BLANK[POMOCLEAR2]__; // clear old pixels/text
+  __BLANK[POMOCOLOR2]__; // set text color (white)
+
+  __BLANK[POMOSIZE1_1]__; // bigger text for message
+  __BLANK[POMOLINE1_CURSOR]__; // cursor for message
+  __BLANK[POMOPRINT_LINE1]__(__BLANK[POMOLINE1]__); // print first line of message
+  __BLANK[POMOLINE2_CURSOR]__; // cursor for second line
+  __BLANK[POMOPRINT_LINE2](__BLANK[POMOLINE2]__); // print second line of message
+
+  __BLANK[POMOSIZE1_2]__; // small text for hint
+  __BLANK[POMOHINT2_CURSOR]__; // cursor near bottom
+  __BLANK[POMOPRINT_HINT2](__BLANK[POMOHINT2]); // print hint
+
+  display.__BLANK[POMOFLUSH2]; // update OLED display
+}^^`,
+
+    // answerKey:{
+    //   POMOLINE1: { type: "string" },
+    //   POMOLINE2: { type: "string" },
+    //   POMOHINT2: { type: "string" },
+
+    //   POMOCLEAR2: ["clearDisplay()"],
+
+    //   POMOCOLOR2: ["display.setTextColor(SSD1306_WHITE)"],
+
+    //   // allow ANY numeric text size (1,2,3,4,...)
+    //   POMOSIZE1_1: { type: "string", regex: "^display\\.setTextSize\\(\\s*\\d+\\s*\\)\\s*;?$" },
+    //   POMOSIZE1_2: { type: "string", regex: "^display\\.setTextSize\\(\\s*\\d+\\s*\\)\\s*;?$" },
+    //   POMOSIZE1_3: { type: "string", regex: "^display\\.setTextSize\\(\\s*\\d+\\s*\\)\\s*;?$" },
+
+    //   // allow ANY cursor position (x,y integers)
+    //   POMOLINE1_CURSOR: { type: "string", regex: "^display\\.setCursor\\(\\s*\\d+\\s*,\\s*\\d+\\s*\\)\\s*;?$" },
+    //   POMOLINE2_CURSOR: { type: "string", regex: "^display\\.setCursor\\(\\s*\\d+\\s*,\\s*\\d+\\s*\\)\\s*;?$" },
+
+    //   // just require display.print/println(...) (don’t check the content)
+    //   POMOPRINT_LINE1: { type: "string", regex: "^display\\.(print|println)\\s*;?$" },
+    //   POMOPRINT_LINE2: { type: "string", regex: "^display\\.(print|println)\\s*;?$" },
+    //   POMOPRINT_HINT2: { type: "string", regex: "^display\\.(print|println)\\(s*;?$"},
+
+    // POMOFLUSH2: ["display()"],
+    // },
+    // blankExplanations:{
+
+    // },
+    // blankDifficulties:{
+
+    // }
+}
   ]}]
   }
 
