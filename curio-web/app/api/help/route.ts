@@ -10,12 +10,12 @@ function buildPopupInstructions() {
   return [
     "You help debug Arduino/C++ compile errors.",
     "This is an INLINE popup for ultra-fast local debugging.",
-
+    "",
     "Output format:",
     "- EXACTLY ONE sentence.",
     "- Include BOTH the cause and the location in the same sentence.",
     '- Example: "Spelling error for INPU at line 3."',
-
+    "",
     "Rules:",
     "- Max 20 words.",
     "- No line breaks.",
@@ -32,16 +32,16 @@ function buildPopupMoreInstructions() {
   return [
     "You help debug Arduino/C++ compile errors.",
     "This is the INLINE popup 'Explain more' button.",
-
+    "",
     "Output format:",
     "- 1–2 short sentences.",
     "- Must include location (line number) and the symbol when possible.",
-
+    "",
     "Goal:",
     "- Give an actionable fix hint (allowed): e.g., \"Did you mean INPUT?\"",
     "- You may suggest the correct spelling or the intended Arduino keyword/function name.",
     "- Do NOT include code blocks or full rewritten code.",
-
+    "",
     "Rules:",
     "- Keep it under 35 words.",
     "- No line breaks.",
@@ -53,12 +53,12 @@ function buildPopupLessonInstructions() {
   return [
     "You help debug Arduino/C++ compile errors.",
     "This is the INLINE popup 'Open full help' button.",
-
+    "",
     "Output format:",
     "- 3–5 sentences.",
     "- Explain why the compiler throws this error in general, and tie it to this specific case.",
     "- Mention the location (line number) and the symbol/token when possible.",
-
+    "",
     "Rules:",
     "- No code blocks.",
     "- No long lecture; keep it light and focused.",
@@ -79,8 +79,8 @@ function buildVerifyInstructions(sentences: number, verbosity: string) {
 function buildProjectCoachInstructions(sentences: number, verbosity: string) {
   return [
     "You are an Arduino/C++ project coach.",
-    "Return ONLY valid json. No markdown. No extra text.",
-
+    "Return ONLY valid JSON. No markdown. No extra text.",
+    "The response MUST be valid json.",
     "",
     "JSON schema (must match exactly):",
     "{",
@@ -92,45 +92,45 @@ function buildProjectCoachInstructions(sentences: number, verbosity: string) {
     "    ] }",
     "  ]",
     "}",
-
     "",
-    "Core rules:",
-    "- If compiler errors are provided: hasErrors=true and include an 'Errors' section FIRST.",
-    "- If NO compiler errors: hasErrors=false and DO NOT output any items with tag 'OK'. (No OK lines at all.)",
-    "- When hasErrors=false, tags allowed are only: TIP, NEXT, IDEA, WARN (rare).",
-    "- 'line' must be the relevant line number when you can point to a specific spot, otherwise null.",
+    "Rules:",
+    `- Target ${sentences} to ${sentences + 6} items total. Verbosity: ${verbosity}.`,
+    "- If compiler errors are provided, set hasErrors=true and include an 'Errors' section first.",
+    "- If no errors:",
+    "  - If the code is too minimal to infer intent, include ONLY an 'Ideas' section with 1 item explaining there isn't enough yet.",
+    "  - Otherwise include sections like 'Improvements', 'Next steps', 'Ideas'.",
+    "- NEVER include [OK] items. Do not use the OK tag at all.",
+    "- 'line' should be the error line number if relevant, else null.",
     "- 'code' is optional and must be a SHORT snippet (max ~6 lines) or null.",
     "- Never output code fences. Never output markdown.",
-
-    "",
-    "Minimal-code rule (very important):",
-    "- If the code is too short or only basic setup (e.g., empty loop, only pinMode, only boilerplate) and there is not enough context to infer the project goal:",
-    '  - Return EXACTLY ONE section titled "Ideas".',
-    "  - That section must contain EXACTLY ONE item:",
-    '    - tag: "IDEA"',
-    '    - line: null',
-    '    - text: a short statement that there is not enough implemented yet to give meaningful project/logic suggestions.',
-    '    - why: explain what information is missing (goal, inputs, outputs, behavior).',
-    '    - recommendation: suggest 2–4 concrete next actions to add meaningful structure (e.g., define goal, pick inputs/outputs, add a state variable, add one behavior in loop).',
-    "    - code: null",
-    "- In this minimal-code case, DO NOT add any other items (no TIP/NEXT beyond that one IDEA item).",
-
-    "",
-    "Non-minimal code rule:",
-    "- If there is enough code to understand intent, provide useful project/structural/logic suggestions.",
-    "- Organize sections like: 'Improvements', 'Next steps', 'Ideas'.",
-    `- Target ${sentences} to ${sentences + 6} items total (unless minimal-code rule triggers). Verbosity: ${verbosity}.`,
-
-    "",
-    "Error-detail rule (when hasErrors=true):",
-    "- Each error item must be detailed:",
-    "- text: start with 'Line N:' then describe what is wrong.",
-    "- 1–2 sentences explaining why the compiler/runtime complains.",
-    "- recommendation: 2–4 sentences describing the recommended fix at a high level.",
-    "- code: include a short snippet around the line if helpful (max ~6 lines).",
   ].join("\n");
 }
 
+function buildBlankHelpInstructions(hintStyle: string, hintLevel: number) {
+  return [
+    "You are helping a student fill in ONE missing blank in an Arduino/C++ learning exercise.",
+    "",
+    "Hard rules:",
+    "- Do NOT reveal internal blank names or identifiers.",
+    '- Always refer to it as "the blank".',
+    "- Do NOT output code blocks.",
+    "- Keep it short and helpful.",
+    "",
+    "Hint style:",
+    hintStyle === "gentle_nudge"
+      ? "- Give a gentle nudge: point them to the concept and what to re-check."
+      : hintStyle === "conceptual_explanation"
+      ? "- Give a conceptual explanation: explain what this blank represents and how to reason to the answer."
+      : "- Use a simple analogy to make the concept click, then guide them back to the blank.",
+    "",
+    `This is hint level ${hintLevel} (higher level = a bit more explicit).`,
+    "",
+    "Output format:",
+    "- 3–6 sentences.",
+    "- Mention what the blank is supposed to represent.",
+    "- If the student's answer is wrong, explain WHY it's wrong and what kind of thing belongs there (without giving an exact final string if avoidable).",
+  ].join("\n");
+}
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
@@ -157,6 +157,16 @@ export async function POST(req: Request) {
     errors = [],
     sentences = 3,
     verbosity = "brief",
+
+    // blank-help extras
+    blank = null,
+    hintStyle = "gentle_nudge",
+    hintLevel = 1,
+
+    lessonId = null,
+    title = null,
+    description = null,
+    codeSnippet = null,
   } = body ?? {};
 
   const modeNorm = String(mode).trim().toLowerCase();
@@ -170,49 +180,87 @@ export async function POST(req: Request) {
       ? buildPopupLessonInstructions()
       : modeNorm === "project-coach"
       ? buildProjectCoachInstructions(Number(sentences) || 8, String(verbosity || "brief"))
+      : modeNorm === "blank-help"
+      ? buildBlankHelpInstructions(String(hintStyle || "gentle_nudge"), Number(hintLevel) || 1)
       : buildVerifyInstructions(Number(sentences) || 3, String(verbosity || "brief"));
 
-const wantsJson = modeNorm === "project-coach";
+  // Build user text (include the word "json" explicitly when we request json_object format)
+  let userText =
+    `Mode: ${modeNorm}\n\n` +
+    `Compiler errors (if any):\n${JSON.stringify(errors, null, 2)}\n\n` +
+    `Code:\n${code}`;
 
-const userText =
-  (wantsJson ? "Respond in json.\n\n" : "") + // required keyword for json_object
-  `Mode: ${modeNorm}\n\n` +
-  `Compiler errors (if any):\n${JSON.stringify(errors, null, 2)}\n\n` +
-  `Code:\n${code}`;
+  if (modeNorm === "blank-help") {
+    const safeBlank = blank
+      ? {
+          displayName: blank.displayName || "blank",
+          studentAnswer: blank.studentAnswer ?? "",
+          rule: blank.rule ?? null,
+          previousHint: blank.previousHint ?? null,
+        }
+      : null;
 
+    userText =
+      `Mode: blank-help\n\n` +
+      `Lesson context:\n${JSON.stringify({ lessonId, title, description }, null, 2)}\n\n` +
+      `Code snippet:\n${codeSnippet || code}\n\n` +
+      `Blank context (do not reveal internal names):\n${JSON.stringify(safeBlank, null, 2)}\n`;
+  }
+
+  if (modeNorm === "project-coach") {
+    userText =
+      `Mode: project-coach\n` +
+      `You must output valid json.\n\n` +
+      `Compiler errors (if any):\n${JSON.stringify(errors, null, 2)}\n\n` +
+      `Code:\n${code}`;
+  }
 
   console.log("[AI HELP] mode =", modeNorm, "sentences =", sentences, "verbosity =", verbosity);
 
   const encoder = new TextEncoder();
 
   const max_output_tokens =
-    modeNorm === "popup" ? 80 :
-    modeNorm === "popup-more" ? 220 :
-    modeNorm === "popup-lesson" ? 520 :
-    modeNorm === "project-coach" ? 1200 :
-    450;
+    modeNorm === "popup"
+      ? 80
+      : modeNorm === "popup-more"
+      ? 220
+      : modeNorm === "popup-lesson"
+      ? 520
+      : modeNorm === "blank-help"
+      ? 450
+      : modeNorm === "project-coach"
+      ? 1100
+      : 450;
 
   const temperature =
-    modeNorm === "popup" ? 0.2 :
-    modeNorm === "popup-more" ? 0.3 :
-    modeNorm === "popup-lesson" ? 0.4 :
-    modeNorm === "project-coach" ? 0.2 :
-    0.4;
+    modeNorm === "popup"
+      ? 0.2
+      : modeNorm === "popup-more"
+      ? 0.3
+      : modeNorm === "popup-lesson"
+      ? 0.4
+      : modeNorm === "blank-help"
+      ? 0.35
+      : 0.4;
 
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       try {
-        const openaiStream = await client.responses.create({
+        const createArgs: any = {
           model,
           instructions,
           input: [{ role: "user", content: userText }],
           stream: true,
           temperature,
           max_output_tokens,
+        };
 
-          // forces valid JSON output for project-coach
-          ...(wantsJson ? { text: { format: { type: "json_object" } } } : {}),
-        });
+        // If project-coach, force JSON object output via Responses API
+        if (modeNorm === "project-coach") {
+          createArgs.text = { format: { type: "json_object" } };
+        }
+
+        const openaiStream = await client.responses.create(createArgs);
 
         for await (const event of openaiStream as any) {
           if (event.type === "response.output_text.delta") {
