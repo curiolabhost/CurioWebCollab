@@ -2,13 +2,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Users, LayoutGrid, BarChart3, Settings, LogOut, BookOpen } from "lucide-react";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -63,10 +64,25 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   ];
 
   const isActive = (href: string, exact = false) => {
+    // Parse the href to get pathname and query params
+    const [hrefPath, hrefQuery] = href.split('?');
+    const currentView = searchParams.get('view');
+
     if (exact) {
-      return pathname === href || pathname.startsWith("/admin/students");
+      // For "Students View" - only active if on /admin without view param OR in student details
+      if (hrefPath === "/admin" && !hrefQuery) {
+        return (pathname === "/admin" && !currentView) || pathname.startsWith("/admin/students");
+      }
+      return pathname === hrefPath;
     }
-    return pathname === href;
+
+    // For "Projects View" - check if view param matches
+    if (hrefQuery) {
+      const queryView = new URLSearchParams(hrefQuery).get('view');
+      return pathname === hrefPath && currentView === queryView;
+    }
+
+    return pathname === hrefPath;
   };
 
   const handleLogout = () => {
