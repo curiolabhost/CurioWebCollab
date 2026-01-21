@@ -3242,9 +3242,146 @@ blankDifficulties:{
     }
 }
   ]},
+  {
+  id: 4,
+  title: "Step 4: Understanding the Timer Engine",
+  codes: [
+    {
+      topicTitle: "Choosing Block Duration and Setting endTime",
+      descBeforeCode: `
+Unlike simple timers that count seconds using delay(), this Pomodoro timer uses a Real-Time Clock (RTC) to measure time accurately.
+
+In this timer, a **block** is a single period of time:
+- A **work block** is a focused work session (e.g., 25 minutes)
+- A **break block** is a short rest period (e.g., 5 minutes)
+
+Instead of counting down, we:
+1) Ask the RTC for the current time
+2) Decide how long the current block should run
+3) Calculate the exact clock time when the block should end
+4) Store that future time in a variable
+`,
+      code: `^^
+void startCurrentBlock() {
+  int mins = 0;
+
+  // Decide how long this block should run
+  // Check if the timer is in single-block mode
+  if (__BLANK[POMOTIMERMODE]__) {
+    // Use work block duration for single-block mode
+    mins = __BLANK[POMOT1]__;
+  } else {
+    // Determine if current block is work or break
+    if (__BLANK[POMOWORKCHECK]__) 
+      mins = __BLANK[POMOT1]__; // work duration
+    else
+      mins = __BLANK[POMOT2]__; // break duration
+  }
+
+  // Get current time from RTC
+  DateTime __BLANK[POMONOW]__ = rtc.now();
+
+  // Set the block end time by adding a TimeSpan to now
+  endTime = __BLANK[POMOTIMESPAN]__ + __BLANK[POMONOW]__;
+}
+^^`,
+      answerKey: {
+        POMOTIMERMODE: { type: "string", regex: "^repeatT1\\s*==\\s*0$" },
+        POMOT1: { type: "string" },
+        POMOT2: { type: "string" },
+        POMOWORKCHECK: { type: "string", regex: "^isWork\\s*==\\s*true$" },
+        POMONOW: { type: "string" },
+        POMOTIMESPAN: { type: "string", regex: "^TimeSpan\\(\\s*0\\s*,\\s*0\\s*,\\s*mins\\s*,\\s*0\\s*\\)$" },
+      },
+      blankExplanations: {
+        POMOTIMERMODE: "Check if the timer is in single-block mode.",
+        POMOT1: "The duration of a work block in minutes.",
+        POMOT2: "The duration of a break block in minutes.",
+        POMOWORKCHECK: "Check whether the current block is a work session.",
+        POMONOW: "The current time retrieved from the RTC.",
+        POMOTIMESPAN: "A TimeSpan representing the length of this block. Use the minutes variable in the middle parameter (hours, minutes, seconds, ms).",
+      },
+      blankDifficulties: {
+        POMOTIMERMODE: "easy",
+        POMOT1: "easy",
+        POMOT2: "easy",
+        POMOWORKCHECK: "easy",
+        POMONOW: "easy",
+        POMOTIMESPAN: "medium",
+      },
+      descAfterCode: `
+**Understanding the Logic:**
+- A **block** is either a work session or a break. This function sets how long that block lasts and when it ends.
+- The variable \`mins\` stores the duration of the current block.
+- The function checks the timer mode and whether this block is work or break to decide which duration to use.
+- The RTC gives the current time, which is combined with a **TimeSpan** to calculate the exact end time.
+- Use the mins variable to create the TimeSpan so the block lasts the right amount of time — you don’t need to type in a fixed number
+
+**Key Takeaways:**
+- Using RTC + TimeSpan ensures accurate timing even if the microcontroller is busy with other tasks.
+- The global variable \`endTime\` is updated so other functions can check remaining time.
+- This function is called at the start of each block to initialize its duration and end time.
+`
+    },
+  ],
+},
 {
-      id: 5,
-      title: "Step 5: Countdown Runtime + Finish Screen",
+  id: 5,
+  title: "Step 5: Checking if the Timer is Finished",
+  codes: [
+    {
+      topicTitle: "How the Timer Knows When Time Is Up",
+      descBeforeCode: `
+Once a block starts, we want to know exactly when it ends without pausing the microcontroller.  
+Instead of using delay(), we repeatedly check the current time against the block’s end time.  
+
+This approach allows:
+- Buttons to remain responsive
+- Screens to update smoothly
+- Accurate timing without drifting
+`,
+      code: `^^
+DateTime now = rtc.now();
+TimeSpan remaining = endTime - now;
+
+// Calculate how many seconds remain
+long secondsLeft = remaining.totalseconds();
+
+// Check if block has finished
+if (secondsLeft __BLANK[POMOTIMEUP]__) {
+  // Block has finished
+}
+^^`,
+      answerKey: {
+        POMOTIMEUP: { type: "string", regex: "^<=\\s*0$" },
+      },
+      blankExplanations: {
+        POMOTIMEUP:
+          "Condition to detect whether the block is finished (i.e., time has reached or passed endTime).",
+      },
+      blankDifficulties: {
+        POMOTIMEUP: "easy",
+      },
+      descAfterCode: `
+**Understanding the Logic:**
+- \`now\` gets the current time from the RTC.
+- \`remaining\` is the difference between the block’s end time and now.
+- \`secondsLeft\` converts that difference into seconds for easier comparison.
+- Check if secondsLeft has reached zero or below.
+- This allows the program to know when the block is done and move on to the next block without stopping the microcontroller.
+
+**Key Takeaways:**
+- Avoid using delay() so that the display and buttons remain responsive.
+- \`endTime\` is the reference point for when a block ends.
+- This check is typically called repeatedly inside the loop while the timer is active.
+`
+    },
+  ],
+},
+
+{
+      id: 6,
+      title: "Step 6: Countdown Runtime + Finish Screen",
       codes: [{
         topicTitle: "Pomodoro Countdown Function",
         descBeforeCode:`While the Pomodoro timer is running, the program must continuously manage several tasks at once: checking for user input, calculating how much time remains, determining when a work or break block has ended, and deciding what should happen next. To handle all of this logic in one place, we need to create a function to handle the countdown.
