@@ -3244,14 +3244,90 @@ blankDifficulties:{
   ]},
 {
       id: 5,
-      title: "Place holder",
+      title: "Step 5: Countdown Runtime + Finish Screen",
       codes: [{
-        topicTitle: "Place holder",
-        descBeforeCode:`Place holder`,
+        topicTitle: "Pomodoro Countdown Function",
+        descBeforeCode:`While the Pomodoro timer is running, the program must continuously manage several tasks at once: checking for user input, calculating how much time remains, determining when a work or break block has ended, and deciding what should happen next. To handle all of this logic in one place, we need to create a function to handle the countdown.
+        
+        This function acts as the “engine” of the Pomodoro timer. It will be called repeatedly while the timer screen is active, and it uses the functions we have created in the earlier lessons to:
+        1) Update the display
+        2) Track completed blocks
+        3) Switch between work and break periods
+        4) Return the user to the menu when necessary.`,
         code: `^^
-  // Place holder
+  void handlePomodoroCountdown() {
+  if (isPressed(PREV)) { // PREV stops and returns to menu
+    screenMode = 0;
+    delay(200);
+    return;
+  }
+
+  DateTime now = rtc.now();
+  TimeSpan remaining = endTime - now;
+  long secLeft = remaining.totalseconds();
+
+  // Checking if block is finished
+  if (secLeft <= 0) {
+    blocksDone = blocksDone + 1;
+
+    // Done with all blocks?
+    if (blocksDone >= totalBlocks) {
+      screenMode = 6;
+      delay(200);
+      return;
+    }
+
+    // Flip work <-> break (only if not timer mode)
+    if (repeatT1 != 0) {
+      if (isWork == true) isWork = false;
+      else                isWork = true;
+    }
+
+    startCurrentBlock();
+    delay(200);
+    return;
+  }
+
+  // Convert seconds to minutes/seconds 
+  int minsLeft = secLeft / 60;
+  int secsLeft = secLeft - (minsLeft * 60);
+
+  if (repeatT1 == 0) {
+    showTimerScreen("Pomodoro", "Timer running...", minsLeft, secsLeft, "PREV: Menu");
+  } else {
+    if (isWork == true) showTimerScreen("Pomodoro", "WORK (T1)...", minsLeft, secsLeft, "PREV: Menu");
+    else                showTimerScreen("Pomodoro", "BREAK (T2)...", minsLeft, secsLeft, "PREV: Menu");
+  }
+}
   ^^`,
-      }]
+      },
+    {
+      topicTitle:`Pomodoro Finish Screen Function`,
+      descBeforeCode:`When the Pomodoro timer completes all its work and break blocks, we want to display a finish screen to inform the user that their session is over. This function will utilize the time-up screen function we created earlier to show a message indicating that the Pomodoro session has finished. Refer back to the previous lesson for the structure of that function.`,
+      code: `^^
+  void handlePomodoroFinished() {
+  showTimeUpScreen("__BLANK[POMOFINISH1]__", "__BLANK[POMOFINISH2]__", "__BLANK[POMOFINISHHINT]__");
+
+  if (isPressed(SEL)) {
+    screenMode = 2; // back to T1 setup
+    delay(200);
+  }
+  if (isPressed(PREV)) {
+    screenMode = 0; // menu
+    delay(200);
+  }
+}
+}^^`,
+answerKey:{
+    POMOFINISH1: { type: "string"},
+    POMOFINISH2: { type: "string"},
+    POMOFINISHHINT: { type: "string"}
+
+  },
+blankExplanations:{
+
+}
+    }]
 }]
   }
 
