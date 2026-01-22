@@ -537,10 +537,16 @@ function readNotesVisible(): boolean {
   return true; // default: show notes
 }
 
-const [notesVisible, setNotesVisible] = React.useState<boolean>(() => readNotesVisible());
+const [notesVisible, setNotesVisible] = React.useState<boolean>(true);
+const [notesLoaded, setNotesLoaded] = React.useState(false);
 
 React.useEffect(() => {
-  const update = () => setNotesVisible(readNotesVisible());
+  const update = () => {
+    const raw = storageGetString(NOTES_VISIBLE_KEY);
+    const next = raw === "0" ? false : true;
+    setNotesVisible(next);
+    setNotesLoaded(true);
+  };
 
   const onStorage = (e: StorageEvent) => {
     if (e.key === NOTES_VISIBLE_KEY) update();
@@ -655,6 +661,7 @@ React.useEffect(() => {
 
   const [lesson, setLesson] = React.useState<number>(firstNormalLesson);
   const [stepIndex, setStepIndex] = React.useState<number>(0);
+
 
   // When inline-tracks toggle changes, reset navigation inside the page
   React.useEffect(() => {
@@ -1065,34 +1072,66 @@ React.useEffect(() => {
   const [checkAttempts, setCheckAttempts] = React.useState<number>(0);
   const [blankAttemptsByName, setBlankAttemptsByName] = React.useState<Record<string, number>>({});
 
-  const checkInlineBlank = React.useCallback(
-    (name: string, source?: any) => {
-      const values = inlineLocalValuesRef.current || {};
-      const userValue = String(values[name] ?? "").trim();
+  function getBindKeyFromSpec(spec: any): string | null {
+  if (!spec || typeof spec !== "object") return null;
 
-      const answerKey = getInlineAnswerKey(source ?? step);
+  // typed specs usually use bindAs
+  if (typeof spec.bindAs === "string" && spec.bindAs.trim()) return spec.bindAs.trim();
 
-      if (!answerKey || !Object.prototype.hasOwnProperty.call(answerKey, name)) {
-        setBlankStatus((prev) => ({ ...(prev || {}), [name]: false }));
-        return;
-      }
+  // arrays of specs
+  if (Array.isArray(spec)) {
+    for (const s of spec) {
+      const k = getBindKeyFromSpec(s);
+      if (k) return k;
+    }
+  }
 
-      const spec = (answerKey as any)[name] as AnswerSpec;
-      const ok = evalAnswerSpec(spec, userValue, values);
+  return null;
+}
 
-      setBlankStatus((prev) => ({ ...(prev || {}), [name]: ok }));
 
-      if (!ok) {
-        setBlankAttemptsByName((prev) => ({
-          ...(prev || {}),
-          [name]: (prev?.[name] ?? 0) + 1,
-        }));
-      }
+const checkInlineBlank = React.useCallback(
+  (name: string, source?: any) => {
+    const values = inlineLocalValuesRef.current || {};
+    const userValue = String(values[name] ?? "").trim();
 
-      setCheckAttempts((n) => (Number.isFinite(n) ? n + 1 : 1));
-    },
-    [step]
-  );
+    const answerKey = getInlineAnswerKey(source ?? step);
+
+    if (!answerKey || !Object.prototype.hasOwnProperty.call(answerKey, name)) {
+      setBlankStatus((prev) => ({ ...(prev || {}), [name]: false }));
+      return;
+    }
+
+    const spec = (answerKey as any)[name] as AnswerSpec;
+
+    // ✅ SINGLE SOURCE OF TRUTH:
+    // seed ctx from GLOBAL blanks + current inline edits
+    const ctx: Record<string, any> = {
+      ...(globalBlanks || {}),
+      ...(values || {}),
+    };
+
+    const ok = evalAnswerSpec(spec, userValue, ctx);
+
+    setBlankStatus((prev) => ({ ...(prev || {}), [name]: ok }));
+
+    // ✅ If this spec binds, store the binding in GLOBAL blanks
+    const bindKey = getBindKeyFromSpec(spec);
+    if (ok && bindKey) {
+      setGlobalBlanks((prev: any) => ({ ...(prev || {}), [bindKey]: userValue }));
+    }
+
+    if (!ok) {
+      setBlankAttemptsByName((prev) => ({
+        ...(prev || {}),
+        [name]: (prev?.[name] ?? 0) + 1,
+      }));
+    }
+
+    setCheckAttempts((n) => (Number.isFinite(n) ? n + 1 : 1));
+  },
+  [step, globalBlanks, setGlobalBlanks]
+);
 
   const openInlineExplanation = React.useCallback(
     (name: string, source?: any) => {
@@ -1637,7 +1676,7 @@ const inlineRafRef = React.useRef<number | null>(null);
       {/* Header spans the whole left group */}
 {/* Body row */}
 <div className="flex-1 min-h-0">
-{notesVisible ? (
+{notesVisible && notesLoaded? (
             <SplitView
               left={
                 <div className="h-full min-h-0 min-w-0 overflow-y-auto">

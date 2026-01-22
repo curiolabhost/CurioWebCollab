@@ -479,6 +479,7 @@ export default function GuidedCodeBlock({
 }: Props) {
   const AI_COOLDOWN_MS = 8000;
   const MAX_HINT_LEVEL = 3;
+  
 
   const code: string = block?.code || step?.code || "";
   const blockExplanations = block?.blankExplanations || step?.blankExplanations || null;
@@ -863,49 +864,79 @@ export default function GuidedCodeBlock({
   };
 
   // counts attempts ONLY when wrong (per blank)
-  const checkBlanks = () => {
-    if (!answerKey) return;
+const checkBlanks = () => {
+  if (!answerKey) return;
 
-    // ensure we don't validate stale keystrokes that haven't flushed yet
-    flushGlobalNow();
+  flushGlobalNow();
 
-    const values = draftRef.current || {};
-    const nextStatus: Record<string, boolean> = {};
-    const nextAttemptsByName = { ...(blankAttemptsByName || {}) };
+  const values = draftRef.current || {};
+  const nextStatus: Record<string, boolean> = {};
+  const nextAttemptsByName = { ...(blankAttemptsByName || {}) };
 
-    for (const [name, spec] of Object.entries(answerKey)) {
-      const v = String(values[name] ?? "");
-      const ok = evalAnswerSpec(spec, v, values);
-      nextStatus[name] = ok;
-
-      if (!ok) {
-        nextAttemptsByName[name] = (nextAttemptsByName[name] || 0) + 1;
-      }
-
-      logBlankAnalytics?.({
-        type: "check_blank",
-        blankName: name,
-        ok,
-        attempt: nextAttemptsByName[name] ?? 0,
-        difficulty: difficulties?.[name],
-        tag: analyticsTag,
-      });
-    }
-
-    setBlankStatus?.((prev) => ({
-      ...(prev || {}),
-      ...nextStatus,
-    }));
-
-    setBlankAttemptsByName?.(nextAttemptsByName);
-    setCheckAttempts?.((n) => (n || 0) + 1);
-
-    const anyWrong = Object.values(nextStatus).some((x) => x === false);
-    if (!anyWrong) {
-      setActiveBlankHint?.(null);
-      setAiHelpByBlank?.({});
-    }
+  // ONE shared context for the whole check
+    const ctx: Record<string, any> = {
+    ...(mergedBlanks || {}),        // persisted GLOBAL blanks (includes prior bindings)
+    ...(draftRef.current || {}),    // most recent typed values in this block
   };
+
+
+  // stable order helps “vice versa” feel consistent
+  const entries = Object.entries(answerKey).sort(([a], [b]) => {
+    const na = Number(a), nb = Number(b);
+    if (Number.isFinite(na) && Number.isFinite(nb)) return na - nb;
+    return String(a).localeCompare(String(b));
+  });
+
+for (const [name, spec] of entries) {
+  const v = String(values[name] ?? "");
+  const ok = evalAnswerSpec(spec, v, ctx);
+  nextStatus[name] = ok;
+
+  if (!ok) {
+    nextAttemptsByName[name] = (nextAttemptsByName[name] || 0) + 1;
+  }
+
+  logBlankAnalytics?.({
+    type: "check_blank",
+    blankName: name,
+    ok,
+    attempt: nextAttemptsByName[name] ?? 0,
+    difficulty: difficulties?.[name],
+    tag: analyticsTag,
+  });
+}
+
+  // persist any bindings added during evaluation into GLOBAL blanks
+  if (setGlobalBlanks) {
+    const before = mergedBlanks || {};
+    const patch: Record<string, any> = {};
+
+    for (const [k, v] of Object.entries(ctx)) {
+      if (before[k] !== v) patch[k] = v;
+    }
+
+    if (Object.keys(patch).length) {
+      setGlobalBlanks((prev) => ({ ...(prev || {}), ...patch }));
+    }
+  }
+
+
+
+  setBlankStatus?.((prev) => ({
+    ...(prev || {}),
+    ...nextStatus,
+  }));
+
+  setBlankAttemptsByName?.(nextAttemptsByName);
+  setCheckAttempts?.((n) => (n || 0) + 1);
+
+  const anyWrong = Object.values(nextStatus).some((x) => x === false);
+  if (!anyWrong) {
+    setActiveBlankHint?.(null);
+    setAiHelpByBlank?.({});
+  }
+};
+
 
   return (
     <>
