@@ -8,6 +8,9 @@ import ESBProjectMindMapLessonBeg from "./ProjectMindMapLessonBeg";
 import { TouchpadIcon } from "lucide-react";
 import TotalCountArrayInteractive from "./counterVariableBeg";
 import InputPullupCircuitInteractive from "./InputPullupCircuitInteractive";
+import { buildAnswerKey, K } from "@/src/lesson-core/blankKeyBuilder";
+import { generateKeyFromReference } from "@/src/lesson-core/blankKeyGenerator";
+
 
 
 export const LESSON_STEPS_BEGINNER: Record<number, { phrase: string; advanced?: boolean; steps: any[] }> = {
@@ -133,10 +136,10 @@ Loads the driver for the SSD1306 OLED controller. It knows how to send pixel-lev
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 ^^
-#define WIDTH  __BLANK[WIDTH]__.     // width of display in pixels
-#define HEIGHT __BLANK[HEIGHT]__.    // height of display in pixels
+#define WIDTH  __BLANK[1]__     // width of display in pixels
+#define HEIGHT __BLANK[2]__   // height of display in pixels
 #define RESET  -1
-Adafruit_SSD1306 display (WIDTH, __BLANK[HEIGHT2]__ , &Wire, RESET);^^
+Adafruit_SSD1306 display (WIDTH, __BLANK[3]__ , &Wire, RESET);^^
 
 void setup(){
 }
@@ -144,11 +147,12 @@ void setup(){
 void loop(){
 }`,
 
-          answerKey: {
-            WIDTH: ["128"],
-            HEIGHT: ["64", "32"],
-            HEIGHT2: ["HEIGHT"],
-          },
+            answerKey: buildAnswerKey({
+              2: K.num({ oneOf: [128] }),
+              1: K.num({ oneOf: [32,64] }),
+              3: K.str({ oneOf: ["HEIGHT"] }),
+            }),
+                      
 
           blankExplanations: {
             WIDTH:
@@ -184,14 +188,14 @@ void loop(){
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 
-#define WIDTH  __BLANK[WIDTH]__
-#define HEIGHT __BLANK[HEIGHT]__
+#define WIDTH  __BLANK[1]__
+#define HEIGHT __BLANK[2]__
 #define RESET  -1
-Adafruit_SSD1306 display (WIDTH, __BLANK[HEIGHT2]__ , &Wire, RESET);
+Adafruit_SSD1306 display (WIDTH, __BLANK[3]__ , &Wire, RESET);
 ^^
-#define PREV __BLANK[PREVN]__
-#define NEXT __BLANK[NEXTN]__
-#define __BLANK[SEL]__  __BLANK[SELN]__^^
+#define PREV __BLANK[4]__
+#define NEXT __BLANK[5]__
+#define __BLANK[6]__  __BLANK[7]__^^
  
 void setup(){
 }
@@ -199,12 +203,12 @@ void setup(){
 void loop(){
 }`,
 
-          answerKey: {
-            PREVN: { type: "range", min: 0, max: 13 }, // PREV button pin
-            NEXTN: { type: "range", min: 0, max: 13 }, // NEXT button pin
-            SEL: { type: "identifier" }, // SELECT define name
-            SELN: { type: "range", min: 0, max: 13 }, // SELECT button pin
-          },
+          answerKey: buildAnswerKey({
+            4: K.num({ min: 1, max: 13 }),
+            5: K.num({ min: 1, max: 13 }),
+            6: K.id().bind("SELECT"),
+            7: K.num({ min: 1, max: 13 }),
+          }),
 
           blankExplanations: {
             PREVN:
@@ -250,42 +254,35 @@ For example, the first blank for PREV can be 3 if you connected it to digital pi
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 
-#define WIDTH  __BLANK[WIDTH]__
-#define HEIGHT __BLANK[HEIGHT]__
+#define WIDTH  __BLANK[1]__
+#define HEIGHT __BLANK[2]__
 #define RESET  -1
-Adafruit_SSD1306 display (WIDTH, __BLANK[HEIGHT2]__ , &Wire, RESET);
+Adafruit_SSD1306 display (WIDTH, __BLANK[3]__ , &Wire, RESET);
 
-#define PREV __BLANK[PREVN]__
-#define NEXT __BLANK[NEXTN]__
-#define __BLANK[SEL]__  __BLANK[SELN]__   
+#define PREV __BLANK[4]__
+#define NEXT __BLANK[5]__
+#define __BLANK[6]__  __BLANK[7]__   
 ^^
 void setup() {
   Wire.begin();
-  display.__BLANK[BEGIN]__(__BLANK[BEGINA]__, __BLANK[BEGINB]__);      // Initialize OLED
+  display.__BLANK[8]__(__BLANK[9]__, __BLANK[10]__);      // Initialize OLED
 
 // set the modes for the buttons you are using 
   pinMode(PREV, INPUT_PULLUP);  // PREV button is an input, not output
-  pinMode(__BLANK[NEXT]__, __BLANK[INPUT1]__);  // NEXT button
-  __BLANK[PINMODE]__(__BLANK[SELECT]__, __BLANK[INPUT2]__);^^
-}`,
-
-          answerKey: {
-            BEGIN: ["begin"],
-            BEGINA: ["SSD1306_SWITCHCAPVCC"],
-            BEGINB: ["0x3C"],
-            CLEAR: ["clearDisplay()"],
-            SETTEXTSIZE: ["setTextSize"],
-            SETTEXTSIZE2: { type: "range", min: 1, max: 5 },
-            SETTEXTCOLOR: ["setTextColor"],
-            SETTEXTCOLOR2: ["SSD1306_WHITE", "SSD1306_BLACK", "SSD1306_INVERSE"],
-            SETCURSOR: ["setCursor"],
-            DISPLAY: ["display"],
-            NEXT: ["NEXT"],
-            INPUT1: ["INPUT_PULLUP"],
-            PINMODE: ["pinMode"],
-            SELECT: { type: "sameAs", target: "SEL" },
-            INPUT2: ["INPUT_PULLUP"],
-          },
+  pinMode(__BLANK[11]__, __BLANK[12]__);  // NEXT button
+  __BLANK[13]__(__BLANK[14]__, __BLANK[15]__);^^
+}
+`,
+answerKey: buildAnswerKey({
+  8: K.str({ oneOf: ["begin"] }),
+  9: K.str({ oneOf: ["SSD1306_SWITCHCAPVCC"]}), 
+  10: K.str({ oneOf: ["0x3C"] }),
+  11: K.str({ oneOf: ["NEXT"] }),
+  12: K.str({ oneOf: ["INPUT_PULLUP"] }),
+  13: K.str({ oneOf: ["pinMode"] }),
+  14: K.same("SELECT"),
+  15: K.str({ oneOf: ["INPUT_PULLUP"] }),
+}),
 
           blankExplanations: {
             BEGIN:
