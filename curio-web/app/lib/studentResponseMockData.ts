@@ -5,6 +5,7 @@ export const mockStudentResponses: Record<number, StudentResponseData> = {
   1: {
     studentId: 1,
     projectName: "Electric Status Board",
+    difficulty: "beginner",
     responses: [
       // Lesson 2, Step 1 - Understanding Arduino Basics
       {
@@ -114,6 +115,7 @@ export const mockStudentResponses: Record<number, StudentResponseData> = {
   2: {
     studentId: 2,
     projectName: "Electric Status Board",
+    difficulty: "intermediate",
     responses: [
       // Lesson 2, Step 1
       {
@@ -166,6 +168,7 @@ export const mockStudentResponses: Record<number, StudentResponseData> = {
   3: {
     studentId: 3,
     projectName: "Electric Status Board",
+    difficulty: "beginner",
     responses: [
       // Lesson 2, Step 1
       {
@@ -233,6 +236,40 @@ export const mockStudentResponses: Record<number, StudentResponseData> = {
             HEIGHT: "64",
             HEIGHT2: "64"
           }
+        }
+      },
+    ]
+  },
+  4: {
+    studentId: 4,
+    projectName: "Electric Status Board",
+    difficulty: "advanced",
+    responses: [
+      // Advanced level responses
+      {
+        id: "resp_4_2_1",
+        lessonId: 2,
+        stepId: 1,
+        codeBlockIndex: 0,
+        responseType: "code",
+        timestamp: "2023-12-20T10:00:00Z",
+        data: {
+          blanks: {
+            LIB_GFX: "<Adafruit_GFX.h>",
+            LIB_SSD: "<Adafruit_SSD1306.h>",
+            LIB_CLOCK: "<RTClib.h>"
+          }
+        }
+      },
+      {
+        id: "resp_4_2_1_text",
+        lessonId: 2,
+        stepId: 1,
+        codeBlockIndex: 0,
+        responseType: "text",
+        timestamp: "2023-12-20T10:05:00Z",
+        data: {
+          text: "The advanced track gives more freedom to organize code. I'm planning to structure mine with separate state management functions."
         }
       },
     ]

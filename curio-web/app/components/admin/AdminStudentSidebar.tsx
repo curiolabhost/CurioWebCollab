@@ -13,7 +13,8 @@ import {
   ChevronRight,
   Clock,
   AlertCircle,
-  CheckCircle2
+  CheckCircle2,
+  GraduationCap
 } from "lucide-react";
 import type { StudentResponse } from "@/app/contexts/StudentResponseContext";
 
@@ -157,13 +158,36 @@ export function AdminStudentSidebar() {
   const { studentData, getResponsesForCurrentLocation, currentLessonId, currentStepId } = useStudentResponses();
   const responses = getResponsesForCurrentLocation();
 
-  console.log("=== SIDEBAR RENDER ===");
-  console.log("Student Data:", studentData);
-  console.log("Has Data?", studentData !== null);
-
   if (!studentData) {
     return null;
   }
+
+  // Get difficulty from student data (if available)
+  const difficulty = (studentData as any).difficulty as "beginner" | "intermediate" | "advanced" | undefined;
+
+  // Difficulty badge config
+  const difficultyConfig = {
+    beginner: {
+      bg: "bg-green-100",
+      text: "text-green-800",
+      border: "border-green-200",
+      label: "Beginner",
+    },
+    intermediate: {
+      bg: "bg-blue-100",
+      text: "text-blue-800",
+      border: "border-blue-200",
+      label: "Intermediate",
+    },
+    advanced: {
+      bg: "bg-purple-100",
+      text: "text-purple-800",
+      border: "border-purple-200",
+      label: "Advanced",
+    },
+  };
+
+  const difficultyStyle = difficulty ? difficultyConfig[difficulty] : null;
 
   return (
     <div className="h-full flex flex-col bg-gray-50 border-l border-gray-200">
@@ -178,7 +202,8 @@ export function AdminStudentSidebar() {
             <p className="text-xs text-gray-500">ID: {studentData.studentId}</p>
           </div>
         </div>
-        <div className="bg-blue-50 rounded-lg p-2 border border-blue-200">
+        
+        <div className="bg-blue-50 rounded-lg p-2 border border-blue-200 mb-2">
           <p className="text-xs font-medium text-blue-900">
             {studentData.projectName}
           </p>
@@ -188,6 +213,16 @@ export function AdminStudentSidebar() {
             </p>
           )}
         </div>
+
+        {/* Difficulty indicator */}
+        {difficultyStyle && (
+          <div className={`flex items-center gap-1.5 px-2 py-1.5 rounded-lg border ${difficultyStyle.bg} ${difficultyStyle.border}`}>
+            <GraduationCap className={`w-3.5 h-3.5 ${difficultyStyle.text}`} />
+            <span className={`text-xs font-semibold ${difficultyStyle.text}`}>
+              {difficultyStyle.label} Level
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Responses */}
