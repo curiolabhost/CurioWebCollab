@@ -29,6 +29,7 @@ export type StudentResponse = {
 export type StudentResponseData = {
   studentId: number;
   projectName: string;
+  difficulty?: "beginner" | "intermediate" | "advanced"; 
   responses: StudentResponse[];
 };
 

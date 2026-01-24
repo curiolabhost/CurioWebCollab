@@ -3,7 +3,7 @@
 
 import React, { useEffect } from "react";
 import { useStudentResponses } from "@/app/contexts/StudentResponseContext";
-import { AdminStudentSidebar } from "./AdminStudentSidebar";
+import { AdminStudentSidebar } from "@/app/components/admin/AdminStudentSidebar";
 
 type ProjectViewWrapperProps = {
   children: React.ReactNode;
