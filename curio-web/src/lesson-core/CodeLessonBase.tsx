@@ -13,6 +13,19 @@ import styles from "./CodeLessonBase.module.css";
 import RightNote from "./RightNote";
 import {LessonSidebar} from "./LessonSidebar";
 
+/**
+ * Hook to notify admin sidebar of current location.
+ * Safe in both student and admin views.
+ */
+function useAdminTracking(lessonNumber: number, stepIndex: number, codeBlockIndex?: number) {
+  React.useEffect(() => {
+    const adminSetLocation = (window as any).__adminSetLessonLocation;
+    if (typeof adminSetLocation === "function") {
+      adminSetLocation(lessonNumber, stepIndex, codeBlockIndex ?? 0);
+    }
+  }, [lessonNumber, stepIndex, codeBlockIndex]);
+}
+
 /* ============================================================
    Storage helpers
 ============================================================ */
@@ -662,6 +675,10 @@ React.useEffect(() => {
   const [lesson, setLesson] = React.useState<number>(firstNormalLesson);
   const [stepIndex, setStepIndex] = React.useState<number>(0);
 
+<<<<<<< HEAD
+=======
+  useAdminTracking(lesson, stepIndex + 1, 0); // for admin sidebar tracking (uses base 1 indexing for steps)
+>>>>>>> a5431617f571039c399c941580dff5e6c46dc3f7
 
   // When inline-tracks toggle changes, reset navigation inside the page
   React.useEffect(() => {
