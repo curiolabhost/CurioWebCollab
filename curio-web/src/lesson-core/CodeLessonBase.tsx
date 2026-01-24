@@ -550,7 +550,11 @@ function readNotesVisible(): boolean {
   return true; // default: show notes
 }
 
+// check if were in admin view
+const isAdminView = typeof window !== 'undefined' && window.location.pathname.includes('/admin/');
+
 const [notesVisible, setNotesVisible] = React.useState<boolean>(true);
+const showNotes = notesVisible && !isAdminView; // hide notes in admin view
 const [notesLoaded, setNotesLoaded] = React.useState(false);
 
 React.useEffect(() => {
@@ -1690,7 +1694,7 @@ const inlineRafRef = React.useRef<number | null>(null);
       {/* Header spans the whole left group */}
 {/* Body row */}
 <div className="flex-1 min-h-0">
-{notesVisible && notesLoaded? (
+{showNotes && notesLoaded? ( // use showNotes instead of notesVisible to hide notes in admin view
             <SplitView
               left={
                 <div className="h-full min-h-0 min-w-0 overflow-y-auto">
