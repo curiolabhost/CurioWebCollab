@@ -114,7 +114,7 @@ function AdminProjectViewContent({
   const { setStudentData } = useStudentResponses();
   
   useEffect(() => {
-    console.log("Setting student data:", studentResponses);
+    //console.log("Setting student data:", studentResponses);
     if (studentResponses) {
       setStudentData(studentResponses);
     }
@@ -199,10 +199,6 @@ export default function AdminProjectViewPage({
   const student = getStudentById(studentId);
   const studentResponses = getStudentResponseData(studentId);
 
-  console.log("=== ADMIN VIEW DEBUG ===");
-  console.log("Student ID:", studentId);
-  console.log("Student:", student);
-  console.log("Student Responses:", studentResponses);
 
   if (!student) {
     return (

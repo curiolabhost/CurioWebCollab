@@ -557,6 +557,62 @@ const [notesVisible, setNotesVisible] = React.useState<boolean>(true);
 const showNotes = notesVisible && !isAdminView; // hide notes in admin view
 const [notesLoaded, setNotesLoaded] = React.useState(false);
 
+// Get student progress data in admin view
+const [studentCompletedSteps, setStudentCompletedSteps] = React.useState<Set<string>>(new Set());
+
+React.useEffect(() => {
+  //console.log("🔴 Student progress useEffect running");
+  //console.log("   isAdminView:", isAdminView);
+  
+  if (!isAdminView) {
+    //console.log("   ⏭️  Not admin view, skipping");
+    return;
+  }
+  
+  if (typeof window === 'undefined') {
+    //console.log("   ⏭️  Window undefined, skipping");
+    return;
+  }
+  
+  // Add retry mechanism for timing issues
+  let attempts = 0;
+  const maxAttempts = 20; // Try for 2 seconds (20 * 100ms)
+  
+  const checkForProgress = () => {
+    attempts++;
+    //console.log(`   🔍 Attempt ${attempts}/${maxAttempts} to get student progress`);
+    
+    const getStudentProgress = (window as any).__getStudentProgress;
+    //console.log("   Function available?", typeof getStudentProgress === 'function');
+
+    if (typeof getStudentProgress === 'function') {
+      const progress = getStudentProgress();
+      //console.log("   ✅ Got progress data:", progress);
+      //console.log("   Is array?", Array.isArray(progress));
+      //console.log("   Length:", progress?.length);
+      
+      if (progress && Array.isArray(progress)) {
+        //console.log("   ✅ Setting studentCompletedSteps with", progress.length, "steps");
+        setStudentCompletedSteps(new Set(progress));
+      } else {
+        //console.log("   ⚠️  Progress data invalid (not array or empty)");
+      }
+    } else {
+      // Function not available yet, retry
+      if (attempts < maxAttempts) {
+        //console.log("   ⏳ Function not available yet, retrying in 100ms...");
+        setTimeout(checkForProgress, 100);
+      } else {
+        //console.error("   ❌ Could not get student progress after", maxAttempts, "attempts");
+        //console.error("   Check that ProjectViewWrapper is setting window.__getStudentProgress");
+      }
+    }
+  };
+  
+  // Start checking
+  checkForProgress();
+}, [isAdminView]);
+
 React.useEffect(() => {
   const update = () => {
     const raw = storageGetString(NOTES_VISIBLE_KEY);
@@ -708,6 +764,8 @@ React.useEffect(() => {
   // Done set
   const [doneSet, setDoneSet] = React.useState<Set<string>>(() => new Set());
   const [doneSetLoaded, setDoneSetLoaded] = React.useState(false);
+  // Use student progress in admin view, regular progress in student view
+  const effectiveDoneSet = isAdminView ? studentCompletedSteps : doneSet;
 
 
   const doneNormalCount = React.useMemo(() => {
@@ -721,12 +779,12 @@ React.useEffect(() => {
       const arr = getLessonStepsArray(ln);
       arr.forEach((_: any, idx: number) => {
         if (!isCountedStep(getLessonEntry, getLessonStepsArray, ln, idx)) return;
-        if (doneSet.has(makeStepKey(ln, idx))) n++;
+        if (effectiveDoneSet.has(makeStepKey(ln, idx))) n++;
       });
     }
 
     return n;
-  }, [doneSet, lessonsList, getLessonEntry, getLessonStepsArray]);
+  }, [effectiveDoneSet, lessonsList, getLessonEntry, getLessonStepsArray]);
 
   const advancedUnlocked =
     totalNormalStepsAllLessons > 0 && doneNormalCount >= totalNormalStepsAllLessons;
@@ -847,11 +905,11 @@ React.useEffect(() => {
       const arr = getLessonStepsArray(ln);
       for (let i = 0; i < arr.length; i++) {
         if (!isCountedStep(getLessonEntry, getLessonStepsArray, ln, i)) continue;
-        if (doneSet.has(makeStepKey(ln, i))) n++;
+        if (effectiveDoneSet.has(makeStepKey(ln, i))) n++;
       }
     }
     return n;
-  }, [doneSet, lessonsList, getLessonEntry, getLessonStepsArray, advancedUnlocked]);
+  }, [effectiveDoneSet, lessonsList, getLessonEntry, getLessonStepsArray, advancedUnlocked]);
 
   const doneCountForProgress = advancedUnlocked ? doneCountAllCounted : doneNormalCount;
 
@@ -895,11 +953,11 @@ React.useEffect(() => {
     let n = 0;
     for (let i = 0; i < steps.length; i++) {
       if (!isCountedStep(getLessonEntry, getLessonStepsArray, lesson, i)) continue;
-      if (doneSet.has(makeStepKey(lesson, i))) n++;
+      if (effectiveDoneSet.has(makeStepKey(lesson, i))) n++;
     }
     return n;
   }, [
-    doneSet,
+    effectiveDoneSet,
     steps,
     lesson,
     advancedUnlocked,
@@ -984,9 +1042,10 @@ React.useEffect(() => {
 
   // Mark done toggle for current step
   const currentStepKey = makeStepKey(lesson, safeStepIndex);
-  const isDone = doneSet.has(currentStepKey);
+  const isDone = effectiveDoneSet.has(currentStepKey);
 
   const markDone = () => {
+    if (isAdminView) return; // prevent marking done in admin view
     setDoneSet((prev) => {
       const next = new Set(prev);
       next.add(currentStepKey);
@@ -995,6 +1054,7 @@ React.useEffect(() => {
   };
 
   const unmarkDone = () => {
+    if (isAdminView) return; // prevent unmarking done in admin view
     setDoneSet((prev) => {
       const next = new Set(prev);
       next.delete(currentStepKey);
@@ -1471,7 +1531,7 @@ const inlineRafRef = React.useRef<number | null>(null);
   ) {
     const isActive = lessonNum === lesson && idx === safeStepIndex;
     const stepKey = makeStepKey(lessonNum, idx);
-    const isStepDone = doneSet.has(stepKey);
+    const isStepDone = effectiveDoneSet.has(stepKey);
 
     const isOptional = isStepOptional(st);
 
@@ -1540,25 +1600,40 @@ const inlineRafRef = React.useRef<number | null>(null);
               </div>
             </div>
 
-            <div className="flex items-end">
-              <button
-                onClick={isDone ? unmarkDone : markDone}
-                type="button"
-                className={`px-5 py-2 rounded-lg border text-sm transition-colors ${
-                  isDone
-                    ? "border-green-300 bg-green-50 text-green-700 hover:bg-green-100"
-                    : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
-                }`}
-              >
-                {isDone ? (
+            {/* Only show button to students */}
+            {!isAdminView && (  
+              <div className="flex items-end">
+                <button
+                  onClick={isDone ? unmarkDone : markDone}
+                  type="button"
+                  className={`px-5 py-2 rounded-lg border text-sm transition-colors ${
+                    isDone
+                      ? "border-green-300 bg-green-50 text-green-700 hover:bg-green-100"
+                      : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                  }`}
+                >
+                  {isDone ? (
+                    <span className="inline-flex items-center gap-2">
+                      <Check className="w-4 h-4" /> Done
+                    </span>
+                  ) : (
+                    "Mark Done"
+                  )}
+                </button>
+              </div>
+            )}
+
+            {/* Show read-only indicator in admin view */}
+            {isAdminView && isDone && (
+              <div className="flex items-end">
+                <div className="px-5 py-2 rounded-lg border border-green-300 bg-green-50 text-green-700 text-sm">
                   <span className="inline-flex items-center gap-2">
-                    <Check className="w-4 h-4" /> Done
+                    <Check className="w-4 h-4" /> Student Completed
                   </span>
-                ) : (
-                  "Mark Done"
-                )}
-              </button>
-            </div>
+                </div>
+              </div>
+            )}
+
           </div>
 
         </div>
