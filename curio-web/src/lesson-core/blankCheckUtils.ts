@@ -354,14 +354,11 @@ function matchPattern(parts: PatternPart[], tokens: Token[], allValues: Record<s
     if (p.p === "oneOf" && !p.values.includes(t.text)) return false;
     if (p.p === "sameAs") {
       const key = String(p.target ?? "").trim();
-      const existing = String(allValues?.[key] ?? "").trim();
+      const existing = normalizeWs(String(allValues?.[key] ?? ""));
+      if (!existing) return true; // nothing to compare yet
+      return normalizeWs(t.text) === existing;
+    }
 
-      if (!existing) {
-        allValues[key] = t.text;     // define on first occurrence
-      } else if (existing !== t.text) {
-        return false;                // enforce match
-      }
-}
 
 
     if (p.p === "any") {
@@ -395,19 +392,15 @@ function evalBlank(rule: BlankRule, value: string): boolean {
 export function evalAnswerSpec(spec: AnswerSpec, value: string, allValues: Record<string, any>): boolean {
   const raw = String(value ?? "").trim();
 
-  function defineOrEnforceBind(allValues: Record<string, any>, bindAs: any, incoming: string) {
+function defineOrEnforceBind(allValues: Record<string, any>, bindAs: any, incoming: string) {
   const key = String(bindAs ?? "").trim();
   if (!key) return true;
 
-  const existing = normalizeWs(String(allValues?.[key] ?? ""));
   const v = normalizeWs(incoming);
-
-  if (!existing) {
-    allValues[key] = v;     // define once
-    return true;
-  }
-  return existing === v;    // enforce
+  allValues[key] = v;
+  return true;
 }
+
 
 
 
@@ -443,32 +436,19 @@ export function evalAnswerSpec(spec: AnswerSpec, value: string, allValues: Recor
         if (!allowedKinds) return false;
         const joined = tokens.map((t: Token) => t.text).join("");
         if (!/^[A-Za-z_]\w*(?:(?:\.)|(?:::))[A-Za-z_]\w*(?:(?:\.)|(?:::)[A-Za-z_]\w*)*$/.test(joined)) return false;
-        const key = String(s.bindAs ?? "").trim();
-        if (key) {
-          const v = tokens[0].text;
-          const existing = String(allValues?.[key] ?? "").trim();
 
-          if (!existing) {
-            allValues[key] = v;     // define
-          } else if (existing !== v) {
-            return false;           // enforce match
-          }
-        }
-        return true;
+        const key = String(s.bindAs ?? "").trim();
+if (key) {
+  allValues[key] = tokens[0].text; // ✅ LIVE overwrite
+}
+return true;
       }
 
 if (tokens.length !== 1 || tokens[0].kind !== "id") return false;
 
 const key = String(s.bindAs ?? "").trim();
 if (key) {
-  const incoming = tokens[0].text;
-  const existing = String(allValues?.[key] ?? "").trim();
-
-  if (!existing) {
-    allValues[key] = incoming;      // define once
-    return true;
-  }
-  return existing === incoming;     // enforce, no overwrite
+  allValues[key] = tokens[0].text; //overwrite to current value
 }
 
 return true;
@@ -539,7 +519,7 @@ case "sameAs": {
     if (v === existing) return true;
   }
 
-  // ✅ If nothing to compare against yet, do NOT mark wrong
+  // If nothing to compare against yet, do NOT mark wrong
   if (!sawAnyExisting) return true;
 
   return false;
