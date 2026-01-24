@@ -3,7 +3,8 @@
 
 import React, { useEffect } from "react";
 import { useStudentResponses } from "@/app/contexts/StudentResponseContext";
-import { AdminStudentSidebar } from "@/app/components/admin/AdminStudentSidebar";
+import { AdminStudentSidebar } from "./AdminStudentSidebar";
+import SplitView from "@/src/lesson-core/SplitView";
 
 type ProjectViewWrapperProps = {
   children: React.ReactNode;
@@ -45,18 +46,26 @@ export function ProjectViewWrapper({
     return <>{children}</>;
   }
 
-  // Admin view - show content with sidebar
+  // Admin view - resizable sidebar using splitView
   return (
-    <div className="flex h-screen overflow-hidden">
-      {/* Main content area */}
-      <div className="flex-1 overflow-y-auto">
-        {children}
-      </div>
-      
-      {/* Admin sidebar - fixed width */}
-      <div className="w-96 flex-shrink-0">
-        <AdminStudentSidebar />
-      </div>
-    </div>
+    <SplitView
+      left={
+        <div className="h-full min-h-0 min-w-0 overflow-hidden">
+          {children}
+        </div>
+      }
+      right={
+        <div className="h-full min-h-0 min-w-0 overflow-hidden">
+          <AdminStudentSidebar />
+        </div>
+      }
+      initialLeftRatio={0.65}        // Start with 65% for lesson, 35% for sidebar
+      minLeftRatio={0.4}              // Allow shrinking to 40% lesson width
+      maxLeftRatio={0.85}             // Allow expanding to 85% lesson width
+      minLeftPx={400}                 // Minimum 400px for lesson content
+      minRightPx={300}                // Minimum 300px for sidebar
+      handleWidth={12}                // Drag handle width
+      persistKey="admin-sidebar-split" // Save position in localStorage
+    />
   );
 }
