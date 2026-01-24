@@ -2047,7 +2047,7 @@ customComponent: InputPullupCircuitInteractive,
 ^^int index = 0;^^
 
 ^^void setup() {^^
-^^  __BLANK[BUTTON9]__  __BLANK[BUTTON10]__ = __BLANK[BUTTON11]__;^^   // define button pin number
+^^  pinMode(__BLANK[BUTTON9]__, __BLANK[BUTTON10]__);^^   // pin mode for button
 ^^  Serial.begin(9600);^^
 ^^  Serial.println(options[index]);^^
 ^^}^^
@@ -2065,19 +2065,16 @@ customComponent: InputPullupCircuitInteractive,
 ^^  }^^
 ^^}^^`,
           answerKey: {
-            BUTTON9: ["int"],
-            BUTTON10: ["BUTTON"],
-            BUTTON11: ["10"],
+            BUTTON9: ["BUTTON"],
+            BUTTON10: ["INPUT_PULLUP"],
             BUTTON12: ["digitalRead(BUTTON)"],
             BUTTON13: ["LOW"],
           },
           blankExplanations: {
             BUTTON9:
-              "Choose a numeric type for storing a pin number constant.",
+              "Use the constant name you defined for the button pin.",
             BUTTON10:
-              "Use the constant name for the button pin.",
-            BUTTON11:
-              "Choose a valid digital pin number for the button connection.",
+              "Choose the button pin mode that uses the internal pull-up resistor.",
             BUTTON12:
               "Read the button pin so you can check if it’s pressed.",
             BUTTON13:
@@ -2118,7 +2115,7 @@ customComponent: InputPullupCircuitInteractive,
           answerKey: {
             BUTTON14: ["#define"],
             BUTTON15: ["BUTTON"],
-            BUTTON16: ["10"],
+            BUTTON16: { type: "range", min: 0, max: 13 },
             BUTTON17: ["LOW"],
             BUTTON18: ["LOW"],
           },
@@ -2987,13 +2984,549 @@ Recall that in the Main Menu Function, when the user presses SELECT on the Clock
 
   9: {
   phrase: "Pomodoro screen: printing timer",
-  advanced: true,
+  advanced: false,
   steps:[
     {
       id: 1,
       title: "Step 1: Pomodoro Timer Function logic",
-      codes: [
-  ]}]
+      codes: [{
+        topicTitle: "Formatting Pomodoro Timer and Display",
+        descBeforeCode:`For our Pomodoro screen, certain elements such as the overall layout and formatting should remain consistent, while others, like titles or timers, will change dynamically. To support this behavior and keep our code organized, we will create and use functions.
+        
+        This function should:
+        1) Format the timer selection screens (Ex: It will show whether you are selecting a timer for Work, Short Break, or Long Break)
+        2) Display the timer on the OLED screen in MM:SS format
+        3) Display a hint at the bottom on how to naviagte the screen
+        
+        Notice that this function will take in several parameters to customize the display for different timer types. This way, we can reuse the same function for different Pomodoro timer screens by simply passing in different arguments.`,
+        code: `^^ 
+  void showTimerScreen(const char* __BLANK[POMOTITLE]__, const char* __BLANK[POMOLABEL]__, int __BLANK[POMOMIN]__, int __BLANK[POMOSEC]__, const char* __BLANK[POMOHINT]__) {
+  display.__BLANK[POMOCLEAR]__; // clear old pixels/text
+  __BLANK[POMOCOLOR]__; // set text color (white)
+
+  __BLANK[POMOSIZE1]__; // small text for title
+  __BLANK[POMOTITLE_CURSOR]__;  // cursor for title
+  __BLANK[POMOPRINT_TITLE]__(__BLANK[POMOTITLE]__); // print title
+
+  __BLANK[POMOLABEL_CURSOR]__; // cursor for label
+  __BLANK[POMOPRINT_LABEL]__(__BLANK[POMOLABEL]__); // print label
+
+  __BLANK[POMOSIZE2]__; // bigger text for timer
+  __BLANK[POMOTIMER_CURSOR]__;  // cursor for timer
+
+  if (__BLANK[POMOMIN]__ < 10) { // if minutes is 0-9
+  display.print("0"); // print leading 0
+  } 
+  display.print(__BLANK[POMOMIN]__); // print minutes
+  display.print(":"); // print ":"
+
+  if (__BLANK[POMOSEC]__ < 10){ // if seconds is 0-9
+  display.print("0"); // print leading 0
+  }
+  display.print(__BLANK[POMOSEC]__); // print seconds
+
+  __BLANK[POMOSIZE3]__; // small text for hint
+  __BLANK[POMOHINT_CURSOR]__; // cursor near bottom
+  __BLANK[POMOPRINT_HINT]__(__BLANK[POMOHINT]__); // print hint
+
+  display.__BLANK[POMOFLUSH]__; // update OLED display
+}^^`,
+answerKey:{
+    POMOTITLE: { type: "string" },
+    POMOLABEL: { type: "string" },
+    POMOMIN: { type: "string" },
+    POMOSEC: { type: "string" },
+    POMOHINT: { type: "string" },
+
+    POMOCLEAR: ["clearDisplay()"],
+
+    POMOCOLOR: ["display.setTextColor(SSD1306_WHITE)"],
+
+    // allow ANY numeric text size (1,2,3,4,...)
+    POMOSIZE1: { type: "string", regex: "^display\\.setTextSize\\(\\s*\\d+\\s*\\)\\s*;?$" },
+    POMOSIZE2: { type: "string", regex: "^display\\.setTextSize\\(\\s*\\d+\\s*\\)\\s*;?$" },
+    POMOSIZE3: { type: "string", regex: "^display\\.setTextSize\\(\\s*\\d+\\s*\\)\\s*;?$" },
+
+    // allow ANY cursor position (x,y integers)
+    POMOTITLE_CURSOR: { type: "string", regex: "^display\\.setCursor\\(\\s*\\d+\\s*,\\s*\\d+\\s*\\)\\s*;?$" },
+    POMOLABEL_CURSOR: { type: "string", regex: "^display\\.setCursor\\(\\s*\\d+\\s*,\\s*\\d+\\s*\\)\\s*;?$" },
+    POMOTIMER_CURSOR: { type: "string", regex: "^display\\.setCursor\\(\\s*\\d+\\s*,\\s*\\d+\\s*\\)\\s*;?$" },
+    POMOHINT_CURSOR: { type: "string", regex: "^display\\.setCursor\\(\\s*\\d+\\s*,\\s*\\d+\\s*\\)\\s*;?$" },
+
+    // just require display.print/println(...) (don’t check the content)
+    POMOPRINT_TITLE: { type: "string", regex: "^display\\.(print|println)\\s*;?$" },
+    POMOPRINT_LABEL: { type: "string", regex: "^display\\.(print|println)\\s*;?$" },
+    POMOPRINT_HINT: { type: "string", regex: "^display\\.(print|println)\\(s*;?$"},
+
+    POMOFLUSH: ["display()"],
+
+},
+blankExplanations:{
+  POMOTITLE:
+    "This is the title of the Pomodoro screen (e.g., 'Pomodoro Timer'). It will be printed at the top of the screen.",
+  POMOLABEL:
+    "This is the label for the timer (e.g., 'Work Time', 'Short Break'). It will be printed below the title.",
+  POMOMIN:
+    "This is the number of minutes to display on the timer. It should be an integer value.",
+  POMOSEC:
+    "This is the number of seconds to display on the timer. It should be an integer value.",
+  POMOHINT:
+    "This is the hint text to display at the bottom of the screen (e.g., 'PREV: Menu').",
+
+  POMOCLEAR:
+    "This clears the OLED’s drawing buffer at the start so old text doesn’t remain on the screen.",
+
+  POMOCOLOR:
+    "This sets the text drawing color mode for the OLED so the text is visible.",
+
+  POMOSIZE1:
+    "Set the text size for the title line. Any valid number is accepted as long as you use the correct function format.",
+  POMOSIZE2:
+    "Set the text size for the timer line. Any valid number is accepted as long as you use the correct function format.",
+  POMOSIZE3:
+    "Set the text size for the hint line. Any valid number is accepted as long as you use the correct function format.",
+
+  POMOTITLE_CURSOR:
+    "Move the cursor to where you want the title to appear before you print it (x and y are pixel coordinates).",
+  POMOLABEL_CURSOR:
+    "Move the cursor to where you want the label to appear before you print it (x and y are pixel coordinates).",
+  POMOTIMER_CURSOR:
+    "Move the cursor to where you want the timer to start before printing minutes and seconds (x and y are pixel coordinates).",
+  POMOHINT_CURSOR:
+    "Move the cursor near the bottom portion of the screen so the hint prints at the bottom area.",
+
+  POMOPRINT_TITLE:
+    "Print the title for the Pomodoro screen using a display print function. The grader only checks that you used a print/println call correctly.",
+  POMOPRINT_LABEL:
+    "Print the label for the timer using a display print function. The grader only checks that you used a print/println call correctly.",
+  POMOPRINT_HINT:
+    "Print the hint message that includes navigation instructions. The grader only checks that you used a print/println call correctly.",
+
+  POMOFLUSH:
+    "This updates the physical OLED screen so everything you drew becomes visible.",
+},
+blankDifficulties:{
+  POMOTITLE: "easy",
+  POMOLABEL: "easy",
+  POMOMIN: "easy",
+  POMOSEC: "easy",
+  POMOHINT: "easy",
+
+  POMOCLEAR: "easy",
+
+  POMOCOLOR: "easy",
+
+  POMOSIZE1: "easy",
+  POMOSIZE2: "easy",
+  POMOSIZE3: "easy",
+
+  POMOTITLE_CURSOR: "easy",
+  POMOLABEL_CURSOR: "easy",
+  POMOTIMER_CURSOR: "medium",
+  POMOHINT_CURSOR: "easy",
+
+  POMOPRINT_TITLE: "easy",
+  POMOPRINT_LABEL: "easy",
+  POMOPRINT_HINT: "easy",
+
+  POMOFLUSH: "easy",
+}
+},
+{
+  topicTitle:`Timer Completion Message`,
+    descBeforeCode:`You will also need to create a function that displays a message when the Pomodoro timer completes.
+    
+    This function should:
+    1) Display a message indicating that the timer has completed (e.g., "Time's Up!").
+    2) Provide a hint on what to do next (e.g., "Press SELECT to return to Menu").
+    
+    The logic for writing this function is very similar to the previous function`,
+    code: `^^
+  void showTimeUpScreen(const char* __BLANK[POMOLINE1]__, const char* __BLANK[POMOLINE2]__, const char* __BLANK[POMOHINT2]__) {
+  display.__BLANK[POMOCLEAR2]__; // clear old pixels/text
+  __BLANK[POMOCOLOR2]__; // set text color (white)
+
+  __BLANK[POMOSIZE1_1]__; // bigger text for message
+  __BLANK[POMOLINE1_CURSOR]__; // cursor for message
+  __BLANK[POMOPRINT_LINE1]__(__BLANK[POMOLINE1]__); // print first line of message
+  __BLANK[POMOLINE2_CURSOR]__; // cursor for second line
+  __BLANK[POMOPRINT_LINE2]__(__BLANK[POMOLINE2]__); // print second line of message
+
+  __BLANK[POMOSIZE1_2]__; // small text for hint
+  __BLANK[POMOHINT2_CURSOR]__; // cursor near bottom
+  __BLANK[POMOPRINT_HINT2]__(__BLANK[POMOHINT2]__); // print hint
+
+  display.__BLANK[POMOFLUSH2]__; // update OLED display
+}^^`,
+
+    answerKey:{
+      POMOLINE1: { type: "string" },
+      POMOLINE2: { type: "string" },
+      POMOHINT2: { type: "string" },
+
+      POMOCLEAR2: ["clearDisplay()"],
+
+      POMOCOLOR2: ["display.setTextColor(SSD1306_WHITE)"],
+
+      // allow ANY numeric text size (1,2,3,4,...)
+      POMOSIZE1_1: { type: "string", regex: "^display\\.setTextSize\\(\\s*\\d+\\s*\\)\\s*;?$" },
+      POMOSIZE1_2: { type: "string", regex: "^display\\.setTextSize\\(\\s*\\d+\\s*\\)\\s*;?$" },
+      POMOSIZE1_3: { type: "string", regex: "^display\\.setTextSize\\(\\s*\\d+\\s*\\)\\s*;?$" },
+
+      // allow ANY cursor position (x,y integers)
+      POMOLINE1_CURSOR: { type: "string", regex: "^display\\.setCursor\\(\\s*\\d+\\s*,\\s*\\d+\\s*\\)\\s*;?$" },
+      POMOLINE2_CURSOR: { type: "string", regex: "^display\\.setCursor\\(\\s*\\d+\\s*,\\s*\\d+\\s*\\)\\s*;?$" },
+      POMOHINT2_CURSOR: { type: "string", regex: "^display\\.setCursor\\(\\s*\\d+\\s*,\\s*\\d+\\s*\\)\\s*;?$" },
+
+      // just require display.print/println(...) (don’t check the content)
+      POMOPRINT_LINE1: { type: "string", regex: "^display\\.(print|println)\\s*;?$" },
+      POMOPRINT_LINE2: { type: "string", regex: "^display\\.(print|println)\\s*;?$" },
+      POMOPRINT_HINT2: { type: "string", regex: "^display\\.(print|println)\\(s*;?$"},
+
+    POMOFLUSH2: ["display()"],
+    },
+    blankExplanations:{
+      POMOLINE1:
+        "This is the first line of the time-up message (e.g., 'Time's Up!'). It will be printed at the top of the screen.",
+      POMOLINE2:
+        "This is the second line of the time-up message (e.g., 'Take a Break!'). It will be printed below the first line.",
+      POMOHINT2:
+        "This is the hint text to display at the bottom of the screen (e.g., 'Press SELECT to return to Menu').",
+
+      POMOCLEAR2:
+        "This clears the OLED’s drawing buffer at the start so old text doesn’t remain on the screen.",
+
+      POMOCOLOR2:
+        "This sets the text drawing color mode for the OLED so the text is visible.",
+
+      POMOSIZE1_1:
+        "Set the text size for the first line of the message. Any valid number is accepted as long as you use the correct function format.",
+      POMOSIZE1_2:
+        "Set the text size for the second line of the message. Any valid number is accepted as long as you use the correct function format.",
+
+      POMOLINE1_CURSOR:
+        "Move the cursor to where you want the first line of the message to appear before you print it (x and y are pixel coordinates).",
+      POMOLINE2_CURSOR:
+        "Move the cursor to where you want the second line of the message to appear before you print it (x and y are pixel coordinates).",
+
+      POMOPRINT_LINE1:
+        "Print the first line of the time-up message using a display print function. The grader only checks that you used a print/println call correctly.",
+      POMOPRINT_LINE2:
+        "Print the second line of the time-up message using a display print function. The grader only checks that you used a print/println call correctly.",
+      POMOPRINT_HINT2:
+        "Print the hint message that includes navigation instructions. The grader only checks that you used a print/println call correctly.",
+
+      POMOFLUSH2:
+        "This updates the physical OLED screen so everything you drew becomes visible.",
+    },
+    blankDifficulties:{
+      POMOLINE1: "easy",
+      POMOLINE2: "easy",
+      POMOHINT2: "easy",
+
+      POMOCLEAR2: "easy",
+
+      POMOCOLOR2: "easy",
+
+      POMOSIZE1_1: "easy",
+      POMOSIZE1_2: "easy",
+
+      POMOLINE1_CURSOR: "easy",
+      POMOLINE2_CURSOR: "easy",
+
+      POMOPRINT_LINE1: "easy",
+      POMOPRINT_LINE2: "easy",
+      POMOPRINT_HINT2: "easy",
+
+      POMOFLUSH2: "easy",
+    }
+}
+  ]},
+
+  {
+  id: 3,
+  title: "Step 3: Run Structure and State Machine",
+  codes: [
+    {
+      topicTitle: "What does a Pomodoro run mean in code?",
+      descBeforeCode: `
+Before any countdown begins, we must define what kind of session is being run, how long it will last, and how progress will be tracked. To do this, we will create a function that initiliazes a Pomodoro session and ensures the system starts in a clean, predictable state.
+
+We also want the function to determine whether to run a simple timer or a pomodoro session based on the user's input. To manage both modes cleanly, we will utilize a block model, where a block represents one continuous countdown period. This can either be a work block or a break block. In timer mode, there is only one block, whereas in pomodoro mode, there can be multiple alternating blocks of work and break.
+
+We want to:
+- Distinguish between Timer mode and Pomodoro Mode
+- Reset state variables
+- Call \`startCurrentBlock()\` function to begin the first block countdown
+`,
+      code: `^^
+void startPomodoroRun() {
+  if (__BLANK[TIMERCOND]__) { // check condition for timer mode
+    __BLANK[TIMERBLOCK]__;  // set total block count for timer mode
+  }
+  else {  // else, pomodoro mode
+    totalBlocks = __BLANK[POMBLOCK]__;  // set total block count for pomodoro mode
+  }
+  __BLANK[BLOCKRES]__;     // reset finished block counter to 0
+  __BLANK[WORKCHECK]__;      // reset block status to work block
+  __BLANK[STARTFUNC]__; // call function to start the first block
+}
+^^`,
+      answerKey: {
+        TIMERCOND: { type: "string", regex: "^repeatT1\\s*==\\s*0$" },
+        POMBLOCK: { type: "string", regex: "^repeatT1\\s**\\s*2$" },
+        BLOCKRES: { type: "string", regex: "^blocksDone\\s*=\\s*0$" },
+        WORKCHECK: { type: "string", regex: "^isWork\\s*=\\s*true$" },
+        STARTFUNC: { type: "string", regex: "^startCurrentBlock\\s*\\(\\s*\\)\\s*;?$" },
+        TIMERBLOCK: { type: "string", regex: "^totalBlocks\\s*=\\s*1\\s*;?$" },
+      },
+      blankExplanations: {
+        TIMERCOND: "The condition to check if the timer is in single-block mode.",
+        POMBLOCK: "The total number of blocks in a pomodoro session.",
+        BLOCKRES: "Reset the finished block counter to 0.",
+        WORKCHECK: "Reset the current block to a work session.",
+        STARTFUNC: "The name of the function that starts the current block.",
+        TIMERBLOCK: "The total number of blocks in a single-block timer.",
+      },
+      blankDifficulties: {
+        TIMERCOND: "easy",
+        POMBLOCK: "medium",
+        BLOCKRES: "easy",
+        WORKCHECK: "easy",
+        STARTFUNC: "easy",
+        TIMERBLOCK: "easy",
+      },
+      descAfterCode: `
+Once you fill in the blanks, you have completed the function that initializes a Pomodoro run. The next lesson will cover the function that begins the actual countdown block.
+`
+    },
+  ],
+},
+
+  {
+  id: 4,
+  title: "Step 4: Understanding the Timer Engine",
+  codes: [
+    {
+      topicTitle: "Choosing Block Duration and Setting endTime",
+      descBeforeCode: `
+Unlike simple timers that count seconds using delay(), this Pomodoro timer uses a Real-Time Clock (RTC) to measure time accurately.
+
+In this timer, a **block** is a single period of time:
+- A **work block** is a focused work session (e.g., 25 minutes)
+- A **break block** is a short rest period (e.g., 5 minutes)
+
+Instead of counting down, we:
+1) Ask the RTC for the current time
+2) Decide how long the current block should run
+3) Calculate the exact clock time when the block should end
+4) Store that future time in a variable
+`,
+      code: `^^
+void startCurrentBlock() {
+  int mins = 0;
+
+  // Decide how long this block should run
+  // Check if the timer is in single-block mode
+  if (__BLANK[POMOTIMERMODE]__) {
+    // Use work block duration for single-block mode
+    mins = __BLANK[POMOT1]__;
+  } else {
+    // Determine if current block is work or break
+    if (__BLANK[POMOWORKCHECK]__) 
+      mins = __BLANK[POMOT1]__; // work duration
+    else
+      mins = __BLANK[POMOT2]__; // break duration
+  }
+
+  // Get current time from RTC
+  DateTime __BLANK[POMONOW]__ = rtc.now();
+
+  // Set the block end time by adding a TimeSpan to now
+  endTime = __BLANK[POMOTIMESPAN]__ + __BLANK[POMONOW]__;
+}
+^^`,
+      answerKey: {
+        POMOTIMERMODE: { type: "string", regex: "^repeatT1\\s*==\\s*0$" },
+        POMOT1: { type: "string" },
+        POMOT2: { type: "string" },
+        POMOWORKCHECK: { type: "string", regex: "^isWork\\s*==\\s*true$" },
+        POMONOW: { type: "string" },
+        POMOTIMESPAN: { type: "string", regex: "^TimeSpan\\(\\s*0\\s*,\\s*0\\s*,\\s*mins\\s*,\\s*0\\s*\\)$" },
+      },
+      blankExplanations: {
+        POMOTIMERMODE: "Check if the timer is in single-block mode.",
+        POMOT1: "The duration of a work block in minutes.",
+        POMOT2: "The duration of a break block in minutes.",
+        POMOWORKCHECK: "Check whether the current block is a work session.",
+        POMONOW: "The current time retrieved from the RTC.",
+        POMOTIMESPAN: "A TimeSpan representing the length of this block. Use the minutes variable in the middle parameter (hours, minutes, seconds, ms).",
+      },
+      blankDifficulties: {
+        POMOTIMERMODE: "easy",
+        POMOT1: "easy",
+        POMOT2: "easy",
+        POMOWORKCHECK: "easy",
+        POMONOW: "easy",
+        POMOTIMESPAN: "medium",
+      },
+      descAfterCode: `
+**Understanding the Logic:**
+- A **block** is either a work session or a break. This function sets how long that block lasts and when it ends.
+- The variable \`mins\` stores the duration of the current block.
+- The function checks the timer mode and whether this block is work or break to decide which duration to use.
+- The RTC gives the current time, which is combined with a **TimeSpan** to calculate the exact end time.
+- Use the mins variable to create the TimeSpan so the block lasts the right amount of time — you don’t need to type in a fixed number
+
+**Key Takeaways:**
+- Using RTC + TimeSpan ensures accurate timing even if the microcontroller is busy with other tasks.
+- The global variable \`endTime\` is updated so other functions can check remaining time.
+- This function is called at the start of each block to initialize its duration and end time.
+`
+    },
+  ],
+},
+{
+  id: 5,
+  title: "Step 5: Checking if the Timer is Finished",
+  codes: [
+    {
+      topicTitle: "How the Timer Knows When Time Is Up",
+      descBeforeCode: `
+Once a block starts, we want to know exactly when it ends without pausing the microcontroller.  
+Instead of using delay(), we repeatedly check the current time against the block’s end time.  
+
+This approach allows:
+- Buttons to remain responsive
+- Screens to update smoothly
+- Accurate timing without drifting
+`,
+      code: `^^
+DateTime now = rtc.now();
+TimeSpan remaining = endTime - now;
+
+// Calculate how many seconds remain
+long secondsLeft = remaining.totalseconds();
+
+// Check if block has finished
+if (secondsLeft __BLANK[POMOTIMEUP]__) {
+  // Block has finished
+}
+^^`,
+      answerKey: {
+        POMOTIMEUP: { type: "string", regex: "^<=\\s*0$" },
+      },
+      blankExplanations: {
+        POMOTIMEUP:
+          "Condition to detect whether the block is finished (i.e., time has reached or passed endTime).",
+      },
+      blankDifficulties: {
+        POMOTIMEUP: "easy",
+      },
+      descAfterCode: `
+**Understanding the Logic:**
+- \`now\` gets the current time from the RTC.
+- \`remaining\` is the difference between the block’s end time and now.
+- \`secondsLeft\` converts that difference into seconds for easier comparison.
+- Check if secondsLeft has reached zero or below.
+- This allows the program to know when the block is done and move on to the next block without stopping the microcontroller.
+
+**Key Takeaways:**
+- Avoid using delay() so that the display and buttons remain responsive.
+- \`endTime\` is the reference point for when a block ends.
+- This check is typically called repeatedly inside the loop while the timer is active.
+`
+    },
+  ],
+},
+
+{
+      id: 6,
+      title: "Step 6: Countdown Runtime + Finish Screen",
+      codes: [{
+        topicTitle: "Pomodoro Countdown Function",
+        descBeforeCode:`While the Pomodoro timer is running, the program must continuously manage several tasks at once: checking for user input, calculating how much time remains, determining when a work or break block has ended, and deciding what should happen next. To handle all of this logic in one place, we need to create a function to handle the countdown.
+        
+        This function acts as the “engine” of the Pomodoro timer. It will be called repeatedly while the timer screen is active, and it uses the functions we have created in the earlier lessons to:
+        1) Update the display
+        2) Track completed blocks
+        3) Switch between work and break periods
+        4) Return the user to the menu when necessary.`,
+        code: `^^
+  void handlePomodoroCountdown() {
+  if (isPressed(PREV)) { // PREV stops and returns to menu
+    screenMode = 0;
+    delay(200);
+    return;
+  }
+
+  DateTime now = rtc.now();
+  TimeSpan remaining = endTime - now;
+  long secLeft = remaining.totalseconds();
+
+  // Checking if block is finished
+  if (secLeft <= 0) {
+    blocksDone = blocksDone + 1;
+
+    // Done with all blocks?
+    if (blocksDone >= totalBlocks) {
+      screenMode = 6;
+      delay(200);
+      return;
+    }
+
+    // Flip work <-> break (only if not timer mode)
+    if (repeatT1 != 0) {
+      if (isWork == true) isWork = false;
+      else                isWork = true;
+    }
+
+    startCurrentBlock();
+    delay(200);
+    return;
+  }
+
+  // Convert seconds to minutes/seconds 
+  int minsLeft = secLeft / 60;
+  int secsLeft = secLeft - (minsLeft * 60);
+
+  if (repeatT1 == 0) {
+    showTimerScreen("Pomodoro", "Timer running...", minsLeft, secsLeft, "PREV: Menu");
+  } else {
+    if (isWork == true) showTimerScreen("Pomodoro", "WORK (T1)...", minsLeft, secsLeft, "PREV: Menu");
+    else                showTimerScreen("Pomodoro", "BREAK (T2)...", minsLeft, secsLeft, "PREV: Menu");
+  }
+}
+  ^^`,
+      },
+    {
+      topicTitle:`Pomodoro Finish Screen Function`,
+      descBeforeCode:`When the Pomodoro timer completes all its work and break blocks, we want to display a finish screen to inform the user that their session is over. This function will utilize the time-up screen function we created earlier to show a message indicating that the Pomodoro session has finished. Refer back to the previous lesson for the structure of that function.`,
+      code: `^^
+  void handlePomodoroFinished() {
+  showTimeUpScreen("__BLANK[POMOFINISH1]__", "__BLANK[POMOFINISH2]__", "__BLANK[POMOFINISHHINT]__");
+
+  if (isPressed(SEL)) {
+    screenMode = 2; // back to T1 setup
+    delay(200);
+  }
+  if (isPressed(PREV)) {
+    screenMode = 0; // menu
+    delay(200);
+  }
+}
+}^^`,
+answerKey:{
+    POMOFINISH1: { type: "string"},
+    POMOFINISH2: { type: "string"},
+    POMOFINISHHINT: { type: "string"}
+
+  },
+blankExplanations:{
+
+}
+    }]
+}]
   }
 
 

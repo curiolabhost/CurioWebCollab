@@ -219,7 +219,7 @@ export const PROJECTS: Project[] = [
     difficulties: ["Intermediate"],
     category: "IoT",
     image:
-      "https://images.unsplash.com/photo-1512446816042-444d641267d4?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080",
+      "https://cdn.thingiverse.com/assets/ff/b3/c2/17/36/large_display_2c33c13e-5c1e-4040-9c3e-da72e3e5f279.jpg",
     ageRange: "13-18 years",
     hours: "12-15 hours",
     materials: [
@@ -270,7 +270,7 @@ export const PROJECTS: Project[] = [
     difficulties: ["Advanced"],
     category: "Robotics",
     image:
-      "https://images.unsplash.com/photo-1699084583993-16958aa157d1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080",
+      "https://nevonprojects.com/wp-content/uploads/2021/06/Lidar-micro-drone-web-main.jpg",
     ageRange: "14-18 years",
     hours: "25-30 hours",
     materials: [
@@ -323,7 +323,7 @@ export const PROJECTS: Project[] = [
     difficulties: ["Advanced"],
     category: "IoT",
     image:
-      "https://images.unsplash.com/photo-1679356505858-bf4129177392?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080",
+      "https://www.vesternet.com/cdn/shop/articles/fqi3czvr3lmhfkhchzlx.png?v=1761768411&width=1600",
     ageRange: "13-18 years",
     hours: "20-25 hours",
     materials: [
@@ -375,7 +375,7 @@ export const PROJECTS: Project[] = [
     difficulties: ["Beginner"],
     category: "Electronics",
     image:
-      "https://images.unsplash.com/photo-1599380061663-01b03dff42df?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080",
+      "https://content.instructables.com/FXH/SVMG/JNUL8Q71/FXHSVMGJNUL8Q71.jpg?auto=webp",
     ageRange: "10-18 years",
     hours: "10-12 hours",
     materials: [
@@ -425,7 +425,7 @@ export const PROJECTS: Project[] = [
     difficulties: ["Intermediate"],
     category: "IoT",
     image:
-      "https://images.unsplash.com/photo-1762553025389-a0ee281d6744?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080",
+      "https://m.media-amazon.com/images/I/71pfUDzbMBL._AC_UF894,1000_QL80_.jpg",
     ageRange: "12-18 years",
     hours: "15-18 hours",
     materials: [
@@ -476,7 +476,7 @@ export const PROJECTS: Project[] = [
     difficulties: ["Advanced"],
     category: "Robotics",
     image:
-      "https://images.unsplash.com/photo-1761195696590-3490ea770aa1?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080",
+      "https://projects.arduinocontent.cc/cover-images/7a33f25c-e326-4843-a4de-b3efef98d812.JPG",
     ageRange: "13-18 years",
     hours: "20-25 hours",
     materials: [
@@ -528,7 +528,7 @@ export const PROJECTS: Project[] = [
     difficulties: ["Intermediate"],
     category: "Electronics",
     image:
-      "https://images.unsplash.com/photo-1650585680670-4b67e210fe21?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080",
+      "https://www.yankodesign.com/images/design_news/2022/12/this-diy-game-controller-looks-like-a-low-poly-object-taken-from-a-video-game/alpakka-game-controller-1.jpg",
     ageRange: "11-18 years",
     hours: "12-15 hours",
     materials: [

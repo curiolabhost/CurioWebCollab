@@ -9,7 +9,9 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@codemirror/lang-cpp": "^6.0.3",
     "@monaco-editor/react": "^4.7.0",
+    "@uiw/react-codemirror": "^4.25.4",
     "lucide-react": "^0.562.0",
     "monaco-editor": "^0.55.1",
     "next": "^16.1.1",
