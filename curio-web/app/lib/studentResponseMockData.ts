@@ -1,4 +1,5 @@
 // app/lib/studentResponseMockData.ts
+// UPDATED WITH PROGRESS DATA
 import { StudentResponseData } from "../contexts/StudentResponseContext";
 
 export const mockStudentResponses: Record<number, StudentResponseData> = {
@@ -6,6 +7,19 @@ export const mockStudentResponses: Record<number, StudentResponseData> = {
     studentId: 1,
     projectName: "Electric Status Board",
     difficulty: "beginner",
+    // ✅ ADD: Student's completed steps
+    completedSteps: [
+      "L1-S0",  // Lesson 1, Step 0
+      "L2-S0",  // Lesson 2, Step 0
+      "L2-S1",  // Lesson 2, Step 1
+      "L3-S0",  // Lesson 3, Step 0
+      "L3-S1",  // Lesson 3, Step 1
+      "L3-S2",  // Lesson 3, Step 2
+      "L3-S3",  // Lesson 3, Step 3
+      "L3-S4",  // Lesson 3, Step 4
+      "L4-S0",  // Lesson 4, Step 0
+      "L4-S1",  // Lesson 4, Step 1
+    ],
     responses: [
       // Lesson 2, Step 1 - Understanding Arduino Basics
       {
@@ -116,6 +130,14 @@ export const mockStudentResponses: Record<number, StudentResponseData> = {
     studentId: 2,
     projectName: "Electric Status Board",
     difficulty: "intermediate",
+    // ✅ Liam has completed more steps
+    completedSteps: [
+      "L1-S0",
+      "L2-S0", "L2-S1",
+      "L3-S0", "L3-S1", "L3-S2", "L3-S3", "L3-S4", "L3-S5",
+      "L4-S0", "L4-S1", "L4-S2",
+      "L5-S0", "L5-S1",
+    ],
     responses: [
       // Lesson 2, Step 1
       {
@@ -169,6 +191,12 @@ export const mockStudentResponses: Record<number, StudentResponseData> = {
     studentId: 3,
     projectName: "Electric Status Board",
     difficulty: "beginner",
+    // ✅ Sophia is early in the project
+    completedSteps: [
+      "L1-S0",
+      "L2-S0", "L2-S1",
+      "L3-S0", "L3-S1", "L3-S2",
+    ],
     responses: [
       // Lesson 2, Step 1
       {
@@ -244,6 +272,15 @@ export const mockStudentResponses: Record<number, StudentResponseData> = {
     studentId: 4,
     projectName: "Electric Status Board",
     difficulty: "advanced",
+    // ✅ Noah has completed most of the project
+    completedSteps: [
+      "L1-S0",
+      "L2-S0", "L2-S1",
+      "L3-S0", "L3-S1", "L3-S2", "L3-S3", "L3-S4", "L3-S5", "L3-S6",
+      "L4-S0", "L4-S1", "L4-S2", "L4-S3",
+      "L5-S0", "L5-S1", "L5-S2", "L5-S3",
+      "L6-S0", "L6-S1", "L6-S2",
+    ],
     responses: [
       // Advanced level responses
       {

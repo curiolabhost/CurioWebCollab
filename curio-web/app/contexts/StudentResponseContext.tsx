@@ -30,6 +30,7 @@ export type StudentResponseData = {
   studentId: number;
   projectName: string;
   difficulty?: "beginner" | "intermediate" | "advanced"; 
+  completedSteps?: string[]; // Array of completed step IDs
   responses: StudentResponse[];
 };
 

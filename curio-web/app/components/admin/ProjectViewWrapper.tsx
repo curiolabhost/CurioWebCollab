@@ -16,17 +16,14 @@ type ProjectViewWrapperProps = {
  * Wrapper component that conditionally displays the admin sidebar
  * next to the project content based on user role.
  * 
- * Usage:
- * - Wrap your project/lesson component with this wrapper
- * - Pass isAdminView={true} when viewing as admin
- * - The sidebar will automatically display student responses
+ * Also provides student progress data to the lesson component when in admin view.
  */
 export function ProjectViewWrapper({ 
   children, 
   isAdminView = false,
   onLessonChange 
 }: ProjectViewWrapperProps) {
-  const { setCurrentLocation } = useStudentResponses();
+  const { setCurrentLocation, studentData } = useStudentResponses();
 
   // Expose a function that lesson components can call to update location
   useEffect(() => {
@@ -41,12 +38,34 @@ export function ProjectViewWrapper({
     };
   }, [setCurrentLocation, onLessonChange]);
 
+  // Provide student progress data to lesson component in admin view
+  useEffect(() => {
+    if (isAdminView && studentData) {
+      // Make student progress available to CodeLessonBase
+      (window as any).__getStudentProgress = () => {
+        return studentData.completedSteps || [];
+      };
+      
+      {/*} console.log("Admin view: Providing student progress data", {
+        studentId: studentData.studentId,
+        completedSteps: studentData.completedSteps?.length || 0,
+        steps: studentData.completedSteps
+      });*/}
+    }
+    
+    return () => {
+      if ((window as any).__getStudentProgress) {
+        delete (window as any).__getStudentProgress;
+      }
+    };
+  }, [isAdminView, studentData]);
+
   if (!isAdminView) {
     // Student view - no sidebar
     return <>{children}</>;
   }
 
-  // Admin view - resizable sidebar using splitView
+  // Admin view - show content with RESIZABLE sidebar using SplitView
   return (
     <SplitView
       left={
