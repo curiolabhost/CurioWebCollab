@@ -3,9 +3,10 @@
 
 import { useState, use } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Users, Sparkles, Code, FileText, BarChart3, ChevronRight } from "lucide-react";
-import { getStudentById } from "../../../lib/adminMockData";
-import type { Student } from "../../../lib/adminMockData";
+import { ArrowLeft, Users, Sparkles, Code, FileText, BarChart3, ChevronRight, Eye } from "lucide-react";
+import { getStudentById } from "@/app/lib/adminMockData";
+import type { Student } from "@/app/lib/adminMockData";
+import router from "next/dist/shared/lib/router/router";
 
 function ProgressBar({ progress, showLabel = false, size = "lg" }: { progress: number; showLabel?: boolean; size?: "sm" | "lg" }) {
   const height = size === "lg" ? "h-3" : "h-2";
@@ -34,6 +35,14 @@ function ProgressBar({ progress, showLabel = false, size = "lg" }: { progress: n
 }
 
 function ProjectDetailsTab({ student }: { student: Student }) {
+
+  const router = useRouter();
+  const handleViewAsAdmin = (projectName: string) => {
+    // convert project name to URL-friendly format
+    const projectId = projectName.toLowerCase().replace(/\s+/g, '-');
+    router.push(`/admin/students/${student.id}/projects/${projectId}`);
+  };
+
   return (
     <div className="space-y-4">
       {student.projects.map((project, idx) => (
@@ -87,9 +96,12 @@ function ProjectDetailsTab({ student }: { student: Student }) {
 
           {/* Action Buttons */}
           <div className="flex gap-3 pt-4 border-t border-gray-100">
-            <button className="flex items-center gap-2 px-3 py-2 bg-sky-50 text-sky-600 rounded-lg hover:bg-sky-100 transition-colors">
-              <Code className="w-4 h-4" />
-              <span className="text-sm font-medium">View Code</span>
+            <button 
+              onClick={() => handleViewAsAdmin(project.name)}
+              className="flex items-center gap-2 px-3 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700 transition-colors"
+            >
+              <Eye className="w-4 h-4" />
+              <span className="text-sm font-medium">View as Admin</span>
             </button>
             <button className="flex items-center gap-2 px-3 py-2 bg-sky-50 text-sky-600 rounded-lg hover:bg-sky-100 transition-colors">
               <FileText className="w-4 h-4" />
