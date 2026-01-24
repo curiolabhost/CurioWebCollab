@@ -2,6 +2,9 @@
 
 import * as React from "react";
 import styles from "./GuidedCodeBlock.module.css";
+import InlineEditorToken from "./EditorBlock";
+
+
 
 // keep ONLY these from the shared util
 import { type AnswerSpec, evalAnswerSpec, BlankRule, BlankTypedSpec } from "./blankCheckUtils";
@@ -200,7 +203,8 @@ function nowMs() {
 // ============================================================
 type TemplateTok =
   | { type: "text"; content: string; highlight?: boolean }
-  | { type: "blank"; name: string; highlight?: boolean };
+  | { type: "blank"; name: string; highlight?: boolean }
+  | { type: "editor"; id: string; highlight?: boolean };
 
 function tokenizeTemplateLineWithState(
   line: string,
@@ -232,6 +236,18 @@ function tokenizeTemplateLineWithState(
         continue;
       }
     }
+
+        // Editor token
+    if (str.slice(i, i + "__EDITOR[".length) === "__EDITOR[") {
+      const end = str.indexOf("]__", i);
+      if (end !== -1) {
+        const id = str.slice(i + "__EDITOR[".length, end).trim();
+        toks.push({ type: "editor", id, highlight: inHi });
+        i = end + "]__".length;
+        continue;
+      }
+    }
+
 
     // Otherwise, consume until next special token
     const nextHi = str.indexOf("^^", i);
@@ -297,8 +313,8 @@ function splitComment(lineTokens: TemplateTok[]) {
       continue;
     }
 
-    if (tok.type === "blank") {
-      codeTokens.push(tok);
+    if (tok.type === "blank" || tok.type === "editor") {
+      codeTokens.push(tok as any);
     }
   }
 
@@ -489,6 +505,18 @@ export default function GuidedCodeBlock({
 
   const difficulties: Record<string, any> = step?.blankDifficulties || {};
 
+  const bindKeyByBlankName = React.useMemo(() => {
+  const out: Record<string, string> = {};
+  const ak: any = answerKey || {};
+  for (const [blankName, spec] of Object.entries(ak)) {
+    const s: any = spec;
+    if (s && typeof s === "object" && typeof s.bindAs === "string" && s.bindAs.trim()) {
+      out[blankName] = s.bindAs.trim();
+    }
+  }
+  return out;
+}, [answerKey]);
+
   /* ==========================================================
      GLOBAL-ONLY blank values
 
@@ -600,12 +628,15 @@ export default function GuidedCodeBlock({
   ========================================================== */
   const renderCodeFromTemplate = () => {
     const values = draftValues || {};
-
     return templateLineSplits.map(({ codeTokens, comment }, lineIdx) => {
       const emptyLine = !codeTokens.length && !comment;
+      const hasEditor = codeTokens.some((t: any) => t?.type === "editor");
       return (
         <div key={`line-${lineIdx}`} className={styles.codeLineRow}>
-          <div className={styles.codePartCol} style={{ width: codeColPx }}>
+          <div
+  className={styles.codePartCol}
+  style={hasEditor ? { width: "100%" } : { width: codeColPx }}
+>
             {emptyLine ? (
               <span className={styles.codeNormal}>{" "}</span>
             ) : (
@@ -662,6 +693,12 @@ export default function GuidedCodeBlock({
                           // persist globally (debounced)
                           scheduleGlobalUpdate(name, txt);
 
+                          // ALSO persist binding key if this blank binds one
+                          const bindKey = bindKeyByBlankName[name];
+                          if (bindKey) {
+                            scheduleGlobalUpdate(bindKey, txt);
+                          }
+
                           // clear correctness while typing (only for this blank)
                           if ((blankStatus || {})[name] != null) {
                             setBlankStatus?.((prev) => {
@@ -708,12 +745,40 @@ export default function GuidedCodeBlock({
                   );
                 }
 
+                if (tok.type === "editor") {
+                  const editorId = tok.id;
+
+                  // optional per-block config (rows, placeholder)
+                  const rows =
+                    (block?.editorRows && block.editorRows[editorId]) ||
+                    (step?.editorRows && step.editorRows[editorId]) ||
+                    8;
+
+                  const placeholder =
+                    (block?.editorPlaceholders && block.editorPlaceholders[editorId]) ||
+                    (step?.editorPlaceholders && step.editorPlaceholders[editorId]) ||
+                    "Type code here…";
+
+                  return (
+                    <InlineEditorToken
+                      key={`e-${lineIdx}-${idx}-${editorId}`}
+                      editorId={editorId}
+                      globalKey={globalKey}
+                      mergedBlanks={mergedBlanks || {}}
+                      setGlobalBlanks={setGlobalBlanks}
+                      rows={rows}
+                      placeholder={placeholder}
+                    />
+                  );
+                }
+
+
                 return null;
               })
             )}
           </div>
 
-          {!!comment && <span className={styles.codeCommentCol}>{comment}</span>}
+          {!hasEditor && !!comment && <span className={styles.codeCommentCol}>{comment}</span>}
         </div>
       );
     });

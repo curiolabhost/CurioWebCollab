@@ -30,6 +30,11 @@ const LS_BLANK_COUNTER = "curio:answerkey:studio:blankCounter:v1";
 // new stable store
 const LS_BLANK_STORE = "curio:answerkey:studio:blankStore:v1";
 
+const LS_ANSWERKEY_SNIPPET = "curio:answerkey:studio:answerKeySnippet:v1";
+const LS_ANSWERKEY_REPORT  = "curio:answerkey:studio:answerKeyReport:v1";
+const LS_TEST_VALUE        = "curio:answerkey:studio:testValue:v1";
+
+
 function safeJsonParse<T>(raw: string | null): T | null {
   if (!raw) return null;
   try {
@@ -191,6 +196,27 @@ type RegistryTable = {
   updatedAt: number;
 };
 
+function persistNow(args: {
+  store: any;
+  tables: any;
+  activeId: string | null;
+  projectCode: string;
+  templateCode: string;
+  solvedCode: string;
+}) {
+  if (typeof window === "undefined") return;
+
+  // write immediately (no setTimeout)
+  window.localStorage.setItem(LS_BLANK_STORE, JSON.stringify(args.store));
+  window.localStorage.setItem(LS_TABLES_KEY, JSON.stringify(args.tables));
+ window.localStorage.setItem(LS_ACTIVE_ID_KEY, args.activeId ?? "");
+
+
+  window.localStorage.setItem(LS_PROJECT_CODE, args.projectCode);
+  window.localStorage.setItem(LS_TEMPLATE_CODE, args.templateCode);
+  window.localStorage.setItem(LS_SOLVED_CODE, args.solvedCode);
+}
+
 function loadRegistryTables(): RegistryTable[] {
   if (typeof window === "undefined") return [];
   const parsed = safeJsonParse<RegistryTable[]>(window.localStorage.getItem(LS_TABLES_KEY));
@@ -281,6 +307,10 @@ export default function CreateBlanksPage() {
     const [answerKeySnippet, setAnswerKeySnippet] = React.useState("");
     const [answerKeyReport, setAnswerKeyReport] = React.useState("");
   const [createMode, setCreateMode] = React.useState(false);
+  const [saveStatus, setSaveStatus] = React.useState<string>("");
+  const [didLoad, setDidLoad] = React.useState(false);
+
+
 
   const [solved, setSolved] = React.useState("");
   const [template, setTemplate] = React.useState("");
@@ -315,6 +345,30 @@ const [testResult, setTestResult] = React.useState<{
 } | null>(null);
 
 
+const [pendingSelectBlankId, setPendingSelectBlankId] = React.useState<string | null>(null);
+React.useLayoutEffect(() => {
+  if (!pendingSelectBlankId) return;
+
+  const ta = templateTextareaRef.current;
+  if (!ta) return;
+
+  const ph = `__BLANK[${pendingSelectBlankId}]__`;
+  const idx = ta.value.indexOf(ph);
+
+  if (idx >= 0) {
+    ta.focus();
+    ta.setSelectionRange(idx, idx + ph.length);
+
+    // Scroll selection into view (textarea doesn't have scrollIntoView for ranges)
+    const before = ta.value.slice(0, idx);
+    const lineCount = before.split("\n").length;
+    const approxLineHeight = 18; // close enough for monospace 14px
+    const targetTop = Math.max(0, (lineCount - 3) * approxLineHeight);
+    ta.scrollTop = targetTop;
+  }
+
+  setPendingSelectBlankId(null);
+}, [template, pendingSelectBlankId]);
 
 
 // debounce commit
@@ -608,11 +662,98 @@ function scheduleCommitSelectedBlank(next: {
   }, 250);
 }
 
+function applyDraftsToStoreSync(prev: BlankStore, blankId: string, next: {
+  answer: string;
+  description: string;
+  bindKey: string;
+  constraintType: ConstraintType;
+  allowedRaw: string;
+  rangeMinRaw: string;
+  rangeMaxRaw: string;
+}): BlankStore {
+  const now = Date.now();
+  const uid = resolveBlankUid(prev, blankId);
+
+  if (!uid) {
+    const uidNew = newUid();
+    return {
+      uidByDisplay: { ...(prev.uidByDisplay || {}), [blankId]: uidNew },
+      metaByUid: {
+        ...(prev.metaByUid || {}),
+        [uidNew]: {
+          uid: uidNew,
+          answer: next.answer ?? "",
+          description: next.description ?? "",
+          bindKey: next.bindKey ?? "",
+          constraintType: next.constraintType ?? "expr_ref",
+          allowedRaw: next.allowedRaw ?? "",
+          rangeMinRaw: next.rangeMinRaw ?? "",
+          rangeMaxRaw: next.rangeMaxRaw ?? "",
+          createdAt: now,
+          updatedAt: now,
+        },
+      },
+    };
+  }
+
+  const meta = prev.metaByUid?.[uid];
+  if (!meta) return prev;
+
+  return {
+    ...prev,
+    metaByUid: {
+      ...prev.metaByUid,
+      [uid]: {
+        ...meta,
+        answer: next.answer,
+        description: next.description,
+        bindKey: next.bindKey,
+        constraintType: next.constraintType,
+        allowedRaw: next.allowedRaw,
+        rangeMinRaw: next.rangeMinRaw,
+        rangeMaxRaw: next.rangeMaxRaw,
+        updatedAt: now,
+      },
+    },
+  };
+}
+
+
   // keep latest state in refs so undo/redo + key handlers are stable
   const templateRef = React.useRef(template);
   const counterRef = React.useRef(counter);
   const storeRef = React.useRef(store);
   const selectedRef = React.useRef<string | null>(selectedBlankId);
+
+    // also keep solved in a ref (used by flush)
+const solvedRef = React.useRef(solved);
+React.useEffect(() => { solvedRef.current = solved; }, [solved]);
+
+// Draft refs so pagehide can flush latest typed values
+const answerDraftRef = React.useRef(answerDraft);
+const descDraftRef = React.useRef(descDraft);
+const bindDraftRef = React.useRef(bindDraft);
+const constraintDraftRef = React.useRef(constraintDraft);
+const allowedDraftRef = React.useRef(allowedDraft);
+const minDraftRef = React.useRef(minDraft);
+const maxDraftRef = React.useRef(maxDraft);
+
+React.useEffect(() => { answerDraftRef.current = answerDraft; }, [answerDraft]);
+React.useEffect(() => { descDraftRef.current = descDraft; }, [descDraft]);
+React.useEffect(() => { bindDraftRef.current = bindDraft; }, [bindDraft]);
+React.useEffect(() => { constraintDraftRef.current = constraintDraft; }, [constraintDraft]);
+React.useEffect(() => { allowedDraftRef.current = allowedDraft; }, [allowedDraft]);
+React.useEffect(() => { minDraftRef.current = minDraft; }, [minDraft]);
+React.useEffect(() => { maxDraftRef.current = maxDraft; }, [maxDraft]);
+
+// Other text boxes you want to survive back/forward
+const answerKeySnippetRef = React.useRef(answerKeySnippet);
+const answerKeyReportRef = React.useRef(answerKeyReport);
+const testValueRef = React.useRef(testValue);
+
+React.useEffect(() => { answerKeySnippetRef.current = answerKeySnippet; }, [answerKeySnippet]);
+React.useEffect(() => { answerKeyReportRef.current = answerKeyReport; }, [answerKeyReport]);
+React.useEffect(() => { testValueRef.current = testValue; }, [testValue]);
 
   React.useEffect(() => {
     templateRef.current = template;
@@ -640,6 +781,8 @@ React.useEffect(() => {
     setMaxDraft("");
     return;
   }
+
+
 
   const meta = getBlankMeta(store, selectedBlankId);
 
@@ -713,25 +856,100 @@ React.useEffect(() => {
   }
 
   // keyboard shortcuts (stable handler)
-  React.useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) {
-      const isMac = typeof navigator !== "undefined" && /Mac|iPhone|iPad|iPod/.test(navigator.platform);
-      const mod = isMac ? e.metaKey : e.ctrlKey;
-      if (!mod) return;
+// keyboard shortcuts (stable handler)
+React.useEffect(() => {
+  function onKeyDown(e: KeyboardEvent) {
+    const isMac =
+      typeof navigator !== "undefined" &&
+      /Mac|iPhone|iPad|iPod/.test(navigator.platform);
+    const mod = isMac ? e.metaKey : e.ctrlKey;
+    if (!mod) return;
 
-      const key = e.key.toLowerCase();
+    const key = e.key.toLowerCase();
 
-      if (key === "z" && !e.shiftKey) {
-        e.preventDefault();
-        undo();
-      } else if ((key === "z" && e.shiftKey) || key === "y") {
-        e.preventDefault();
-        redo();
-      }
+    if (key === "z" && !e.shiftKey) {
+      e.preventDefault();
+      undo();
+    } else if ((key === "z" && e.shiftKey) || key === "y") {
+      e.preventDefault();
+      redo();
     }
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
+  }
+
+  window.addEventListener("keydown", onKeyDown);
+  return () => window.removeEventListener("keydown", onKeyDown);
+}, []);
+
+// navigation / persistence / BFCache handling
+React.useEffect(() => {
+  const rehydrateFromLS = () => {
+    const project = lsGet(LS_PROJECT_CODE);
+    const storedSolved = lsGet(LS_SOLVED_CODE);
+    const storedTemplate = lsGet(LS_TEMPLATE_CODE);
+
+    const initialSolved = storedSolved || project || "";
+    const initialTemplate = storedTemplate || initialSolved || "";
+
+    setSolved(initialSolved);
+    setTemplate(initialTemplate);
+
+    setAnswerKeySnippet(lsGet(LS_ANSWERKEY_SNIPPET) || "");
+    setAnswerKeyReport(lsGet(LS_ANSWERKEY_REPORT) || "");
+    setTestValue(lsGet(LS_TEST_VALUE) || "");
+
+    const storedStore = lsGetJson<BlankStore>(LS_BLANK_STORE, {
+      uidByDisplay: {},
+      metaByUid: {},
+    });
+    setStore(storedStore);
+
+    const storedCounter = Number(lsGet(LS_BLANK_COUNTER) || "1");
+    const c =
+      Number.isFinite(storedCounter) && storedCounter > 0
+        ? storedCounter
+        : 1;
+
+    setCounter(nextAvailableCounter(initialTemplate, c));
+
+    setDidLoad(true);
+  };
+
+  const onPageHide = () => {
+    flushAllNow();
+  };
+
+  const onVisibilityChange = () => {
+    if (document.visibilityState === "hidden") {
+      flushAllNow();
+    } else if (document.visibilityState === "visible") {
+      rehydrateFromLS();
+    }
+  };
+
+  const onPageShow = () => {
+    // always rehydrate when coming back (BFCache or not)
+    rehydrateFromLS();
+  };
+
+  const onFocus = () => {
+    rehydrateFromLS();
+  };
+
+  window.addEventListener("pagehide", onPageHide);
+  document.addEventListener("visibilitychange", onVisibilityChange);
+  window.addEventListener("pageshow", onPageShow);
+  window.addEventListener("focus", onFocus);
+
+  return () => {
+    flushAllNow();
+    window.removeEventListener("pagehide", onPageHide);
+    document.removeEventListener("visibilitychange", onVisibilityChange);
+    window.removeEventListener("pageshow", onPageShow);
+    window.removeEventListener("focus", onFocus);
+  };
+}, []);
+
+
 
   // load from localStorage (with migration)
   React.useEffect(() => {
@@ -744,6 +962,12 @@ React.useEffect(() => {
 
     setSolved(initialSolved);
     setTemplate(initialTemplate);
+    
+
+    setAnswerKeySnippet(lsGet(LS_ANSWERKEY_SNIPPET) || "");
+    setAnswerKeyReport(lsGet(LS_ANSWERKEY_REPORT) || "");
+    setTestValue(lsGet(LS_TEST_VALUE) || "");
+
 
     // load new store
     const storedStore = lsGetJson<BlankStore>(LS_BLANK_STORE, { uidByDisplay: {}, metaByUid: {} });
@@ -776,37 +1000,100 @@ React.useEffect(() => {
     }
 
     setStore(nextStore);
-
     const storedCounter = Number(lsGet(LS_BLANK_COUNTER) || "1");
     const c = Number.isFinite(storedCounter) && storedCounter > 0 ? storedCounter : 1;
     setCounter(nextAvailableCounter(initialTemplate, c));
+    setDidLoad(true);
   }, []);
 
-  // persist
   React.useEffect(() => {
-    lsSet(LS_SOLVED_CODE, solved);
-  }, [solved]);
-
-  React.useEffect(() => {
-    lsSet(LS_TEMPLATE_CODE, template);
-  }, [template]);
-
-  React.useEffect(() => {
-    lsSet(LS_BLANK_COUNTER, String(counter));
-  }, [counter]);
-
-const persistTimerRef = React.useRef<number | null>(null);
+  if (!didLoad) return;
+  lsSet(LS_SOLVED_CODE, solved);
+}, [solved, didLoad]);
 
 React.useEffect(() => {
+  if (!didLoad) return;
+  lsSet(LS_TEMPLATE_CODE, template);
+}, [template, didLoad]);
+
+React.useEffect(() => {
+  if (!didLoad) return;
+  lsSet(LS_BLANK_COUNTER, String(counter));
+}, [counter, didLoad]);
+
+React.useEffect(() => {
+  if (!didLoad) return;
+
   if (persistTimerRef.current) window.clearTimeout(persistTimerRef.current);
+
   persistTimerRef.current = window.setTimeout(() => {
-    lsSetJson(LS_BLANK_STORE, store);
+    lsSetJson(LS_BLANK_STORE, storeRef.current); // or `store` is fine
   }, 400);
 
   return () => {
     if (persistTimerRef.current) window.clearTimeout(persistTimerRef.current);
   };
-}, [store]);
+}, [store, didLoad]);
+
+const persistTimerRef = React.useRef<number | null>(null);
+
+
+
+function flushAllNow() {
+  if (typeof window === "undefined") return;
+
+  // cancel pending debounced commits/saves
+  if (commitTimerRef.current) {
+    window.clearTimeout(commitTimerRef.current);
+    commitTimerRef.current = null;
+  }
+  if (persistTimerRef.current) {
+    window.clearTimeout(persistTimerRef.current);
+    persistTimerRef.current = null;
+  }
+
+  // 1) Force-commit inspector drafts into store synchronously
+  let nextStore = storeRef.current;
+  const bid = selectedRef.current;
+
+  if (bid) {
+    nextStore = applyDraftsToStoreSync(nextStore, bid, {
+      answer: answerDraftRef.current ?? "",
+      description: descDraftRef.current ?? "",
+      bindKey: bindDraftRef.current ?? "",
+      constraintType: (constraintDraftRef.current ?? "expr_ref") as ConstraintType,
+      allowedRaw: allowedDraftRef.current ?? "",
+      rangeMinRaw: minDraftRef.current ?? "",
+      rangeMaxRaw: maxDraftRef.current ?? "",
+    });
+    storeRef.current = nextStore;
+  }
+
+  // 2) Persist other UI textareas/inputs that otherwise reset on remount
+  window.localStorage.setItem(LS_ANSWERKEY_SNIPPET, answerKeySnippetRef.current ?? "");
+  window.localStorage.setItem(LS_ANSWERKEY_REPORT, answerKeyReportRef.current ?? "");
+  window.localStorage.setItem(LS_TEST_VALUE, testValueRef.current ?? "");
+
+  // 3) Persist core data immediately (no debounce)
+  persistNow({
+    store: nextStore,
+    tables: loadRegistryTables(),
+    activeId: loadRegistryActiveId(),
+    projectCode: lsGet(LS_PROJECT_CODE) || "",
+    templateCode: templateRef.current ?? "",
+    solvedCode: solvedRef.current ?? "",
+  });
+
+  window.localStorage.setItem(LS_BLANK_COUNTER, String(counterRef.current ?? 1));
+}
+
+function onSave() {
+  flushAllNow();
+  setSaveStatus(`Saved at ${new Date().toLocaleTimeString()}`);
+  window.setTimeout(() => setSaveStatus(""), 2000);
+}
+
+
 
 
   function captureSelectionFromTextarea(el: HTMLTextAreaElement | null) {
@@ -867,6 +1154,8 @@ React.useEffect(() => {
     });
   }
 
+  
+
   function makeBlank() {
     if (!sel) return;
     if (!createMode) return;
@@ -903,6 +1192,9 @@ React.useEffect(() => {
 
     // open inspector
     setSelectedBlankId(blankName);
+    setPendingSelectBlankId(blankName);
+
+    // visually highlight the newly created blank by selecting it in the textarea
   }
 
   function resetFromSolved() {
@@ -1251,6 +1543,19 @@ React.useEffect(() => {
           >
             Redo
           </button>
+          <button
+  type="button"
+  onClick={onSave}
+  className="rounded-xl border px-3 py-2 text-sm hover:bg-gray-100"
+  title="Save to local storage"
+>
+  Save
+</button>
+
+{saveStatus ? (
+  <div className="text-xs opacity-70">{saveStatus}</div>
+) : null}
+
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
@@ -1364,13 +1669,27 @@ React.useEffect(() => {
                 onChange={(e) => setSolved(e.target.value)}
                 className="w-full rounded-xl border p-3 font-mono text-sm max-h-[70vh] overflow-auto"
                 placeholder="Paste full project code here (solved/reference)"
+                spellCheck={false}
               />
             </section>
 
             <section className="rounded-2xl border p-4 lg:col-span-6">
-              <div className="font-medium mb-2">Template code (you blank this out)</div>
+              <div className="font-medium mb-2">Template code (Blank this out)</div>
+              
               <div className="text-sm opacity-70 mb-2">Highlight text to blank. Click existing blanks to edit/remove.</div>
-
+                            <button
+              type="button"
+              disabled={!createMode || !sel}
+              onClick={makeBlank}
+              className={[
+                "rounded-xl mb-2 px-3 py-1 text-sm border transition-colors",
+                createMode && sel
+                  ? "bg-blue-900 text-white border-blue-900 hover:bg-blue-800"
+                  : "border-blue-900 text-blue-900 opacity-70 hover:bg-blue-50",
+              ].join(" ")}
+            >
+              Make Blank
+            </button>
                     <AutoGrowTextarea
                     ref={templateTextareaRef}
                     value={template}
@@ -1379,6 +1698,7 @@ React.useEffect(() => {
                     onKeyUp={(e) => captureSelectionFromTextarea(e.currentTarget)}
                     className="w-full rounded-xl border p-3 font-mono text-sm max-h-[70vh] overflow-auto whitespace-pre-wrap break-words"
                     placeholder="Template code you will turn into blanks"
+                    spellCheck={false}
                     />
 
 
@@ -1392,115 +1712,110 @@ React.useEffect(() => {
 <section className="rounded-2xl border p-4 mt-4">
   <div className="flex items-center justify-between gap-3 flex-wrap">
     <div>
-      <div className="font-medium">Blank answers (readable)</div>
+      <div className="font-medium">Blank answers (click to inspect)</div>
       <div className="text-sm opacity-70">
-        Format: <span className="font-mono">display# : "answer"</span> and the stable internal UID below it.
+        Click an item to open/close the inspector.
       </div>
     </div>
 
-    <button
-      type="button"
-      onClick={() => {
-        // copy a friendly export the way you want
-        const ids = unique(extractBlanksInOrder(templateRef.current));
-        const lines = ids.map((id) => {
-          const uid = resolveBlankUid(storeRef.current, id);
-          const ans = getBlankMeta(storeRef.current, id)?.answer ?? "";
-          const safe = ans.replace(/\n/g, "\\n");
-          return `${id} : "${safe}"\n  uid: ${uid ?? "(none)"}`;
-        });
-        copyToClipboard(lines.join("\n\n"));
-      }}
-      className="rounded-xl border px-3 py-2 text-sm hover:bg-gray-100"
-    >
-      Copy readable
-    </button>
+    <div className="flex items-center gap-2">
+      <div className="text-sm opacity-70">
+        {blanksInOrder.length} blanks
+      </div>
+
+      <button
+        type="button"
+        onClick={renumberByAppearance}
+        className="rounded-xl border px-3 py-2 text-sm hover:bg-gray-100"
+        title="Renumber blanks in the order they appear in the template"
+        disabled={blanksInOrder.length === 0}
+      >
+        Renumber
+      </button>
+
+      <button
+        type="button"
+        onClick={() => {
+          const ids = unique(extractBlanksInOrder(templateRef.current));
+          const lines = ids.map((id) => {
+            const uid = resolveBlankUid(storeRef.current, id);
+            const ans = getBlankMeta(storeRef.current, id)?.answer ?? "";
+            const safe = ans.replace(/\n/g, "\\n");
+            return `${id} : "${safe}"\n  uid: ${uid ?? "(none)"}`;
+          });
+          copyToClipboard(lines.join("\n\n"));
+        }}
+        className="rounded-xl border px-3 py-2 text-sm hover:bg-gray-100"
+      >
+        Copy readable
+      </button>
+    </div>
   </div>
 
-  <div className="mt-3 space-y-3">
-    {unique(extractBlanksInOrder(template)).length === 0 ? (
+  {/* Scroll container */}
+  <div className="mt-3 max-h-[420px] overflow-auto pr-2 space-y-2">
+    {blanksInOrder.length === 0 ? (
       <div className="text-sm opacity-70">No blanks yet.</div>
     ) : (
-      unique(extractBlanksInOrder(template)).map((id) => {
-        const uid = resolveBlankUid(store, id);
-        const ans = getBlankMeta(store, id)?.answer ?? "";
-        const keyExpr = getBlankMeta(store, id)?.generatedKeyExpr ?? "";
+      blanksInOrder.map((b, idx) => {
+        const uid = resolveBlankUid(store, b.id);
+        const meta = getBlankMeta(store, b.id);
+        const ans = meta?.answer ?? "";
+        const keyExpr = meta?.generatedKeyExpr ?? "";
+        const active = selectedBlankId === b.id;
 
         return (
-          <div key={id} className="rounded-xl border p-3">
-            <div className="font-mono text-sm">
-              {id} : <span className="opacity-80">"{ans}"</span>
+          <button
+            key={b.id}
+            type="button"
+            onClick={() => openInspectorToggle(b.id)} // ✅ toggle behavior like template overlay
+            className={[
+              "w-full text-left rounded-xl border px-3 py-2 hover:bg-gray-50",
+              active ? "border-indigo-400 bg-indigo-50" : "",
+            ].join(" ")}
+            title="Click to open/close inspector"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <div className="font-mono text-sm">__BLANK[{b.id}]__</div>
+              <div className="text-xs opacity-60">#{idx + 1}</div>
+            </div>
+
+            {/* preview + count (same as old Blanks list) */}
+            <div className="text-xs opacity-70 mt-1">
+              {b.preview ? (
+                b.preview
+              ) : (
+                <span className="italic">no stored answer</span>
+              )}
+              {b.count > 1 ? <span className="ml-2">(x{b.count})</span> : null}
+            </div>
+
+            {/* readable answer details */}
+            <div className="text-xs opacity-60 mt-2">
+              answer: <span className="font-mono">"{ans}"</span>
             </div>
             <div className="text-xs opacity-60 mt-1">
               uid: <span className="font-mono">{uid ?? "(none)"}</span>
             </div>
-              {keyExpr ? (
-            <div className="text-xs opacity-60 mt-1">
+
+            {keyExpr ? (
+              <div className="text-xs opacity-60 mt-1">
                 key: <span className="font-mono">{keyExpr}</span>
-            </div>
+              </div>
             ) : null}
-          </div>
+          </button>
         );
       })
     )}
   </div>
 </section>
 
+
         </div>
 
         {/* Right rail: blanks list + inspector */}
         <div className="xl:col-span-3 space-y-4">
           {/* Blanks list */}
-<section className="rounded-2xl border p-4">
-  <div className="flex items-center justify-between gap-2">
-    <div className="font-medium">Blanks list</div>
-
-    <div className="flex items-center gap-2">
-      <div className="text-sm opacity-70">{blanksInOrder.length} blanks</div>
-
-      <button
-        type="button"
-        onClick={renumberByAppearance}
-        className="rounded-xl border px-2 py-1 text-xs hover:bg-gray-100"
-        title="Renumber blanks in the order they appear in the template"
-        disabled={blanksInOrder.length === 0}
-      >
-        Renumber
-      </button>
-    </div>
-  </div>
-
-  {blanksInOrder.length === 0 ? (
-    <div className="text-sm opacity-70 mt-3">No blanks yet.</div>
-  ) : (
-    <div className="mt-3 space-y-2">
-      {blanksInOrder.map((b, idx) => {
-        const active = selectedBlankId === b.id;
-        return (
-          <button
-            key={b.id}
-            type="button"
-            onClick={() => setSelectedBlankId(b.id)} // or openInspectorToggle(b.id) if you want toggle behavior
-            className={[
-              "w-full text-left rounded-xl border px-3 py-2 hover:bg-gray-50",
-              active ? "border-indigo-400 bg-indigo-50" : "",
-            ].join(" ")}
-          >
-            <div className="flex items-center justify-between gap-2">
-              <div className="font-mono text-sm">__BLANK[{b.id}]__</div>
-              <div className="text-xs opacity-60">#{idx + 1}</div>
-            </div>
-            <div className="text-xs opacity-70 mt-1">
-              {b.preview ? b.preview : <span className="italic">no stored answer</span>}
-              {b.count > 1 ? <span className="ml-2">(x{b.count})</span> : null}
-            </div>
-          </button>
-        );
-      })}
-    </div>
-  )}
-</section>
-
 
           {/* Inspector */}
           <section className="rounded-2xl border p-4">
@@ -1696,6 +2011,7 @@ React.useEffect(() => {
       onChange={(e) => setAnswerKeySnippet(e.target.value)}
       className="mt-0 w-full rounded-xl border p-2 font-mono text-xs min-h-[140px]"
       placeholder="Click Generate to create the snippet. This will persist after refresh."
+      spellCheck={false}
     />
 
     {answerKeyReport ? (
