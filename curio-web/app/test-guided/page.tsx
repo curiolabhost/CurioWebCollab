@@ -1,206 +1,479 @@
-// app/test-guided/page.tsx
 "use client";
-import CodeLessonBase from "@/src/lesson-core/CodeLessonBase";
-import React from "react";
 
-export default function TestGuidedPage() {
-  const [stats, setStats] = React.useState({
-    wrongAttempts: 0,
-    tasksCompleted: 0,
-    lastCheckErrors: 0,
-    totalBlanks: 0,
-    checkAttempts: 0,
-    overallProgress: 0
-  });
+import * as React from "react";
 
-  // 实时监听器：监控所有相关的统计变量
-  React.useEffect(() => {
-    const interval = setInterval(() => {
-      try {
-        // 监听 GuidedCodeBlock 的填空统计
-        const attemptsData = localStorage.getItem('test-guided:blankAttemptsByName');
-        const statusData = localStorage.getItem('test-guided:blankStatus');
-        const checkAttemptsData = localStorage.getItem('test-guided:checkAttempts');
-        
-        // 监听 CodeLessonBase 的整体进度
-        const progressData = localStorage.getItem('test-guided:overallProgress');
-        const doneSetData = localStorage.getItem('test-guided:doneSet');
-        
-        const attempts = attemptsData ? JSON.parse(attemptsData) : {};
-        const status = statusData ? JSON.parse(statusData) : {};
-        const totalChecks = checkAttemptsData ? parseInt(checkAttemptsData) : 0;
-        const overallProgress = progressData ? parseInt(progressData) : 0;
-        const doneSet = doneSetData ? JSON.parse(doneSetData) : [];
-        
-        // 计算实时统计
-        const wrongAttempts = Object.values(attempts).reduce((sum: number, count: any) => sum + count, 0);
-        const correctBlanks = Object.values(status).filter(s => s === true).length;
-        const totalBlanks = Object.keys(status).length;
-        const tasksCompleted = doneSet.length; // 完成的任务数量
-        
-        setStats({
-          wrongAttempts,
-          tasksCompleted,
-          lastCheckErrors: totalBlanks - correctBlanks,
-          totalBlanks,
-          checkAttempts: totalChecks,
-          overallProgress
-        });
-      } catch (error) {
-        console.log('统计信息暂不可用');
-      }
-    }, 500); // 每500ms更新一次
-    
-    return () => clearInterval(interval);
-  }, []);
+// ✅ 改成你项目里 lessonMapBeg（或 mindMapBeg）真实路径
+import { mindmapNodes } from "@/src/projects/electric-status-board/assets/mindMapBeg"; // 或 lessonMapBeg
+// mindmapNodes 的 shape 见你贴的文件：[{id,title,description,type,connections,...}] :contentReference[oaicite:1]{index=1}
 
+/**
+ * =========================
+ * Config: storage prefix + mapping
+ * =========================
+ */
+
+// 你现在嵌在 /test-guided 的 lesson base 用的是这个
+const STORAGE_PREFIX = "test-guided";
+
+// ✅ 关键：把 CodeLessonBase 的 stepIndex 映射到 mindmap nodeId
+// stepKey 是 Lx-Sy，Sy 就是 stepIndex（从 0 开始）
+// 你需要按你真实 lessonSteps 的顺序填一下这个表
+const STEP_TO_NODE: Record<number, string> = {
+  0: "setup",
+  1: "main-menu",
+  2: "status-menu",
+  3: "status-display",
+  4: "clock-screen",
+  // 继续填：5,6,7... 直到你 lesson base 里全部 step 覆盖
+};
+
+/**
+ * =========================
+ * Types
+ * =========================
+ */
+
+type GuidedUiPayload = {
+  blankStatus?: Record<string, boolean>;
+  blankAttemptsByName?: Record<string, number>; // wrong-only count
+  aiHintLevelByBlank?: Record<string, number>; // key: `${blockIndex}:${blankName}` => level
+};
+
+type StepUi = {
+  stepKey: string; // e.g., "L1-S0"
+  lessonIndex: number; // from "Lx"
+  stepIndex: number; // from "Sy"
+  ui: GuidedUiPayload;
+};
+
+type BlankStat = {
+  blankName: string;
+  completed: boolean;
+  wrong: number;
+  ai: number;
+};
+
+type NodeStats = {
+  nodeId: string;
+  title: string;
+  description: string;
+  stepKeys: string[]; // which steps mapped here
+  blanks: BlankStat[];
+  totalBlanks: number;
+  completedBlanks: number;
+  wrongTotal: number;
+  aiTotal: number;
+};
+
+/**
+ * =========================
+ * LocalStorage scan helpers
+ * =========================
+ */
+
+function safeJsonParse<T>(raw: string | null): T | null {
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as T;
+  } catch {
+    return null;
+  }
+}
+
+function parseStepKey(stepKey: string): { lessonIndex: number; stepIndex: number } | null {
+  // expected: "L1-S0"
+  const m = /^L(\d+)-S(\d+)$/.exec(stepKey);
+  if (!m) return null;
+  return { lessonIndex: Number(m[1]), stepIndex: Number(m[2]) };
+}
+
+function readAllStepUis(storagePrefix: string): StepUi[] {
+  const out: StepUi[] = [];
+  if (typeof window === "undefined") return out;
+
+  // ✅ 你已经验证过的 key pattern
+  // `${storagePrefix}:blanks:LOCAL:UI:${stepKey}`
+  const marker = `${storagePrefix}:blanks:LOCAL:UI:`;
+
+  for (let i = 0; i < window.localStorage.length; i++) {
+    const k = window.localStorage.key(i);
+    if (!k || !k.startsWith(marker)) continue;
+
+    const stepKey = k.slice(marker.length); // "L1-S0"
+    const parsed = parseStepKey(stepKey);
+    if (!parsed) continue;
+
+    const raw = window.localStorage.getItem(k);
+    const ui = safeJsonParse<GuidedUiPayload>(raw);
+    if (!ui) continue;
+
+    out.push({
+      stepKey,
+      lessonIndex: parsed.lessonIndex,
+      stepIndex: parsed.stepIndex,
+      ui,
+    });
+  }
+
+  // stable order
+  out.sort((a, b) => a.stepKey.localeCompare(b.stepKey));
+  return out;
+}
+
+/**
+ * =========================
+ * Build stats: step -> node -> blanks
+ * =========================
+ */
+
+function aiMapToByBlank(aiHintLevelByBlank?: Record<string, number>): Record<string, number> {
+  // aiHintLevelByBlank uses key `${blockIndex}:${blankName}`
+  // We'll aggregate by blankName taking max level as "usage"
+  const byBlank: Record<string, number> = {};
+  const m = aiHintLevelByBlank || {};
+  for (const [k, lvl] of Object.entries(m)) {
+    const parts = String(k).split(":");
+    const blankName = parts.slice(1).join(":");
+    if (!blankName) continue;
+    byBlank[blankName] = Math.max(byBlank[blankName] || 0, Number(lvl) || 0);
+  }
+  return byBlank;
+}
+
+function mergeBlankStatsFromUi(ui: GuidedUiPayload): BlankStat[] {
+  const status = ui.blankStatus || {};
+  const wrong = ui.blankAttemptsByName || {};
+  const aiByBlank = aiMapToByBlank(ui.aiHintLevelByBlank);
+
+  const names = new Set<string>([
+    ...Object.keys(status),
+    ...Object.keys(wrong),
+    ...Object.keys(aiByBlank),
+  ]);
+
+  return Array.from(names)
+    .sort()
+    .map((blankName) => ({
+      blankName,
+      completed: status[blankName] === true,
+      wrong: Number(wrong[blankName] || 0),
+      ai: Number(aiByBlank[blankName] || 0),
+    }));
+}
+
+function buildNodeStats(stepUis: StepUi[], selectedLessonIndex: number | "all"): NodeStats[] {
+  // Build a quick lookup for node meta
+  const nodeMeta = new Map(
+    (mindmapNodes || []).map((n: any) => [
+      n.id,
+      { title: n.title, description: n.description },
+    ])
+  );
+
+  // Init buckets for each node
+  const buckets = new Map<string, { stepKeys: string[]; blanks: BlankStat[] }>();
+
+  // include all known nodes first
+  for (const n of mindmapNodes as any[]) {
+    buckets.set(n.id, { stepKeys: [], blanks: [] });
+  }
+  // add an "unknown" bucket for unmapped steps
+  buckets.set("__unknown__", { stepKeys: [], blanks: [] });
+
+  for (const s of stepUis) {
+    if (selectedLessonIndex !== "all" && s.lessonIndex !== selectedLessonIndex) continue;
+
+    const nodeId = STEP_TO_NODE[s.stepIndex] || "__unknown__";
+    const b = buckets.get(nodeId) || { stepKeys: [], blanks: [] };
+
+    b.stepKeys.push(s.stepKey);
+    b.blanks.push(...mergeBlankStatsFromUi(s.ui));
+
+    buckets.set(nodeId, b);
+  }
+
+  // Reduce duplicates: same blankName might appear multiple times across steps;
+  // for node-level display, we aggregate by blankName with:
+  // - completed: ever true
+  // - wrong: sum
+  // - ai: max (level)
+  const out: NodeStats[] = [];
+
+  for (const [nodeId, { stepKeys, blanks }] of buckets.entries()) {
+    const agg = new Map<string, BlankStat>();
+    for (const b of blanks) {
+      const cur = agg.get(b.blankName) || {
+        blankName: b.blankName,
+        completed: false,
+        wrong: 0,
+        ai: 0,
+      };
+      cur.completed = cur.completed || b.completed;
+      cur.wrong += b.wrong;
+      cur.ai = Math.max(cur.ai, b.ai);
+      agg.set(b.blankName, cur);
+    }
+
+    const list = Array.from(agg.values()).sort(
+      (a, b) => b.wrong * 2 + b.ai - (a.wrong * 2 + a.ai)
+    );
+
+    const totalBlanks = list.length;
+    const completedBlanks = list.filter((x) => x.completed).length;
+    const wrongTotal = list.reduce((s, x) => s + x.wrong, 0);
+    const aiTotal = list.reduce((s, x) => s + x.ai, 0);
+
+    const meta = nodeMeta.get(nodeId);
+
+    out.push({
+      nodeId,
+      title: meta?.title || (nodeId === "__unknown__" ? "Unmapped steps" : nodeId),
+      description:
+        meta?.description ||
+        (nodeId === "__unknown__"
+          ? "Steps that are not mapped in STEP_TO_NODE yet."
+          : ""),
+      stepKeys,
+      blanks: list,
+      totalBlanks,
+      completedBlanks,
+      wrongTotal,
+      aiTotal,
+    });
+  }
+
+  // sort: known nodes first in mindmap order; unknown last
+  const order = new Map<string, number>();
+  (mindmapNodes as any[]).forEach((n, idx) => order.set(n.id, idx));
+  order.set("__unknown__", 10_000);
+
+  out.sort((a, b) => (order.get(a.nodeId) ?? 9999) - (order.get(b.nodeId) ?? 9999));
+
+  return out;
+}
+
+/**
+ * =========================
+ * UI helpers
+ * =========================
+ */
+
+function ProgressBar({ pct }: { pct: number }) {
   return (
-    <div style={{ 
-      padding: '20px', 
-      background: '#f8fafc', 
-      minHeight: '100vh',
-      fontFamily: 'system-ui, sans-serif'
-    }}>
-      {/* 实时统计监控面板 */}
-      <div style={{ 
-        background: 'white', 
-        padding: '24px', 
-        borderRadius: '12px', 
-        marginBottom: '24px',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-        border: '1px solid #e2e8f0'
-      }}>
-        <h1 style={{ 
-          marginBottom: '20px', 
-          color: '#1e293b',
-          fontSize: '24px',
-          fontWeight: '600'
-        }}>
-          🎯 GuidedCodeBlock 实时监控面板
-        </h1>
-        
-        <div style={{ 
-          display: 'grid', 
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-          gap: '16px',
-          marginBottom: '20px'
-        }}>
-          <StatBox 
-            title="❌ 错误尝试次数" 
-            value={stats.wrongAttempts} 
-            color="#ef4444" 
-            description="用户填错答案的总次数"
-          />
-          <StatBox 
-            title="✅ 完成的任务" 
-            value={stats.tasksCompleted} 
-            color="#10b981" 
-            description="标记为完成的任务数量"
-          />
-          <StatBox 
-            title="📊 总进度" 
-            value={`${stats.overallProgress}%`} 
-            color="#3b82f6" 
-            description="课程整体完成进度"
-          />
-          <StatBox 
-            title="🔍 检查次数" 
-            value={stats.checkAttempts} 
-            color="#8b5cf6" 
-            description="点击检查按钮的总次数"
-          />
-          <StatBox 
-            title="⏳ 当前错误" 
-            value={stats.lastCheckErrors} 
-            color="#f59e0b" 
-            description="最后一次检查的错误数量"
-          />
-          <StatBox 
-            title="📝 总空白数" 
-            value={stats.totalBlanks} 
-            color="#64748b" 
-            description="当前步骤的填空总数"
-          />
-        </div>
-        
-        <div style={{ 
-          fontSize: '14px', 
-          color: '#64748b',
-          background: '#f8fafc',
-          padding: '12px',
-          borderRadius: '6px',
-          borderLeft: '4px solid #3b82f6'
-        }}>
-          <p><strong>监控说明：</strong>此页面实时监控 CodeLessonBase 和 GuidedCodeBlock 的交互数据。</p>
-          <p>所有统计信息每500毫秒自动更新，无需刷新页面。</p>
-        </div>
-      </div>
-
-      {/* 嵌入完整的课程内容 */}
-      <div style={{ 
-        background: 'white', 
-        borderRadius: '12px', 
-        overflow: 'hidden',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-        border: '1px solid #e2e8f0',
-        minHeight: '600px'
-      }}>
-        <CodeLessonBase 
-          // 使用独立的存储前缀，避免与主应用冲突
-          storagePrefix="test-guided"
-          apiBaseUrl="http://localhost:4000"
-          analyticsTag="test-guided"
-          // 不传递 lessonSteps，让组件使用默认或内置的课程数据
-        />
-      </div>
+    <div style={{ height: 10, borderRadius: 999, background: "#eee", overflow: "hidden" }}>
+      <div style={{ height: 10, width: `${pct}%`, background: "#111" }} />
     </div>
   );
 }
 
-// 统计信息组件
-function StatBox({ 
-  title, 
-  value, 
-  color, 
-  description 
-}: { 
-  title: string; 
-  value: number | string; 
-  color: string; 
-  description?: string;
-}) {
+function StatPill({ label, value }: { label: string; value: any }) {
   return (
-    <div style={{ 
-      background: '#f8fafc', 
-      padding: '16px', 
-      borderRadius: '8px',
-      textAlign: 'center'
-    }}>
-      <div style={{ 
-        fontSize: '14px', 
-        color: '#64748b', 
-        marginBottom: '8px',
-        fontWeight: '500'
-      }}>
-        {title}
-      </div>
-      <div style={{ 
-        fontSize: '28px', 
-        fontWeight: 'bold', 
-        color,
-        marginBottom: '4px'
-      }}>
-        {value}
-      </div>
-      {description && (
-        <div style={{ 
-          fontSize: '12px', 
-          color: '#94a3b8',
-          lineHeight: '1.3'
-        }}>
-          {description}
+    <span
+      style={{
+        display: "inline-flex",
+        gap: 6,
+        alignItems: "center",
+        border: "1px solid #eee",
+        borderRadius: 999,
+        padding: "4px 8px",
+        fontSize: 12,
+      }}
+    >
+      <span style={{ opacity: 0.7 }}>{label}:</span>
+      <b>{value}</b>
+    </span>
+  );
+}
+
+/**
+ * =========================
+ * Page
+ * =========================
+ */
+
+export default function TestGuidedAnalyticsPage() {
+  const [stepUis, setStepUis] = React.useState<StepUi[]>([]);
+  const [lessonIndexChoice, setLessonIndexChoice] = React.useState<number | "all">("all");
+  const [nodeStats, setNodeStats] = React.useState<NodeStats[]>([]);
+
+  const refresh = React.useCallback(() => {
+    const all = readAllStepUis(STORAGE_PREFIX);
+    setStepUis(all);
+
+    // if user chose a specific lessonIndex but it doesn't exist anymore, fallback to "all"
+    const lessonIndices = Array.from(new Set(all.map((s) => s.lessonIndex))).sort((a, b) => a - b);
+    if (lessonIndexChoice !== "all" && !lessonIndices.includes(lessonIndexChoice)) {
+      setLessonIndexChoice("all");
+    }
+
+    const stats = buildNodeStats(all, lessonIndexChoice);
+    setNodeStats(stats);
+  }, [lessonIndexChoice]);
+
+  // initial + polling
+  React.useEffect(() => {
+    refresh();
+    const t = window.setInterval(refresh, 800);
+    return () => window.clearInterval(t);
+  }, [refresh]);
+
+  // cross-tab storage updates (best effort)
+  React.useEffect(() => {
+    const onStorage = (ev: StorageEvent) => {
+      const marker = `${STORAGE_PREFIX}:blanks:LOCAL:UI:`;
+      if (ev.key && ev.key.startsWith(marker)) refresh();
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, [refresh]);
+
+  // recompute nodeStats when lessonIndexChoice changes
+  React.useEffect(() => {
+    setNodeStats(buildNodeStats(stepUis, lessonIndexChoice));
+  }, [stepUis, lessonIndexChoice]);
+
+  const lessonIndices = Array.from(new Set(stepUis.map((s) => s.lessonIndex))).sort((a, b) => a - b);
+
+  // overall across nodes (excluding unknown if you want; here include all)
+  const overallTotal = nodeStats.reduce((s, n) => s + n.totalBlanks, 0);
+  const overallDone = nodeStats.reduce((s, n) => s + n.completedBlanks, 0);
+  const overallPct = overallTotal ? Math.round((overallDone / overallTotal) * 100) : 0;
+
+  return (
+    <main style={{ padding: 20, background: "#f8fafc", minHeight: "100vh", fontFamily: "system-ui, sans-serif" }}>
+      <div style={{ background: "white", padding: 18, borderRadius: 12, border: "1px solid #e2e8f0", marginBottom: 16 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+          <div>
+            <h1 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>Analytics (grouped by lesson nodes)</h1>
+            <div style={{ fontSize: 12, opacity: 0.7, marginTop: 6 }}>
+              Source: {STORAGE_PREFIX}:blanks:LOCAL:UI:Lx-Sy
+            </div>
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <label style={{ fontSize: 12, fontWeight: 600 }}>Lesson index</label>
+            <select
+              value={lessonIndexChoice}
+              onChange={(e) => setLessonIndexChoice(e.target.value === "all" ? "all" : Number(e.target.value))}
+              style={{ padding: "6px 10px" }}
+            >
+              <option value="all">All</option>
+              {lessonIndices.map((x) => (
+                <option key={x} value={x}>
+                  L{x}
+                </option>
+              ))}
+            </select>
+
+            <button onClick={refresh} style={{ padding: "6px 10px" }}>
+              Refresh
+            </button>
+          </div>
         </div>
-      )}
-    </div>
+
+        <div style={{ marginTop: 14 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+            <b style={{ fontSize: 14 }}>Overall progress</b>
+            <span style={{ fontSize: 12, opacity: 0.75 }}>
+              {overallDone}/{overallTotal} blanks · {overallPct}%
+            </span>
+          </div>
+          <div style={{ marginTop: 8 }}>
+            <ProgressBar pct={overallPct} />
+          </div>
+        </div>
+
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 12 }}>
+          <StatPill label="steps captured" value={stepUis.length} />
+          <StatPill label="nodes" value={nodeStats.length} />
+          <StatPill label="unmapped steps" value={nodeStats.find((n) => n.nodeId === "__unknown__")?.stepKeys.length ?? 0} />
+        </div>
+      </div>
+
+      {/* TOP: grouped by mindmap nodes */}
+      <section
+        style={{
+          background: "white",
+          borderRadius: 12,
+          border: "1px solid #e2e8f0",
+          padding: 18,
+        }}
+      >
+        <div style={{ fontSize: 16, fontWeight: 800, marginBottom: 10 }}>By lesson (mindmap nodes)</div>
+        <div style={{ fontSize: 12, opacity: 0.7, marginBottom: 14 }}>
+          Node titles/descriptions come from mindmapNodes. {/*:contentReference[oaicite:2]{index=2}*/}
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12 }}>
+          {nodeStats.map((n) => {
+            const pct = n.totalBlanks ? Math.round((n.completedBlanks / n.totalBlanks) * 100) : 0;
+            return (
+              <div key={n.nodeId} style={{ border: "1px solid #eee", borderRadius: 12, padding: 12 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontWeight: 800 }}>{n.title}</div>
+                    <div style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}>{n.description}</div>
+                  </div>
+                  <div style={{ fontSize: 12, opacity: 0.7, textAlign: "right" }}>
+                    <div><b>{pct}%</b></div>
+                    <div>{n.stepKeys.length} steps</div>
+                  </div>
+                </div>
+
+                <div style={{ marginTop: 10 }}>
+                  <ProgressBar pct={pct} />
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 10 }}>
+                    <StatPill label="completed" value={`${n.completedBlanks}/${n.totalBlanks}`} />
+                    <StatPill label="wrong total" value={n.wrongTotal} />
+                    <StatPill label="AI total" value={n.aiTotal} />
+                  </div>
+                </div>
+
+                <div style={{ marginTop: 10 }}>
+                  <details>
+                    <summary style={{ cursor: "pointer", fontSize: 13 }}>
+                      show blanks (sorted by need help)
+                    </summary>
+
+                    <div style={{ marginTop: 10 }}>
+                      {n.blanks.length === 0 ? (
+                        <div style={{ fontSize: 12, opacity: 0.7 }}>No blanks observed yet for this node.</div>
+                      ) : (
+                        n.blanks.slice(0, 60).map((b) => (
+                          <div
+                            key={`${n.nodeId}:${b.blankName}`}
+                            style={{ display: "flex", justifyContent: "space-between", gap: 10, padding: "5px 0", borderBottom: "1px solid #f3f3f3" }}
+                          >
+                            <div style={{ minWidth: 0 }}>
+                              <code style={{ fontSize: 12 }}>{b.blankName}</code>
+                              <div style={{ fontSize: 11, opacity: 0.7 }}>
+                                {b.completed ? "done" : "not done"}
+                              </div>
+                            </div>
+                            <div style={{ fontSize: 12, fontWeight: 700 }}>
+                              wrong {b.wrong} · AI {b.ai}
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+
+                    {n.stepKeys.length > 0 && (
+                      <div style={{ marginTop: 10, fontSize: 12, opacity: 0.7 }}>
+                        Steps in this node: {n.stepKeys.join(", ")}
+                      </div>
+                    )}
+                  </details>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        <div style={{ marginTop: 14, fontSize: 12, opacity: 0.7 }}>
+          Note: If “Unmapped steps” is non-zero, extend <code>STEP_TO_NODE</code> so every stepIndex maps to a nodeId.
+        </div>
+      </section>
+    </main>
   );
 }
