@@ -118,7 +118,7 @@ app.post("/verify-arduino", (req, res) => {
 
 
 // ----------------------
-// /ai/help - proper Ollama streaming (Node SDK compatible)
+// /ai/help - Ollama streaming (Node SDK compatible)
 // ----------------------
 app.post("/ai/help", async (req, res) => {
   console.log("🤖 POST /ai/help called");
@@ -145,7 +145,7 @@ app.post("/ai/help", async (req, res) => {
 
   const prompt =
     mode === "arduino-verify"
-      ? `You are a friendly Arduino tutor. Explain these errors with hints only. Do NOT give the students the answer. Keep your responses ${verbosity} and roughly ${sentences} sentences long.
+      ? `You are a friendly Arduino tutor. Explain these errors with hints only. Do NOT give the students the answer. Keep your responses very short but helpful and up to 3 sentences long.
 
 Sketch:
 \`\`\`cpp
