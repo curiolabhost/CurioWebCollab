@@ -513,7 +513,7 @@ function coachTagBg(tag: CoachTag) {
   };
 
   async function streamHelpSSE(payload: any, onToken: (t: string) => void) {
-    const res = await fetch("http://3.129.218.117:4000/ai/help", {
+    const res = await fetch("http://ec2-3-147-46-215.us-east-2.compute.amazonaws.com:4000/ai/help", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -893,7 +893,7 @@ if (existing) {
     setAiHelpMap({});
 
     try {
-      const res = await fetch("http://3.129.218.117:4000/verify-arduino", {
+      const res = await fetch("http://ec2-3-147-46-215.us-east-2.compute.amazonaws.com:4000/verify-arduino", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code: value }),
