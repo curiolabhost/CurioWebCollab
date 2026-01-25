@@ -75,7 +75,7 @@
 /* a single rendered line */
 .codeLineRow {
   display: flex;
-  align-items: flex-start;
+  align-items: stretch;
   flex-wrap: nowrap; /* IMPORTANT: match original */
 }
 
@@ -84,6 +84,7 @@
   display: inline-flex;
   align-items: flex-start;
   flex-wrap: nowrap; /* IMPORTANT: match original */
+  min-width: 0;
 }
 
 /* right “comment” column */
@@ -384,3 +385,75 @@
 .boldWiring { font-weight: 800; color: #2563eb; }
 .boldSetup { font-weight: 800; color: #7c3aed; }
 .boldLoop { font-weight: 800; color: #0f766e; }
+
+/*EDITOR BLOCK*/
+.inlineEditorTextarea {
+  display: block;
+  width: 100%;
+  min-height: 140px;   /* <-- makes it obviously multiline */
+  margin: 4px 0;
+
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,0.12);
+  background: #b5bcce;
+  color: #e2e8f0;
+
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 13px;
+  line-height: 1.45;
+
+  outline: none;
+  resize: vertical;
+}
+
+.inlineEditorWrap {
+  width: 100%;
+  margin: 4px 0;
+  border-radius: 12px;
+  border: 1px solid rgba(44, 50, 107, 0.525);
+  background: #0f172a;
+  overflow: hidden;
+}
+
+.inlineCodeMirror :global(.cm-editor) {
+  background: transparent;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+/* remove gutter completely */
+.inlineCodeMirror :global(.cm-gutters) {
+  display: none !important;
+}
+
+/* remove active line background */
+.inlineCodeMirror :global(.cm-activeLine),
+.inlineCodeMirror :global(.cm-activeLineGutter) {
+  background: transparent !important;
+}
+
+/* optional: remove focus outline glow */
+.inlineCodeMirror :global(.cm-editor.cm-focused) {
+  outline: none;
+}
+
+/* Default text = white */
+.inlineCodeMirror :global(.cm-content),
+.inlineCodeMirror :global(.cm-line),
+.inlineCodeMirror :global(.cm-scroller) {
+  color: #ffffff;
+}
+
+.inlineCodeMirror :global(.cm-cursor) {
+  border-left-color: rgba(255,255,255,0.85) !important;
+}
+
+
+
+
+
+
+  
+
