@@ -200,7 +200,7 @@ void loop(){
 }`,
 
           answerKey: {
-            PREVN: { type: "range", min: 0, max: 13 }, // PREV button pin
+            PREVN: { type: "range", min: 1, max: 13 }, // PREV button pin
             NEXTN: { type: "range", min: 0, max: 13 }, // NEXT button pin
             SEL: { type: "identifier" }, // SELECT define name
             SELN: { type: "range", min: 0, max: 13 }, // SELECT button pin
