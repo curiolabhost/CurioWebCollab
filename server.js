@@ -20,7 +20,7 @@ const ollamaClient = new Ollama({ host: OLLAMA_HOST });
 // ----------------------
 // Arduino CLI config
 // ----------------------
-const ARDUINO_CLI = "arduino-cli";
+const ARDUINO_CLI = "/home/ubuntu/arduino-cli/bin/arduino-cli";
 const FQBN = "arduino:avr:uno";
 
 // ----------------------
@@ -30,6 +30,12 @@ const FQBN = "arduino:avr:uno";
 process.on("uncaughtException", (e) => console.error("uncaughtException:", e));
 process.on("unhandledRejection", (e) => console.error("unhandledRejection:", e));
 
+const PORT = process.env.PORT || 4000;
+
+
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server running on port ${PORT}`);
+});
 
 const STUB_LIBRARY_HEADERS = {
   "Adafruit_GFX.h": `#pragma once
@@ -67,6 +73,7 @@ function ensureStubHeadersForIncludes(code, dir) {
 // /verify-arduino
 // ----------------------
 app.post("/verify-arduino", (req, res) => {
+  console.log("Verify Called!")
   const { code } = req.body || {};
   if (!code?.trim()) return res.status(400).json({ ok: false, error: "Missing 'code'." });
 
@@ -114,6 +121,7 @@ app.post("/verify-arduino", (req, res) => {
 // /ai/help - proper Ollama streaming (Node SDK compatible)
 // ----------------------
 app.post("/ai/help", async (req, res) => {
+  console.log("🤖 POST /ai/help called");
   const {
     code = "",
     errors = [],
@@ -229,9 +237,8 @@ ${question}`;
 // ----------------------
 // Start server
 // ----------------------
-const PORT = 4000;
-app.listen(PORT, () => {
-  console.log(`🚀 Server running at http://localhost:${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Server running at http://0.0.0.0:${PORT}`);
   console.log("  • POST /verify-arduino");
   console.log("  • POST /ai/help (streaming)");
 });
