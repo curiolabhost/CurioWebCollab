@@ -16,7 +16,7 @@ export async function POST(req: Request) {
     });
 
     if (!upstream.body) {
-      return NextResponse.json(
+      return Response.json(
         { ok: false, error: "No response body from AI server" },
         { status: 500 }
       );
@@ -46,7 +46,7 @@ export async function POST(req: Request) {
     });
   } catch (err: any) {
     console.error("❌ AI proxy error:", err);
-    return NextResponse.json(
+    return Response.json(
       { ok: false, error: "Verification server not reachable" },
       { status: 500 }
     );

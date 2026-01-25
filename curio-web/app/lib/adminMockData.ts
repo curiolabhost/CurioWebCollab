@@ -3,6 +3,7 @@
 
 export type StudentProject = {
   name: string;
+  difficulty?: "beginner" | "intermediate" | "advanced";
   status: "completed" | "in-progress";
   progress: number;
   lastActive: string;
@@ -44,6 +45,7 @@ export const students: Student[] = [
     projects: [
       {
         name: "Electric Status Board",
+        difficulty: "beginner",
         status: "completed",
         progress: 100,
         lastActive: "2 days ago",
@@ -67,6 +69,7 @@ void loop() {
       },
       {
         name: "Remote Control Car",
+        difficulty: "intermediate",
         status: "in-progress",
         progress: 45,
         lastActive: "1 hour ago",
@@ -86,6 +89,7 @@ void loop() {
     projects: [
       {
         name: "Electric Status Board",
+        difficulty: "intermediate",
         status: "completed",
         progress: 100,
         lastActive: "1 week ago",
@@ -106,6 +110,7 @@ void loop() {
       },
       {
         name: "Digital Clock",
+        difficulty: "intermediate",
         status: "completed",
         progress: 100,
         lastActive: "3 days ago",
@@ -126,6 +131,7 @@ void loop() {
       },
       {
         name: "Electronic Safe",
+        difficulty: "advanced",
         status: "in-progress",
         progress: 30,
         lastActive: "4 hours ago",
@@ -145,6 +151,7 @@ void loop() {
     projects: [
       {
         name: "Electric Status Board",
+        difficulty: "beginner",
         status: "in-progress",
         progress: 25,
         lastActive: "30 minutes ago",
@@ -164,6 +171,7 @@ void loop() {
     projects: [
       {
         name: "Electric Status Board",
+        difficulty: "advanced",
         status: "completed",
         progress: 100,
         lastActive: "2 weeks ago",
@@ -182,6 +190,7 @@ void loop() {
       },
       {
         name: "Remote Control Car",
+        difficulty: "advanced",
         status: "completed",
         progress: 100,
         lastActive: "1 week ago",
@@ -202,6 +211,7 @@ void loop() {
       },
       {
         name: "Digital Clock",
+        difficulty: "intermediate",
         status: "completed",
         progress: 100,
         lastActive: "5 days ago",
@@ -220,6 +230,7 @@ void loop() {
       },
       {
         name: "Alarm Clock",
+        difficulty: "intermediate",
         status: "in-progress",
         progress: 55,
         lastActive: "2 hours ago",
@@ -239,6 +250,7 @@ void loop() {
     projects: [
       {
         name: "Electric Status Board",
+        difficulty: "beginner",
         status: "completed",
         progress: 100,
         lastActive: "4 days ago",
@@ -259,6 +271,7 @@ void loop() {
       },
       {
         name: "Digital Clock",
+        difficulty: "intermediate",
         status: "in-progress",
         progress: 40,
         lastActive: "1 day ago",
