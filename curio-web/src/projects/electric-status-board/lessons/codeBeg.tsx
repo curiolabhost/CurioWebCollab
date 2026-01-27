@@ -8,6 +8,9 @@ import ESBProjectMindMapLessonBeg from "./ProjectMindMapLessonBeg";
 import { TouchpadIcon } from "lucide-react";
 import TotalCountArrayInteractive from "./counterVariableBeg";
 import InputPullupCircuitInteractive from "./InputPullupCircuitInteractive";
+import { buildAnswerKey, K } from "@/src/lesson-core/blankKeyBuilder";
+import { generateKeyFromReference } from "@/src/lesson-core/blankKeyGenerator";
+
 
 
 export const LESSON_STEPS_BEGINNER: Record<number, { phrase: string; advanced?: boolean; steps: any[] }> = {
@@ -133,10 +136,10 @@ Loads the driver for the SSD1306 OLED controller. It knows how to send pixel-lev
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 ^^
-#define WIDTH  __BLANK[WIDTH]__.     // width of display in pixels
-#define HEIGHT __BLANK[HEIGHT]__.    // height of display in pixels
+#define WIDTH  __BLANK[1]__     // width of display in pixels
+#define HEIGHT __BLANK[2]__   // height of display in pixels
 #define RESET  -1
-Adafruit_SSD1306 display (WIDTH, __BLANK[HEIGHT2]__ , &Wire, RESET);^^
+Adafruit_SSD1306 display (WIDTH, __BLANK[3]__ , &Wire, RESET);^^
 
 void setup(){
 }
@@ -144,11 +147,12 @@ void setup(){
 void loop(){
 }`,
 
-          answerKey: {
-            WIDTH: ["128"],
-            HEIGHT: ["64", "32"],
-            HEIGHT2: ["HEIGHT"],
-          },
+            answerKey: buildAnswerKey({
+              2: K.num({ oneOf: [128] }),
+              1: K.num({ oneOf: [32,64] }),
+              3: K.str({ oneOf: ["HEIGHT"] }),
+            }),
+                      
 
           blankExplanations: {
             WIDTH:
@@ -184,14 +188,14 @@ void loop(){
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 
-#define WIDTH  __BLANK[WIDTH]__
-#define HEIGHT __BLANK[HEIGHT]__
+#define WIDTH  __BLANK[1]__
+#define HEIGHT __BLANK[2]__
 #define RESET  -1
-Adafruit_SSD1306 display (WIDTH, __BLANK[HEIGHT2]__ , &Wire, RESET);
+Adafruit_SSD1306 display (WIDTH, __BLANK[3]__ , &Wire, RESET);
 ^^
-#define PREV __BLANK[PREVN]__
-#define NEXT __BLANK[NEXTN]__
-#define __BLANK[SEL]__  __BLANK[SELN]__^^
+#define PREV __BLANK[4]__
+#define NEXT __BLANK[5]__
+#define __BLANK[6]__  __BLANK[7]__^^
  
 void setup(){
 }
@@ -199,12 +203,12 @@ void setup(){
 void loop(){
 }`,
 
-          answerKey: {
-            PREVN: { type: "range", min: 1, max: 13 }, // PREV button pin
-            NEXTN: { type: "range", min: 0, max: 13 }, // NEXT button pin
-            SEL: { type: "identifier" }, // SELECT define name
-            SELN: { type: "range", min: 0, max: 13 }, // SELECT button pin
-          },
+          answerKey: buildAnswerKey({
+            4: K.num({ min: 1, max: 13 }),
+            5: K.num({ min: 1, max: 13 }),
+            6: K.id().bind("SELECT"),
+            7: K.num({ min: 1, max: 13 }),
+          }),
 
           blankExplanations: {
             PREVN:
@@ -250,42 +254,35 @@ For example, the first blank for PREV can be 3 if you connected it to digital pi
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 
-#define WIDTH  __BLANK[WIDTH]__
-#define HEIGHT __BLANK[HEIGHT]__
+#define WIDTH  __BLANK[1]__
+#define HEIGHT __BLANK[2]__
 #define RESET  -1
-Adafruit_SSD1306 display (WIDTH, __BLANK[HEIGHT2]__ , &Wire, RESET);
+Adafruit_SSD1306 display (WIDTH, __BLANK[3]__ , &Wire, RESET);
 
-#define PREV __BLANK[PREVN]__
-#define NEXT __BLANK[NEXTN]__
-#define __BLANK[SEL]__  __BLANK[SELN]__   
+#define PREV __BLANK[4]__
+#define NEXT __BLANK[5]__
+#define __BLANK[6]__  __BLANK[7]__   
 ^^
 void setup() {
   Wire.begin();
-  display.__BLANK[BEGIN]__(__BLANK[BEGINA]__, __BLANK[BEGINB]__);      // Initialize OLED
+  display.__BLANK[8]__(__BLANK[9]__, __BLANK[10]__);      // Initialize OLED
 
 // set the modes for the buttons you are using 
   pinMode(PREV, INPUT_PULLUP);  // PREV button is an input, not output
-  pinMode(__BLANK[NEXT]__, __BLANK[INPUT1]__);  // NEXT button
-  __BLANK[PINMODE]__(__BLANK[SELECT]__, __BLANK[INPUT2]__);^^
-}`,
-
-          answerKey: {
-            BEGIN: ["begin"],
-            BEGINA: ["SSD1306_SWITCHCAPVCC"],
-            BEGINB: ["0x3C"],
-            CLEAR: ["clearDisplay()"],
-            SETTEXTSIZE: ["setTextSize"],
-            SETTEXTSIZE2: { type: "range", min: 1, max: 5 },
-            SETTEXTCOLOR: ["setTextColor"],
-            SETTEXTCOLOR2: ["SSD1306_WHITE", "SSD1306_BLACK", "SSD1306_INVERSE"],
-            SETCURSOR: ["setCursor"],
-            DISPLAY: ["display"],
-            NEXT: ["NEXT"],
-            INPUT1: ["INPUT_PULLUP"],
-            PINMODE: ["pinMode"],
-            SELECT: { type: "sameAs", target: "SEL" },
-            INPUT2: ["INPUT_PULLUP"],
-          },
+  pinMode(__BLANK[11]__, __BLANK[12]__);  // NEXT button
+  __BLANK[13]__(__BLANK[14]__, __BLANK[15]__);^^
+}
+`,
+          answerKey: buildAnswerKey({
+            8: K.str({ oneOf: ["begin"] }),
+            9: K.str({ oneOf: ["SSD1306_SWITCHCAPVCC"]}), 
+            10: K.str({ oneOf: ["0x3C"] }),
+            11: K.str({ oneOf: ["NEXT"] }),
+            12: K.str({ oneOf: ["INPUT_PULLUP"] }),
+            13: K.str({ oneOf: ["pinMode"] }),
+            14: K.same("SELECT"),
+            15: K.str({ oneOf: ["INPUT_PULLUP"] }),
+          }),
 
           blankExplanations: {
             BEGIN:
@@ -327,37 +324,7 @@ Starts the I²C communication bus so the Arduino can talk to devices like the OL
 \`display.begin(A, B);\`  
 Initializes the OLED and prepares it for drawing.  
 @ **A**: usually **SSD1306_SWITCHCAPVCC**, which tells the display how to power its internal circuits.  
-@ **B**: the OLED’s I²C address, most commonly **0x3C**.
-
-\`display.clearDisplay();\`  
-Clears the display’s internal pixel buffer. The screen becomes blank after the next call to **display.display();**.
-
-\`display.setTextSize(A);\`  
-Sets the size (scale) of the text.  
-@ **A**: any integer >= 1
-    ➜ 1 = smallest, 2 = medium, 3 = large, etc.
-
-\`display.setTextColor(A);\`  
-Sets how text pixels are drawn.  
-@ **A** can be:  
-    ➜ \`SSD1306_WHITE\`: pixels ON (bright text)  
-    ➜ \`SSD1306_BLACK\`: pixels OFF (used to erase)  
-    ➜ \`SSD1306_INVERSE\`: invert black/white for highlighting
-
-\`display.setCursor(A,B);\`  
-Moves the text cursor to a new position on the screen.  
-@ **A**: x-position in pixels from the left  
-@ **B**: y-position in pixels from the top
-
-\`display.display();\`  
-Updates the physical OLED screen by sending the entire buffer to the display hardware.
-
-\`pinMode(A,B);\`  
-Configures the button pins as inputs with internal pull-up resistors.  
-@ **A**: the button pin (e.g., \`PREV\`)  
-@ **B**: \`INPUT_PULLUP\`, meaning:  
-    ➜ Button not pressed → reads **HIGH**  
-    ➜ Button pressed → reads **LOW**`,
+@ **B**: the OLED’s I²C address, most commonly **0x3C**.`,
         },
       ],
     },
@@ -405,41 +372,42 @@ Since we want the welcome page to show up only **ONCE when we turn the device on
 void setup(){
   Wire.begin();
   display.__BLANK[BEGIN]__(__BLANK[BEGINA]__, __BLANK[BEGINB]__);      // Initialize OLED
-  __BLANK[WELCOMEFUNCTION]__;  // Call welcome function once at startup
+  showWelcome();  // Call welcome function once at startup
 }
 
 void loop(){
 }
 
-void __BLANK[WELCOMEFUNCTION]__ {
-  __BLANK[DISPLAY1]__;  //clear display  
-  __BLANK[DISPLAY2]__;  //text size 
-  __BLANK[DISPLAY3]__;  //text color 
-  __BLANK[DISPLAY4]__;  //print line 
-  __BLANK[DISPLAY5]__;  //text size 
-  __BLANK[DISPLAY6]__;  //text cursor 
-  __BLANK[DISPLAY7]__;  //print line 
-  __BLANK[DISPLAY8]__;  //display 
-}^^`,
+void showWelcome {
+  __BLANK[16]__;  //clear display  
+  __BLANK[17]__;  //text size to 1 
+  __BLANK[18]__;  //text color to white
+  __BLANK[19]__;  //set cursor location to (0,0)
+  __BLANK[20]__;  //text size to 2
+  __BLANK[21]__;  //print "Welcome to"
+  __BLANK[22]__;  //move cursor location to y = 16 
+  __BLANK[23]__;  //print "Status"
+  __BLANK[24]__;  //move cursor location to y = 36
+  __BLANK[25]__;  //print "Board"
 
-answerKey: {
-  // Same blank appears twice: must match exactly
-  WELCOMEFUNCTION: { type: "identifier" },
-  DISPLAY1: ["display.clearDisplay()"],
-  DISPLAY2: ["display.setTextSize(1)", "display.setTextSize(2)", "display.setTextSize(3)"],
-  DISPLAY3: ["display.setTextColor(SSD1306_WHITE)", "display.setTextColor(SSD1306_INVERSE)"],
+  display.display(); //update the OLED screen
+  delay(1200);
+}
+^^
+`,
 
-  // The “print line” comment in your template is misleading — this line MUST set cursor.
-  // So we validate it as setCursor(...)
-  DISPLAY4: { type: "string", regex: "^display\\.setCursor\\(\\s*\\d+\\s*,\\s*\\d+\\s*\\)$" },
-  DISPLAY5: ["display.setTextSize(1)", "display.setTextSize(2)", "display.setTextSize(3)"],
-  DISPLAY6: { type: "string", regex: "^display\\.setCursor\\(\\s*\\d+\\s*,\\s*\\d+\\s*\\)$" },
-
-  // Allow print or println (kids may do either)
-  DISPLAY7: { type: "string", regex: "^display\\.(print|println)\\(.*\\)$" },
-
-  DISPLAY8: ["display.display()"],
-},
+answerKey: buildAnswerKey({
+  16: K.str({ oneOf: ["display.clearDisplay"] }),
+  17: K.str({ oneOf: ["display.setTextSize(1)"] }),
+  18: K.str({ oneOf: ["display.setTextColor(SSD1306_WHITE)"] }),
+  19: K.str({ oneOf: ["\"display.setCursor(0","0)\""] }),
+  20: K.str({ oneOf: ["display.println(\"Welcome to\")"] }),
+  21: K.str({ oneOf: ["display.setTextSize(2)"] }),
+  22: K.str({ oneOf: ["\"display.setCursor(0","16)\""] }),
+  23: K.str({ oneOf: ["display.println(\"Status\")"] }),
+  24: K.str({ oneOf: ["\"display.setCursor(0","36)\""] }),
+  25: K.str({ oneOf: ["display.println(\"Board\")"] }),
+}),
 
 blankExplanations: {
   WELCOMEFUNCTION:
@@ -487,13 +455,35 @@ blankDifficulties: {
           {
             topicTitle: "Useful Functions",
             descBeforeCode:`**Here are some useful functions to help you create your welcome message:**
-            display.begin(A, B);
-            display.clearDisplay();
-            display.setTextSize(A);
-            display.setTextColor(A);
-            display.setCursor(A,B);
-            display.print("text");
-            display.display();`
+\`display.clearDisplay();\`  
+Clears the display’s internal pixel buffer. The screen becomes blank after the next call to **display.display();**.
+
+\`display.setTextSize(A);\`  
+Sets the size (scale) of the text.  
+@ **A**: any integer >= 1
+    ➜ 1 = smallest, 2 = medium, 3 = large, etc.
+
+\`display.setTextColor(A);\`  
+Sets how text pixels are drawn.  
+@ **A** can be:  
+    ➜ \`SSD1306_WHITE\`: pixels ON (bright text)  
+    ➜ \`SSD1306_BLACK\`: pixels OFF (used to erase)  
+    ➜ \`SSD1306_INVERSE\`: invert black/white for highlighting
+
+\`display.setCursor(A,B);\`  
+Moves the text cursor to a new position on the screen.  
+@ **A**: x-position in pixels from the left  
+@ **B**: y-position in pixels from the top
+
+\`display.display();\`  
+Updates the physical OLED screen by sending the entire buffer to the display hardware.
+
+\`pinMode(A,B);\`  
+Configures the button pins as inputs with internal pull-up resistors.  
+@ **A**: the button pin (e.g., \`PREV\`)  
+@ **B**: \`INPUT_PULLUP\`, meaning:  
+    ➜ Button not pressed → reads **HIGH**  
+    ➜ Button pressed → reads **LOW**`
           },
                 {
             topicTitle: "Try Simulation",
@@ -513,23 +503,56 @@ You can set cursor for certain texts to position your welcome messages in a more
           }
       ],
     },
+
     {
-      id: 2,
-      title: "Step 2: Display Chosen Status",
+      id:2,
+      title: "Step 2: Modify Welcome Function",
+      desc: "Now that you have tried on recreating a premade Welcome Function called showWelcome(), let's try making your own.",
+      codes:[{
+        descBeforeCode: `Rename the function and update the message it displays. For example:
+\`Hi, Emily\`
+\`Welcome, Emily\`
+\`Ready to start?\`
+**Important:** Be sure to place your code inside a code block and run/simulate it to verify that it works correctly before proceeding to the next step.
+`,
+
+code: `#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+
+#define WIDTH  __BLANK[1]__
+#define HEIGHT __BLANK[2]__
+#define RESET  -1
+Adafruit_SSD1306 display (WIDTH, __BLANK[3]__ , &Wire, RESET);
+
+#define PREV __BLANK[4]__
+#define NEXT __BLANK[5]__
+#define __BLANK[6]__  __BLANK[7]__   
+^^
+void setup() {
+  Wire.begin();
+  display.__BLANK[8]__(__BLANK[9]__, __BLANK[10]__);      // Initialize OLED
+  __BLANK[26]__ //Call your own welcome function
+
+// set the modes for the buttons you are using 
+  pinMode(PREV, INPUT_PULLUP);  // PREV button is an input, not output
+  pinMode(__BLANK[11]__, __BLANK[12]__);  // NEXT button
+  __BLANK[13]__(__BLANK[14]__, __BLANK[15]__);^^
+}
+
+__EDITOR[WELCOME]__
+`
+      }]
+    },
+
+    {
+      id: 3,
+      title: "Step 3: Display Chosen Status",
       desc: "In order to display the status that we want we need to clear the screen then print the status chosen from the menu screen",
 
       codes: [
         {
-          code: `void __BLANK[WELCOMEFUNCTION]__{
-  __BLANK[DISPLAY1]__; //clear display
-  __BLANK[DISPLAY2]__; //text size
-  __BLANK[DISPLAY3]__; //text color
-  __BLANK[DISPLAY4]__; //print line
-  __BLANK[DISPLAY5]__; //text size
-  __BLANK[DISPLAY6]__; //text cursor
-  __BLANK[DISPLAY7]__; //print line
-  __BLANK[DISPLAY8]__; //display
-}
+          code: `__EDITOR[WELCOME]__
  ^^  
 void __BLANK[STATUSFUNCTION]__{
   __BLANK[STATUSCODE1]__; //clear display

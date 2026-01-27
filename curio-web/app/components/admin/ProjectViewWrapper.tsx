@@ -4,6 +4,7 @@
 import React, { useEffect } from "react";
 import { useStudentResponses } from "@/app/contexts/StudentResponseContext";
 import { AdminStudentSidebar } from "./AdminStudentSidebar";
+import SplitView from "@/src/lesson-core/SplitView";
 
 type ProjectViewWrapperProps = {
   children: React.ReactNode;
@@ -15,17 +16,14 @@ type ProjectViewWrapperProps = {
  * Wrapper component that conditionally displays the admin sidebar
  * next to the project content based on user role.
  * 
- * Usage:
- * - Wrap your project/lesson component with this wrapper
- * - Pass isAdminView={true} when viewing as admin
- * - The sidebar will automatically display student responses
+ * Also provides student progress data to the lesson component when in admin view.
  */
 export function ProjectViewWrapper({ 
   children, 
   isAdminView = false,
   onLessonChange 
 }: ProjectViewWrapperProps) {
-  const { setCurrentLocation } = useStudentResponses();
+  const { setCurrentLocation, studentData } = useStudentResponses();
 
   // Expose a function that lesson components can call to update location
   useEffect(() => {
@@ -40,23 +38,53 @@ export function ProjectViewWrapper({
     };
   }, [setCurrentLocation, onLessonChange]);
 
+  // Provide student progress data to lesson component in admin view
+  useEffect(() => {
+    if (isAdminView && studentData) {
+      // Make student progress available to CodeLessonBase
+      (window as any).__getStudentProgress = () => {
+        return studentData.completedSteps || [];
+      };
+      
+      {/*} console.log("Admin view: Providing student progress data", {
+        studentId: studentData.studentId,
+        completedSteps: studentData.completedSteps?.length || 0,
+        steps: studentData.completedSteps
+      });*/}
+    }
+    
+    return () => {
+      if ((window as any).__getStudentProgress) {
+        delete (window as any).__getStudentProgress;
+      }
+    };
+  }, [isAdminView, studentData]);
+
   if (!isAdminView) {
     // Student view - no sidebar
     return <>{children}</>;
   }
 
-  // Admin view - show content with sidebar
+  // Admin view - show content with RESIZABLE sidebar using SplitView
   return (
-    <div className="flex h-screen overflow-hidden">
-      {/* Main content area */}
-      <div className="flex-1 overflow-y-auto">
-        {children}
-      </div>
-      
-      {/* Admin sidebar - fixed width */}
-      <div className="w-96 flex-shrink-0">
-        <AdminStudentSidebar />
-      </div>
-    </div>
+    <SplitView
+      left={
+        <div className="h-full min-h-0 min-w-0 overflow-hidden">
+          {children}
+        </div>
+      }
+      right={
+        <div className="h-full min-h-0 min-w-0 overflow-hidden">
+          <AdminStudentSidebar />
+        </div>
+      }
+      initialLeftRatio={0.65}        // Start with 65% for lesson, 35% for sidebar
+      minLeftRatio={0.4}              // Allow shrinking to 40% lesson width
+      maxLeftRatio={0.85}             // Allow expanding to 85% lesson width
+      minLeftPx={400}                 // Minimum 400px for lesson content
+      minRightPx={300}                // Minimum 300px for sidebar
+      handleWidth={12}                // Drag handle width
+      persistKey="admin-sidebar-split" // Save position in localStorage
+    />
   );
 }
