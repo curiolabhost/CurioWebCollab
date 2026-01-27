@@ -3242,6 +3242,67 @@ blankDifficulties:{
     }
 }
   ]},
+
+  {
+  id: 3,
+  title: "Step 3: Run Structure and State Machine",
+  codes: [
+    {
+      topicTitle: "What does a Pomodoro run mean in code?",
+      descBeforeCode: `
+Before any countdown begins, we must define what kind of session is being run, how long it will last, and how progress will be tracked. To do this, we will create a function that initiliazes a Pomodoro session and ensures the system starts in a clean, predictable state.
+
+We also want the function to determine whether to run a simple timer or a pomodoro session based on the user's input. To manage both modes cleanly, we will utilize a block model, where a block represents one continuous countdown period. This can either be a work block or a break block. In timer mode, there is only one block, whereas in pomodoro mode, there can be multiple alternating blocks of work and break.
+
+We want to:
+- Distinguish between Timer mode and Pomodoro Mode
+- Reset state variables
+- Call \`startCurrentBlock()\` function to begin the first block countdown
+`,
+      code: `^^
+void startPomodoroRun() {
+  if (__BLANK[TIMERCOND]__) { // check condition for timer mode
+    __BLANK[TIMERBLOCK]__;  // set total block count for timer mode
+  }
+  else {  // else, pomodoro mode
+    totalBlocks = __BLANK[POMBLOCK]__;  // set total block count for pomodoro mode
+  }
+  __BLANK[BLOCKRES]__;     // reset finished block counter to 0
+  __BLANK[WORKCHECK]__;      // reset block status to work block
+  __BLANK[STARTFUNC]__; // call function to start the first block
+}
+^^`,
+      answerKey: {
+        TIMERCOND: { type: "string", regex: "^repeatT1\\s*==\\s*0$" },
+        POMBLOCK: { type: "string", regex: "^repeatT1\\s**\\s*2$" },
+        BLOCKRES: { type: "string", regex: "^blocksDone\\s*=\\s*0$" },
+        WORKCHECK: { type: "string", regex: "^isWork\\s*=\\s*true$" },
+        STARTFUNC: { type: "string", regex: "^startCurrentBlock\\s*\\(\\s*\\)\\s*;?$" },
+        TIMERBLOCK: { type: "string", regex: "^totalBlocks\\s*=\\s*1\\s*;?$" },
+      },
+      blankExplanations: {
+        TIMERCOND: "The condition to check if the timer is in single-block mode.",
+        POMBLOCK: "The total number of blocks in a pomodoro session.",
+        BLOCKRES: "Reset the finished block counter to 0.",
+        WORKCHECK: "Reset the current block to a work session.",
+        STARTFUNC: "The name of the function that starts the current block.",
+        TIMERBLOCK: "The total number of blocks in a single-block timer.",
+      },
+      blankDifficulties: {
+        TIMERCOND: "easy",
+        POMBLOCK: "medium",
+        BLOCKRES: "easy",
+        WORKCHECK: "easy",
+        STARTFUNC: "easy",
+        TIMERBLOCK: "easy",
+      },
+      descAfterCode: `
+Once you fill in the blanks, you have completed the function that initializes a Pomodoro run. The next lesson will cover the function that begins the actual countdown block.
+`
+    },
+  ],
+},
+
   {
   id: 4,
   title: "Step 4: Understanding the Timer Engine",
