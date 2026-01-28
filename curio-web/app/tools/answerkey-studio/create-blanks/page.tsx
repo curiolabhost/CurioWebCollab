@@ -114,13 +114,19 @@ export type ConstraintType =
   | "num_oneOf"
   | "id_bound"
   | "str_oneOf"
-  | "expr_ref";
+  | "same_as"
+  | "pat_array_empty"    // identifier[]
+  | "pat_array_index"    // identifier[ identifier | number ]
+  | "expr_ref"
+  | "pattern_custom";
 
 export type BlankMeta = {
   uid: BlankUID;
   answer: string;
   description?: string;
   bindKey?: string;
+  sameAsTarget?: string;
+
   // Option fields
   constraintType?: ConstraintType; // dropdown selection
   allowedRaw?: string;             // for oneOf: "64, 32" or for str: '"A","B"' or 'A,B'
@@ -128,6 +134,7 @@ export type BlankMeta = {
   rangeMaxRaw?: string;            // for range
   createdAt: number;
   updatedAt: number;
+  patternJson?: string;
   generatedKeyExpr?: string; // e.g. 'K.num({ oneOf: [64, 32] })'
 };
 
@@ -188,6 +195,8 @@ type RegistryRow = {
   scope: "project" | "lesson";
 };
 
+
+
 type RegistryTable = {
   id: string;
   title: string;
@@ -195,6 +204,22 @@ type RegistryTable = {
   createdAt: number;
   updatedAt: number;
 };
+
+type PatternRow =
+  | { kind: "identifier", bindAs?: string}
+  | { kind: "string" }
+  | { kind: "number" }
+  | { kind: "sameAs"; target: string }
+  | { kind: "oneOf"; valuesRaw: string } // comma list
+  | { kind: "wildcard"; min?: string; max?: string }
+  | { kind: "literal"; text: string };
+
+function parseCsvOps(raw: string): string[] {
+  return String(raw ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
 
 function persistNow(args: {
   store: any;
@@ -304,12 +329,26 @@ const AutoGrowTextarea = React.forwardRef<HTMLTextAreaElement, AutoGrowProps>(fu
 
 export default function CreateBlanksPage() {
 
-    const [answerKeySnippet, setAnswerKeySnippet] = React.useState("");
-    const [answerKeyReport, setAnswerKeyReport] = React.useState("");
+  const [answerKeySnippet, setAnswerKeySnippet] = React.useState("");
+  const [answerKeyReport, setAnswerKeyReport] = React.useState("");
   const [createMode, setCreateMode] = React.useState(false);
   const [saveStatus, setSaveStatus] = React.useState<string>("");
   const [didLoad, setDidLoad] = React.useState(false);
+  const [patternRowsDraft, setPatternRowsDraft] = React.useState<PatternRow[]>([
+    { kind: "identifier" },
+    { kind: "literal", text: "." },
+    { kind: "literal", text: "println" },
+    { kind: "literal", text: "(" },
+    { kind: "string" },
+    { kind: "literal", text: ")" },
+    ]);
 
+    const [patternModeDraft, setPatternModeDraft] = React.useState<"exact" | "contains">("exact");
+    const [patternNoSpaceOpsDraft, setPatternNoSpaceOpsDraft] = React.useState("."); // input like "." or ".,::"
+
+    const [sameAsTargetDraft, setSameAsTargetDraft] = React.useState("");
+    const sameAsTargetDraftRef = React.useRef(sameAsTargetDraft);
+    React.useEffect(() => { sameAsTargetDraftRef.current = sameAsTargetDraft; }, [sameAsTargetDraft]);
 
 
   const [solved, setSolved] = React.useState("");
@@ -407,6 +446,59 @@ function parseOneOfNums(raw: string): number[] {
   }
   return out;
 }
+function rowsToPatternParts(rows: PatternRow[]) {
+  const parts: any[] = [];
+
+  for (const r of rows) {
+    if (r.kind === "literal") {
+      const t = String((r as any).text ?? "");
+      if (t.trim() !== "") parts.push(t);
+      continue;
+    }
+
+    if (r.kind === "identifier") {
+      const bindAs = (r.bindAs ?? "").trim();
+      parts.push(bindAs ? { p: "identifier", bindAs } : { p: "identifier" });
+      continue;
+    }
+
+    if (r.kind === "string") {
+      const bindAs = (r.bindAs ?? "").trim();
+      parts.push(bindAs ? { p: "string", bindAs } : { p: "string" });
+      continue;
+    }
+
+    if (r.kind === "number") {
+      const bindAs = (r.bindAs ?? "").trim();
+      parts.push(bindAs ? { p: "number", bindAs } : { p: "number" });
+      continue;
+    }
+
+    if (r.kind === "sameAs") {
+      parts.push({ p: "sameAs", target: String((r as any).target ?? "") });
+      continue;
+    }
+
+    if (r.kind === "oneOf") {
+      parts.push({ p: "oneOf", values: parseCsv(String((r as any).valuesRaw ?? "")) });
+      continue;
+    }
+
+    if (r.kind === "wildcard") {
+      const min = (r as any).min?.trim() === "" ? undefined : Number((r as any).min);
+      const max = (r as any).max?.trim() === "" ? undefined : Number((r as any).max);
+      parts.push({
+        p: "wildcard",
+        min: Number.isFinite(min as any) ? min : undefined,
+        max: Number.isFinite(max as any) ? max : undefined,
+      });
+      continue;
+    }
+  }
+
+  return parts;
+}
+
 
 function parseOneOfStrs(raw: string): string[] {
   // allow: A,B  OR  "A","B"
@@ -419,6 +511,25 @@ function parseOneOfStrs(raw: string): string[] {
     return t;
   });
 }
+function buildPatternSpecFromDraft() {
+  const parts = rowsToPatternParts(patternRowsDraft);
+  const ops = parseCsvOps(patternNoSpaceOpsDraft);
+
+  const spec: any = {
+    type: "pattern",
+    parts,
+    policy: ops.length ? { requireNoSpacesAround: ops } : undefined,
+    mode: patternModeDraft, //
+  };
+
+  // remove undefined fields so JSON is clean
+  if (!spec.policy) delete spec.policy;
+  if (!spec.mode) delete spec.mode;
+
+  return spec;
+}
+
+
 
 function upsertAnswerKeyLine(existing: string, blankId: string, newLine: string) {
   const id = String(blankId).trim();
@@ -461,6 +572,7 @@ function emitSingleKeyExpr(opts: {
     allowedRaw?: string;
     rangeMinRaw?: string;
     rangeMaxRaw?: string;
+    sameAsTarget?: string;
   };
 }) {
   const { blankId, answer, bindKey, bindings, constraint } = opts;
@@ -483,6 +595,22 @@ function emitSingleKeyExpr(opts: {
     return `K.num(${parts.length ? `{ ${parts.join(", ")} }` : ""})`;
   }
 
+if (cType === "same_as") {
+  let target = String(c.sameAsTarget ?? "").trim(); // bind key
+
+  // If user typed quotes, strip ONE layer: "mainIndex" -> mainIndex, 'mainIndex' -> mainIndex
+  if (
+    (target.startsWith('"') && target.endsWith('"')) ||
+    (target.startsWith("'") && target.endsWith("'"))
+  ) {
+    target = target.slice(1, -1);
+  }
+
+  return `K.same(${JSON.stringify(target)})`;
+}
+
+
+
   if (cType === "num_oneOf") {
     const nums = parseOneOfNums(c.allowedRaw || "");
     return nums.length ? `K.num({ oneOf: ${JSON.stringify(nums)} })` : `K.num()`;
@@ -497,6 +625,15 @@ function emitSingleKeyExpr(opts: {
     // requires bindKey, but it's missing
     return `K.id()`;
   }
+
+    // pattern presets
+  if (cType === "pat_array_empty") {
+    return `({ type: "pattern", parts: [{ p: "identifier" }, "[", "]"] } as const)`;
+  }
+  if (cType === "pat_array_index") {
+    return `({ type: "pattern", parts: [{ p: "identifier" }, "[", { p: "any", specs: [{ p: "identifier" }, { p: "number" }] }, "]"] } as const)`;
+  }
+
 
   // expr_ref fallback
   const hasStructure = /[\[\]\(\)\{\},.+\-*/=!<>:]/.test(ans);
@@ -526,18 +663,32 @@ function onGenerateAnswerKey() {
 
   const bindings = buildBindingsFromActiveRegistry();
 
-  const expr = emitSingleKeyExpr({
-    blankId: id,
-    answer,
-    bindKey: meta?.bindKey,
-    bindings,
-    constraint: {
-      constraintType: meta?.constraintType,
-      allowedRaw: meta?.allowedRaw,
-      rangeMinRaw: meta?.rangeMinRaw,
-      rangeMaxRaw: meta?.rangeMaxRaw,
-    },
-  });
+  let expr: string;
+
+  if (meta?.constraintType === "pattern_custom") {
+    const parsed = safeJsonParse<any>(meta.patternJson ?? "");
+    if (!parsed || parsed.type !== "pattern" || !Array.isArray(parsed.parts)) {
+      alert("Pattern JSON is missing/invalid. Click 'Save pattern' in the Pattern builder first.");
+      return;
+    }
+    expr = `(${JSON.stringify(parsed, null, 2)} as const)`;
+  } else {
+    expr = emitSingleKeyExpr({
+      blankId: id,
+      answer,
+      bindKey: meta?.bindKey,
+      bindings,
+      constraint: {
+        constraintType: meta?.constraintType,
+        allowedRaw: meta?.allowedRaw,
+        rangeMinRaw: meta?.rangeMinRaw,
+        rangeMaxRaw: meta?.rangeMaxRaw,
+        sameAsTarget: meta?.sameAsTarget,
+        
+      },
+    });
+  }
+
 
   //  1) Update the big snippet (incremental upsert)
   setAnswerKeySnippet((prev) => {
@@ -599,6 +750,8 @@ function scheduleCommitSelectedBlank(next: {
   allowedRaw?: string;
   rangeMinRaw?: string;
   rangeMaxRaw?: string;
+  patternJson?: string;
+  sameAsTarget?: string;
 }) {
   const blankId = selectedRef.current;
   if (!blankId) return;
@@ -629,7 +782,8 @@ function scheduleCommitSelectedBlank(next: {
                 allowedRaw: next.allowedRaw,
                 rangeMinRaw: next.rangeMinRaw,
                 rangeMaxRaw: next.rangeMaxRaw,
-
+                patternJson: next.patternJson ?? "",
+                sameAsTarget: next.sameAsTarget,
                 createdAt: now,
                 updatedAt: now,
             },
@@ -654,13 +808,29 @@ function scheduleCommitSelectedBlank(next: {
             allowedRaw: typeof next.allowedRaw === "undefined" ? meta.allowedRaw : next.allowedRaw,
             rangeMinRaw: typeof next.rangeMinRaw === "undefined" ? meta.rangeMinRaw : next.rangeMinRaw,
             rangeMaxRaw: typeof next.rangeMaxRaw === "undefined" ? meta.rangeMaxRaw : next.rangeMaxRaw,
-
+            sameAsTarget: typeof next.sameAsTarget === "undefined" ? meta.sameAsTarget : next.sameAsTarget,
+            patternJson: typeof next.patternJson === "undefined" ? meta.patternJson : next.patternJson,
           },
         },
       };
     });
   }, 250);
 }
+
+function commitPatternToSelectedBlank(nextRows?: PatternRow[], nextMode?: "exact" | "contains", nextOps?: string) {
+  const spec = {
+    ...buildPatternSpecFromDraft(),
+    ...(typeof nextMode !== "undefined" ? { mode: nextMode } : {}),
+  };
+
+  const json = JSON.stringify(spec, null, 2);
+
+  scheduleCommitSelectedBlank({
+    patternJson: json,
+    constraintType: "pattern_custom",
+  } as any);
+}
+
 
 function applyDraftsToStoreSync(prev: BlankStore, blankId: string, next: {
   answer: string;
@@ -670,7 +840,10 @@ function applyDraftsToStoreSync(prev: BlankStore, blankId: string, next: {
   allowedRaw: string;
   rangeMinRaw: string;
   rangeMaxRaw: string;
+  patternJson?: string;
+  sameAsTarget: string;
 }): BlankStore {
+
   const now = Date.now();
   const uid = resolveBlankUid(prev, blankId);
 
@@ -691,6 +864,8 @@ function applyDraftsToStoreSync(prev: BlankStore, blankId: string, next: {
           rangeMaxRaw: next.rangeMaxRaw ?? "",
           createdAt: now,
           updatedAt: now,
+          patternJson: next.patternJson ?? "",
+          sameAsTarget: next.sameAsTarget ?? "", 
         },
       },
     };
@@ -712,6 +887,7 @@ function applyDraftsToStoreSync(prev: BlankStore, blankId: string, next: {
         allowedRaw: next.allowedRaw,
         rangeMinRaw: next.rangeMinRaw,
         rangeMaxRaw: next.rangeMaxRaw,
+        sameAsTarget: next.sameAsTarget,
         updatedAt: now,
       },
     },
@@ -794,6 +970,8 @@ React.useEffect(() => {
   setAllowedDraft(meta?.allowedRaw ?? "");
   setMinDraft(meta?.rangeMinRaw ?? "");
   setMaxDraft(meta?.rangeMaxRaw ?? "");
+  setSameAsTargetDraft(meta?.sameAsTarget ?? "");
+
 }, [selectedBlankId, store]);
 
 
@@ -1065,6 +1243,7 @@ function flushAllNow() {
       allowedRaw: allowedDraftRef.current ?? "",
       rangeMinRaw: minDraftRef.current ?? "",
       rangeMaxRaw: maxDraftRef.current ?? "",
+      sameAsTarget: sameAsTargetDraftRef.current ?? "", 
     });
     storeRef.current = nextStore;
   }
@@ -1323,13 +1502,44 @@ function onSave() {
     setCounter(nextAvailableCounter(nextTemplate, counterRef.current));
   }
 
+  function buildPatternSpec(cType: ConstraintType): AnswerSpec | null {
+  if (cType === "pat_array_empty") {
+    return {
+      type: "pattern",
+      parts: [{ p: "identifier" }, "[", "]"],
+    };
+  }
+
+  if (cType === "pat_array_index") {
+    return {
+      type: "pattern",
+      parts: [
+        { p: "identifier" },
+        "[",
+        { p: "any", specs: [{ p: "identifier" }, { p: "number" }] },
+        "]",
+      ],
+    };
+  }
+
+  return null;
+}
+
+
     function buildAnswerSpecForBlank(meta: BlankMeta, bindings: Record<string, string>): AnswerSpec {
     const ans = String(meta.answer ?? "").trim();
+
+
     const cType = (meta.constraintType || "expr_ref") as ConstraintType;
+
 
     // If you explicitly bound this blank, treat it as identifier (bound)
     // regardless of other settings (you can remove this if you want strict behavior).
     const explicitBind = String(meta.bindKey ?? "").trim();
+
+    const pat = buildPatternSpec(cType);
+    if (pat) return pat;
+
 
     if (cType === "num_any") {
         const spec: BlankTypedSpec = { type: "number" };
@@ -1376,6 +1586,8 @@ function onSave() {
     // (this supports expressions, function calls, etc.)
     return generateKeyFromReference(ans, { bind: bindings });
     }
+
+    
 
     function onTestKey() {
   if (!selectedBlankId) {
@@ -1446,20 +1658,25 @@ function onSave() {
 
   // ------------ Blanks list ------------
 
-  const blanksInOrder = React.useMemo(() => {
-    const ids = extractBlanksInOrder(template);
-    const uniqIds = unique(ids);
+const blanksInOrder = React.useMemo(() => {
+  const ids = extractBlanksInOrder(template);
+  const uniqIds = unique(ids);
 
-    return uniqIds.map((id) => {
-      const answer = getBlankMeta(store, id)?.answer ?? "";
-      const preview = String(answer).replace(/\s+/g, " ").trim();
-      return {
-        id,
-        preview: preview.length > 60 ? preview.slice(0, 60) + "…" : preview,
-        count: ids.filter((x) => x === id).length,
-      };
-    });
-  }, [template, store]);
+  // sort by numeric blank id (1,2,3,...,10,11...)
+  const sortedIds = [...uniqIds].sort((a, b) => Number(a) - Number(b));
+
+  return sortedIds.map((id) => {
+    const answer = getBlankMeta(store, id)?.answer ?? "";
+    const preview = String(answer).replace(/\s+/g, " ").trim();
+    return {
+      id,
+      preview: preview.length > 60 ? preview.slice(0, 60) + "…" : preview,
+      // keep count based on occurrences in the template
+      count: ids.filter((x) => x === id).length,
+    };
+  });
+}, [template, store]);
+
 
 
 
@@ -1578,10 +1795,10 @@ function onSave() {
       </div>
 
       {/* Toggle + instructions */}
-      <div className="rounded-2xl border p-4 mb-4">
+      <div className="rounded-2xl bg-blue-50 border p-4 mb-4">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
-            <div className="font-medium">Blank creation mode</div>
+            <div className="font-medium text-blue-900">Blank creation mode</div>
             <div className="text-sm opacity-70">
               Turn this on, then drag-highlight code in the template and click “Make Blank”. Click any{" "}
               <span className="font-mono">__BLANK[...]__</span> to open/close the inspector.
@@ -1593,7 +1810,7 @@ function onSave() {
               type="button"
               onClick={() => setCreateMode((v) => !v)}
               className={[
-                "rounded-xl px-3 py-2 text-sm border hover:bg-gray-100 transition-colors",
+                "rounded-xl px-3 py-2 text-sm border hover:bg-indigo-200 transition-colors",
                 createMode ? "bg-black text-white" : "",
               ].join(" ")}
             >
@@ -1640,7 +1857,7 @@ function onSave() {
             <button
               type="button"
               onClick={() => copyToClipboard(template)}
-              className="rounded-xl border px-3 py-2 text-sm hover:bg-gray-100"
+              className="rounded-xl border px-3 py-2 text-sm hover:bg-indigo-200"
             >
               Copy template
             </button>
@@ -1648,7 +1865,7 @@ function onSave() {
             <button
               type="button"
               onClick={() => copyToClipboard(solved)}
-              className="rounded-xl border px-3 py-2 text-sm hover:bg-gray-100"
+              className="rounded-xl border px-3 py-2 text-sm hover:bg-indigo-200"
             >
               Copy solved
             </button>
@@ -1661,19 +1878,19 @@ function onSave() {
         {/* Editors */}
         <div className="xl:col-span-9">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-            <section className="rounded-2xl border p-4 lg:col-span-6">
+            <section className="rounded-2xl bg-red-50 border p-4 lg:col-span-6">
               <div className="font-medium mb-2">Solved code (reference)</div>
               <div className="text-sm opacity-70 mb-2">This stays as your ground truth.</div>
               <AutoGrowTextarea
                 value={solved}
                 onChange={(e) => setSolved(e.target.value)}
-                className="w-full rounded-xl border p-3 font-mono text-sm max-h-[70vh] overflow-auto"
+                className="w-full rounded-xl border p-3 bg-neutral-50 font-mono text-sm max-h-[70vh] overflow-auto"
                 placeholder="Paste full project code here (solved/reference)"
                 spellCheck={false}
               />
             </section>
 
-            <section className="rounded-2xl border p-4 lg:col-span-6">
+            <section className="rounded-2xl bg-indigo-100 border p-4 lg:col-span-6">
               <div className="font-medium mb-2">Template code (Blank this out)</div>
               
               <div className="text-sm opacity-70 mb-2">Highlight text to blank. Click existing blanks to edit/remove.</div>
@@ -1696,7 +1913,7 @@ function onSave() {
                     onChange={(e) => setTemplate(e.target.value)}
                     onMouseUp={(e) => captureSelectionFromTextarea(e.currentTarget)}
                     onKeyUp={(e) => captureSelectionFromTextarea(e.currentTarget)}
-                    className="w-full rounded-xl border p-3 font-mono text-sm max-h-[70vh] overflow-auto whitespace-pre-wrap break-words"
+                    className="w-full bg-neutral-50 rounded-xl border p-3 font-mono text-sm max-h-[70vh] overflow-auto whitespace-pre-wrap break-words"
                     placeholder="Template code you will turn into blanks"
                     spellCheck={false}
                     />
@@ -1753,11 +1970,18 @@ function onSave() {
   </div>
 
   {/* Scroll container */}
-  <div className="mt-3 max-h-[420px] overflow-auto pr-2 space-y-2">
+  <div
+  className="mt-3 h-[420px] overflow-y-scroll pr-2 space-y-2 rounded-xl"
+  style={{ scrollbarGutter: "stable" as any }}
+>
     {blanksInOrder.length === 0 ? (
       <div className="text-sm opacity-70">No blanks yet.</div>
     ) : (
       blanksInOrder.map((b, idx) => {
+        <div className="text-xs opacity-60 py-2 text-center">
+  End of list — showing {blanksInOrder.length} blanks
+</div>
+
         const uid = resolveBlankUid(store, b.id);
         const meta = getBlankMeta(store, b.id);
         const ans = meta?.answer ?? "";
@@ -1924,9 +2148,15 @@ function onSave() {
     <option value="id_bound">Identifier (bound)</option>
     <option value="str_oneOf">String (one of…)</option>
     <option value="expr_ref">Expr (reference-based) (fallback)</option>
+    <option value="pat_array_empty">Pattern: identifier[]</option>
+    <option value="pat_array_index">Pattern: identifier[ i | 3 ]</option>
+    <option value="pattern_custom">Pattern (custom builder)</option>
+    <option value="same_as">Same as… (K.same)</option>
+
+
   </select>
 
-  {constraintDraft === "num_oneOf" || constraintDraft === "str_oneOf" ? (
+{constraintDraft === "num_oneOf" || constraintDraft === "str_oneOf" ? (
     <div className="mt-2">
       <div className="text-xs opacity-60">Allowed values (comma-separated)</div>
       <input
@@ -1978,6 +2208,224 @@ function onSave() {
       Uses <span className="font-mono">Bind key</span> below (required).
     </div>
   ) : null}
+
+  {constraintDraft === "same_as" ? (
+  <div className="mt-2">
+    <div className="text-xs opacity-60">Same as (target key)</div>
+    <input
+      value={sameAsTargetDraft}
+      onChange={(e) => {
+        const v = e.target.value;
+        setSameAsTargetDraft(v);
+        scheduleCommitSelectedBlank({ sameAsTarget: v } as any);
+      }}
+      className="w-full rounded-xl border px-2 py-2 font-mono text-sm"
+      placeholder='e.g., "A" or "statusList"'
+    />
+    <div className="text-xs opacity-60 mt-1">
+      Must match the value bound under this key during checking.
+    </div>
+  </div>
+) : null}
+
+
+  {constraintDraft === "pattern_custom" ? (
+  <div className="mt-3 rounded-xl border p-3 space-y-2">
+    <div className="flex items-center justify-between">
+      <div className="text-xs opacity-70">Pattern builder</div>
+
+      <div className="flex items-center gap-2">
+        <select
+          value={patternModeDraft}
+          onChange={(e) => {
+            const v = e.target.value as "exact" | "contains";
+            setPatternModeDraft(v);
+          }}
+          className="rounded-lg border px-2 py-1 text-xs"
+        >
+          <option value="exact">Exact</option>
+          <option value="contains">Contains</option>
+        </select>
+      </div>
+    </div>
+
+    {patternRowsDraft.map((row, idx) => (
+      <div key={idx} className="flex items-center gap-2">
+        <select
+          value={row.kind}
+          onChange={(e) => {
+            const kind = e.target.value as PatternRow["kind"];
+            setPatternRowsDraft((prev) => {
+              const next = [...prev];
+              if (kind === "literal") next[idx] = { kind: "literal", text: "" };
+              else if (kind === "sameAs") next[idx] = { kind: "sameAs", target: "" };
+              else if (kind === "oneOf") next[idx] = { kind: "oneOf", valuesRaw: "" };
+              else if (kind === "wildcard") next[idx] = { kind: "wildcard", min: "", max: "" };
+              else {
+                const prevRow: any = next[idx];
+                const keepBind = prevRow?.bindAs ?? "";
+                next[idx] = { kind, bindAs: keepBind } as any;
+                }
+              return next;
+            });
+          }}
+          className="rounded-lg border px-2 py-1 text-xs"
+        >
+          <option value="literal">Literal</option>
+          <option value="identifier">p(identifier)</option>
+          <option value="string">p(string)</option>
+          <option value="number">p(number)</option>
+          <option value="sameAs">p(sameAs)</option>
+          <option value="oneOf">p(oneOf)</option>
+          <option value="wildcard">p(wildcard)</option>
+        </select>
+
+        {row.kind === "literal" ? (
+          <input
+            value={row.text}
+            onChange={(e) => {
+              const v = e.target.value;
+              setPatternRowsDraft((prev) => {
+                const next = [...prev];
+                next[idx] = { kind: "literal", text: v };
+                return next;
+              });
+            }}
+            className="flex-1 rounded-lg border px-2 py-1 font-mono text-xs"
+            placeholder='e.g. ".", "println", "(", ")"'
+          />
+        ) : null}
+
+        {row.kind === "sameAs" ? (
+          <input
+            value={row.target}
+            onChange={(e) => {
+              const v = e.target.value;
+              setPatternRowsDraft((prev) => {
+                const next = [...prev];
+                next[idx] = { kind: "sameAs", target: v };
+                return next;
+              });
+            }}
+            className="flex-1 rounded-lg border px-2 py-1 font-mono text-xs"
+            placeholder="target key (e.g. A)"
+          />
+        ) : null}
+
+        {row.kind === "oneOf" ? (
+          <input
+            value={row.valuesRaw}
+            onChange={(e) => {
+              const v = e.target.value;
+              setPatternRowsDraft((prev) => {
+                const next = [...prev];
+                next[idx] = { kind: "oneOf", valuesRaw: v };
+                return next;
+              });
+            }}
+            className="flex-1 rounded-lg border px-2 py-1 font-mono text-xs"
+            placeholder='e.g. println, print'
+          />
+        ) : null}
+
+        {row.kind === "wildcard" ? (
+          <div className="flex items-center gap-2">
+            <input
+              value={row.min ?? ""}
+              onChange={(e) => {
+                const v = e.target.value;
+                setPatternRowsDraft((prev) => {
+                  const next = [...prev];
+                  next[idx] = { ...row, min: v };
+                  return next;
+                });
+              }}
+              className="w-16 rounded-lg border px-2 py-1 font-mono text-xs"
+              placeholder="min"
+            />
+            <input
+              value={row.max ?? ""}
+              onChange={(e) => {
+                const v = e.target.value;
+                setPatternRowsDraft((prev) => {
+                  const next = [...prev];
+                  next[idx] = { ...row, max: v };
+                  return next;
+                });
+              }}
+              className="w-16 rounded-lg border px-2 py-1 font-mono text-xs"
+              placeholder="max"
+            />
+          </div>
+        ) : null}
+
+        {(row.kind === "identifier" || row.kind === "string" || row.kind === "number") ? (
+            <input
+                value={(row as any).bindAs ?? ""}
+                onChange={(e) => {
+                const v = e.target.value;
+                setPatternRowsDraft((prev) => {
+                    const next = [...prev];
+                    next[idx] = { ...(next[idx] as any), bindAs: v };
+                    return next;
+                });
+                }}
+                className="w-28 rounded-lg border px-2 py-1 font-mono text-xs"
+                placeholder="bindAs"
+                title='Optional: bind token value (e.g. "arrVar")'
+            />
+            ) : null}
+
+
+        <button
+          type="button"
+          onClick={() => setPatternRowsDraft((prev) => prev.filter((_r, j) => j !== idx))}
+          className="rounded-lg border px-2 py-1 text-xs hover:bg-gray-100"
+        >
+          ✕
+        </button>
+      </div>
+    ))}
+
+    <div className="flex items-center gap-2 pt-1">
+      <button
+        type="button"
+        onClick={() => setPatternRowsDraft((prev) => [...prev, { kind: "literal", text: "" }])}
+        className="rounded-lg border px-2 py-1 text-xs hover:bg-gray-100"
+      >
+        + Add part
+      </button>
+
+      <div className="flex-1" />
+
+      <button
+        type="button"
+        onClick={() => commitPatternToSelectedBlank()}
+        className="rounded-lg border px-2 py-1 text-xs bg-blue-200 hover:bg-blue-300"
+      >
+        Save pattern
+      </button>
+    </div>
+
+    <div className="pt-2">
+      <div className="text-xs opacity-60">No-spaces-around ops (comma-separated)</div>
+      <input
+        value={patternNoSpaceOpsDraft}
+        onChange={(e) => setPatternNoSpaceOpsDraft(e.target.value)}
+        className="w-full rounded-lg border px-2 py-1 font-mono text-xs"
+        placeholder="e.g. . , ::"
+      />
+    </div>
+
+    <details className="pt-2">
+      <summary className="text-xs opacity-70 cursor-pointer">Preview spec</summary>
+      <pre className="mt-2 text-xs whitespace-pre-wrap opacity-80">
+        {JSON.stringify(buildPatternSpecFromDraft(), null, 2)}
+      </pre>
+    </details>
+  </div>
+) : null}
+
 </div>
 
     <div className="flex items-center justify-between py-2 gap-2">
@@ -2029,7 +2477,11 @@ function onSave() {
       onChange={(e) => setTestValue(e.target.value)}
       className="w-full rounded-xl border px-2 py-2 font-mono text-sm"
       placeholder={
-        constraintDraft === "num_oneOf"
+          constraintDraft === "pat_array_empty"
+            ? "e.g., myArr[]"
+            : constraintDraft === "pat_array_index"
+            ? "e.g., myArr[i] or myArr[3]"
+        :constraintDraft === "num_oneOf"
           ? "e.g., 64"
           : constraintDraft === "num_range"
           ? "e.g., 128"
@@ -2038,6 +2490,8 @@ function onSave() {
           : constraintDraft === "id_bound"
           ? "e.g., counter"
           : "e.g., 64"
+          
+
       }
     />
   </div>

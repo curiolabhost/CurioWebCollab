@@ -1,21 +1,39 @@
-// server.js
+// server.js (CommonJS)
+// npm i express cors openai
 const express = require("express");
 const cors = require("cors");
 const fs = require("fs");
 const os = require("os");
 const path = require("path");
 const { exec } = require("child_process");
-const { Ollama } = require("ollama");
+
+// OpenAI (CommonJS-safe import)
+const OpenAIModule = require("openai");
+const OpenAI = OpenAIModule.default || OpenAIModule;
 
 const app = express();
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: "2mb" }));
+
+// ---------- request logger ----------
+app.use((req, _res, next) => {
+  const ts = new Date().toISOString();
+  console.log(`[${ts}] ${req.method} ${req.url}`);
+  next();
+});
 
 // ----------------------
-// Ollama config
+// OpenAI config
 // ----------------------
-const OLLAMA_HOST = "http://127.0.0.1:11434";
-const ollamaClient = new Ollama({ host: OLLAMA_HOST });
+// IMPORTANT: Use a model you actually have access to.
+// If you're unsure, start with "gpt-4.1-mini" (widely available).
+const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4.1-mini";
+
+const openai = new OpenAI({
+  apiKey: "REDACTED",
+  // hard client timeout so calls can't hang forever
+  timeout: 30000,
+});
 
 // ----------------------
 // Arduino CLI config
@@ -24,27 +42,31 @@ const ARDUINO_CLI = "arduino-cli";
 const FQBN = "arduino:avr:uno";
 
 // ----------------------
-// Stub headers
+// Crash guards
 // ----------------------
-
 process.on("uncaughtException", (e) => console.error("uncaughtException:", e));
 process.on("unhandledRejection", (e) => console.error("unhandledRejection:", e));
 
-
+// ----------------------
+// Stub headers (safe strings)
+// ----------------------
 const STUB_LIBRARY_HEADERS = {
-  "Adafruit_GFX.h": `#pragma once
-#include <stdint.h>
-class Adafruit_GFX { public: Adafruit_GFX(int16_t,int16_t) {} };`,
-  "Adafruit_SSD1306.h": `#pragma once
-#include <stdint.h>
-class TwoWire;
-class Adafruit_SSD1306 {
-public:
-  Adafruit_SSD1306(uint8_t,uint8_t,TwoWire*,int8_t) {}
-  bool begin(uint8_t=0,uint8_t=0,bool=true,bool=true){return true;}
-  void clearDisplay(){}
-  void display(){}
-};`,
+  "Adafruit_GFX.h":
+    "#pragma once\n" +
+    "#include <stdint.h>\n" +
+    "class Adafruit_GFX { public: Adafruit_GFX(int16_t,int16_t) {} };",
+
+  "Adafruit_SSD1306.h":
+    "#pragma once\n" +
+    "#include <stdint.h>\n" +
+    "class TwoWire;\n" +
+    "class Adafruit_SSD1306 {\n" +
+    "public:\n" +
+    "  Adafruit_SSD1306(uint8_t,uint8_t,TwoWire*,int8_t) {}\n" +
+    "  bool begin(uint8_t=0,uint8_t=0,bool=true,bool=true){return true;}\n" +
+    "  void clearDisplay(){}\n" +
+    "  void display(){}\n" +
+    "};",
 };
 
 function extractIncludedHeadersFromCode(code) {
@@ -62,6 +84,18 @@ function ensureStubHeadersForIncludes(code, dir) {
     }
   }
 }
+
+// ----------------------
+// Health check
+// ----------------------
+app.get("/health", (_req, res) => {
+  res.json({
+    ok: true,
+    openaiKeyPresent: !!process.env.OPENAI_API_KEY,
+    model: OPENAI_MODEL,
+    time: new Date().toISOString(),
+  });
+});
 
 // ----------------------
 // /verify-arduino
@@ -82,20 +116,13 @@ app.post("/verify-arduino", (req, res) => {
     ensureStubHeadersForIncludes(code, stubDir);
 
     const cmd = `${ARDUINO_CLI} compile --fqbn ${FQBN} --build-property compiler.cpp.extra_flags="-I${stubDir}" "${sketchDir}"`;
-
-    console.log("VERIFY: starting compile");
     console.log("VERIFY: cmd =", cmd);
 
-    exec(cmd, { timeout: 20000 }, (err, stdout, stderr) => {
-        console.log("VERIFY: done");
-        console.log("VERIFY: err =", err?.message);
-        console.log("VERIFY: stdout =", stdout);
-        console.log("VERIFY: stderr =", stderr);
-
+    exec(cmd, { timeout: 20000 }, (err, _stdout, stderr) => {
       if (!err) return res.json({ ok: true, errors: [] });
 
       const errors = [];
-      for (const line of stderr.split("\n")) {
+      for (const line of String(stderr || "").split("\n")) {
         const m = line.match(/Sketch\.ino:(\d+):(\d+):\s+error:\s+(.*)/);
         if (m) errors.push({ line: Number(m[1]), column: Number(m[2]), message: m[3] });
       }
@@ -109,9 +136,10 @@ app.post("/verify-arduino", (req, res) => {
   }
 });
 
-
 // ----------------------
-// /ai/help - proper Ollama streaming (Node SDK compatible)
+// /ai/help
+// - JSON by default (so normal fetch().json() won't spin forever)
+// - SSE only if Accept: text/event-stream OR ?stream=1
 // ----------------------
 app.post("/ai/help", async (req, res) => {
   const {
@@ -124,16 +152,15 @@ app.post("/ai/help", async (req, res) => {
     sentences = 3,
   } = req.body || {};
 
+  console.log("AI: entered /ai/help");
+  if (!process.env.OPENAI_API_KEY) {
+    console.log("AI: missing OPENAI_API_KEY");
+    return res.status(500).json({ ok: false, error: "Missing OPENAI_API_KEY env var." });
+  }
   if (!code.trim() && !question) {
+    console.log("AI: missing code/question");
     return res.status(400).json({ ok: false, error: "Provide either 'code' or 'question'." });
   }
-
-  // SSE headers
-  res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
-  res.setHeader("Cache-Control", "no-cache, no-transform");
-  res.setHeader("Connection", "keep-alive");
-  res.flushHeaders();
-  res.write(": keep-alive\n\n");
 
   const prompt =
     mode === "arduino-verify"
@@ -141,88 +168,137 @@ app.post("/ai/help", async (req, res) => {
 
 Sketch:
 \`\`\`cpp
-${code.slice(0, 4000)}
+${String(code).slice(0, 4000)}
 \`\`\`
 
 Errors:
-${errors.map(e => `Line ${e.line || 1}: ${e.message}`).join("\n")}`
+${(errors || []).map((e) => `Line ${e.line || 1}: ${e.message}`).join("\n")}`
       : `You are a programming tutor. Explain clearly:
 
 ${language} code:
 \`\`\`${language}
-${code.slice(0, 4000)}
+${String(code).slice(0, 4000)}
 \`\`\`
 
 Question:
 ${question}`;
 
-  let aborted = false;
+  const wantsSSE =
+    (req.headers.accept || "").includes("text/event-stream") ||
+    String(req.query.stream || "") === "1";
+
+  // ---------- JSON mode (default) ----------
+  if (!wantsSSE) {
+    try {
+      console.log("AI: JSON request -> calling OpenAI model:", OPENAI_MODEL);
+
+      const r = await openai.responses.create({
+        model: OPENAI_MODEL,
+        input: [{ role: "user", content: prompt }],
+        max_output_tokens: 350,
+      });
+
+      const text = (r.output_text && String(r.output_text)) || "";
+      console.log("AI: OpenAI returned chars:", text.length);
+
+      return res.json({ ok: true, text });
+    } catch (err) {
+      console.error("❌ AI: OpenAI JSON error:", err?.message || err);
+      return res.status(500).json({
+        ok: false,
+        error: "OpenAI call failed",
+        detail: err?.message || String(err),
+      });
+    }
+  }
+
+  // ---------- SSE mode (only if explicitly requested) ----------
+  res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+  res.setHeader("Cache-Control", "no-cache, no-transform");
+  res.setHeader("Connection", "keep-alive");
+  if (typeof res.flushHeaders === "function") res.flushHeaders();
+  res.write(": keep-alive\n\n");
+
+  let closed = false;
+  const send = (eventName, payloadObj) => {
+    if (closed) return;
+    if (eventName) res.write(`event: ${eventName}\n`);
+    res.write(`data: ${JSON.stringify(payloadObj)}\n\n`);
+  };
+  const done = () => {
+    if (closed) return;
+    closed = true;
+    try {
+      send("done", {});
+      res.write(`data: [DONE]\n\n`);
+    } catch {}
+    try {
+      res.end();
+    } catch {}
+  };
+
+  const ping = setInterval(() => {
+    if (closed) return;
+    try {
+      res.write(": ping\n\n");
+    } catch {}
+  }, 15000);
+
+  const hardTimeout = setTimeout(() => {
+    if (closed) return;
+    send("error", { error: "AI request timed out." });
+    done();
+  }, 45000);
+
   req.on("close", () => {
-    aborted = true;
+    clearInterval(ping);
+    clearTimeout(hardTimeout);
+    done();
   });
 
   try {
-    const ollamaRes = await fetch(`${OLLAMA_HOST}/api/chat`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "qwen2.5-coder:1.5b",
-        stream: true,
-        messages: [{ role: "user", content: prompt }],
-      }),
+    console.log("AI: SSE request -> calling OpenAI model:", OPENAI_MODEL);
+
+    const stream = await openai.responses.create({
+      model: OPENAI_MODEL,
+      input: [{ role: "user", content: prompt }],
+      stream: true,
+      max_output_tokens: 350,
     });
 
-    if (!ollamaRes.body) {
-      throw new Error("No Ollama stream");
-    }
+    for await (const event of stream) {
+      if (closed) break;
 
-    const reader = ollamaRes.body.getReader();
-    const decoder = new TextDecoder();
+      if (event.type === "response.output_text.delta") {
+        const token = event.delta || "";
+        if (token) send("token", { token });
+        continue;
+      }
 
-    let buffer = "";
+      if (
+        event.type === "response.output_text.done" ||
+        event.type === "response.completed" ||
+        event.type === "response.failed" ||
+        event.type === "response.incomplete"
+      ) {
+        break;
+      }
 
-    while (true) {
-      const { value, done } = await reader.read();
-      if (done) break;
-
-      buffer += decoder.decode(value, { stream: true });
-
-      const lines = buffer.split("\n");
-      buffer = lines.pop();
-
-      for (const line of lines) {
-        if (!line.trim()) continue;
-
-        const json = JSON.parse(line);
-
-        const token = json.message?.content;
-        if (token) {
-          res.write(
-            `event: token\ndata: ${JSON.stringify({ token })}\n\n`
-          );
-        }
-
-        if (json.done) {
-          res.write(`event: done\ndata: {}\n\n`);
-          res.end();
-          return;
-        }
+      if (event.type === "error") {
+        send("error", { error: event.error?.message || "AI request failed." });
+        break;
       }
     }
-    if (!aborted) {
-      res.write(`event: done\ndata: {}\n\n`);
-      res.end();
-    }
 
+    clearInterval(ping);
+    clearTimeout(hardTimeout);
+    done();
   } catch (err) {
-    console.error("❌ Ollama streaming error:", err);
-
-    res.write(
-      `event: error\ndata: ${JSON.stringify({
-        error: "AI request failed. Check server logs.",
-      })}\n\n`
-    );
-    res.end();
+    console.error("❌ AI: OpenAI SSE error:", err?.message || err);
+    clearInterval(ping);
+    clearTimeout(hardTimeout);
+    send("error", { error: err?.message || "OpenAI call failed" });
+    done();
   }
 });
 
@@ -232,6 +308,7 @@ ${question}`;
 const PORT = 4000;
 app.listen(PORT, () => {
   console.log(`🚀 Server running at http://localhost:${PORT}`);
+  console.log("  • GET  /health");
   console.log("  • POST /verify-arduino");
-  console.log("  • POST /ai/help (streaming)");
+  console.log("  • POST /ai/help (JSON default; SSE if Accept:text/event-stream or ?stream=1)");
 });

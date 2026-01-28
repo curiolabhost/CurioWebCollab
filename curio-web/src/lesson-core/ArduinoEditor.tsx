@@ -512,74 +512,118 @@ function coachTagBg(tag: CoachTag) {
     });
   };
 
-  async function streamHelpSSE(payload: any, onToken: (t: string) => void) {
-    const res = await fetch("http://3.129.218.117:4000/ai/help", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:4000";
 
-    if (!res.ok) {
-      const t = await res.text().catch(() => "");
-      throw new Error(`AI route failed (${res.status}): ${t}`);
-    }
-    if (!res.body) {
-      throw new Error("AI route returned no body (streaming not enabled).");
-    }
 
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
+async function streamHelpSSE(payload: any, onToken: (t: string) => void) {
+  const res = await fetch(`${API_BASE}/ai/help`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      // IMPORTANT: do NOT request SSE unless you're sure server supports it
+      // "Accept": "text/event-stream",
+    },
+    body: JSON.stringify(payload),
+  });
 
-    while (true) {
-      const { value: chunk, done } = await reader.read();
-      if (done) break;
+  if (!res.ok) {
+    const t = await res.text().catch(() => "");
+    throw new Error(`AI route failed (${res.status}): ${t}`);
+  }
 
-      buffer += decoder.decode(chunk, { stream: true });
+  const contentType = (res.headers.get("content-type") || "").toLowerCase();
 
-      const events = buffer.split("\n\n");
-      buffer = events.pop() ?? "";
+  // ----------------------------
+  // JSON MODE (your Express server)
+  // ----------------------------
+if (contentType.includes("application/json")) {
+  const data = await res.json().catch(() => null);
 
-      for (const evt of events) {
-        const lines = evt.split("\n");
-        let eventType = "message";
-        let data = "";
+  if (!data) throw new Error("AI returned invalid JSON.");
+  if (data.ok === false) throw new Error(data.error || "AI failed.");
 
-        for (const line of lines) {
-          if (line.startsWith("event:")) eventType = line.slice(6).trim();
-          else if (line.startsWith("data:")) data += line.slice(5).trim();
+  let out: any =
+    data.text ??
+    data.coach ??
+    data.coachJson ??
+    data.payload ??
+    data.result ??
+    data.data ??
+    data;
+
+  // If server returns an object, stringify it so it starts with "{"
+  if (typeof out !== "string") out = JSON.stringify(out);
+
+  const text = String(out || "");
+  if (text) onToken(text);
+
+  return; // IMPORTANT: stop here
+}
+  // ----------------------------
+  // SSE MODE (text/event-stream)
+  // ----------------------------
+  if (!res.body) {
+    throw new Error("AI route returned no body.");
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { value: chunk, done } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(chunk, { stream: true });
+
+    const events = buffer.split("\n\n");
+    buffer = events.pop() ?? "";
+
+    for (const evt of events) {
+      const lines = evt.split("\n");
+      let eventType = "message";
+      let data = "";
+
+      for (const line of lines) {
+        if (line.startsWith("event:")) eventType = line.slice(6).trim();
+        else if (line.startsWith("data:")) data += line.slice(5).trim();
+      }
+
+      if (eventType === "token") {
+        try {
+          const parsed = JSON.parse(data || "{}");
+          if (parsed?.token) onToken(parsed.token);
+        } catch {
+          // ignore
         }
+      }
 
-        if (eventType === "token") {
-          try {
-            const parsed = JSON.parse(data || "{}");
-            if (parsed?.token) onToken(parsed.token);
-          } catch {
-            // ignore malformed chunks
-          }
-        }
+      if (eventType === "done") {
+        setStatus("AI explanation complete.");
+        return; // IMPORTANT: stop reading
+      }
 
-        if (eventType === "done") setStatus("AI explanation complete.");
-        if (eventType === "error") {
-          let msg = "AI request failed.";
-          try {
-            msg = JSON.parse(data || "{}")?.error || msg;
-          } catch {}
+      if (eventType === "error") {
+        let msg = "AI request failed.";
+        try {
+          msg = JSON.parse(data || "{}")?.error || msg;
+        } catch {}
 
-          const isRateLimit =
-            /rate limit/i.test(msg) ||
-            /Limit \d+, Used \d+/i.test(msg) ||
-            /Please try again/i.test(msg);
+        const isRateLimit =
+          /rate limit/i.test(msg) ||
+          /Please try again/i.test(msg);
 
-          // Throw, but tag it so callers can show a friendly message
-          const err = new Error(msg) as Error & { code?: string };
-          if (isRateLimit) err.code = "RATE_LIMIT";
-          throw err;
-        }
-
+        const err = new Error(msg) as Error & { code?: string };
+        if (isRateLimit) err.code = "RATE_LIMIT";
+        throw err;
       }
     }
   }
+
+  // If SSE stream ended without "done", still return cleanly
+  setStatus("AI explanation complete.");
+}
+
 
   function updatePopover(popoverId: string, patch: Partial<PopoverItem>) {
     setPopovers((prev) => {
@@ -587,7 +631,6 @@ function coachTagBg(tag: CoachTag) {
       return prev.map((p) => (p.id === popoverId ? { ...p, ...patch } : p));
     });
   }
-
 
   // One function for BOTH popup + verify
   const sendErrorToAI = async (
@@ -669,7 +712,7 @@ if (target === "bottom") {
     const trimmed = acc.trim();
 
     if (mode === "project-coach") {
-      // ✅ never crash UI on bad output
+      // never crash UI on bad output
       if (!trimmed.startsWith("{")) {
         setCoachJson(null);
         setCompilerOutput(trimmed);
@@ -893,7 +936,7 @@ if (existing) {
     setAiHelpMap({});
 
     try {
-      const res = await fetch("http://3.129.218.117:4000/verify-arduino", {
+      const res = await fetch(`${API_BASE}/verify-arduino`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code: value }),

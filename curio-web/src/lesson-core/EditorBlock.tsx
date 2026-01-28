@@ -6,6 +6,8 @@ import { cpp } from "@codemirror/lang-cpp";
 
 
 import styles from "./GuidedCodeBlock.module.css";
+import { oneDark } from "@codemirror/theme-one-dark";
+
 
 type Props = {
   editorId: string;
@@ -16,6 +18,7 @@ type Props = {
 
   rows?: number; // kept for compatibility; we map this to a height
   placeholder?: string;
+  highlighted?: boolean;
 };
 
 const DEBOUNCE_MS = 200;
@@ -37,9 +40,11 @@ export default function InlineEditorToken({
   setGlobalBlanks,
   rows = 8,
   placeholder = "Type code here…",
+  highlighted = true,
 }: Props) {
-  const persistKey = React.useMemo(() => editorPersistKey(globalKey, editorId), [globalKey, editorId]);
+  const wrapClass = `${styles.inlineEditorWrap} ${!highlighted ? styles.inlineEditorDim : ""}`;
 
+  const persistKey = React.useMemo(() => editorPersistKey(globalKey, editorId), [globalKey, editorId]);
   const initial = React.useMemo(() => {
     const v = mergedBlanks?.[persistKey];
     if (typeof v === "string") return v;
@@ -60,6 +65,7 @@ export default function InlineEditorToken({
 
   const pendingRef = React.useRef<string | null>(null);
   const timerRef = React.useRef<any>(null);
+  
 
   function schedulePersist(nextText: string) {
     if (!setGlobalBlanks) return;
@@ -111,28 +117,29 @@ export default function InlineEditorToken({
   const heightPx = rowsToPx(rows);
 
   return (
-    <div className={styles.inlineEditorWrap}>
-      <CodeMirror
-        value={draft}
-        height={`${heightPx}px`}
-        extensions={[cpp()]} // Arduino ≈ C/C++
-        theme="dark"
-        placeholder={placeholder}
-        onChange={(val) => {
-          setDraft(val);
-          schedulePersist(val);
-        }}
-        onBlur={() => flushNow()}
-        className={styles.inlineCodeMirror}
-            basicSetup={{
-            lineNumbers: false,
-            highlightActiveLine: false,
-            foldGutter: false,
-            indentOnInput: true,
-            bracketMatching: true,
-            }}
+    <div className={wrapClass}>
+        <CodeMirror
+  value={draft}
+  extensions={[cpp()]}
+  theme={highlighted ? oneDark : undefined}
+  placeholder={placeholder}
+  onChange={(val) => {
+    setDraft(val);
+    schedulePersist(val);
+  }}
+  onBlur={() => flushNow()}
+  className={`${styles.inlineCodeMirror} ${highlighted ? "" : styles.inlineEditorDim}`}
+  basicSetup={{
+    lineNumbers: false,
+    highlightActiveLine: false,
+    foldGutter: false,
+    indentOnInput: true,
+    bracketMatching: true,
+  }}
+/>
 
-      />
-    </div>
+
+      </div>
+
   );
 }

@@ -4,72 +4,48 @@ import * as React from "react";
 import styles from "./GuidedCodeBlock.module.css";
 import InlineEditorToken from "./EditorBlock";
 
+import CodeMirror from "@uiw/react-codemirror";
+import { cpp } from "@codemirror/lang-cpp";
+import { oneDark } from "@codemirror/theme-one-dark";
+import { oneDarkHighlightStyle } from "@codemirror/theme-one-dark";
+import { highlightTree, tagHighlighter, tags as t } from "@lezer/highlight";
+
+
 
 
 // keep ONLY these from the shared util
 import { type AnswerSpec, evalAnswerSpec, BlankRule, BlankTypedSpec } from "./blankCheckUtils";
 
-// --- Simple Arduino-style syntax groups for example boxes ---
-const TYPE_KEYWORDS = [
-  "void",
-  "int",
-  "long",
-  "float",
-  "double",
-  "char",
-  "bool",
-  "boolean",
-  "unsigned",
-  "short",
-  "byte",
-  "word",
-  "String",
-  "static",
-  "const",
-];
+function isIdentChar(ch: string) {
+  return /[A-Za-z0-9_]/.test(ch);
+}
 
-const CONTROL_KEYWORDS = [
-  "for",
-  "while",
-  "do",
-  "switch",
-  "case",
-  "break",
-  "continue",
-  "return",
-  "if",
-  "else",
-];
+const guidedHighlighter = tagHighlighter([
+  { tag: t.comment, class: styles.syntaxComment },
 
-const PREPROCESSOR_KEYWORDS = ["#include", "#define", "#ifdef", "#ifndef", "#endif"];
+  { tag: t.string, class: styles.syntaxString },
+  { tag: t.number, class: styles.syntaxNumber },
 
-const ARDUINO_BUILTINS = [
-  "setup",
-  "loop",
-  "pinMode",
-  "digitalWrite",
-  "digitalRead",
-  "analogWrite",
-  "analogRead",
-  "delay",
-  "millis",
-  "micros",
-  "Serial",
-  "begin",
-  "print",
-  "println",
-  "display",
-  "clearDisplay",
-  "setCursor",
-  "setTextSize",
-  "setTextColor",
-  "drawRect",
-  "drawLine",
-  "drawCircle",
-  "fillRect",
-  "fillCircle",
-  "display",
-];
+  { tag: t.keyword, class: styles.syntaxControl },
+  { tag: t.controlKeyword, class: styles.syntaxControl },
+
+  { tag: t.typeName, class: styles.syntaxType },
+  { tag: t.variableName, class: styles.syntaxVar },
+  { tag: t.propertyName, class: styles.syntaxVar },
+  { tag: t.name, class: styles.syntaxVar }, // catch-all for identifiers like `display`
+
+
+  // function calls / names
+  { tag: t.function(t.variableName), class: styles.syntaxArduinoFunc },
+  { tag: t.function(t.name), class: styles.syntaxArduinoFunc },
+
+  // #include, #define, macros, etc.
+  { tag: t.macroName, class: styles.syntaxPreprocessor },
+  { tag: t.processingInstruction, class: styles.syntaxPreprocessor },
+
+  // optional: make operators slightly brighter if you want
+  // { tag: t.operator, class: styles.codeHighlight },
+]);
 
 type Props = {
   step: any;
@@ -177,25 +153,8 @@ async function streamHelpSSE(payload: any, onToken: (t: string) => void) {
   }
 }
 
-function safeJsonParse<T>(raw: string | null): T | null {
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw) as T;
-  } catch {
-    return null;
-  }
-}
-
-function storageSetJson(key: string, value: any) {
-  if (!key) return;
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(key, JSON.stringify(value));
-  } catch {}
-}
-
-function nowMs() {
-  return Date.now();
+function editorPersistKey(globalKey: string, editorId: string) {
+  return `curio:editor:v1:${globalKey || "global"}:${editorId || "editor"}`;
 }
 
 // ============================================================
@@ -252,15 +211,16 @@ function tokenizeTemplateLineWithState(
     // Otherwise, consume until next special token
     const nextHi = str.indexOf("^^", i);
     const nextBlank = str.indexOf("__BLANK[", i);
+    const nextEditor = str.indexOf("__EDITOR[", i);
 
     let next = -1;
-    if (nextHi !== -1 && nextBlank !== -1) next = Math.min(nextHi, nextBlank);
-    else if (nextHi !== -1) next = nextHi;
-    else if (nextBlank !== -1) next = nextBlank;
+    for (const n of [nextHi, nextBlank, nextEditor]) {
+      if (n === -1) continue;
+      next = next === -1 ? n : Math.min(next, n);}
 
-    const chunk = next === -1 ? str.slice(i) : str.slice(i, next);
-    toks.push({ type: "text", content: chunk, highlight: inHi });
-    i = next === -1 ? str.length : next;
+const chunk = next === -1 ? str.slice(i) : str.slice(i, next);
+toks.push({ type: "text", content: chunk, highlight: inHi });
+i = next === -1 ? str.length : next;
   }
 
   return { toks, inHiEnd: inHi };
@@ -328,133 +288,90 @@ function estimateTemplateTokenWidthPx(tok: TemplateTok, valueLen: number) {
   return 0;
 }
 
-// ============================================================
-// Syntax highlighting for "^^...^^" segments (simple keyword coloring)
-// ============================================================
+// Convert a snippet of C++ code into <span> runs styled by oneDarkHighlightStyle.
+// This avoids embedding a CodeMirror editor inline.
+function renderOneDarkHighlighted(text: string, keyPrefix: string) {
+  const tree = cpp().language.parser.parse(text);
 
-// --- keep these sets somewhere above (same as original) ---
-const TYPE_SET = new Set(TYPE_KEYWORDS);
-const CONTROL_SET = new Set(CONTROL_KEYWORDS);
-const ARDUINO_SET = new Set(ARDUINO_BUILTINS);
+  const ranges: Array<{ from: number; to: number; cls: string }> = [];
+  highlightTree(tree, guidedHighlighter, (from, to, cls) => {
+    if (from < to && cls) ranges.push({ from, to, cls });
+  });
 
-// ==========================================================
-// SYNTAX HIGHLIGHTING (RESTORED)
-// ==========================================================
-function renderSyntaxHighlightedSegment(text: string) {
-  if (!text) return null;
-
-  // Normalize curly quotes → straight quotes so strings tokenize correctly
-  const normalized = String(text).replace(/[‘’]/g, "'").replace(/[“”]/g, '"');
-
-  const pieces: React.ReactNode[] = [];
-
-  const regex =
-    /(#\s*(?:include|define|ifdef|ifndef|endif|elif|else|pragma|error|warning)\b|\/\/[^\n]*|"(?:\\.|[^"\\\n])*"|'(?:\\.|[^'\\\n])*'|[+-]?\d+(?:\.\d+)?|\b[A-Za-z_]\w*\b|\s+|[^\w\s])/g;
-
-  let match: RegExpExecArray | null;
-  let idx = 0;
-
-  while ((match = regex.exec(normalized)) !== null) {
-    const token = match[0];
-
-    let cls = styles.codeHighlight;
-
-    if (token.startsWith("//")) {
-      cls = styles.syntaxComment;
-    } else if (
-      (token.startsWith('"') && token.endsWith('"')) ||
-      (token.startsWith("'") && token.endsWith("'"))
-    ) {
-      cls = styles.syntaxString;
-    } else if (/^[+-]?\d/.test(token)) {
-      cls = styles.syntaxNumber;
-    } else if (TYPE_SET.has(token)) {
-      cls = styles.syntaxType;
-    } else if (CONTROL_SET.has(token)) {
-      cls = styles.syntaxControl;
-    } else if (ARDUINO_SET.has(token)) {
-      cls = styles.syntaxArduinoFunc;
-    } else if (token.trim().startsWith("#")) {
-      cls = styles.syntaxPreprocessor;
-    }
-
-    pieces.push(
-      <span key={`seg-${idx++}`} className={cls}>
-        {token}
-      </span>
-    );
-  }
-
-  return pieces;
-}
-
-function stripOuterWrappers(s: string) {
-  let t = String(s ?? "").trim();
-  t = t.replace(/^[([{\s]+/g, "").replace(/[;,)\]}]+$/g, "").trim();
-  return t;
-}
-
-function isQuotedLiteral(s: string) {
-  const t = String(s ?? "").trim();
+  if (!ranges.length) {
   return (
-    (t.length >= 2 && t.startsWith('"') && t.endsWith('"')) ||
-    (t.length >= 2 && t.startsWith("'") && t.endsWith("'"))
+    <span key={`${keyPrefix}-plain`} className={styles.codeNormal}>
+      {text}
+    </span>
   );
 }
 
-function isNumberLiteral(s: string) {
-  return /^[+-]?\d+(\.\d+)?$/.test(String(s ?? "").trim());
-}
+  ranges.sort((a, b) => a.from - b.from || a.to - b.to);
 
-function computeSyntaxTag(v: any) {
-  const raw = String(v ?? "");
-  const trimmed = raw.trim();
-  if (!trimmed) return "empty";
+  const out: React.ReactNode[] = [];
+  let pos = 0;
+  let i = 0;
 
-  if (isQuotedLiteral(trimmed)) return "string";
+  while (pos < text.length) {
+    while (i < ranges.length && ranges[i].to <= pos) i++;
+    const r = ranges[i];
 
-  const core = stripOuterWrappers(trimmed);
+    if (!r || r.from > pos) {
+      const end = r ? Math.min(r.from, text.length) : text.length;
+const plain = text.slice(pos, end);
 
-  if (core.startsWith("#")) return "pre";
-  if (core.startsWith("//")) return "comment";
+// split plain into identifier runs vs non-identifier runs
+let j = 0;
+while (j < plain.length) {
+  const start = j;
+  const ch = plain[j];
 
-  if (/^(true|false)$/i.test(core)) return "bool";
+  if (isIdentChar(ch) && /[A-Za-z_]/.test(ch)) {
+    // identifier run must start with letter/_ (not number)
+    j++;
+    while (j < plain.length && isIdentChar(plain[j])) j++;
 
-  if (isNumberLiteral(core)) return "number";
+    out.push(
+      <span key={`${keyPrefix}-id-${pos + start}`} className={styles.syntaxVar}>
+        {plain.slice(start, j)}
+      </span>
+    );
+  } else {
+    // non-identifier run
+    j++;
+    while (
+      j < plain.length &&
+      !(isIdentChar(plain[j]) && /[A-Za-z_]/.test(plain[j]))
+    ) {
+      j++;
+    }
 
-  const serialMember = core.match(/^Serial\.(begin|print|println)$/);
-  if (serialMember) return "builtin";
-
-  if (ARDUINO_SET.has(core)) return "builtin";
-
-  if (TYPE_SET.has(core)) return "type";
-
-  if (CONTROL_SET.has(core)) return "text";
-
-  return "text";
-}
-
-function getCompletedBlankSyntaxClass(v: any) {
-  const tag = computeSyntaxTag(v);
-  switch (tag) {
-    case "pre":
-      return styles.blankSyntaxPre;
-    case "comment":
-      return styles.blankSyntaxComment;
-    case "string":
-      return styles.blankSyntaxString;
-    case "number":
-      return styles.blankSyntaxNumber;
-    case "bool":
-      return styles.blankSyntaxBool;
-    case "builtin":
-      return styles.blankSyntaxBuiltin;
-    case "type":
-      return styles.blankSyntaxType;
-    default:
-      return styles.blankSyntaxText;
+    out.push(
+      <span key={`${keyPrefix}-pl-${pos + start}`} className={styles.codeNormal}>
+        {plain.slice(start, j)}
+      </span>
+    );
   }
 }
+
+      pos = end;
+      continue;
+    }
+
+    const end = Math.min(r.to, text.length);
+    out.push(
+      <span key={`${keyPrefix}-h-${pos}`} className={r.cls}>
+        {text.slice(pos, end)}
+      </span>
+    );
+    pos = end;
+  }
+
+  return out;
+}
+
+
+
 
 export default function GuidedCodeBlock({
   step,
@@ -644,13 +561,16 @@ export default function GuidedCodeBlock({
                 if (tok.type === "text") {
                   const textContent = tok.content;
 
-                  if (tok.highlight) {
-                    return (
-                      <React.Fragment key={`t-${lineIdx}-${idx}`}>
-                        {renderSyntaxHighlightedSegment(textContent)}
-                      </React.Fragment>
-                    );
-                  }
+              if (tok.highlight) {
+  return (
+    <span key={`t-${lineIdx}-${idx}`} className={styles.hiWrap}>
+      {renderOneDarkHighlighted(textContent, `hi-${lineIdx}-${idx}`)}
+    </span>
+  );
+}
+
+
+
 
                   return (
                     <span key={`t-${lineIdx}-${idx}`} className={styles.codeNormal}>
@@ -672,10 +592,8 @@ export default function GuidedCodeBlock({
                     tok.highlight ? styles.codeBlankInputHighlight : "",
                     status === true ? styles.blankCorrect : "",
                     status === false ? styles.blankIncorrect : "",
-                    getCompletedBlankSyntaxClass(val),
-                  ]
-                    .filter(Boolean)
-                    .join(" ");
+                  ].filter(Boolean).join(" ");
+
 
                   return (
                     <div key={`b-${lineIdx}-${idx}`} className={styles.blankWithDot}>
@@ -747,6 +665,7 @@ export default function GuidedCodeBlock({
 
                 if (tok.type === "editor") {
                   const editorId = tok.id;
+                  const isHighlighted = !!tok.highlight;
 
                   // optional per-block config (rows, placeholder)
                   const rows =
@@ -768,6 +687,7 @@ export default function GuidedCodeBlock({
                       setGlobalBlanks={setGlobalBlanks}
                       rows={rows}
                       placeholder={placeholder}
+                      highlighted={isHighlighted}
                     />
                   );
                 }
@@ -907,26 +827,47 @@ export default function GuidedCodeBlock({
     }
   };
 
-  // restore JS behavior: substitute filled blanks, strip ^^, keep unfixed blanks as _____
-  const copyCode = async (raw: string) => {
-    try {
-      let textToCopy = String(raw || "");
-      const values = draftRef.current || mergedBlanks || {};
+const copyCode = async (raw: string) => {
+  try {
+    let textToCopy = String(raw || "");
 
-      for (const [name, value] of Object.entries(values || {})) {
-        const placeholder = `__BLANK[${name}]__`;
-        const replacement = value && String(value).trim().length > 0 ? String(value) : "_____";
-        textToCopy = textToCopy.split(placeholder).join(replacement);
-      }
+    // Merge global + latest draft so we don't miss either
+    const values: Record<string, any> = {
+      ...(mergedBlanks || {}),
+      ...(draftRef.current || {}),
+    };
 
-      textToCopy = textToCopy.replace(/__BLANK\[[A-Z0-9_]+\]__/g, "_____");
-      textToCopy = textToCopy.replace(/\^\^/g, "");
-
-      await navigator.clipboard.writeText(textToCopy);
-    } catch {
-      // ignore
+    // 1) Replace blanks
+    for (const [name, value] of Object.entries(values || {})) {
+      const placeholder = `__BLANK[${name}]__`;
+      const replacement =
+        value && String(value).trim().length > 0 ? String(value) : "_____";
+      textToCopy = textToCopy.split(placeholder).join(replacement);
     }
-  };
+
+    // Any remaining blanks -> _____
+    textToCopy = textToCopy.replace(/__BLANK\[[A-Z0-9_]+\]__/g, "_____");
+
+    // 2) Replace editor blocks: __EDITOR[id]__ -> the saved editor text
+    textToCopy = textToCopy.replace(/__EDITOR\[([^\]]+)\]__/g, (_m, idRaw) => {
+      const id = String(idRaw || "").trim();
+      const key = editorPersistKey(globalKey, id);
+      const v = values[key];
+      return v == null ? "" : String(v);
+    });
+
+    // Any remaining editor markers -> remove
+    textToCopy = textToCopy.replace(/__EDITOR\[[^\]]+\]__/g, "");
+
+    // 3) Strip highlight markers
+    textToCopy = textToCopy.replace(/\^\^/g, "");
+
+    await navigator.clipboard.writeText(textToCopy);
+  } catch {
+    // ignore
+  }
+};
+
 
   // counts attempts ONLY when wrong (per blank)
 const checkBlanks = () => {

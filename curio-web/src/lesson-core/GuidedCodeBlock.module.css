@@ -4,6 +4,8 @@
    Code card container
 ============================================================ */
 
+
+
 .codeCard {
   background: #0f172a;
   border-radius: 12px;
@@ -76,39 +78,120 @@
 .codeLineRow {
   display: flex;
   align-items: stretch;
-  flex-wrap: nowrap; /* IMPORTANT: match original */
+  flex-wrap: nowrap; 
 }
+
+.codeHighlightBase {
+  color: #cdced1ff; /* white-ish */
+}
+
+.hiWrap {
+  color: #e5e7eb; /* base white for highlighted region */
+}
+
+/* Make only the "plain" runs inside highlight white */
+.hiWrap .codeNormal {
+  color: #e5e7eb;
+}
+
+
+
 
 /* left “code” column */
 .codePartCol {
-  display: inline-flex;
+  display: inline-block;    
+  white-space: pre;  
   align-items: flex-start;
-  flex-wrap: nowrap; /* IMPORTANT: match original */
-  min-width: 0;
+  flex-wrap: nowrap;
+  color: #d3d7d3;
+  flex-shrink: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+
+  /* keeps scroll behavior sane */
+  max-width: 100%;
+  -webkit-overflow-scrolling: touch;
 }
 
-/* right “comment” column */
+
+
 .codeCommentCol {
   margin-left: 5px;
   color: #82a8abff;
   font-family: ui-monospace, Menlo, Monaco, Consolas, "Courier New", monospace;
   font-size: 14px;
   line-height: 20px;
-  white-space: pre;
-  flex-shrink: 0;
+
+  white-space: pre;   /* keep comment formatting */
+  flex-shrink: 0;     /* do NOT shrink comment */
 }
+
+/* ============================================================
+   Font normalize for guided (non-editor) code
+   (Fixes "rest of code has a different font" issue)
+============================================================ */
+
+.codeBox,
+.codeLineRow,
+.codePartCol,
+.codeCommentCol,
+.codeNormal,
+.codeHighlight,
+.syntaxComment,
+.syntaxString,
+.syntaxNumber,
+.syntaxType,
+.syntaxControl,
+.syntaxArduinoFunc,
+.syntaxPreprocessor,
+.codeBlankInput {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace !important;
+  font-size: 14px;
+  line-height: 20px;
+  letter-spacing: 0;
+}
+
+/* Ensure any inline spans inherit the same monospace */
+.codePartCol span,
+.codeCommentCol span {
+  font-family: inherit;
+  white-space: pre;
+
+}
+
+
 
 /* ============================================================
    Syntax text
 ============================================================ */
 
+
+:root {
+  /* Code base */
+  --code-fg: rgb(229, 231, 235);      /* base text */
+  --code-muted: rgb(152, 160, 170);   /* choose your non-highlight gray (tweak if you want) */
+
+  /* One Dark syntax (from your extractor) */
+  --code-string: rgb(152, 195, 121);
+  --code-func: rgb(96, 169, 229);
+  --code-comment: rgb(125, 135, 153);
+  --code-number: rgb(229, 192, 123);
+  --code-error: rgb(224, 108, 117);
+  --code-operator: rgb(209, 154, 102);
+  --code-type: rgb(239, 194, 97);
+  --code-keyword: rgb(198, 120, 221);
+  --code-var: rgb(224, 108, 117);
+}
+
 .codeNormal {
-  color: #989a98;
+
   font-weight: 400;
   font-family: ui-monospace, Menlo, Monaco, Consolas, "Courier New", monospace;
   font-size: 14px;
   line-height: 20px;
   white-space: pre;
+   color: var(--code-muted); 
+
 }
 
 .codeHighlight {
@@ -119,6 +202,16 @@
   line-height: 20px;
   white-space: pre;
 }
+
+.syntaxVar {
+  color: var(--code-var);
+  font-weight: 400;
+  font-family: ui-monospace, Menlo, Monaco, Consolas, "Courier New", monospace;
+  font-size: 14px;
+  line-height: 20px;
+  white-space: pre;
+}
+
 
 /* syntax colors */
 .syntaxComment {
@@ -177,6 +270,16 @@
   white-space: pre;
 }
 
+
+.syntaxComment { color: var(--code-comment); }
+.syntaxString { color: var(--code-string); }
+.syntaxNumber { color: var(--code-number); }
+.syntaxType { color: var(--code-type); }
+.syntaxControl { color: var(--code-keyword); }
+.syntaxArduinoFunc { color: var(--code-func); }
+.syntaxPreprocessor { color: var(--code-keyword); } /* decent default */
+
+
 /* ============================================================
    Code blanks (inside GuidedCodeBlock)
 ============================================================ */
@@ -219,8 +322,9 @@
 
 .blankWithDot {
   display: inline-flex;
-  align-items: center;
-  flex-wrap: nowrap; /* IMPORTANT: match original */
+  align-items: baseline;
+  flex-wrap: nowrap; 
+  white-space: pre;
 }
 
 .errorDotBtn {
@@ -386,18 +490,25 @@
 .boldSetup { font-weight: 800; color: #7c3aed; }
 .boldLoop { font-weight: 800; color: #0f766e; }
 
-/*EDITOR BLOCK*/
+
+
+
+/* ============================
+   EDITOR BLOCK (CodeMirror)
+   ============================ */
+
+/* legacy textarea (if still used anywhere) */
 .inlineEditorTextarea {
   display: block;
   width: 100%;
-  min-height: 140px;   /* <-- makes it obviously multiline */
+  min-height: 140px;
   margin: 4px 0;
 
   padding: 8px 10px;
   border-radius: 10px;
-  border: 1px solid rgba(255,255,255,0.12);
-  background: #b5bcce;
-  color: #e2e8f0;
+  border: 1px solid rgba(28, 24, 83, 0.619);
+  background: #0f172a;
+  color: #e5e7eb;
 
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   font-size: 13px;
@@ -407,15 +518,17 @@
   resize: vertical;
 }
 
+/* wrapper card – DARK by default (^^ editors) */
 .inlineEditorWrap {
   width: 100%;
   margin: 4px 0;
   border-radius: 12px;
-  border: 1px solid rgba(44, 50, 107, 0.525);
-  background: #0f172a;
+  border: 1px solid rgba(24, 30, 83, 0.6);
+  background: #0f172a; /* dark */
   overflow: hidden;
 }
 
+/* CodeMirror base */
 .inlineCodeMirror :global(.cm-editor) {
   background: transparent;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
@@ -434,26 +547,116 @@
   background: transparent !important;
 }
 
-/* optional: remove focus outline glow */
+/* remove focus outline glow */
 .inlineCodeMirror :global(.cm-editor.cm-focused) {
   outline: none;
 }
 
-/* Default text = white */
+/* default text (dark theme) */
 .inlineCodeMirror :global(.cm-content),
 .inlineCodeMirror :global(.cm-line),
 .inlineCodeMirror :global(.cm-scroller) {
-  color: #ffffff;
+  color: #e5e7eb;
 }
 
 .inlineCodeMirror :global(.cm-cursor) {
-  border-left-color: rgba(255,255,255,0.85) !important;
+  border-left-color: rgba(229, 231, 235, 0.9) !important;
 }
 
+/* ============================
+   DIMMED (non-^^ editors)
+   ============================ */
 
+.inlineEditorDim {
+  background: #0f172a; /* gray card */
+}
 
+/* dim all text */
+.inlineEditorDim :global(.cm-content),
+.inlineEditorDim :global(.cm-line),
+.inlineEditorDim :global(.cm-scroller) {
+  color: #6b7280 !important;
+}
 
+/* dim syntax tokens too */
+.inlineEditorDim :global(.cm-keyword),
+.inlineEditorDim :global(.cm-string),
+.inlineEditorDim :global(.cm-number),
+.inlineEditorDim :global(.cm-comment),
+.inlineEditorDim :global(.cm-variableName),
+.inlineEditorDim :global(.cm-typeName),
+.inlineEditorDim :global(.cm-function),
+.inlineEditorDim :global(.cm-operator),
+.inlineEditorDim :global(.cm-property) {
+  color: #6b7280 !important;
+}
 
+/* dim cursor */
+.inlineEditorDim :global(.cm-cursor) {
+  border-left-color: #6b7280 !important;
+}
 
-  
+/* ============================
+   DIM MODE: FORCE ALL TOKENS GRAY
+   ============================ */
+
+/* make sure the editor text color is gray */
+.inlineEditorDim :global(.cm-content),
+.inlineEditorDim :global(.cm-line),
+.inlineEditorDim :global(.cm-scroller) {
+  color: #8a8f98 !important;
+}
+
+/* CodeMirror 6 tokens are mostly span tags inside .cm-line */
+.inlineEditorDim :global(.cm-line span) {
+  color: inherit !important;
+}
+
+/* also flatten any nested spans */
+.inlineEditorDim :global(.cm-line span span) {
+  color: inherit !important;
+}
+
+/* if any token classes still punch through, force them too */
+.inlineEditorDim :global(.cm-keyword),
+.inlineEditorDim :global(.cm-string),
+.inlineEditorDim :global(.cm-number),
+.inlineEditorDim :global(.cm-comment),
+.inlineEditorDim :global(.cm-variableName),
+.inlineEditorDim :global(.cm-typeName),
+.inlineEditorDim :global(.cm-function),
+.inlineEditorDim :global(.cm-operator),
+.inlineEditorDim :global(.cm-property),
+.inlineEditorDim :global(.cm-atom),
+.inlineEditorDim :global(.cm-bool),
+.inlineEditorDim :global(.cm-null),
+.inlineEditorDim :global(.cm-className),
+.inlineEditorDim :global(.cm-tagName),
+.inlineEditorDim :global(.cm-attributeName) {
+  color: inherit !important;
+}
+
+/* cursor in dim mode */
+.inlineEditorDim :global(.cm-cursor) {
+  border-left-color: #8a8f98 !important;
+}
+
+/* CodeMirror internal scroller */
+.inlineCodeMirror :global(.cm-scroller) {
+  overflow-x: hidden !important;
+}
+
+/* Your two-column wrapper */
+.codePartCol {
+  overflow-x: hidden !important;
+}
+
+/* Safety: hide any browser scrollbar rendering */
+.inlineCodeMirror :global(.cm-editor) {
+  scrollbar-width: none;          /* Firefox */
+}
+
+.inlineCodeMirror :global(.cm-editor::-webkit-scrollbar) {
+  height: 0px;                    /* Chrome/Safari */
+}
 
