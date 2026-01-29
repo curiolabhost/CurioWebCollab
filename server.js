@@ -20,7 +20,7 @@ const ollamaClient = new Ollama({ host: OLLAMA_HOST });
 // ----------------------
 // Arduino CLI config
 // ----------------------
-const ARDUINO_CLI = "/home/paulb/bin/arduino-cli";
+const ARDUINO_CLI = "/home/ubuntu/arduino-cli/bin/arduino-cli";
 const FQBN = "arduino:avr:uno";
 
 // ----------------------
