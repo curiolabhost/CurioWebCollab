@@ -20,7 +20,7 @@ const ollamaClient = new Ollama({ host: OLLAMA_HOST });
 // ----------------------
 // Arduino CLI config
 // ----------------------
-const ARDUINO_CLI = "/home/ubuntu/arduino-cli/bin/arduino-cli";
+const ARDUINO_CLI = "/home/paulb/bin/arduino-cli";
 const FQBN = "arduino:avr:uno";
 
 // ----------------------
@@ -118,18 +118,17 @@ app.post("/verify-arduino", (req, res) => {
 
 
 // ----------------------
-// /ai/help - Ollama streaming (Node SDK compatible)
+// /ai/help - streaming hints with error context
 // ----------------------
 app.post("/ai/help", async (req, res) => {
   console.log("🤖 POST /ai/help called");
+
   const {
     code = "",
     errors = [],
     mode = "arduino-verify",
     question = "",
     language = "cpp",
-    verbosity = "brief",
-    sentences = 3,
   } = req.body || {};
 
   if (!code.trim() && !question) {
@@ -143,18 +142,26 @@ app.post("/ai/help", async (req, res) => {
   res.flushHeaders();
   res.write(": keep-alive\n\n");
 
+  const codeLines = code.split("\n");
+  const contextSize = 2; // lines before/after each error
+
+  let errorSnippets = "";
+  if (mode === "arduino-verify") {
+    errorSnippets = errors.map(e => {
+      const lineNum = e.line || 1;
+      const start = Math.max(0, lineNum - 1 - contextSize);
+      const end = Math.min(codeLines.length, lineNum + contextSize);
+      const snippet = codeLines.slice(start, end).join("\n");
+      return `Line ${lineNum} snippet:\n\`\`\`cpp\n${snippet}\n\`\`\`\nError: ${e.message}`;
+    }).join("\n\n");
+  }
+
   const prompt =
     mode === "arduino-verify"
-      ? `You are a friendly Arduino tutor. Explain these errors with hints only. Do NOT give the students the answer. Keep your responses very short but helpful and up to 3 sentences long.
+      ? `You are a strict Arduino tutor. ONLY give hints about the errors below. Do NOT explain the code, do NOT provide full solutions. Do not say more than three sentences.
 
-Sketch:
-\`\`\`cpp
-${code.slice(0, 4000)}
-\`\`\`
-
-Errors:
-${errors.map(e => `Line ${e.line || 1}: ${e.message}`).join("\n")}`
-      : `You are a programming tutor. Explain clearly:
+${errorSnippets}`
+      : `You are a programming tutor. Explain clearly and in less than three sentences:
 
 ${language} code:
 \`\`\`${language}
@@ -165,9 +172,7 @@ Question:
 ${question}`;
 
   let aborted = false;
-  req.on("close", () => {
-    aborted = true;
-  });
+  req.on("close", () => { aborted = true; });
 
   try {
     const ollamaRes = await fetch(`${OLLAMA_HOST}/api/chat`, {
@@ -180,19 +185,15 @@ ${question}`;
       }),
     });
 
-    if (!ollamaRes.body) {
-      throw new Error("No Ollama stream");
-    }
+    if (!ollamaRes.body) throw new Error("No Ollama stream");
 
     const reader = ollamaRes.body.getReader();
     const decoder = new TextDecoder();
-
     let buffer = "";
 
     while (true) {
       const { value, done } = await reader.read();
       if (done) break;
-
       buffer += decoder.decode(value, { stream: true });
 
       const lines = buffer.split("\n");
@@ -200,16 +201,11 @@ ${question}`;
 
       for (const line of lines) {
         if (!line.trim()) continue;
-
         const json = JSON.parse(line);
-
         const token = json.message?.content;
         if (token) {
-          res.write(
-            `event: token\ndata: ${JSON.stringify({ token })}\n\n`
-          );
+          res.write(`event: token\ndata: ${JSON.stringify({ token })}\n\n`);
         }
-
         if (json.done) {
           res.write(`event: done\ndata: {}\n\n`);
           res.end();
@@ -217,6 +213,7 @@ ${question}`;
         }
       }
     }
+
     if (!aborted) {
       res.write(`event: done\ndata: {}\n\n`);
       res.end();
@@ -224,12 +221,7 @@ ${question}`;
 
   } catch (err) {
     console.error("❌ Ollama streaming error:", err);
-
-    res.write(
-      `event: error\ndata: ${JSON.stringify({
-        error: "AI request failed. Check server logs.",
-      })}\n\n`
-    );
+    res.write(`event: error\ndata: ${JSON.stringify({ error: "AI request failed. Check server logs." })}\n\n`);
     res.end();
   }
 });
