@@ -16,7 +16,7 @@ void loop() {
 }
 `;
 
-const BASE_URL = "18.217.119.156"
+const BASE_URL = "3.150.166.11"
 
 const ARDUINO_FUNCS = [
   "pinMode",
