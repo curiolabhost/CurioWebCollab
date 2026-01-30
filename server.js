@@ -6,7 +6,6 @@ const os = require("os");
 const path = require("path");
 const { exec } = require("child_process");
 const { Ollama } = require("ollama");
-const fetch = require("node-fetch");
 
 const app = express();
 app.use(cors());
