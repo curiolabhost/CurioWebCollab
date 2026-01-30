@@ -163,17 +163,15 @@ app.post("/ai/help", async (req, res) => {
   - DO NOT give full solutions or rewritten code.
   - DO NOT add extra tips, context, or commentary.
   - If you break any rule, the answer is invalid.
+  - If the compiler error location or message is ambiguous, you MUST say so.
+  - Do NOT guess or infer unseen code.
+  - Do NOT claim certainty.
 
   TASK:
   Describe what the compiler error message indicates, without asserting the true cause.
 
   ERROR CONTEXT:
   ${errorSnippets}
-
-  REMINDER:
-  Maximum length: 3 short sentences.
-  Focus ONLY on the error cause.
-
   ${language} code:
   \`\`\`${language}
   \`\`\`
