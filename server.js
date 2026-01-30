@@ -134,9 +134,9 @@ app.post("/ai/help", async (req, res) => {
   res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
   res.setHeader("Cache-Control", "no-cache, no-transform");
   res.setHeader("Connection", "keep-alive");
-  res.write(": keep-alive\n\n");
   res.setHeader("X-Accel-Buffering", "no");
   res.setHeader("Access-Control-Allow-Origin", "*");
+  res.write(": keep-alive\n\n");
   res.flushHeaders();
   res.write(": open\n\n");
 
