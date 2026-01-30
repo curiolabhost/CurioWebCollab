@@ -169,7 +169,7 @@ app.post("/ai/help", async (req, res) => {
 
   TASK:
   Describe what the compiler error message indicates, without asserting the true cause.
-
+  
   ERROR CONTEXT:
   ${errorSnippets}
   ${language} code:
@@ -189,7 +189,7 @@ app.post("/ai/help", async (req, res) => {
       body: JSON.stringify({
         model: "qwen2.5-coder:3b",
         stream: true,
-        temperature: 0.2,
+        temperature: 0.3,
         messages: [{ role: "user", content: prompt }],
       }),
     });
