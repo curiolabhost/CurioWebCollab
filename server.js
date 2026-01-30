@@ -169,7 +169,6 @@ app.post("/ai/help", async (req, res) => {
 
   Please explain the root cause of this error:
   ${errorSnippets}`;
-  })
   req.on("close", () => { aborted = true; });
 
   try {
@@ -223,7 +222,7 @@ app.post("/ai/help", async (req, res) => {
     res.write(`event: error\ndata: ${JSON.stringify({ error: "AI request failed. Check server logs." })}\n\n`);
     res.end();
   }
-
+})
 // ----------------------
 // Start server
 // ----------------------
