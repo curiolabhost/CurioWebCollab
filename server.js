@@ -158,18 +158,13 @@ app.post("/ai/help", async (req, res) => {
 
   let prompt = `SYSTEM RULES (MANDATORY):
   - Output AT MOST 3 sentences.
-  - ONLY explain why the error happened.
-  - DO NOT explain the code.
   - DO NOT give full solutions or rewritten code.
   - DO NOT add extra tips, context, or commentary.
-  - If you break any rule, the answer is invalid.
   - If the compiler error location or message is ambiguous, you MUST say so.
   - Do NOT guess or infer unseen code.
   - Do NOT claim certainty.
-
   TASK:
   Describe what the compiler error message indicates, without asserting the true cause.
-
   ERROR CONTEXT:
   ${errorSnippets}
   ${language} code:
@@ -189,7 +184,6 @@ app.post("/ai/help", async (req, res) => {
       body: JSON.stringify({
         model: "qwen2.5-coder:3b",
         stream: true,
-        temperature: 0.5,
         messages: [{ role: "user", content: prompt }],
       }),
     });
