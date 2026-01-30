@@ -181,33 +181,47 @@ app.post("/ai/help", async (req, res) => {
     });
 
     if (!ollamaRes.body) throw new Error("No Ollama stream");
-
-    const reader = ollamaRes.body.getReader();
-    const decoder = new TextDecoder();
     let buffer = "";
+    ollamaRes.body.on("data", chunk => {
+      if (aborted) return;
 
-    while (true) {
-      const { value, done } = await reader.read();
-      if (done) break;
-      buffer += decoder.decode(value, { stream: true });
-
+      buffer += chunk.toString("utf8");
       const lines = buffer.split("\n");
       buffer = lines.pop();
 
       for (const line of lines) {
         if (!line.trim()) continue;
-        const json = JSON.parse(line);
+
+        let json;
+        try {
+          json = JSON.parse(line);
+        } catch {
+          continue;
+        }
+
         const token = json.message?.content;
         if (token) {
           res.write(`event: token\ndata: ${JSON.stringify({ token })}\n\n`);
         }
+
         if (json.done) {
           res.write(`event: done\ndata: {}\n\n`);
           res.end();
-          return;
         }
       }
-    }
+    });
+
+    ollamaRes.body.on("end", () => {
+      if (!aborted) {
+        res.write(`event: done\ndata: {}\n\n`);
+        res.end();
+      }
+    });
+
+    ollamaRes.body.on("error", err => {
+      console.error("❌ Ollama stream error:", err);
+      res.end();
+    });
 
     if (!aborted) {
       res.write(`event: done\ndata: {}\n\n`);
