@@ -222,12 +222,6 @@ app.post("/ai/help", async (req, res) => {
       console.error("❌ Ollama stream error:", err);
       res.end();
     });
-
-    if (!aborted) {
-      res.write(`event: done\ndata: {}\n\n`);
-      res.end();
-    }
-
   } catch (err) {
     console.error("❌ Ollama streaming error:", err);
     res.write(`event: error\ndata: ${JSON.stringify({ error: "AI request failed. Check server logs." })}\n\n`);
