@@ -6,7 +6,6 @@ const os = require("os");
 const path = require("path");
 const { exec } = require("child_process");
 const { Ollama } = require("ollama");
-const { request } = require("undici");
 
 const app = express();
 app.use(cors());
@@ -27,10 +26,16 @@ const FQBN = "arduino:avr:uno";
 // ----------------------
 // Stub headers
 // ----------------------
+
 process.on("uncaughtException", (e) => console.error("uncaughtException:", e));
 process.on("unhandledRejection", (e) => console.error("unhandledRejection:", e));
 
 const PORT = process.env.PORT || 4000;
+
+
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server running on port ${PORT}`);
+});
 
 const STUB_LIBRARY_HEADERS = {
   "Adafruit_GFX.h": `#pragma once
@@ -117,7 +122,14 @@ app.post("/verify-arduino", (req, res) => {
 // ----------------------
 app.post("/ai/help", async (req, res) => {
   console.log("🤖 POST /ai/help called");
-  const { code = "", errors = [], mode = "arduino-verify", question = "", language = "cpp" } = req.body || {};
+
+  const {
+    code = "",
+    errors = [],
+    mode = "arduino-verify",
+    question = "",
+    language = "cpp",
+  } = req.body || {};
 
   if (!code.trim() && !question) {
     return res.status(400).json({ ok: false, error: "Provide either 'code' or 'question'." });
@@ -127,15 +139,13 @@ app.post("/ai/help", async (req, res) => {
   res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
   res.setHeader("Cache-Control", "no-cache, no-transform");
   res.setHeader("Connection", "keep-alive");
-  res.setHeader("X-Accel-Buffering", "no");
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.write(": keep-alive\n\n");
   res.flushHeaders();
+  res.write(": keep-alive\n\n");
 
   const codeLines = code.split("\n");
-  const contextSize = 5;
-  let errorSnippets = "";
+  const contextSize = 2; // lines before/after each error
 
+  let errorSnippets = "";
   if (mode === "arduino-verify") {
     errorSnippets = errors.map(e => {
       const lineNum = e.line || 1;
@@ -146,61 +156,91 @@ app.post("/ai/help", async (req, res) => {
     }).join("\n\n");
   }
 
-  const prompt = `SYSTEM RULES (MANDATORY):
-- Output AT MOST 2 sentences.
-- ONLY explain the cause of the compiler error.
-- DO NOT rewrite code, give fixes, or explain how the code works.
-- Do not add context or commentary.
+  let prompt;
+  if (mode === "arduino-verify") {
+    prompt = `SYSTEM RULES (MANDATORY):
+  - Output AT MOST 3 sentences.
+  - ONLY explain why the error happened.
+  - DO NOT explain the code.
+  - DO NOT give full solutions or rewritten code.
+  - DO NOT add extra tips, context, or commentary.
+  - If you break any rule, the answer is invalid.
 
-${language} code:
-\`\`\`${language}
-${code.slice(0, 4000)}
-\`\`\`
+  TASK:
+  Briefly explain the compiler error shown below.
 
-Please explain the root cause of this error:
-${errorSnippets}`;
+  ERROR CONTEXT:
+  ${errorSnippets}
+
+  REMINDER:
+  Maximum length: 3 short sentences.
+  Focus ONLY on the error cause.
+
+  ${language} code:
+  \`\`\`${language}
+  \`\`\`
+
+  Question:
+  ${question}`;
+  } else {
+    prompt = `You are a programming tutor. Explain clearly and in less than three sentences:
+
+  ${language} code:
+  \`\`\`${language}
+  ${code.slice(0, 4000)}
+  \`\`\`
+
+  Question:
+  ${question}`;
+  }
 
   let aborted = false;
   req.on("close", () => { aborted = true; });
 
   try {
-    const ollamaRes = await request(`${OLLAMA_HOST}/api/chat`, {
+    const ollamaRes = await fetch(`${OLLAMA_HOST}/api/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "qwen2.5-coder:1.5b",
+        model: "qwen2.5-coder:3b",
         stream: true,
-        temperature: 0.2,
         messages: [{ role: "user", content: prompt }],
       }),
     });
 
     if (!ollamaRes.body) throw new Error("No Ollama stream");
 
-    // Make it a proper Node Readable stream
-    const stream = ollamaRes.body;
-    stream.setEncoding("utf8");
-
+    const reader = ollamaRes.body.getReader();
+    const decoder = new TextDecoder();
     let buffer = "";
-    stream.on("data", chunk => {
-      if (aborted) return;
-      buffer += chunk;
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
       const lines = buffer.split("\n");
-      buffer = lines.pop(); // keep last incomplete line
+      buffer = lines.pop();
 
       for (const line of lines) {
         if (!line.trim()) continue;
-        let json;
-        try { json = JSON.parse(line); } catch { continue; }
-
+        const json = JSON.parse(line);
         const token = json.message?.content;
-        if (token) res.write(`event: token\ndata: ${JSON.stringify({ token })}\n\n`);
-        if (json.done) res.write(`event: done\ndata: {}\n\n`);
+        if (token) {
+          res.write(`event: token\ndata: ${JSON.stringify({ token })}\n\n`);
+        }
+        if (json.done) {
+          res.write(`event: done\ndata: {}\n\n`);
+          res.end();
+          return;
+        }
       }
-    });
+    }
 
-    stream.on("end", () => { if (!aborted) res.end(); });
-    stream.on("error", err => { console.error("❌ Ollama stream error:", err); res.end(); });
+    if (!aborted) {
+      res.write(`event: done\ndata: {}\n\n`);
+      res.end();
+    }
 
   } catch (err) {
     console.error("❌ Ollama streaming error:", err);
@@ -208,6 +248,7 @@ ${errorSnippets}`;
     res.end();
   }
 });
+
 // ----------------------
 // Start server
 // ----------------------
