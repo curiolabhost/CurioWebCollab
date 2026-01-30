@@ -156,9 +156,7 @@ app.post("/ai/help", async (req, res) => {
     }).join("\n\n");
   }
 
-  let prompt;
-  if (mode === "arduino-verify") {
-    prompt = `SYSTEM RULES (MANDATORY):
+  let prompt = `SYSTEM RULES (MANDATORY):
   - Output AT MOST 3 sentences.
   - ONLY explain why the error happened.
   - DO NOT explain the code.
@@ -182,17 +180,6 @@ app.post("/ai/help", async (req, res) => {
 
   Question:
   ${question}`;
-  } else {
-    prompt = `You are a programming tutor. Explain clearly and in less than three sentences:
-
-  ${language} code:
-  \`\`\`${language}
-  ${code.slice(0, 4000)}
-  \`\`\`
-
-  Question:
-  ${question}`;
-  }
 
   let aborted = false;
   req.on("close", () => { aborted = true; });
