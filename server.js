@@ -178,7 +178,6 @@ app.post("/ai/help", async (req, res) => {
 
   ${language} code:
   \`\`\`${language}
-  ${code.slice(0, 4000)}
   \`\`\`
 
   Question:
