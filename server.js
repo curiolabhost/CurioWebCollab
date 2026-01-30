@@ -6,6 +6,7 @@ const os = require("os");
 const path = require("path");
 const { exec } = require("child_process");
 const { Ollama } = require("ollama");
+const fetch = require("node-fetch");
 
 const app = express();
 app.use(cors());
@@ -31,11 +32,6 @@ process.on("uncaughtException", (e) => console.error("uncaughtException:", e));
 process.on("unhandledRejection", (e) => console.error("unhandledRejection:", e));
 
 const PORT = process.env.PORT || 4000;
-
-
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Server running on port ${PORT}`);
-});
 
 const STUB_LIBRARY_HEADERS = {
   "Adafruit_GFX.h": `#pragma once
@@ -169,6 +165,7 @@ app.post("/ai/help", async (req, res) => {
 
   Please explain the root cause of this error:
   ${errorSnippets}`;
+  let aborted = false;
   req.on("close", () => { aborted = true; });
 
   try {
