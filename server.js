@@ -143,7 +143,7 @@ app.post("/ai/help", async (req, res) => {
   res.write(": keep-alive\n\n");
 
   const codeLines = code.split("\n");
-  const contextSize = 2; // lines before/after each error
+  const contextSize = 5; // lines before/after each error
 
   let errorSnippets = "";
   if (mode === "arduino-verify") {
