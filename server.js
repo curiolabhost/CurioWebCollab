@@ -164,7 +164,7 @@ ${errorSnippets}
   Question:
   ${question}`;
   } else {
-    prompt = `You are a programming tutor. Explain the errors clearly and in less than three sentences:
+    prompt = `You are a programming tutor. Explain the errors clearly and in less than three sentences. Do NOT give the answer, simply explain:
 
   ${language} code:
   \`\`\`${language}
