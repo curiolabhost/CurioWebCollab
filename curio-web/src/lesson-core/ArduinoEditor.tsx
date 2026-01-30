@@ -49,7 +49,6 @@ type CoachPayload = {
   sections: { title: string; items: CoachItem[] }[];
 };
 
-
 type ArduinoEditorProps = {
   height?: string | number;
   width?: string | number;
@@ -93,6 +92,16 @@ const toolbarButtonStyle: React.CSSProperties = {
 function safeNameFromPath(name: string) {
   const s = String(name || "").trim();
   return s || "ElectricBoard.ino";
+}
+
+// Text formatting
+function formatAIText(text: string) {
+  if (!text) return "";
+  return text
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>') // bold
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')             // italic
+    .replace(/`(.+?)`/g, '<code>$1</code>')           // inline code
+    .replace(/\n/g, '<br>');                          // preserve newlines
 }
 
 const FILE_TOKEN_PREFIX = "curio:fileopen:";
@@ -876,12 +885,11 @@ if (existing) {
 
   function handleDragEnd() {
     setIsResizing(false);
-    window.removeEventListener("mousemove", handleDragMove as any);
+    window.removeEventListener("mousemove", handleDragMove as any); 
     window.removeEventListener("mouseup", handleDragEnd as any);
   }
 
   const hasFooterContent = !!compilerOutput || !!coachJson || !!coachRaw;
-
 
   const handleVerify = async () => {
     if (!editorRef.current || !monacoRef.current) return;
@@ -1497,19 +1505,16 @@ if (existing) {
     ))}
   </div>
 ) : compilerOutput ? (
-  <pre
+  <div
     style={{
       margin: 0,
-      whiteSpace: "pre-wrap",
-      fontFamily:
-        "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
+      fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
       fontSize: 11,
       color: "#fca5a5",
       lineHeight: 1.3,
     }}
-  >
-    {compilerOutput}
-  </pre>
+    dangerouslySetInnerHTML={{ __html: formatAIText(compilerOutput) }}
+  />
 ) : null}
 
 
@@ -1576,7 +1581,10 @@ if (existing) {
           </div>
 
           {/* Content */}
-          <div style={{ marginTop: 8, color: "#e5e7eb", lineHeight: 1.35, whiteSpace: "pre-wrap" }}>{p.content}</div>
+          <div
+            style={{ marginTop: 8, lineHeight: 1.35 }}
+            dangerouslySetInnerHTML={{ __html: formatAIText(p.content) }}
+          />
 
           {/* Actions */}
           <div style={{ display: "flex", gap: 8, marginTop: 10 }}>

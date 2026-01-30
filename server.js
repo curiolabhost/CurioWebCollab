@@ -156,15 +156,7 @@ app.post("/ai/help", async (req, res) => {
     }).join("\n\n");
   }
 
-  let prompt;
-  if (mode === "arduino-verify") {
-    prompt = `Please explain why these errors happened. The code is in C++.:
-${errorSnippets}
-
-  Question:
-  ${question}`;
-  } else {
-    prompt = `SYSTEM RULES (MANDATORY):
+  let prompt = `SYSTEM RULES (MANDATORY):
 - Output AT MOST 2 sentences.
 - ONLY explain the cause of the compiler error.
 - DO NOT rewrite code, give fixes, or explain how the code works.
@@ -177,9 +169,7 @@ ${errorSnippets}
 
   Please explain the root cause of this error:
   ${errorSnippets}`;
-  }
-
-  let aborted = false;
+  })
   req.on("close", () => { aborted = true; });
 
   try {
@@ -233,7 +223,6 @@ ${errorSnippets}
     res.write(`event: error\ndata: ${JSON.stringify({ error: "AI request failed. Check server logs." })}\n\n`);
     res.end();
   }
-});
 
 // ----------------------
 // Start server
