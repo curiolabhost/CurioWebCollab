@@ -164,15 +164,15 @@ ${errorSnippets}
   Question:
   ${question}`;
   } else {
-    prompt = `You are a programming tutor. Explain clearly and in less than three sentences:
+    prompt = `You are a programming tutor. Explain the errors clearly and in less than three sentences:
 
   ${language} code:
   \`\`\`${language}
   ${code.slice(0, 4000)}
   \`\`\`
 
-  Question:
-  ${question}`;
+  Error:
+  ${errorSnippets}`;
   }
 
   let aborted = false;
