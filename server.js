@@ -157,12 +157,13 @@ app.post("/ai/help", async (req, res) => {
   }
 
   let prompt = `SYSTEM RULES (MANDATORY):
-  - Output AT MOST 3 sentences.
+  - Output exactly 2 sentences.
   - DO NOT give full solutions or rewritten code.
   - DO NOT add extra tips, context, or commentary.
   - If the compiler error location or message is ambiguous, you MUST say so.
   - Do NOT guess or infer unseen code.
   - Do NOT claim certainty.
+  - If any rules are broken, the response is invalid.
   TASK:
   Describe what the compiler error message indicates, without asserting the true cause.
   ERROR CONTEXT:
