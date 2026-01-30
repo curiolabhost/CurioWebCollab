@@ -24,17 +24,6 @@ const ollamaClient = new Ollama({ host: OLLAMA_HOST });
 const ARDUINO_CLI = "/home/ubuntu/arduino-cli/bin/arduino-cli";
 const FQBN = "arduino:avr:uno";
 
-const { body } = await request(`${OLLAMA_HOST}/api/chat`, {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    model: "qwen2.5-coder:1.5b",
-    stream: true,
-    temperature: 0.2,
-    messages: [{ role: "user", content: prompt }],
-  }),
-});
-
 // ----------------------
 // Stub headers
 // ----------------------
