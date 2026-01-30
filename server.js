@@ -158,21 +158,14 @@ app.post("/ai/help", async (req, res) => {
 
   let prompt;
   if (mode === "arduino-verify") {
-    prompt = `SYSTEM RULES (MANDATORY):
-- Output AT MOST 3 sentences.
-- ONLY explain why the compiler error happened.
-- DO NOT explain what the code does.
-- DO NOT rewrite the code or provide fixes.
-- Do not add extra commentary or context.
-
-ERROR CONTEXT:
+    prompt = `Please explain why these errors happened:
 ${errorSnippets}
 
 REMINDER:
 Focus ONLY on the error cause. Nothing else.
 Maximum 3 short sentences.
 
-  ${language} code:
+  ${language} Please do not explain this code, only the errors:
   \`\`\`${code}
   \`\`\`
 
