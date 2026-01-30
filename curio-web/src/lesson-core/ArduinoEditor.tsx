@@ -598,9 +598,7 @@ function coachTagBg(tag: CoachTag) {
       return prev.map((p) => (p.id === popoverId ? { ...p, ...patch } : p));
     });
   }
-
-
-  // One function for BOTH popup + verify
+  
   const sendErrorToAI = async (
     mode: HelpMode,
     snippetOrCode: string,
