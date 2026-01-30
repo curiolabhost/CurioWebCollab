@@ -156,20 +156,44 @@ app.post("/ai/help", async (req, res) => {
     }).join("\n\n");
   }
 
-  const prompt =
-    mode === "arduino-verify"
-      ? `You are a strict Arduino tutor. ONLY give hints about the errors below. Do NOT explain the code, do NOT provide full solutions. Do not say more than three sentences.
+  let prompt;
+  if (mode === "arduino-verify") {
+    prompt = `SYSTEM RULES (MANDATORY):
+  - Output AT MOST 3 sentences.
+  - ONLY explain why the error happened.
+  - DO NOT explain the code.
+  - DO NOT give full solutions or rewritten code.
+  - DO NOT add extra tips, context, or commentary.
+  - If you break any rule, the answer is invalid.
 
-${errorSnippets}`
-      : `You are a programming tutor. Explain clearly and in less than three sentences:
+  TASK:
+  Briefly explain the compiler error shown below.
 
-${language} code:
-\`\`\`${language}
-${code.slice(0, 4000)}
-\`\`\`
+  ERROR CONTEXT:
+  ${errorSnippets}
 
-Question:
-${question}`;
+  REMINDER:
+  Maximum length: 3 short sentences.
+  Focus ONLY on the error cause.
+
+  ${language} code:
+  \`\`\`${language}
+  ${code.slice(0, 4000)}
+  \`\`\`
+
+  Question:
+  ${question}`;
+  } else {
+    prompt = `You are a programming tutor. Explain clearly and in less than three sentences:
+
+  ${language} code:
+  \`\`\`${language}
+  ${code.slice(0, 4000)}
+  \`\`\`
+
+  Question:
+  ${question}`;
+  }
 
   let aborted = false;
   req.on("close", () => { aborted = true; });
