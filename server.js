@@ -158,16 +158,8 @@ app.post("/ai/help", async (req, res) => {
 
   let prompt;
   if (mode === "arduino-verify") {
-    prompt = `Please explain why these errors happened:
+    prompt = `Please explain why these errors happened. The code is in C++.:
 ${errorSnippets}
-
-REMINDER:
-Focus ONLY on the error cause. Nothing else.
-Maximum 3 short sentences.
-
-  ${language} Please do not explain this code, only the errors:
-  \`\`\`${code}
-  \`\`\`
 
   Question:
   ${question}`;
