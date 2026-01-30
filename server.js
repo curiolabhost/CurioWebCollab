@@ -128,13 +128,7 @@ app.post("/verify-arduino", (req, res) => {
 // ----------------------
 app.post("/ai/help", async (req, res) => {
   console.log("🤖 POST /ai/help called");
-  const {
-    code = "",
-    errors = [],
-    mode = "arduino-verify",
-    question = "",
-    language = "cpp",
-  } = req.body || {};
+  const { code = "", errors = [], mode = "arduino-verify", question = "", language = "cpp" } = req.body || {};
 
   if (!code.trim() && !question) {
     return res.status(400).json({ ok: false, error: "Provide either 'code' or 'question'." });
@@ -148,12 +142,11 @@ app.post("/ai/help", async (req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.write(": keep-alive\n\n");
   res.flushHeaders();
-  res.write(": open\n\n");
 
   const codeLines = code.split("\n");
-  const contextSize = 5; // lines before/after each error
-
+  const contextSize = 5;
   let errorSnippets = "";
+
   if (mode === "arduino-verify") {
     errorSnippets = errors.map(e => {
       const lineNum = e.line || 1;
@@ -164,24 +157,25 @@ app.post("/ai/help", async (req, res) => {
     }).join("\n\n");
   }
 
-  let prompt = `SYSTEM RULES (MANDATORY):
+  const prompt = `SYSTEM RULES (MANDATORY):
 - Output AT MOST 2 sentences.
 - ONLY explain the cause of the compiler error.
 - DO NOT rewrite code, give fixes, or explain how the code works.
 - Do not add context or commentary.
 
-  ${language} code:
-  \`\`\`${language}
-  ${code.slice(0, 4000)}
-  \`\`\`
+${language} code:
+\`\`\`${language}
+${code.slice(0, 4000)}
+\`\`\`
 
-  Please explain the root cause of this error:
-  ${errorSnippets}`;
+Please explain the root cause of this error:
+${errorSnippets}`;
+
   let aborted = false;
   req.on("close", () => { aborted = true; });
 
   try {
-    const ollamaRes = await fetch(`${OLLAMA_HOST}/api/chat`, {
+    const ollamaRes = await request(`${OLLAMA_HOST}/api/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -193,47 +187,38 @@ app.post("/ai/help", async (req, res) => {
     });
 
     if (!ollamaRes.body) throw new Error("No Ollama stream");
+
+    // Make it a proper Node Readable stream
+    const stream = ollamaRes.body;
+    stream.setEncoding("utf8");
+
     let buffer = "";
-    // body is a Node Readable stream
-    body.setEncoding("utf8");
-    body.on("data", chunk => {
+    stream.on("data", chunk => {
       if (aborted) return;
-      // Ollama sends lines of JSON per chunk; you may need to split by \n
-      const lines = chunk.split("\n");
+      buffer += chunk;
+      const lines = buffer.split("\n");
+      buffer = lines.pop(); // keep last incomplete line
+
       for (const line of lines) {
         if (!line.trim()) continue;
         let json;
         try { json = JSON.parse(line); } catch { continue; }
+
         const token = json.message?.content;
         if (token) res.write(`event: token\ndata: ${JSON.stringify({ token })}\n\n`);
         if (json.done) res.write(`event: done\ndata: {}\n\n`);
       }
     });
-    body.on("end", () => {
-      if (!aborted) res.end();
-    });
-    body.on("error", err => {
-      console.error("❌ Ollama stream error:", err);
-      res.end();
-    });
 
-    ollamaRes.body.on("end", () => {
-      if (!aborted) {
-        res.write(`event: done\ndata: {}\n\n`);
-        res.end();
-      }
-    });
+    stream.on("end", () => { if (!aborted) res.end(); });
+    stream.on("error", err => { console.error("❌ Ollama stream error:", err); res.end(); });
 
-    ollamaRes.body.on("error", err => {
-      console.error("❌ Ollama stream error:", err);
-      res.end();
-    });
   } catch (err) {
     console.error("❌ Ollama streaming error:", err);
     res.write(`event: error\ndata: ${JSON.stringify({ error: "AI request failed. Check server logs." })}\n\n`);
     res.end();
   }
-})
+});
 // ----------------------
 // Start server
 // ----------------------
