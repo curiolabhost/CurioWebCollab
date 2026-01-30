@@ -185,7 +185,7 @@ Sentence 2: State whether the error message is ambiguous or incomplete.
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "qwen2.5-coder:1.5b",
+        model: "granite4:1b",
         stream: true,
         messages: [{ role: "user", content: prompt }],
       }),
