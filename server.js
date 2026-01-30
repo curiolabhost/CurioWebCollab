@@ -173,7 +173,7 @@ app.post("/ai/help", async (req, res) => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "qwen2.5-coder:3b",
+        model: "qwen2.5-coder:1.5b",
         stream: true,
         temperature: 0.2,
         messages: [{ role: "user", content: prompt }],
