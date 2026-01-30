@@ -164,14 +164,18 @@ ${errorSnippets}
   Question:
   ${question}`;
   } else {
-    prompt = `You are a programming tutor. Explain the errors clearly and in less than three sentences. Do NOT give the answer, simply explain:
+    prompt = `SYSTEM RULES (MANDATORY):
+- Output AT MOST 2 sentences.
+- ONLY explain the cause of the compiler error.
+- DO NOT rewrite code, give fixes, or explain how the code works.
+- Do not add context or commentary.
 
   ${language} code:
   \`\`\`${language}
   ${code.slice(0, 4000)}
   \`\`\`
 
-  Error:
+  Please explain the root cause of this error:
   ${errorSnippets}`;
   }
 
