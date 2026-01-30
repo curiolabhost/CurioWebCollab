@@ -6,6 +6,7 @@ const os = require("os");
 const path = require("path");
 const { exec } = require("child_process");
 const { Ollama } = require("ollama");
+const util = require('util');
 
 const app = express();
 app.use(cors());
@@ -143,7 +144,7 @@ app.post("/ai/help", async (req, res) => {
   res.write(": keep-alive\n\n");
 
   const codeLines = code.split("\n");
-  const contextSize = 5; // lines before/after each error
+  const contextSize = 2; // lines before/after each error
 
   let errorSnippets = "";
   if (mode === "arduino-verify") {
@@ -152,31 +153,33 @@ app.post("/ai/help", async (req, res) => {
       const start = Math.max(0, lineNum - 1 - contextSize);
       const end = Math.min(codeLines.length, lineNum + contextSize);
       const snippet = codeLines.slice(start, end).join("\n");
-      return `Line ${lineNum} snippet:\n\`\`\`cpp\n${snippet}\n\`\`\`\nError: ${e.message}`;
+      return `Line ${lineNum} snippet:\n\`\`\`cpp\n${snippet}\n\`\`\`\nCompiler error: ${e.message}`;
     }).join("\n\n");
   }
+  let codeString = typeof code === 'string' ? code : JSON.stringify(code);
+  const formattedCode = `\`\`\`cpp
+  ${codeString}
+  \`\`\``;
+  console.log("Explaining: " + formattedCode);
+  const prompt =
+    mode === "arduino-verify"
+      ? `You are a friendly Arduino tutor. Explain these errors with hints only. Do NOT give the students the answer. Keep your responses very short but helpful and up to 3 sentences long.
+      ? `You are a strict Arduino tutor. ONLY give hints about the errors below. Do NOT explain the code, do NOT provide full solutions. Do not say more than three sentences.
 
-  let prompt = `SYSTEM RULES (MANDATORY):
-- Output exactly 2 sentences.
-- Do not include code blocks, inline code, symbols, or examples.
-- Do not describe fixes, causes, or solutions.
-- Do not reference programming language rules.
-- Do not infer or assume anything beyond the literal error text.
-- Do not use words like "should", "fix", "add", "remove", "missing".
-- If any rule is broken, the response is invalid.
+    Sketch:
+    \`\`\`cpp
+    ${code.slice(0, 4000)}
+    \`\`\`
 
-TASK:
-Sentence 1: Paraphrase the compiler error message in plain English.
-Sentence 2: State whether the error message is ambiguous or incomplete.
-  ERROR CONTEXT:
-  ${errorSnippets}
-  ${language} code:
-  \`\`\`${code}
-  \`\`\`
-
-  Question:
-  ${question}`;
-
+    Errors:
+    ${errors.map(e => `Line ${e.line || 1}: ${e.message}`).join("\n")}`
+          : `You are a programming tutor. Explain clearly:
+    ${errorSnippets}`
+          : `You are a programming tutor. Explain clearly and in less than three sentences:
+    ${language} code:
+    \`\`\`${code}
+    Question:
+    ${question}`;
   let aborted = false;
   req.on("close", () => { aborted = true; });
 
@@ -185,7 +188,7 @@ Sentence 2: State whether the error message is ambiguous or incomplete.
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "granite4:1b",
+        model: "cogito:3b",
         stream: true,
         messages: [{ role: "user", content: prompt }],
       }),
@@ -213,7 +216,7 @@ Sentence 2: State whether the error message is ambiguous or incomplete.
           res.write(`event: token\ndata: ${JSON.stringify({ token })}\n\n`);
         }
         if (json.done) {
-          res.write(`event: done\ndata: {}\n\n`);
+	          res.write(`event: done\ndata: {}\n\n`);
           res.end();
           return;
         }
