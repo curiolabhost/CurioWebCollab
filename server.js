@@ -6,6 +6,7 @@ const os = require("os");
 const path = require("path");
 const { exec } = require("child_process");
 const { Ollama } = require("ollama");
+const { request } = require("undici");
 
 const app = express();
 app.use(cors());
@@ -23,10 +24,20 @@ const ollamaClient = new Ollama({ host: OLLAMA_HOST });
 const ARDUINO_CLI = "/home/ubuntu/arduino-cli/bin/arduino-cli";
 const FQBN = "arduino:avr:uno";
 
+const { body } = await request(`${OLLAMA_HOST}/api/chat`, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    model: "qwen2.5-coder:1.5b",
+    stream: true,
+    temperature: 0.2,
+    messages: [{ role: "user", content: prompt }],
+  }),
+});
+
 // ----------------------
 // Stub headers
 // ----------------------
-
 process.on("uncaughtException", (e) => console.error("uncaughtException:", e));
 process.on("unhandledRejection", (e) => console.error("unhandledRejection:", e));
 
@@ -183,33 +194,27 @@ app.post("/ai/help", async (req, res) => {
 
     if (!ollamaRes.body) throw new Error("No Ollama stream");
     let buffer = "";
-    ollamaRes.body.on("data", chunk => {
+    // body is a Node Readable stream
+    body.setEncoding("utf8");
+    body.on("data", chunk => {
       if (aborted) return;
-
-      buffer += chunk.toString("utf8");
-      const lines = buffer.split("\n");
-      buffer = lines.pop();
-
+      // Ollama sends lines of JSON per chunk; you may need to split by \n
+      const lines = chunk.split("\n");
       for (const line of lines) {
         if (!line.trim()) continue;
-
         let json;
-        try {
-          json = JSON.parse(line);
-        } catch {
-          continue;
-        }
-
+        try { json = JSON.parse(line); } catch { continue; }
         const token = json.message?.content;
-        if (token) {
-          res.write(`event: token\ndata: ${JSON.stringify({ token })}\n\n`);
-        }
-
-        if (json.done) {
-          res.write(`event: done\ndata: {}\n\n`);
-          res.end();
-        }
+        if (token) res.write(`event: token\ndata: ${JSON.stringify({ token })}\n\n`);
+        if (json.done) res.write(`event: done\ndata: {}\n\n`);
       }
+    });
+    body.on("end", () => {
+      if (!aborted) res.end();
+    });
+    body.on("error", err => {
+      console.error("❌ Ollama stream error:", err);
+      res.end();
     });
 
     ollamaRes.body.on("end", () => {
