@@ -143,7 +143,7 @@ app.post("/ai/help", async (req, res) => {
   res.write(": keep-alive\n\n");
 
   const codeLines = code.split("\n");
-  const contextSize = 3; // lines before/after each error
+  const contextSize = 2; // lines before/after each error
 
   let errorSnippets = "";
   if (mode === "arduino-verify") {
@@ -191,7 +191,7 @@ app.post("/ai/help", async (req, res) => {
       body: JSON.stringify({
         model: "qwen2.5-coder:3b",
         stream: true,
-        temperature: 0.3,
+        temperature: 0.2,
         messages: [{ role: "user", content: prompt }],
       }),
     });
