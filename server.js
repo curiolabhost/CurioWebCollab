@@ -189,6 +189,7 @@ ${errorSnippets}
       body: JSON.stringify({
         model: "qwen2.5-coder:3b",
         stream: true,
+        temperature: 0.2,
         messages: [{ role: "user", content: prompt }],
       }),
     });
