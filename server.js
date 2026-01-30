@@ -173,7 +173,7 @@ app.post("/ai/help", async (req, res) => {
   ERROR CONTEXT:
   ${errorSnippets}
   ${language} code:
-  \`\`\`${language}
+  \`\`\`${code}
   \`\`\`
 
   Question:
