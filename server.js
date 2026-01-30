@@ -165,7 +165,7 @@ app.post("/ai/help", async (req, res) => {
   - If you break any rule, the answer is invalid.
 
   TASK:
-  Briefly explain the compiler error shown below.
+  Describe what the compiler error message indicates, without asserting the true cause.
 
   ERROR CONTEXT:
   ${errorSnippets}
