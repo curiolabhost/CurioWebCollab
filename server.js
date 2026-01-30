@@ -163,10 +163,10 @@ app.post("/ai/help", async (req, res) => {
   console.log("Explaining: " + formattedCode);
   const prompt =
     mode === "arduino-verify"
-      ? `You are a friendly Arduino tutor. Explain these errors with hints only. Do NOT give the students the answer. Keep your responses very short but helpful and up to 3 sentences long.
-      ? `You are a strict Arduino tutor. ONLY give hints about the errors below. Do NOT explain the code, do NOT provide full solutions. Do not say more than three sentences.
-
-    Sketch:
+      ? `You are a friendly Arduino tutor. Explain these errors with hints only. Do NOT give the students the answer. Keep your responses very short but helpful and up to 3 sentences long.`
+      ? `You are a strict Arduino tutor. ONLY give hints about the errors below. Do NOT explain the code, do NOT provide full solutions. Do not say more than three sentences.`
+    
+    `Sketch:
     \`\`\`cpp
     ${code.slice(0, 4000)}
     \`\`\`
