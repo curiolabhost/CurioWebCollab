@@ -160,26 +160,25 @@ app.post("/ai/help", async (req, res) => {
   const formattedCode = `\`\`\`cpp
   ${codeString}
   \`\`\``;
+  console.log("Errors: ", errors);
+  console.log("Error Snippets: " + errorSnippets);
   console.log("Explaining: " + formattedCode);
-  const prompt =
-    mode === "arduino-verify"
-      ? `You are a friendly Arduino tutor. Explain these errors with hints only. Do NOT give the students the answer. Keep your responses very short but helpful and up to 3 sentences long.`
-      ? `You are a strict Arduino tutor. ONLY give hints about the errors below. Do NOT explain the code, do NOT provide full solutions. Do not say more than three sentences.`
-    
-    `Sketch:
-    \`\`\`cpp
-    ${code.slice(0, 4000)}
-    \`\`\`
-
-    Errors:
-    ${errors.map(e => `Line ${e.line || 1}: ${e.message}`).join("\n")}`
-          : `You are a programming tutor. Explain clearly:
-    ${errorSnippets}`
-          : `You are a programming tutor. Explain clearly and in less than three sentences:
-    ${language} code:
-    \`\`\`${code}
-    Question:
-    ${question}`;
+  let prompt = `You are a friendly Arduino tutor. Explain these errors with hints only. Do NOT give the students the answer. Do not talk about the prompt in your answer.
+ Keep your responses very short but helpful and up to 3 sentences long.
+When analyzing C++ or Arduino code, assume whitespace is syntactically irrelevant except in preprocessor directives, string literals, and explicit line continuations. 
+Do not cite whitespace as a cause of error unless one of those cases is present.
+Do not provide generic explanations such as “whitespace issues” or “formatting problems.” Every claim must reference a concrete language rule or compiler behavior.
+Do not invent or generalize language rules.
+If an explanation cannot be traced to a real C++ grammar or standard construct, state that the cause is unknown or elsewhere.
+Before claiming a syntax error, identify the exact invalid token, delimiter mismatch, or grammar violation.
+If none can be identified, state that the code is syntactically valid.
+Compiler error messages are authoritative.
+Do not reinterpret, generalize, or replace them.
+The explanation must directly follow the stated error message.
+This is the relavent portion of the code:
+${code}
+These are the errors you must explain:
+${errors}`
   let aborted = false;
   req.on("close", () => { aborted = true; });
 
@@ -188,8 +187,9 @@ app.post("/ai/help", async (req, res) => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "cogito:3b",
+        model: "qwen2.5-coder:1.5b",
         stream: true,
+        temperature: 0,
         messages: [{ role: "user", content: prompt }],
       }),
     });
