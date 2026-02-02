@@ -30,7 +30,7 @@ app.use((req, _res, next) => {
 const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4.1-mini";
 
 const openai = new OpenAI({
-  apiKey: "REDACTED",
+    //API KEY
   // hard client timeout so calls can't hang forever
   timeout: 30000,
 });
