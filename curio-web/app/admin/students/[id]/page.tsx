@@ -4,8 +4,8 @@
 import { useState, use } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Users, Sparkles, Code, FileText, BarChart3, ChevronRight, Eye } from "lucide-react";
-import { getStudentById } from "../../../lib/adminMockData";
-import type { Student } from "../../../lib/adminMockData";
+import { getStudentById } from "@/app/lib/adminMockData";
+import type { Student } from "@/app/lib/adminMockData";
 import router from "next/dist/shared/lib/router/router";
 
 function ProgressBar({ progress, showLabel = false, size = "lg" }: { progress: number; showLabel?: boolean; size?: "sm" | "lg" }) {

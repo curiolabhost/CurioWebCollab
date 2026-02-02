@@ -6,10 +6,8 @@ const fs = require("fs");
 const os = require("os");
 const path = require("path");
 const { exec } = require("child_process");
-
-// OpenAI (CommonJS-safe import)
-const OpenAIModule = require("openai");
-const OpenAI = OpenAIModule.default || OpenAIModule;
+const { Ollama } = require("ollama");
+const util = require('util');
 
 const app = express();
 app.use(cors());
@@ -38,7 +36,7 @@ const openai = new OpenAI({
 // ----------------------
 // Arduino CLI config
 // ----------------------
-const ARDUINO_CLI = "arduino-cli";
+const ARDUINO_CLI = "/home/ubuntu/arduino-cli/bin/arduino-cli";
 const FQBN = "arduino:avr:uno";
 
 // ----------------------
@@ -47,9 +45,13 @@ const FQBN = "arduino:avr:uno";
 process.on("uncaughtException", (e) => console.error("uncaughtException:", e));
 process.on("unhandledRejection", (e) => console.error("unhandledRejection:", e));
 
-// ----------------------
-// Stub headers (safe strings)
-// ----------------------
+const PORT = process.env.PORT || 4000;
+
+
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server running on port ${PORT}`);
+});
+
 const STUB_LIBRARY_HEADERS = {
   "Adafruit_GFX.h":
     "#pragma once\n" +
@@ -101,6 +103,7 @@ app.get("/health", (_req, res) => {
 // /verify-arduino
 // ----------------------
 app.post("/verify-arduino", (req, res) => {
+  console.log("Verify Called!")
   const { code } = req.body || {};
   if (!code?.trim()) return res.status(400).json({ ok: false, error: "Missing 'code'." });
 
@@ -137,19 +140,17 @@ app.post("/verify-arduino", (req, res) => {
 });
 
 // ----------------------
-// /ai/help
-// - JSON by default (so normal fetch().json() won't spin forever)
-// - SSE only if Accept: text/event-stream OR ?stream=1
+// /ai/help - streaming hints with error context
 // ----------------------
 app.post("/ai/help", async (req, res) => {
+  console.log("🤖 POST /ai/help called");
+
   const {
     code = "",
     errors = [],
     mode = "arduino-verify",
     question = "",
     language = "cpp",
-    verbosity = "brief",
-    sentences = 3,
   } = req.body || {};
 
   console.log("AI: entered /ai/help");
@@ -162,153 +163,103 @@ app.post("/ai/help", async (req, res) => {
     return res.status(400).json({ ok: false, error: "Provide either 'code' or 'question'." });
   }
 
-  const prompt =
-    mode === "arduino-verify"
-      ? `You are a friendly Arduino tutor. Explain these errors with hints only. Do NOT give the students the answer. Keep your responses ${verbosity} and roughly ${sentences} sentences long.
+  const codeLines = code.split("\n");
+  const contextSize = 2; // lines before/after each error
 
-Sketch:
-\`\`\`cpp
-${String(code).slice(0, 4000)}
-\`\`\`
-
-Errors:
-${(errors || []).map((e) => `Line ${e.line || 1}: ${e.message}`).join("\n")}`
-      : `You are a programming tutor. Explain clearly:
-
-${language} code:
-\`\`\`${language}
-${String(code).slice(0, 4000)}
-\`\`\`
-
-Question:
-${question}`;
-
-  const wantsSSE =
-    (req.headers.accept || "").includes("text/event-stream") ||
-    String(req.query.stream || "") === "1";
-
-  // ---------- JSON mode (default) ----------
-  if (!wantsSSE) {
-    try {
-      console.log("AI: JSON request -> calling OpenAI model:", OPENAI_MODEL);
-
-      const r = await openai.responses.create({
-        model: OPENAI_MODEL,
-        input: [{ role: "user", content: prompt }],
-        max_output_tokens: 350,
-      });
-
-      const text = (r.output_text && String(r.output_text)) || "";
-      console.log("AI: OpenAI returned chars:", text.length);
-
-      return res.json({ ok: true, text });
-    } catch (err) {
-      console.error("❌ AI: OpenAI JSON error:", err?.message || err);
-      return res.status(500).json({
-        ok: false,
-        error: "OpenAI call failed",
-        detail: err?.message || String(err),
-      });
-    }
+  let errorSnippets = "";
+  if (mode === "arduino-verify") {
+    errorSnippets = errors.map(e => {
+      const lineNum = e.line || 1;
+      const start = Math.max(0, lineNum - 1 - contextSize);
+      const end = Math.min(codeLines.length, lineNum + contextSize);
+      const snippet = codeLines.slice(start, end).join("\n");
+      return `Line ${lineNum} snippet:\n\`\`\`cpp\n${snippet}\n\`\`\`\nCompiler error: ${e.message}`;
+    }).join("\n\n");
   }
-
-  // ---------- SSE mode (only if explicitly requested) ----------
-  res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
-  res.setHeader("Cache-Control", "no-cache, no-transform");
-  res.setHeader("Connection", "keep-alive");
-  if (typeof res.flushHeaders === "function") res.flushHeaders();
-  res.write(": keep-alive\n\n");
-
-  let closed = false;
-  const send = (eventName, payloadObj) => {
-    if (closed) return;
-    if (eventName) res.write(`event: ${eventName}\n`);
-    res.write(`data: ${JSON.stringify(payloadObj)}\n\n`);
-  };
-  const done = () => {
-    if (closed) return;
-    closed = true;
-    try {
-      send("done", {});
-      res.write(`data: [DONE]\n\n`);
-    } catch {}
-    try {
-      res.end();
-    } catch {}
-  };
-
-  const ping = setInterval(() => {
-    if (closed) return;
-    try {
-      res.write(": ping\n\n");
-    } catch {}
-  }, 15000);
-
-  const hardTimeout = setTimeout(() => {
-    if (closed) return;
-    send("error", { error: "AI request timed out." });
-    done();
-  }, 45000);
-
-  req.on("close", () => {
-    clearInterval(ping);
-    clearTimeout(hardTimeout);
-    done();
-  });
+  let codeString = typeof code === 'string' ? code : JSON.stringify(code);
+  const formattedCode = `\`\`\`cpp
+  ${codeString}
+  \`\`\``;
+  console.log("Errors: ", errors);
+  console.log("Error Snippets: " + errorSnippets);
+  console.log("Explaining: " + formattedCode);
+  let prompt = `You are a friendly Arduino tutor. Explain these errors with hints only. Do NOT give the students the answer. Do not talk about the prompt in your answer.
+ Keep your responses very short but helpful and up to 3 sentences long.
+When analyzing C++ or Arduino code, assume whitespace is syntactically irrelevant except in preprocessor directives, string literals, and explicit line continuations. 
+Do not cite whitespace as a cause of error unless one of those cases is present.
+Do not provide generic explanations such as “whitespace issues” or “formatting problems.” Every claim must reference a concrete language rule or compiler behavior.
+Do not invent or generalize language rules.
+If an explanation cannot be traced to a real C++ grammar or standard construct, state that the cause is unknown or elsewhere.
+Before claiming a syntax error, identify the exact invalid token, delimiter mismatch, or grammar violation.
+If none can be identified, state that the code is syntactically valid.
+Compiler error messages are authoritative.
+Do not reinterpret, generalize, or replace them.
+The explanation must directly follow the stated error message.
+This is the relavent portion of the code:
+${code}
+These are the errors you must explain:
+${errors}`
+  let aborted = false;
+  req.on("close", () => { aborted = true; });
 
   try {
-    console.log("AI: SSE request -> calling OpenAI model:", OPENAI_MODEL);
-
-    const stream = await openai.responses.create({
-      model: OPENAI_MODEL,
-      input: [{ role: "user", content: prompt }],
-      stream: true,
-      max_output_tokens: 350,
+    const ollamaRes = await fetch(`${OLLAMA_HOST}/api/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "qwen2.5-coder:1.5b",
+        stream: true,
+        temperature: 0,
+        messages: [{ role: "user", content: prompt }],
+      }),
     });
 
-    for await (const event of stream) {
-      if (closed) break;
+    if (!ollamaRes.body) throw new Error("No Ollama stream");
 
-      if (event.type === "response.output_text.delta") {
-        const token = event.delta || "";
-        if (token) send("token", { token });
-        continue;
-      }
+    const reader = ollamaRes.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
 
-      if (
-        event.type === "response.output_text.done" ||
-        event.type === "response.completed" ||
-        event.type === "response.failed" ||
-        event.type === "response.incomplete"
-      ) {
-        break;
-      }
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
 
-      if (event.type === "error") {
-        send("error", { error: event.error?.message || "AI request failed." });
-        break;
+      const lines = buffer.split("\n");
+      buffer = lines.pop();
+
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        const json = JSON.parse(line);
+        const token = json.message?.content;
+        if (token) {
+          res.write(`event: token\ndata: ${JSON.stringify({ token })}\n\n`);
+        }
+        if (json.done) {
+	          res.write(`event: done\ndata: {}\n\n`);
+          res.end();
+          return;
+        }
       }
     }
 
-    clearInterval(ping);
-    clearTimeout(hardTimeout);
-    done();
+    if (!aborted) {
+      res.write(`event: done\ndata: {}\n\n`);
+      res.end();
+    }
+
   } catch (err) {
-    console.error("❌ AI: OpenAI SSE error:", err?.message || err);
-    clearInterval(ping);
-    clearTimeout(hardTimeout);
-    send("error", { error: err?.message || "OpenAI call failed" });
-    done();
+    console.error("❌ Ollama streaming error:", err);
+    res.write(`event: error\ndata: ${JSON.stringify({ error: "AI request failed. Check server logs." })}\n\n`);
+    res.end();
   }
 });
 
 // ----------------------
 // Start server
 // ----------------------
-const PORT = 4000;
-app.listen(PORT, () => {
-  console.log(`🚀 Server running at http://localhost:${PORT}`);
-  console.log("  • GET  /health");
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Server running at http://0.0.0.0:${PORT}`);
   console.log("  • POST /verify-arduino");
   console.log("  • POST /ai/help (JSON default; SSE if Accept:text/event-stream or ?stream=1)");
 });

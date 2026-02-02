@@ -16,6 +16,8 @@ void loop() {
 }
 `;
 
+const BASE_URL = "3.150.166.11"
+
 const ARDUINO_FUNCS = [
   "pinMode",
   "digitalWrite",
@@ -46,7 +48,6 @@ type CoachPayload = {
   hasErrors: boolean;
   sections: { title: string; items: CoachItem[] }[];
 };
-
 
 type ArduinoEditorProps = {
   height?: string | number;
@@ -91,6 +92,16 @@ const toolbarButtonStyle: React.CSSProperties = {
 function safeNameFromPath(name: string) {
   const s = String(name || "").trim();
   return s || "ElectricBoard.ino";
+}
+
+// Text formatting
+function formatAIText(text: string) {
+  if (!text) return "";
+  return text
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>') // bold
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')             // italic
+    .replace(/`(.+?)`/g, '<code>$1</code>')           // inline code
+    .replace(/\n/g, '<br>');                          // preserve newlines
 }
 
 const FILE_TOKEN_PREFIX = "curio:fileopen:";
@@ -515,16 +526,12 @@ function coachTagBg(tag: CoachTag) {
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:4000";
 
 
-async function streamHelpSSE(payload: any, onToken: (t: string) => void) {
-  const res = await fetch(`${API_BASE}/ai/help`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      // IMPORTANT: do NOT request SSE unless you're sure server supports it
-      // "Accept": "text/event-stream",
-    },
-    body: JSON.stringify(payload),
-  });
+  async function streamHelpSSE(payload: any, onToken: (t: string) => void) {
+    const res = await fetch("http://"+BASE_URL+":4000/ai/help", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
 
   if (!res.ok) {
     const t = await res.text().catch(() => "");
@@ -631,6 +638,7 @@ if (contentType.includes("application/json")) {
       return prev.map((p) => (p.id === popoverId ? { ...p, ...patch } : p));
     });
   }
+  
 
   // One function for BOTH popup + verify
   const sendErrorToAI = async (
@@ -917,12 +925,11 @@ if (existing) {
 
   function handleDragEnd() {
     setIsResizing(false);
-    window.removeEventListener("mousemove", handleDragMove as any);
+    window.removeEventListener("mousemove", handleDragMove as any); 
     window.removeEventListener("mouseup", handleDragEnd as any);
   }
 
   const hasFooterContent = !!compilerOutput || !!coachJson || !!coachRaw;
-
 
   const handleVerify = async () => {
     if (!editorRef.current || !monacoRef.current) return;
@@ -936,7 +943,7 @@ if (existing) {
     setAiHelpMap({});
 
     try {
-      const res = await fetch(`${API_BASE}/verify-arduino`, {
+      const res = await fetch("http://"+BASE_URL+":4000/verify-arduino", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code: value }),
@@ -1538,19 +1545,16 @@ if (existing) {
     ))}
   </div>
 ) : compilerOutput ? (
-  <pre
+  <div
     style={{
       margin: 0,
-      whiteSpace: "pre-wrap",
-      fontFamily:
-        "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
+      fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
       fontSize: 11,
       color: "#fca5a5",
       lineHeight: 1.3,
     }}
-  >
-    {compilerOutput}
-  </pre>
+    dangerouslySetInnerHTML={{ __html: formatAIText(compilerOutput) }}
+  />
 ) : null}
 
 
@@ -1617,7 +1621,10 @@ if (existing) {
           </div>
 
           {/* Content */}
-          <div style={{ marginTop: 8, color: "#e5e7eb", lineHeight: 1.35, whiteSpace: "pre-wrap" }}>{p.content}</div>
+          <div
+            style={{ marginTop: 8, lineHeight: 1.35 }}
+            dangerouslySetInnerHTML={{ __html: formatAIText(p.content) }}
+          />
 
           {/* Actions */}
           <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
