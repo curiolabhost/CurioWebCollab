@@ -1,12 +1,15 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
 
 const SHARES_DIR = path.join(process.cwd(), "data", "shares");
 
-export async function GET(_req: Request, ctx: { params: { id: string } }) {
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
-    const id = ctx.params.id;
+    const { id } = await params;
     const file = path.join(SHARES_DIR, `${id}.json`);
 
     if (!fs.existsSync(file)) {
@@ -18,6 +21,9 @@ export async function GET(_req: Request, ctx: { params: { id: string } }) {
 
     return NextResponse.json(data);
   } catch (e: any) {
-    return NextResponse.json({ error: e?.message ?? "Server error" }, { status: 500 });
+    return NextResponse.json(
+      { error: e?.message ?? "Server error" },
+      { status: 500 }
+    );
   }
 }
