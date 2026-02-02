@@ -23,12 +23,11 @@ app.use((req, _res, next) => {
 // ----------------------
 // OpenAI config
 // ----------------------
-// IMPORTANT: Use a model you actually have access to.
-// If you're unsure, start with "gpt-4.1-mini" (widely available).
+
 const OPENAI_MODEL = process.env.OPENAI_MODEL || "gpt-4.1-mini";
 
 const openai = new OpenAI({
-  apiKey: "REDACTED",
+  //apiKey: "",
   // hard client timeout so calls can't hang forever
   timeout: 30000,
 });
