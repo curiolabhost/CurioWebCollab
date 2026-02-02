@@ -9,16 +9,25 @@ import { cpp } from "@codemirror/lang-cpp";
 import { oneDark } from "@codemirror/theme-one-dark";
 import { oneDarkHighlightStyle } from "@codemirror/theme-one-dark";
 import { highlightTree, tagHighlighter, tags as t } from "@lezer/highlight";
-
-
-
+import EditableRegionCodeBlock from "./EditableRegionCodeBlock";
 
 // keep ONLY these from the shared util
-import { type AnswerSpec, evalAnswerSpec, BlankRule, BlankTypedSpec } from "./blankCheckUtils";
+import {
+  type AnswerSpec,
+  evalAnswerSpec,
+  BlankRule,
+  BlankTypedSpec,
+} from "./blankCheckUtils";
 
 function isIdentChar(ch: string) {
   return /[A-Za-z0-9_]/.test(ch);
 }
+
+
+function editorPersistKey(globalKey: string, editorId: string) {
+  return `curio:editor:v1:${globalKey || "global"}:${editorId || "editor"}`;
+}
+
 
 const guidedHighlighter = tagHighlighter([
   { tag: t.comment, class: styles.syntaxComment },
@@ -33,7 +42,6 @@ const guidedHighlighter = tagHighlighter([
   { tag: t.variableName, class: styles.syntaxVar },
   { tag: t.propertyName, class: styles.syntaxVar },
   { tag: t.name, class: styles.syntaxVar }, // catch-all for identifiers like `display`
-
 
   // function calls / names
   { tag: t.function(t.variableName), class: styles.syntaxArduinoFunc },
@@ -65,22 +73,34 @@ type Props = {
 
   activeBlankHint?: { name: string; text: string; blockIndex: number } | null;
   setActiveBlankHint?: React.Dispatch<
-    React.SetStateAction<{ name: string; text: string; blockIndex: number } | null>
+    React.SetStateAction<{
+      name: string;
+      text: string;
+      blockIndex: number;
+    } | null>
   >;
 
   aiHelpByBlank?: Record<string, string>;
-  setAiHelpByBlank?: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  setAiHelpByBlank?: React.Dispatch<
+    React.SetStateAction<Record<string, string>>
+  >;
   aiLoadingKey?: string | null;
   setAiLoadingKey?: React.Dispatch<React.SetStateAction<string | null>>;
   aiLastRequestAtByKey?: Record<string, number>;
-  setAiLastRequestAtByKey?: React.Dispatch<React.SetStateAction<Record<string, number>>>;
+  setAiLastRequestAtByKey?: React.Dispatch<
+    React.SetStateAction<Record<string, number>>
+  >;
   aiHintLevelByBlank?: Record<string, number>;
-  setAiHintLevelByBlank?: React.Dispatch<React.SetStateAction<Record<string, number>>>;
+  setAiHintLevelByBlank?: React.Dispatch<
+    React.SetStateAction<Record<string, number>>
+  >;
 
   checkAttempts?: number;
   setCheckAttempts?: React.Dispatch<React.SetStateAction<number>>;
   blankAttemptsByName?: Record<string, number>;
-  setBlankAttemptsByName?: React.Dispatch<React.SetStateAction<Record<string, number>>>;
+  setBlankAttemptsByName?: React.Dispatch<
+    React.SetStateAction<Record<string, number>>
+  >;
 
   logBlankAnalytics?: (payload: any) => void;
 
@@ -104,7 +124,8 @@ async function streamHelpSSE(payload: any, onToken: (t: string) => void) {
     const t = await res.text().catch(() => "");
     throw new Error(`AI route failed (${res.status}): ${t}`);
   }
-  if (!res.body) throw new Error("AI route returned no body (streaming not enabled).");
+  if (!res.body)
+    throw new Error("AI route returned no body (streaming not enabled).");
 
   const reader = res.body.getReader();
   const decoder = new TextDecoder();
@@ -143,7 +164,9 @@ async function streamHelpSSE(payload: any, onToken: (t: string) => void) {
         } catch {}
 
         const isRateLimit =
-          /rate limit/i.test(msg) || /Limit \d+, Used \d+/i.test(msg) || /Please try again/i.test(msg);
+          /rate limit/i.test(msg) ||
+          /Limit \d+, Used \d+/i.test(msg) ||
+          /Please try again/i.test(msg);
 
         const err = new Error(msg) as Error & { code?: string };
         if (isRateLimit) err.code = "RATE_LIMIT";
@@ -153,9 +176,67 @@ async function streamHelpSSE(payload: any, onToken: (t: string) => void) {
   }
 }
 
-function editorPersistKey(globalKey: string, editorId: string) {
-  return `curio:editor:v1:${globalKey || "global"}:${editorId || "editor"}`;
+
+type EditRegion = {
+  id: string;
+  startLine: number; // first content line (after ##EDIT)
+  endLine: number;   // last content line (before ##END)
+  indentPx: number;  // NEW: left indent in pixels for this region
+};
+
+const INDENT_PX = 16; // tweak: 16px per "indent level" (like 2 spaces-ish visually)
+
+function parseEditRegionsFromLines(lines: string[]): EditRegion[] {
+  const regions: EditRegion[] = [];
+
+  // Supports:
+  //   // ##EDIT:ID##
+  //   // ##EDIT:ID:INDENT=2##
+  //   // ##EDIT:ID:PX=24##
+  const startRe =
+    /^\s*\/\/\s*##EDIT:([A-Z0-9_]+)(?::INDENT=(\d+))?(?::PX=(\d+))?##\s*$/;
+
+  const endRe = /^\s*\/\/\s*##END:([A-Z0-9_]+)##\s*$/;
+
+  let active: { id: string; markerLine: number; indentPx: number } | null = null;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    const s = line.match(startRe);
+    if (s) {
+      const id = s[1];
+      const indentLevels = s[2] ? Number(s[2]) : 0;
+      const px = s[3] ? Number(s[3]) : null;
+
+      const indentPx = Number.isFinite(px as any) && px !== null
+        ? px
+        : Math.max(0, indentLevels) * INDENT_PX;
+
+      active = { id, markerLine: i, indentPx };
+      continue;
+    }
+
+    const e = line.match(endRe);
+    if (e && active && e[1] === active.id) {
+      const startLine = active.markerLine + 1;
+      const endLine = i - 1;
+
+      regions.push({
+        id: active.id,
+        startLine,
+        endLine,
+        indentPx: active.indentPx,
+      });
+
+      active = null;
+      continue;
+    }
+  }
+
+  return regions;
 }
+
 
 // ============================================================
 // Template parsing: ^^...^^ highlight segments, __BLANK[NAME]__ blanks
@@ -167,7 +248,7 @@ type TemplateTok =
 
 function tokenizeTemplateLineWithState(
   line: string,
-  inHiStart: boolean
+  inHiStart: boolean,
 ): { toks: TemplateTok[]; inHiEnd: boolean } {
   const toks: TemplateTok[] = [];
   if (line == null) return { toks, inHiEnd: inHiStart };
@@ -196,7 +277,7 @@ function tokenizeTemplateLineWithState(
       }
     }
 
-        // Editor token
+    // Editor token
     if (str.slice(i, i + "__EDITOR[".length) === "__EDITOR[") {
       const end = str.indexOf("]__", i);
       if (end !== -1) {
@@ -207,7 +288,6 @@ function tokenizeTemplateLineWithState(
       }
     }
 
-
     // Otherwise, consume until next special token
     const nextHi = str.indexOf("^^", i);
     const nextBlank = str.indexOf("__BLANK[", i);
@@ -216,11 +296,12 @@ function tokenizeTemplateLineWithState(
     let next = -1;
     for (const n of [nextHi, nextBlank, nextEditor]) {
       if (n === -1) continue;
-      next = next === -1 ? n : Math.min(next, n);}
+      next = next === -1 ? n : Math.min(next, n);
+    }
 
-const chunk = next === -1 ? str.slice(i) : str.slice(i, next);
-toks.push({ type: "text", content: chunk, highlight: inHi });
-i = next === -1 ? str.length : next;
+    const chunk = next === -1 ? str.slice(i) : str.slice(i, next);
+    toks.push({ type: "text", content: chunk, highlight: inHi });
+    i = next === -1 ? str.length : next;
   }
 
   return { toks, inHiEnd: inHi };
@@ -299,12 +380,12 @@ function renderOneDarkHighlighted(text: string, keyPrefix: string) {
   });
 
   if (!ranges.length) {
-  return (
-    <span key={`${keyPrefix}-plain`} className={styles.codeNormal}>
-      {text}
-    </span>
-  );
-}
+    return (
+      <span key={`${keyPrefix}-plain`} className={styles.codeNormal}>
+        {text}
+      </span>
+    );
+  }
 
   ranges.sort((a, b) => a.from - b.from || a.to - b.to);
 
@@ -318,41 +399,47 @@ function renderOneDarkHighlighted(text: string, keyPrefix: string) {
 
     if (!r || r.from > pos) {
       const end = r ? Math.min(r.from, text.length) : text.length;
-const plain = text.slice(pos, end);
+      const plain = text.slice(pos, end);
 
-// split plain into identifier runs vs non-identifier runs
-let j = 0;
-while (j < plain.length) {
-  const start = j;
-  const ch = plain[j];
+      // split plain into identifier runs vs non-identifier runs
+      let j = 0;
+      while (j < plain.length) {
+        const start = j;
+        const ch = plain[j];
 
-  if (isIdentChar(ch) && /[A-Za-z_]/.test(ch)) {
-    // identifier run must start with letter/_ (not number)
-    j++;
-    while (j < plain.length && isIdentChar(plain[j])) j++;
+        if (isIdentChar(ch) && /[A-Za-z_]/.test(ch)) {
+          // identifier run must start with letter/_ (not number)
+          j++;
+          while (j < plain.length && isIdentChar(plain[j])) j++;
 
-    out.push(
-      <span key={`${keyPrefix}-id-${pos + start}`} className={styles.syntaxVar}>
-        {plain.slice(start, j)}
-      </span>
-    );
-  } else {
-    // non-identifier run
-    j++;
-    while (
-      j < plain.length &&
-      !(isIdentChar(plain[j]) && /[A-Za-z_]/.test(plain[j]))
-    ) {
-      j++;
-    }
+          out.push(
+            <span
+              key={`${keyPrefix}-id-${pos + start}`}
+              className={styles.syntaxVar}
+            >
+              {plain.slice(start, j)}
+            </span>,
+          );
+        } else {
+          // non-identifier run
+          j++;
+          while (
+            j < plain.length &&
+            !(isIdentChar(plain[j]) && /[A-Za-z_]/.test(plain[j]))
+          ) {
+            j++;
+          }
 
-    out.push(
-      <span key={`${keyPrefix}-pl-${pos + start}`} className={styles.codeNormal}>
-        {plain.slice(start, j)}
-      </span>
-    );
-  }
-}
+          out.push(
+            <span
+              key={`${keyPrefix}-pl-${pos + start}`}
+              className={styles.codeNormal}
+            >
+              {plain.slice(start, j)}
+            </span>,
+          );
+        }
+      }
 
       pos = end;
       continue;
@@ -362,16 +449,13 @@ while (j < plain.length) {
     out.push(
       <span key={`${keyPrefix}-h-${pos}`} className={r.cls}>
         {text.slice(pos, end)}
-      </span>
+      </span>,
     );
     pos = end;
   }
 
   return out;
 }
-
-
-
 
 export default function GuidedCodeBlock({
   step,
@@ -412,27 +496,40 @@ export default function GuidedCodeBlock({
 }: Props) {
   const AI_COOLDOWN_MS = 8000;
   const MAX_HINT_LEVEL = 3;
-  
 
   const code: string = block?.code || step?.code || "";
-  const blockExplanations = block?.blankExplanations || step?.blankExplanations || null;
+  const hasEditRegions = /\/\/\s*##EDIT:[A-Z0-9_]+(?::[A-Z]+=\d+)*##/.test(code);
+
+  const [pickEditMode, setPickEditMode] = React.useState(false);
+  const [activeEditId, setActiveEditId] = React.useState<string | null>(null);
+  const [editDraft, setEditDraft] = React.useState<string>("");
+
+  const blockExplanations =
+    block?.blankExplanations || step?.blankExplanations || null;
 
   // answerKey can be: BlankRule | typed specs | arrays | strings
-  const answerKey: Record<string, AnswerSpec> | null = block?.answerKey || step?.answerKey || null;
+  const answerKey: Record<string, AnswerSpec> | null =
+    block?.answerKey || step?.answerKey || null;
+
+  const editScopeKey = String(globalKey || "global").split(":step:")[0];
 
   const difficulties: Record<string, any> = step?.blankDifficulties || {};
-
   const bindKeyByBlankName = React.useMemo(() => {
-  const out: Record<string, string> = {};
-  const ak: any = answerKey || {};
-  for (const [blankName, spec] of Object.entries(ak)) {
-    const s: any = spec;
-    if (s && typeof s === "object" && typeof s.bindAs === "string" && s.bindAs.trim()) {
-      out[blankName] = s.bindAs.trim();
+    const out: Record<string, string> = {};
+    const ak: any = answerKey || {};
+    for (const [blankName, spec] of Object.entries(ak)) {
+      const s: any = spec;
+      if (
+        s &&
+        typeof s === "object" &&
+        typeof s.bindAs === "string" &&
+        s.bindAs.trim()
+      ) {
+        out[blankName] = s.bindAs.trim();
+      }
     }
-  }
-  return out;
-}, [answerKey]);
+    return out;
+  }, [answerKey]);
 
   /* ==========================================================
      GLOBAL-ONLY blank values
@@ -442,19 +539,47 @@ export default function GuidedCodeBlock({
      - We flush on unmount
   ========================================================== */
   const [draftValues, setDraftValues] = React.useState<Record<string, any>>(
-    () => (mergedBlanks && typeof mergedBlanks === "object" ? mergedBlanks : {})
+    () =>
+      mergedBlanks && typeof mergedBlanks === "object" ? mergedBlanks : {},
   );
   const draftRef = React.useRef(draftValues);
   draftRef.current = draftValues;
 
   // On navigation/restore: sync draft to latest GLOBAL values (do not keep old step-local merges)
   React.useEffect(() => {
-    const safe = mergedBlanks && typeof mergedBlanks === "object" ? mergedBlanks : {};
+    const safe =
+      mergedBlanks && typeof mergedBlanks === "object" ? mergedBlanks : {};
     setDraftValues(safe);
   }, [mergedBlanks]);
 
   const pendingGlobalRef = React.useRef<Record<string, any>>({});
   const flushTimerRef = React.useRef<any>(null);
+
+  function editPersistKey(editScopeKey: string, editId: string) {
+    return `curio:edit:v1:${editScopeKey || "global"}:${editId || "edit"}`;
+  }
+
+  type EditSeg =
+    | { kind: "text"; text: string }
+    | { kind: "edit"; id: string; text: string };
+
+  function splitEditBlocks(src: string): EditSeg[] {
+    const re = /\/\/\s*##EDIT:([A-Z0-9_]+)##([\s\S]*?)\/\/\s*##END:\1##/g;
+
+    const out: EditSeg[] = [];
+    let last = 0;
+    let m: RegExpExecArray | null;
+
+    while ((m = re.exec(src))) {
+      if (m.index > last)
+        out.push({ kind: "text", text: src.slice(last, m.index) });
+      out.push({ kind: "edit", id: m[1], text: m[2] });
+      last = re.lastIndex;
+    }
+
+    if (last < src.length) out.push({ kind: "text", text: src.slice(last) });
+    return out;
+  }
 
   function scheduleGlobalUpdate(name: string, value: string) {
     if (!setGlobalBlanks) return;
@@ -507,7 +632,9 @@ export default function GuidedCodeBlock({
      Tokenize once per code change
   ========================================================== */
   const templateLineSplits = React.useMemo(() => {
-    const rawLines = String(code || "").replace(/\r\n/g, "\n").split("\n");
+    const rawLines = String(code || "")
+      .replace(/\r\n/g, "\n")
+      .split("\n");
 
     let inHi = false; // carry across lines
     return rawLines.map((line) => {
@@ -518,6 +645,47 @@ export default function GuidedCodeBlock({
       return { codeTokens, comment };
     });
   }, [code]);
+
+  const rawLines = React.useMemo(
+    () =>
+      String(code || "")
+        .replace(/\r\n/g, "\n")
+        .split("\n"),
+    [code],
+  );
+
+  const editRegions = React.useMemo(() => {
+    return parseEditRegionsFromLines(rawLines);
+  }, [rawLines]);
+
+  const indentByEditId = React.useMemo(() => {
+    const m: Record<string, number> = {};
+    for (const r of editRegions) m[r.id] = r.indentPx || 0;
+    return m;
+  }, [editRegions]);
+
+
+  const editRegionByLine = React.useMemo(() => {
+    const map: Record<number, string> = {};
+    for (const r of editRegions) {
+      for (let i = r.startLine; i <= r.endLine; i++) {
+        map[i] = r.id;
+      }
+    }
+    return map;
+  }, [editRegions]);
+
+  const editRegionStartLineById = React.useMemo(() => {
+    const m: Record<string, number> = {};
+    for (const r of editRegions) m[r.id] = r.startLine;
+    return m;
+  }, [editRegions]);
+
+  const editRegionEndLineById = React.useMemo(() => {
+    const m: Record<string, number> = {};
+    for (const r of editRegions) m[r.id] = r.endLine;
+    return m;
+  }, [editRegions]);
 
   // Estimate a fixed code-column width so comments line up
   const codeColPx = React.useMemo(() => {
@@ -543,37 +711,168 @@ export default function GuidedCodeBlock({
   /* ==========================================================
      RENDER CODE FROM TEMPLATE (NO re-tokenize per keystroke)
   ========================================================== */
-  const renderCodeFromTemplate = () => {
-    const values = draftValues || {};
-    return templateLineSplits.map(({ codeTokens, comment }, lineIdx) => {
-      const emptyLine = !codeTokens.length && !comment;
-      const hasEditor = codeTokens.some((t: any) => t?.type === "editor");
-      return (
-        <div key={`line-${lineIdx}`} className={styles.codeLineRow}>
-          <div
-  className={styles.codePartCol}
-  style={hasEditor ? { width: "100%" } : { width: codeColPx }}
->
-            {emptyLine ? (
-              <span className={styles.codeNormal}>{" "}</span>
-            ) : (
-              codeTokens.map((tok, idx) => {
+const renderCodeFromTemplate = () => {
+  const values = draftValues || {};
+  const out: React.ReactNode[] = [];
+
+  for (let lineIdx = 0; lineIdx < templateLineSplits.length; lineIdx++) {
+    const { codeTokens, comment } = templateLineSplits[lineIdx];
+
+    // Hide marker lines entirely
+    const rawLine = rawLines[lineIdx] ?? "";
+    if (/^\s*\/\/\s*##EDIT:[A-Z0-9_]+(?::[A-Z]+=\d+)*##\s*$/.test(rawLine)) continue;
+
+    if (/^\s*\/\/\s*##END:[A-Z0-9_]+##\s*$/.test(rawLine)) continue;
+
+    const regionId = editRegionByLine[lineIdx] || null;
+    const regionIndentPx = regionId ? (indentByEditId[regionId] || 0) : 0;
+
+
+    // --------
+    // SAVED REGION: render saved code once, skip scaffold region lines
+    // --------
+    if (regionId && editRegionStartLineById[regionId] === lineIdx) {
+      const key = editPersistKey(editScopeKey, regionId);
+      const saved = mergedBlanks?.[key];
+      const hasSaved = typeof saved === "string" && saved.trim().length > 0;
+
+      if (hasSaved) {
+        const savedLines = String(saved).replace(/\r\n/g, "\n").split("\n");
+        const clickableSaved = pickEditMode;
+
+        for (let j = 0; j < savedLines.length; j++) {
+          const ln = savedLines[j];
+
+          out.push(
+            <div
+              key={`edit-saved-${regionId}-${lineIdx}-${j}`}
+              className={styles.codeLineRow}
+            >
+              <div
+                className={styles.codePartCol}
+                style={{
+                  width: codeColPx,
+                  paddingLeft: regionIndentPx,
+                }}
+              >
+                <span
+                  className={styles.codeNormal}
+                  onClick={() => {
+                    if (!clickableSaved) return;
+
+                    setActiveEditId(regionId);
+                    setEditDraft(String(saved)); // load saved for re-edit
+                    setPickEditMode(false);
+                  }}
+                  style={
+                    clickableSaved
+                      ? {
+                          display: "inline-block",
+                          background: "rgba(59,130,246,0.18)",
+                          outline: "2px solid rgba(59,130,246,0.6)",
+                          borderRadius: 6,
+                          padding: "2px 4px",
+                          cursor: "pointer",
+                        }
+                      : undefined
+                  }
+                  title={clickableSaved ? `Click to rewrite: ${regionId}` : undefined}
+                >
+                  {ln.trim().length === 0
+                    ? " "
+                    : renderOneDarkHighlighted(
+                        ln,
+                        `saved-${regionId}-${lineIdx}-${j}`
+                      )}
+                </span>
+              </div>
+
+              <span className={styles.codeCommentCol} />
+            </div>
+          );
+        }
+
+        // Skip scaffold region lines
+        lineIdx = editRegionEndLineById[regionId] ?? lineIdx;
+        continue;
+      }
+    }
+
+    // --------
+    // NORMAL SCAFFOLD LINE: render using existing tokens + blank underline UI
+    // --------
+    const emptyLine = !codeTokens.length && !comment;
+    const hasEditor = codeTokens.some((t: any) => t?.type === "editor");
+
+    const clickable = !!regionId && pickEditMode;
+
+    out.push(
+      <div key={`line-${lineIdx}`} className={styles.codeLineRow}>
+      <div
+        className={styles.codePartCol}
+        style={
+          hasEditor
+            ? { width: "100%", paddingLeft: regionIndentPx }
+            : { width: codeColPx, paddingLeft: regionIndentPx }
+        }
+      >
+
+          {emptyLine ? (
+            <span className={styles.codeNormal}>{" "}</span>
+          ) : (
+            <span
+              onClick={() => {
+                if (!clickable || !regionId) return;
+
+                setActiveEditId(regionId);
+
+                // blank first-time; saved handled above, but keep safe:
+                const saved2 = mergedBlanks?.[editPersistKey(editScopeKey, regionId)];
+                if (typeof saved2 === "string" && saved2.trim().length > 0) {
+                  setEditDraft(saved2);
+                } else {
+                  setEditDraft(""); // <-- blank page behavior
+                }
+
+                setPickEditMode(false);
+              }}
+              style={
+                clickable
+                  ? {
+                      display: "inline-block",
+                      background: "rgba(59,130,246,0.18)",
+                      outline: "2px solid rgba(59,130,246,0.6)",
+                      borderRadius: 6,
+                      padding: "2px 4px",
+                      cursor: "pointer",
+                    }
+                  : undefined
+              }
+              title={clickable ? `Click to rewrite: ${regionId}` : undefined}
+            >
+              {codeTokens.map((tok: any, idx: number) => {
                 if (tok.type === "text") {
                   const textContent = tok.content;
 
-              if (tok.highlight) {
-  return (
-    <span key={`t-${lineIdx}-${idx}`} className={styles.hiWrap}>
-      {renderOneDarkHighlighted(textContent, `hi-${lineIdx}-${idx}`)}
-    </span>
-  );
-}
-
-
-
+                  if (tok.highlight) {
+                    return (
+                      <span
+                        key={`t-${lineIdx}-${idx}`}
+                        className={styles.hiWrap}
+                      >
+                        {renderOneDarkHighlighted(
+                          textContent,
+                          `hi-${lineIdx}-${idx}`
+                        )}
+                      </span>
+                    );
+                  }
 
                   return (
-                    <span key={`t-${lineIdx}-${idx}`} className={styles.codeNormal}>
+                    <span
+                      key={`t-${lineIdx}-${idx}`}
+                      className={styles.codeNormal}
+                    >
                       {textContent}
                     </span>
                   );
@@ -592,32 +891,30 @@ export default function GuidedCodeBlock({
                     tok.highlight ? styles.codeBlankInputHighlight : "",
                     status === true ? styles.blankCorrect : "",
                     status === false ? styles.blankIncorrect : "",
-                  ].filter(Boolean).join(" ");
-
+                  ]
+                    .filter(Boolean)
+                    .join(" ");
 
                   return (
-                    <div key={`b-${lineIdx}-${idx}`} className={styles.blankWithDot}>
+                    <div
+                      key={`b-${lineIdx}-${idx}`}
+                      className={styles.blankWithDot}
+                    >
                       <input
                         value={val}
                         onChange={(e) => {
                           const txt = e.target.value;
 
-                          // instant UI update
                           setDraftValues((prev) => ({
                             ...(prev || {}),
                             [name]: txt,
                           }));
 
-                          // persist globally (debounced)
                           scheduleGlobalUpdate(name, txt);
 
-                          // ALSO persist binding key if this blank binds one
                           const bindKey = bindKeyByBlankName[name];
-                          if (bindKey) {
-                            scheduleGlobalUpdate(bindKey, txt);
-                          }
+                          if (bindKey) scheduleGlobalUpdate(bindKey, txt);
 
-                          // clear correctness while typing (only for this blank)
                           if ((blankStatus || {})[name] != null) {
                             setBlankStatus?.((prev) => {
                               const copy = { ...(prev || {}) };
@@ -627,7 +924,6 @@ export default function GuidedCodeBlock({
                           }
                         }}
                         onBlur={() => {
-                          // ensure any pending writes flush (navigation/blur edge cases)
                           flushGlobalNow();
                         }}
                         autoCapitalize="none"
@@ -644,7 +940,8 @@ export default function GuidedCodeBlock({
                           onClick={() => {
                             const explanation =
                               (blockExplanations && blockExplanations[name]) ||
-                              (step?.blankExplanations && step.blankExplanations[name]) ||
+                              (step?.blankExplanations &&
+                                step.blankExplanations[name]) ||
                               "Hint: Re-check what this blank represents.";
 
                             setActiveBlankHint?.({
@@ -667,22 +964,23 @@ export default function GuidedCodeBlock({
                   const editorId = tok.id;
                   const isHighlighted = !!tok.highlight;
 
-                  // optional per-block config (rows, placeholder)
                   const rows =
                     (block?.editorRows && block.editorRows[editorId]) ||
                     (step?.editorRows && step.editorRows[editorId]) ||
                     8;
 
                   const placeholder =
-                    (block?.editorPlaceholders && block.editorPlaceholders[editorId]) ||
-                    (step?.editorPlaceholders && step.editorPlaceholders[editorId]) ||
+                    (block?.editorPlaceholders &&
+                      block.editorPlaceholders[editorId]) ||
+                    (step?.editorPlaceholders &&
+                      step.editorPlaceholders[editorId]) ||
                     "Type code here…";
 
                   return (
                     <InlineEditorToken
                       key={`e-${lineIdx}-${idx}-${editorId}`}
                       editorId={editorId}
-                      globalKey={globalKey}
+                      globalKey={editScopeKey}
                       mergedBlanks={mergedBlanks || {}}
                       setGlobalBlanks={setGlobalBlanks}
                       rows={rows}
@@ -692,23 +990,30 @@ export default function GuidedCodeBlock({
                   );
                 }
 
-
                 return null;
-              })
-            )}
-          </div>
-
-          {!hasEditor && !!comment && <span className={styles.codeCommentCol}>{comment}</span>}
+              })}
+            </span>
+          )}
         </div>
-      );
-    });
-  };
+
+        {!hasEditor && !!comment && (
+          <span className={styles.codeCommentCol}>{comment}</span>
+        )}
+      </div>
+    );
+  }
+
+  return out;
+};
+
 
   /* ==========================================================
      HINT BOX (scoped to this blockIndex)
   ========================================================== */
   const aiKey =
-    activeBlankHint && activeBlankHint.blockIndex === blockIndex && activeBlankHint.name
+    activeBlankHint &&
+    activeBlankHint.blockIndex === blockIndex &&
+    activeBlankHint.name
       ? `${blockIndex}:${activeBlankHint.name}`
       : null;
 
@@ -718,9 +1023,16 @@ export default function GuidedCodeBlock({
       : null;
 
   const loadingThis = !!aiKey && aiLoadingKey === aiKey;
-  const showHintBox = !!activeBlankHint && activeBlankHint.blockIndex === blockIndex;
+  const showHintBox =
+    !!activeBlankHint && activeBlankHint.blockIndex === blockIndex;
 
-  const requestAiBlankHelpForBlank = async ({ blankName, code }: { blankName: string; code: string }) => {
+  const requestAiBlankHelpForBlank = async ({
+    blankName,
+    code,
+  }: {
+    blankName: string;
+    code: string;
+  }) => {
     if (!step) return;
 
     const key = `${blockIndex}:${blankName}`;
@@ -751,7 +1063,8 @@ export default function GuidedCodeBlock({
 
     const upcomingHintNumber = usedHints + 1;
 
-    let hintStyle: "gentle_nudge" | "conceptual_explanation" | "analogy_based" = "gentle_nudge";
+    let hintStyle: "gentle_nudge" | "conceptual_explanation" | "analogy_based" =
+      "gentle_nudge";
     if (upcomingHintNumber === 2) hintStyle = "conceptual_explanation";
     else if (upcomingHintNumber === 3) hintStyle = "analogy_based";
 
@@ -793,7 +1106,10 @@ export default function GuidedCodeBlock({
         setAiHelpByBlank?.((prev) => ({ ...(prev || {}), [key]: acc }));
       });
 
-      setAiHintLevelByBlank?.((prev) => ({ ...(prev || {}), [key]: upcomingHintNumber }));
+      setAiHintLevelByBlank?.((prev) => ({
+        ...(prev || {}),
+        [key]: upcomingHintNumber,
+      }));
 
       const difficulty = (step?.blankDifficulties || {})[blankName] || null;
 
@@ -813,7 +1129,10 @@ export default function GuidedCodeBlock({
       });
     } catch (err: any) {
       const msg = String(err?.message || err || "AI request failed.");
-      const isRate = err?.code === "RATE_LIMIT" || /rate limit/i.test(msg) || /Please try again/i.test(msg);
+      const isRate =
+        err?.code === "RATE_LIMIT" ||
+        /rate limit/i.test(msg) ||
+        /Please try again/i.test(msg);
 
       setAiHelpByBlank?.((prev) => ({
         ...(prev || {}),
@@ -827,6 +1146,7 @@ export default function GuidedCodeBlock({
     }
   };
 
+
 const copyCode = async (raw: string) => {
   try {
     let textToCopy = String(raw || "");
@@ -836,6 +1156,44 @@ const copyCode = async (raw: string) => {
       ...(mergedBlanks || {}),
       ...(draftRef.current || {}),
     };
+
+    // 0) Replace edit regions with saved versions (and remove markers)
+    {
+      const lines = textToCopy.replace(/\r\n/g, "\n").split("\n");
+      const regions = parseEditRegionsFromLines(lines);
+
+      const savedById: Record<string, string> = {};
+      for (const r of regions) {
+        const editKey = editPersistKey(editScopeKey, r.id);
+        const v = values[editKey];
+        if (typeof v === "string" && v.trim().length) {
+          savedById[r.id] = v;
+        }
+      }
+
+      const outLines: string[] = [];
+
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+
+        // skip marker lines
+        if (/^\s*\/\/\s*##EDIT:[A-Z0-9_]+(?::[A-Z]+=\d+)*##\s*$/.test(line)) continue;
+        if (/^\s*\/\/\s*##END:[A-Z0-9_]+##\s*$/.test(line)) continue;
+
+        // if we are at the start of a region and have saved code,
+        // emit saved code and skip the scaffold region lines
+        const regionHere = regions.find((r) => r.startLine === i);
+        if (regionHere && savedById[regionHere.id]) {
+          outLines.push(savedById[regionHere.id]);
+          i = regionHere.endLine; // skip scaffold lines
+          continue;
+        }
+
+        outLines.push(line);
+      }
+
+      textToCopy = outLines.join("\n");
+    }
 
     // 1) Replace blanks
     for (const [name, value] of Object.entries(values || {})) {
@@ -849,12 +1207,15 @@ const copyCode = async (raw: string) => {
     textToCopy = textToCopy.replace(/__BLANK\[[A-Z0-9_]+\]__/g, "_____");
 
     // 2) Replace editor blocks: __EDITOR[id]__ -> the saved editor text
-    textToCopy = textToCopy.replace(/__EDITOR\[([^\]]+)\]__/g, (_m, idRaw) => {
-      const id = String(idRaw || "").trim();
-      const key = editorPersistKey(globalKey, id);
-      const v = values[key];
-      return v == null ? "" : String(v);
-    });
+    textToCopy = textToCopy.replace(
+      /__EDITOR\[([^\]]+)\]__/g,
+      (_match: string, idRaw: string) => {
+        const id = String(idRaw || "").trim();
+        const editorKey = editorPersistKey(editScopeKey, id);
+        const v = values[editorKey];
+        return v == null ? "" : String(v);
+      }
+    );
 
     // Any remaining editor markers -> remove
     textToCopy = textToCopy.replace(/__EDITOR\[[^\]]+\]__/g, "");
@@ -868,100 +1229,120 @@ const copyCode = async (raw: string) => {
   }
 };
 
-
   // counts attempts ONLY when wrong (per blank)
-const checkBlanks = () => {
-  if (!answerKey) return;
+  const checkBlanks = () => {
+    if (!answerKey) return;
 
-  flushGlobalNow();
+    flushGlobalNow();
 
-  const values = draftRef.current || {};
-  const nextStatus: Record<string, boolean> = {};
-  const nextAttemptsByName = { ...(blankAttemptsByName || {}) };
+    const values = draftRef.current || {};
+    const nextStatus: Record<string, boolean> = {};
+    const nextAttemptsByName = { ...(blankAttemptsByName || {}) };
 
-  // ONE shared context for the whole check
+    // ONE shared context for the whole check
     const ctx: Record<string, any> = {
-    ...(mergedBlanks || {}),        // persisted GLOBAL blanks (includes prior bindings)
-    ...(draftRef.current || {}),    // most recent typed values in this block
+      ...(mergedBlanks || {}), // persisted GLOBAL blanks (includes prior bindings)
+      ...(draftRef.current || {}), // most recent typed values in this block
+    };
+
+    // stable order helps “vice versa” feel consistent
+    const entries = Object.entries(answerKey).sort(([a], [b]) => {
+      const na = Number(a),
+        nb = Number(b);
+      if (Number.isFinite(na) && Number.isFinite(nb)) return na - nb;
+      return String(a).localeCompare(String(b));
+    });
+
+    for (const [name, spec] of entries) {
+      const v = String(values[name] ?? "");
+      const ok = evalAnswerSpec(spec, v, ctx);
+      nextStatus[name] = ok;
+
+      if (!ok) {
+        nextAttemptsByName[name] = (nextAttemptsByName[name] || 0) + 1;
+      }
+
+      logBlankAnalytics?.({
+        type: "check_blank",
+        blankName: name,
+        ok,
+        attempt: nextAttemptsByName[name] ?? 0,
+        difficulty: difficulties?.[name],
+        tag: analyticsTag,
+      });
+    }
+
+    // persist any bindings added during evaluation into GLOBAL blanks
+    if (setGlobalBlanks) {
+      const before = mergedBlanks || {};
+      const patch: Record<string, any> = {};
+
+      for (const [k, v] of Object.entries(ctx)) {
+        if (before[k] !== v) patch[k] = v;
+      }
+
+      if (Object.keys(patch).length) {
+        setGlobalBlanks((prev) => ({ ...(prev || {}), ...patch }));
+      }
+    }
+
+    setBlankStatus?.((prev) => ({
+      ...(prev || {}),
+      ...nextStatus,
+    }));
+
+    setBlankAttemptsByName?.(nextAttemptsByName);
+    setCheckAttempts?.((n) => (n || 0) + 1);
+
+    const anyWrong = Object.values(nextStatus).some((x) => x === false);
+    if (!anyWrong) {
+      setActiveBlankHint?.(null);
+      setAiHelpByBlank?.({});
+    }
   };
-
-
-  // stable order helps “vice versa” feel consistent
-  const entries = Object.entries(answerKey).sort(([a], [b]) => {
-    const na = Number(a), nb = Number(b);
-    if (Number.isFinite(na) && Number.isFinite(nb)) return na - nb;
-    return String(a).localeCompare(String(b));
-  });
-
-for (const [name, spec] of entries) {
-  const v = String(values[name] ?? "");
-  const ok = evalAnswerSpec(spec, v, ctx);
-  nextStatus[name] = ok;
-
-  if (!ok) {
-    nextAttemptsByName[name] = (nextAttemptsByName[name] || 0) + 1;
-  }
-
-  logBlankAnalytics?.({
-    type: "check_blank",
-    blankName: name,
-    ok,
-    attempt: nextAttemptsByName[name] ?? 0,
-    difficulty: difficulties?.[name],
-    tag: analyticsTag,
-  });
-}
-
-  // persist any bindings added during evaluation into GLOBAL blanks
-  if (setGlobalBlanks) {
-    const before = mergedBlanks || {};
-    const patch: Record<string, any> = {};
-
-    for (const [k, v] of Object.entries(ctx)) {
-      if (before[k] !== v) patch[k] = v;
-    }
-
-    if (Object.keys(patch).length) {
-      setGlobalBlanks((prev) => ({ ...(prev || {}), ...patch }));
-    }
-  }
-
-
-
-  setBlankStatus?.((prev) => ({
-    ...(prev || {}),
-    ...nextStatus,
-  }));
-
-  setBlankAttemptsByName?.(nextAttemptsByName);
-  setCheckAttempts?.((n) => (n || 0) + 1);
-
-  const anyWrong = Object.values(nextStatus).some((x) => x === false);
-  if (!anyWrong) {
-    setActiveBlankHint?.(null);
-    setAiHelpByBlank?.({});
-  }
-};
-
-
   return (
     <>
       <div className={styles.codeCard}>
         <div className={styles.codeCardHeader}>
-          <div className={styles.codeCardTitle}>{String(block?.title || step?.codeTitle || "Example Code")}</div>
+          <div className={styles.codeCardTitle}>
+            {String(block?.title || step?.codeTitle || "Example Code")}
+          </div>
 
           <div className={styles.codeCardHeaderActions}>
             {answerKey && (
-              <button type="button" className={styles.copyBtn} onClick={checkBlanks}>
+              <button
+                type="button"
+                className={styles.copyBtn}
+                onClick={checkBlanks}
+              >
                 <span className={styles.btnIcon}>✓</span>
                 <span className={styles.copyBtnText}>Check Code</span>
               </button>
             )}
 
-            <button type="button" className={styles.copyBtn} onClick={() => copyCode(code)}>
+            <button
+              type="button"
+              className={styles.copyBtn}
+              onClick={() => copyCode(code)}
+            >
               <span className={styles.btnIcon}>⧉</span>
               <span className={styles.copyBtnText}>Copy to Editor</span>
             </button>
+
+            {hasEditRegions && (
+              <button
+                type="button"
+                className={styles.copyBtn}
+                onClick={() => {
+                  setPickEditMode((v) => !v);
+                  setActiveEditId(null);
+                }}
+                title="Rewrite a code component from scratch"
+              >
+                <span className={styles.btnIcon}>✎</span>
+                <span className={styles.copyBtnText}>Edit</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -972,7 +1353,100 @@ for (const [name, spec] of entries) {
         ) : (
           <div className={styles.codeBox}>{renderCodeFromTemplate()}</div>
         )}
+
+        {activeEditId && (
+          <div style={{ marginTop: 12 }}>
+            <div className={styles.codeCardHeader} style={{ borderRadius: 10 }}>
+              <div className={styles.codeCardTitle} style={{ fontSize: 14 }}>
+                Rewrite: {activeEditId}
+              </div>
+
+              <div className={styles.codeCardHeaderActions}>
+                <button
+                  type="button"
+                  className={styles.copyBtn}
+                  onClick={() => {
+                    if (!setGlobalBlanks || !activeEditId) return;
+
+                    const key = editPersistKey(editScopeKey, activeEditId);
+
+                    // delete only the custom override; blanks remain untouched
+                    setGlobalBlanks((prev) => {
+                      const next = { ...(prev || {}) };
+                      delete next[key];
+                      return next;
+                    });
+
+                    // close editor + exit pick mode
+                    setActiveEditId(null);
+                    setPickEditMode(false);
+
+                    // optional: clear draft
+                    setEditDraft("");
+                  }}
+                  title="Revert to the scaffolded version with blanks"
+                >
+                  <span className={styles.btnIcon}>↩</span>
+                  <span className={styles.copyBtnText}>Revert</span>
+                </button>
+
+                <button
+                  type="button"
+                  className={styles.copyBtn}
+                  onClick={() => {
+                    if (!setGlobalBlanks || !activeEditId) return;
+
+                    const key = editPersistKey(editScopeKey, activeEditId);
+                    setGlobalBlanks((prev) => ({
+                      ...(prev || {}),
+                      [key]: String(editDraft || ""),
+                    }));
+
+                    setActiveEditId(null);
+                    setPickEditMode(false);
+                  }}
+                >
+                  <span className={styles.btnIcon}>💾</span>
+                  <span className={styles.copyBtnText}>Save</span>
+                </button>
+
+                <button
+                  type="button"
+                  className={styles.copyBtn}
+                  onClick={() => {
+                    setActiveEditId(null);
+                    setPickEditMode(false);
+                  }}
+                >
+                  <span className={styles.btnIcon}>✕</span>
+                  <span className={styles.copyBtnText}>Close</span>
+                </button>
+              </div>
+            </div>
+            <div
+              style={{
+                marginLeft: activeEditId
+                  ? indentByEditId?.[activeEditId] ?? 0
+                  : 0,
+              }}
+            >
+              <CodeMirror
+                value={editDraft}
+                extensions={[cpp()]}
+                theme={oneDark}
+                onChange={(v) => setEditDraft(v)}
+                basicSetup={{
+                  lineNumbers: true,
+                  highlightActiveLine: true,
+                  bracketMatching: true,
+                  indentOnInput: true,
+                }}
+              />
+            </div>
+
       </div>
+        )}
+              </div>
 
       {showHintBox && (
         <div className={styles.blankHintBox}>
@@ -985,8 +1459,8 @@ for (const [name, spec] of entries) {
 
             {!aiText && !loadingThis && (
               <div className={styles.hintSubText}>
-                More AI hints are allowed after you’ve thought it through for at least 6 seconds. You are allowed up to 3
-                hints per blank.
+                More AI hints are allowed after you’ve thought it through for at
+                least 6 seconds. You are allowed up to 3 hints per blank.
               </div>
             )}
 

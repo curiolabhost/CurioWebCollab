@@ -22,7 +22,7 @@ function buildPopupInstructions() {
     "- No code blocks.",
     "- No solution steps.",
     "- Do NOT tell the user what to type or change.",
-    "- Avoid compiler jargon like \"undeclared identifier\" unless unavoidable.",
+    '- Avoid compiler jargon like "undeclared identifier" unless unavoidable.',
     "- Prefer human wording: spelling error, missing semicolon, wrong type, unmatched brace, etc.",
     "- Be concrete: include line number and symbol when possible.",
   ].join("\n");
@@ -38,7 +38,7 @@ function buildPopupMoreInstructions() {
     "- Must include location (line number) and the symbol when possible.",
     "",
     "Goal:",
-    "- Give an actionable fix hint (allowed): e.g., \"Did you mean INPUT?\"",
+    '- Give an actionable fix hint (allowed): e.g., "Did you mean INPUT?"',
     "- You may suggest the correct spelling or the intended Arduino keyword/function name.",
     "- Do NOT include code blocks or full rewritten code.",
     "",
@@ -120,8 +120,8 @@ function buildBlankHelpInstructions(hintStyle: string, hintLevel: number) {
     hintStyle === "gentle_nudge"
       ? "- Give a gentle nudge: point them to the concept and what to re-check."
       : hintStyle === "conceptual_explanation"
-      ? "- Give a conceptual explanation: explain what this blank represents and how to reason to the answer."
-      : "- Use a simple analogy to make the concept click, then guide them back to the blank.",
+        ? "- Give a conceptual explanation: explain what this blank represents and how to reason to the answer."
+        : "- Use a simple analogy to make the concept click, then guide them back to the blank.",
     "",
     `This is hint level ${hintLevel} (higher level = a bit more explicit).`,
     "",
@@ -137,15 +137,18 @@ export async function POST(req: Request) {
 
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
-    return new Response(sseEvent("error", { error: "Missing API KEY on server." }), {
-      status: 500,
-      headers: {
-        "Content-Type": "text/event-stream; charset=utf-8",
-        "Cache-Control": "no-cache, no-transform",
-        Connection: "keep-alive",
-        "X-Accel-Buffering": "no",
+    return new Response(
+      sseEvent("error", { error: "Missing API KEY on server." }),
+      {
+        status: 500,
+        headers: {
+          "Content-Type": "text/event-stream; charset=utf-8",
+          "Cache-Control": "no-cache, no-transform",
+          Connection: "keep-alive",
+          "X-Accel-Buffering": "no",
+        },
       },
-    });
+    );
   }
 
   const client = new OpenAI({ apiKey });
@@ -175,14 +178,23 @@ export async function POST(req: Request) {
     modeNorm === "popup"
       ? buildPopupInstructions()
       : modeNorm === "popup-more"
-      ? buildPopupMoreInstructions()
-      : modeNorm === "popup-lesson"
-      ? buildPopupLessonInstructions()
-      : modeNorm === "project-coach"
-      ? buildProjectCoachInstructions(Number(sentences) || 8, String(verbosity || "brief"))
-      : modeNorm === "blank-help"
-      ? buildBlankHelpInstructions(String(hintStyle || "gentle_nudge"), Number(hintLevel) || 1)
-      : buildVerifyInstructions(Number(sentences) || 3, String(verbosity || "brief"));
+        ? buildPopupMoreInstructions()
+        : modeNorm === "popup-lesson"
+          ? buildPopupLessonInstructions()
+          : modeNorm === "project-coach"
+            ? buildProjectCoachInstructions(
+                Number(sentences) || 8,
+                String(verbosity || "brief"),
+              )
+            : modeNorm === "blank-help"
+              ? buildBlankHelpInstructions(
+                  String(hintStyle || "gentle_nudge"),
+                  Number(hintLevel) || 1,
+                )
+              : buildVerifyInstructions(
+                  Number(sentences) || 3,
+                  String(verbosity || "brief"),
+                );
 
   // Build user text (include the word "json" explicitly when we request json_object format)
   let userText =
@@ -215,7 +227,14 @@ export async function POST(req: Request) {
       `Code:\n${code}`;
   }
 
-  console.log("[AI HELP] mode =", modeNorm, "sentences =", sentences, "verbosity =", verbosity);
+  console.log(
+    "[AI HELP] mode =",
+    modeNorm,
+    "sentences =",
+    sentences,
+    "verbosity =",
+    verbosity,
+  );
 
   const encoder = new TextEncoder();
 
@@ -223,25 +242,25 @@ export async function POST(req: Request) {
     modeNorm === "popup"
       ? 80
       : modeNorm === "popup-more"
-      ? 220
-      : modeNorm === "popup-lesson"
-      ? 520
-      : modeNorm === "blank-help"
-      ? 450
-      : modeNorm === "project-coach"
-      ? 1100
-      : 450;
+        ? 220
+        : modeNorm === "popup-lesson"
+          ? 520
+          : modeNorm === "blank-help"
+            ? 450
+            : modeNorm === "project-coach"
+              ? 1100
+              : 450;
 
   const temperature =
     modeNorm === "popup"
       ? 0.2
       : modeNorm === "popup-more"
-      ? 0.3
-      : modeNorm === "popup-lesson"
-      ? 0.4
-      : modeNorm === "blank-help"
-      ? 0.35
-      : 0.4;
+        ? 0.3
+        : modeNorm === "popup-lesson"
+          ? 0.4
+          : modeNorm === "blank-help"
+            ? 0.35
+            : 0.4;
 
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
@@ -265,7 +284,10 @@ export async function POST(req: Request) {
         for await (const event of openaiStream as any) {
           if (event.type === "response.output_text.delta") {
             const delta = event.delta ?? "";
-            if (delta) controller.enqueue(encoder.encode(sseEvent("token", { token: delta })));
+            if (delta)
+              controller.enqueue(
+                encoder.encode(sseEvent("token", { token: delta })),
+              );
           }
 
           if (event.type === "response.completed") {
@@ -273,8 +295,11 @@ export async function POST(req: Request) {
           }
 
           if (event.type === "response.failed" || event.type === "error") {
-            const msg = event?.error?.message || event?.message || "AI request failed.";
-            controller.enqueue(encoder.encode(sseEvent("error", { error: msg })));
+            const msg =
+              event?.error?.message || event?.message || "AI request failed.";
+            controller.enqueue(
+              encoder.encode(sseEvent("error", { error: msg })),
+            );
             controller.enqueue(encoder.encode(sseEvent("done", { ok: false })));
           }
         }

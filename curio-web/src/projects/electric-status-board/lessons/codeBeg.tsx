@@ -2040,1122 +2040,1160 @@ void __BLANK[71]__() {
     ],
   },
 
-7: {
-  phrase: "Putting it all together: full sketch structure",
-  advanced: false,
-  steps: [
+  7: {
+    phrase: "Putting it all together: full sketch structure",
+    advanced: false,
+    steps: [
+      {
+        id: 1,
+        title: "Step 1: Where each piece of code belongs",
+        codes: [
+          {
+            topicTitle: "Arduino sketch layout (important!)",
+            descBeforeCode: `Students often get stuck because the code is correct, but it’s placed in the wrong spot.
+
+  Use this simple rule:
+  @ **Libraries** go at the very top (they must be first).
+  @ **Constants (button pin, screen height) + global variables** (index, counters) go next (pins, arrays, counters, totals).
+  @ **setup()** is for one-time initialization when the Arduino turns on. (Wire, OLED begin, pinMode, welcome screen).
+  @ **loop()** runs forever to interact with users and to create dynamic content (later we will read buttons and decide which screen to show).
+  @ **Functions** can go below loop() (or above setup()) — but they must be **outside** setup() and loop().
+
+  Below is a “skeleton” that shows the correct order.`,
+            imageGridBeforeCode: {
+              columns: 1,
+              rows: 1,
+              width: 800,
+              height: 500,
+              items: [
+                { imageSrc: "/electric-status-board/arduinoStructure.png", label: "Sketch structure" }
+              ],
+            },
+            descBetweenBeforeAndCode: null,
+            title: "Arduino Sketch Structure",
+            code: `^^//<< ===== 1) Libraries (top of file) =====
+  #include <Wire.h> 
+  #include ...
+
+  //<< ===== 2) Constants + global variables (menus, pins, counters, display object) =====
+  #define WIDTH __BLANK[1]__....
+  Adafruit_SSD1306 display(...);
+  #define PREV __BLANK[4]__
+  #define ...
+
+  String menu[] = {...};
+  int ...
+
+  //<< ===== 3) setup() runs ONCE =====
+  void setup() {
+    Wire.begin();
+    display.begin(...);
+    pinMode(...);
+  }
+
+  //<< ===== 4) loop() runs FOREVER =====
+  void loop() {
+    //<< later: read buttons, update indexes, call menus/screens
+  }
+
+  //<< ===== 5) Functions go OUTSIDE setup/loop =====
+  void __BLANK[38]__() { ... }
+  void showStatusMenu() { ... }
+  void __BLANK[71]__() { ... }
+  ^^`,
+            answerKey: {},
+            blankExplanations: {},
+            blankDifficulties: {},
+            descAfterCode: `If your code compiles but “does nothing,” the most common cause is that a function exists but is never called (usually in setup() or loop()).`,
+            imageGridAfterCode: null,
+            descAfterImage: null,
+            hint: "Functions must be outside setup() and loop(). Call them from setup() or loop() to make them run.",
+          },
+        ],
+      },
+
+      {
+        id: 2,
+        title: "Step 2: What you have so far",
+        codes: [
+          {
+            topicTitle: "Full sketch so far",
+            descBeforeCode: `This code box shows everything you have built so far, in the correct order.
+
+  As a reminder:
+  @ Anything at the top (libraries/defines/arrays/counters) is **global** — every function can use it.
+  @ setup() is where you initialize the OLED + buttons and show the welcome screen once.
+  @ The menu functions are defined at the bottom and can be called later from loop().
+
+  This is a “checkpoint” — you are not adding new logic yet, just organizing what you already wrote.`,
+            imageGridBeforeCode: null,
+            descBetweenBeforeAndCode: null,
+            title: "Full Sketch Structure So Far",
+
+            code: `
+  ^^//<< ===================== 1) LIBRARIES =======================================
+  #include <Wire.h>
+  #include <Adafruit_GFX.h>
+  #include <Adafruit_SSD1306.h>
+  #include "RTClib.h"
+
+  //<< ===================== 2) CONSTANTS + GLOBAL VARIABLES =====================
+  //<< --- OLED setup ---
+  #define WIDTH  __BLANK[1]__
+  #define HEIGHT __BLANK[2]__
+  #define RESET  -1
+  Adafruit_SSD1306 display(WIDTH, __BLANK[3]__, &Wire, RESET);
+
+  RTC_DS3231 rtc;
+
+  #define PREV __BLANK[4]__
+  #define NEXT __BLANK[5]__
+  #define __BLANK[6]__  __BLANK[7]__
+
+  __BLANK[58]__ __BLANK[59]__ = __BLANK[60]__;  // variable to hold current state
+
+  //<< --- status options array ---
+  __BLANK[26]__ __BLANK[27]__ = {
+    __BLANK[28]__,
+    __BLANK[29]__,
+    __BLANK[30]__,
+    __BLANK[31]__,
+  };
+  __BLANK[32]__ __BLANK[33]__ = __BLANK[34]__;
+  __BLANK[35]__ __BLANK[36]__ = __BLANK[37]__;
+
+  //<< ---------- MAIN MENU ----------
+  __BLANK[70]__ __BLANK[61]__ = { //main menu array
+    __BLANK[62]__,
+    __BLANK[63]__,
+  };
+  __BLANK[64]__ __BLANK[65]__ = __BLANK[66]__; //total number of main menu options
+  __BLANK[67]__ __BLANK[68]__ = __BLANK[69]__; //tracks the current selected main menu option
+
+
+  //<< ===================== 3) SETUP (RUNS ONCE) ===============================
+
+  void setup() {
+    Wire.begin();
+    display.__BLANK[8]__(__BLANK[9]__, __BLANK[10]__);
+    display.__BLANK[CLEAR]__;         // to clear display
+    __BLANK[38]__;  // show welcome message
+
+    //<< set the modes for the buttons you are using 
+    pinMode(PREV, INPUT_PULLUP);
+    pinMode(__BLANK[11]__, __BLANK[12]__);
+    __BLANK[13]__(__BLANK[14]__,  __BLANK[15]__);
+  }
+
+  //<< ===================== 4) LOOP (RUNS FOREVER) ============================
+  void loop() {
+    //<< Your main code will go here
+    //<< Forever detect button presses
+    //<< Navigate through the main menu, status menu, and other screens from the button presses
+  }
+
+  //<< ===================== 5) FUNCTIONS (OUTSIDE setup/loop) =================
+  //<< Function to show welcome message on screen
+  __EDITOR[WELCOME]__
+
+  //<< Function to show chosen status on screen
+  __EDITOR[SHOW_CHOSEN_STATUS]__
+
+  //<< Function to show status menu on screen
+  void showStatusMenu() {
+    __BLANK[47]__;           // clear display
+    __BLANK[48]__;                   // set text size to 1
+    __BLANK[49]__;                   // set color to white
+    __BLANK[50]__;            // set cursor location to (0,0)
+    __BLANK[51]__;            // print your header
+    display.println("-------------------");       // feel free to change what this looks like 
+    int i = 0;
+    while (i < __BLANK[52]__) {
+      if (i == __BLANK[53]__) {
+        display.print(__BLANK[54]__);     // highlight the current status
+      } else {
+        display.print(__BLANK[55]__);     // keep spacing for non-selected
+      }
+      display.println(__BLANK[56]__);    // print the status text
+      __BLANK[57]__;                     // move to the next item
+    }
+    display.display();              // push everything to the screen
+  }^^
+            
+  //<< Function to show main menu on screen
+  void __BLANK[71]__() {
+    __BLANK[72]__;                 // clear display
+    __BLANK[73]__;                 // set text size to 1
+    __BLANK[74]__;                 // set text color to white
+    __BLANK[75]__;                 // set cursor to (0,0)
+    __BLANK[76]__;                 // print header 
+    display.println("----------------");
+
+    int i = 0;
+    while (i < __BLANK[77]__) { // loop through all main menu options
+      if (i == __BLANK[78]__) { // check if this is the selected option using the counter variable
+        __BLANK[79]__;     // highlight the current main menu option
+      } else {
+        __BLANK[80]__;       // keep spacing for non-selected
+      }
+      __BLANK[81]__;     // print the main menu option text
+      __BLANK[82]__;       // move to the next item
+    }
+    __BLANK[83]__;           // push everything to the screen
+  }        
+  ^^`,
+            answerKey: {},
+            blankExplanations: {},
+            blankDifficulties: {},
+
+            descAfterCode: `**Common placement mistakes (quick check):**
+  @ If you put arrays or counters **inside setup()**, other functions may not be able to use them.
+  @ If you put a function **inside loop()**, Arduino will error (functions must be outside).
+  @ If your menu function prints but nothing shows, make sure the function is actually **called** and that you eventually do a \`display.display()\` after drawing.
+
+  **What comes next:**
+  Next lesson, you’ll connect buttons to:
+  @ change __BLANK[65]__ to scroll the main menu
+  @ change __BLANK[68]__ to scroll the status menu
+  @ call the correct screen function based on the selection`,
+            imageGridAfterCode: null,
+            descAfterImage: null,
+            hint: "Use this as your checkpoint sketch. If something is missing, it’s usually because it was placed in the wrong section.",
+          },
+          {
+            topicTitle: "Try Simulating Main menu",
+            descBeforeCode:`Now that you have the full sketch structure, keep confirming it in the Curio simulator to see the displays working properly (without button navigation yet). Again, you can replace your Welcome Message Function with the Show Main Menu Function in the setup() to see the main menu on the screen for testing purposes.`,
+            imageGridBeforeCode: {
+              columns: 1,
+              width: 400,
+              height:350,
+              items: [
+                { imageSrc: "/electric-status-board/mainMenuBegWokwi.png",
+                  label: "Example: main menu options",
+                },
+              ],
+            },
+
+          }
+        ],
+      },
+    ],
+  },
+
+  8: {
+    phrase:"Using buttons for Menu",
+    advanced: false,
+    steps: [
+      {
+        id: 1,
+        optional: false,
+        title: "Step 1: How Buttons Work & INPUT_PULLUP",
+        desc: `Buttons are simple switches. When you press a button, it closes the circuit so current can flow. When you release it, the circuit opens again, and current stops.
+  On the Arduino, we use buttons as **digital inputs** that read either \`HIGH\` or \`LOW\`. However, if a pin is not connected to anything, it can "float" and randomly jump between \`HIGH\` and \`LOW\`. This is why we use **pull-up** (or pull-down) resistors.`,
+        codes:[{
+  topicTitle: "How Input Pullup works",
+  descBetweenBeforeAndCode:`**With** \`INPUT_PULLUP\`**:**
+  @ The Arduino turns on an internal resistor that pulls the pin up to \`HIGH\` when the button is not pressed.
+  @ The button is wired so that one side connects to the digital pin and the other side connects to GND. When the button is not pressed, the circuit is open, so the pin is not connected to ground. Because of the internal pull-up resistor, the pin stays at HIGH.
+  @ When the button is pressed, the switch closes and directly connects the pin to GND. This pulls the pin \`LOW\`, overpowering the weak internal pull-up resistor.
+
+  So the logic becomes:
+  @ **Not pressed → \`digitalRead(pin)\` is** __BLANK[INPUTHIGHLOW1]__
+  @ **Pressed → \`digitalRead(pin)\` is** __BLANK[INPUTHIGHLOW]__
+  We'll use this pattern for all the buttons in the FocusBoard project.`,
+
+  customComponent: InputPullupCircuitInteractive,
+
+        hint: "Remember: with INPUT_PULLUP, a pressed button reads LOW, and a released button reads HIGH.",
+        answerKey: {
+          INPUTHIGHLOW1: ["HIGH"],
+          INPUTHIGHLOW: ["LOW"],
+        },
+        blankExplanations: {
+          INPUTHIGHLOW1:
+            "Fill in whether the pin reads HIGH or LOW when the button is not pressed using INPUT_PULLUP logic.",
+          INPUTHIGHLOW:
+            "Fill in whether the pin reads HIGH or LOW when the button is pressed using INPUT_PULLUP logic.",
+        },
+        blankDifficulties: {
+          INPUTHIGHLOW1: "easy",
+          INPUTHIGHLOW: "easy",
+        },}]
+      },
+
+      {
+        id: 2,
+        optional: false,
+        title: "Step 2: Basic Button Code",
+        desc: "Here is a minimal example that reads a single button wired from pin 2 to GND, using `INPUT_PULLUP`.",
+        hint: "Notice that we print 'pressed' when the state is LOW, not HIGH.",
+        codes: [
+          {
+            code: `^^#define BUTTON 2^^                          // button is connected to digital pin 2
+
+  ^^void setup() {^^
+  ^^  pinMode(BUTTON, INPUT_PULLUP);^^           // button is defined as an INPUT with internal pull-up
+  ^^  Serial.begin(9600);^^
+  ^^}^^
+
+  ^^void loop() {^^
+  ^^  int state = digitalRead(BUTTON);^^         // read HIGH (1) or LOW (0)
+
+  ^^  if (state == LOW) {^^
+  ^^    Serial.println("Button pressed!");^^
+  ^^  } else {^^
+  ^^    Serial.println("Not pressed");^^
+  ^^  }^^
+
+  ^^  delay(100);^^                              // slow down the prints a bit
+  ^^}^^`,
+            descAfterCode: `Here's what is happening:
+
+  - \`pinMode(BUTTON, INPUT_PULLUP);\` enables the internal pull-up resistor and expects the button to be wired to GND.
+  - \`digitalRead(BUTTON)\` returns:
+    - \`LOW\` when the button is **pressed** (connected to GND),
+    - \`HIGH\` when the button is **not pressed**.
+  - The \`if\` statement checks for \`LOW\` to detect the press and prints out the correct message.`,
+          },
+        ],
+      },
+
+      {
+        id: 3,
+        optional: false,
+        title: "Step 3: Button Practice Exercises",
+        desc: "Now try a few different ways of using buttons so you’re ready for the menu page logic in the FocusBoard project.",
+        hint: "All of these still use INPUT_PULLUP and treat LOW as 'pressed'.",
+        codes: [
+          {
+            title: "Practice 1: Count Button Presses",
+            topicTitle: "Practice 1: Counting the number of Button presses",
+            descBeforeCode:
+              "Each time you press the button, increase a counter by 1 and print it to the Serial Monitor.",
+            code: `^^#define BUTTON 2^^
+  ^^int counter = 0;^^
+
+  ^^void setup() {^^
+  ^^  pinMode(BUTTON, __BLANK[BUTTON1]__);^^     // set button as INPUT_PULLUP
+  ^^  Serial.begin(9600);^^
+  ^^}^^
+
+  ^^void loop() {^^
+  ^^  if (digitalRead(BUTTON) == __BLANK[BUTTON2]__) {^^
+  ^^    counter = counter + __BLANK[BUTTON3]__;^^
+  ^^    Serial.println(counter);^^
+  ^^    delay(250);^^                            // small pause so one press doesn’t count many times
+  ^^  }^^
+  ^^}^^`,
+            answerKey: {
+              BUTTON1: ["INPUT_PULLUP"],
+              BUTTON2: ["LOW"],
+              BUTTON3: ["1"],
+            },
+            blankExplanations: {
+              BUTTON1:
+                "Choose the pin mode that enables the internal pull-up resistor for a button wired to GND.",
+              BUTTON2:
+                "With INPUT_PULLUP, choose the value that indicates the button is pressed.",
+              BUTTON3:
+                "Choose how much the counter should increase by for each press.",
+            },
+            blankDifficulties: {
+              BUTTON1: "easy",
+              BUTTON2: "easy",
+              BUTTON3: "easy",
+            },
+            descAfterCode:
+              "Try pressing the button multiple times and watch the numbers go up. This is similar to how we move through menu items with each press.",
+          },
+
+          {
+            topicTitle: "Practice 2: Tracking States with Button Presses",
+            title: "Practice 2: Toggle an LED On/Off",
+            descBeforeCode:
+              "Use the button to turn an LED on and off, switching state each time you press.",
+            code: `^^__BLANK[BUTTON4]__ BUTTON 2^^
+  ^^#define LED 13^^
+
+  ^^bool ledState = false;^^
+
+  ^^void setup() {^^
+  ^^  pinMode(__BLANK[BUTTON5]__, __BLANK[BUTTON6]__);^^   // pin mode for button
+  ^^  pinMode(LED, OUTPUT);^^                              // pin mode for LED which is an output
+  ^^}^^
+
+  ^^void loop() {^^
+  ^^  if (__BLANK[BUTTON7]__ == __BLANK[BUTTON8]__) {^^    // if button is pressed
+  ^^    ledState = !ledState;^^                            // flip true ↔ false
+  ^^    digitalWrite(LED, ledState);^^                     // write true/false to LED
+  ^^    delay(250);^^                                      // simple debounce
+  ^^  }^^
+  ^^}^^`,
+            answerKey: {
+              BUTTON4: ["#define"],
+              BUTTON5: ["BUTTON"],
+              BUTTON6: ["INPUT_PULLUP"],
+              BUTTON7: ["digitalRead(BUTTON)"],
+              BUTTON8: ["LOW"],
+            },
+            blankExplanations: {
+              BUTTON4:
+                "Write the preprocessor keyword used to define constants like pin labels.",
+              BUTTON5:
+                "Use the constant name you defined for the button pin.",
+              BUTTON6:
+                "Choose the button pin mode that uses the internal pull-up resistor.",
+              BUTTON7:
+                "Read the button pin so you can compare it to pressed/not-pressed.",
+              BUTTON8:
+                "With INPUT_PULLUP, choose the value that indicates a press.",
+            },
+            blankDifficulties: {
+              BUTTON4: "easy",
+              BUTTON5: "easy",
+              BUTTON6: "easy",
+              BUTTON7: "easy",
+              BUTTON8: "easy",
+            },
+            descAfterCode: `First press turns the LED **on**, second press turns it **off**, and so on. This idea of flipping a state is exactly how we’ll switch screens or modes later.
+  ----------------------------------          
+  **The \`!\` in code means "Not"**:
+  It flips the answer: 
+    - true → false  
+    - false → true
+  So, far example, \`!isRainy\`: if \`isRainy\` is true, then \`!isRainy\` becomes false or "not" isRainy.
+
+  **The \`!=\` symbol means "is NOT equal to"**:
+  So, score != 10 means "The score is not 10.
+
+  **Quick Summary**:
+    \`!\`  → NOT  
+    \`==\` → is equal  
+    \`!=\` → is NOT equal
+  ------------------------------------`,
+          },
+
+          {
+            title: "Practice 3: Cycle Through Options in an Array",
+            descBeforeCode:
+              "This practice is similar to your menu page. Each press moves to the next item in the list and wraps around when it reaches the end.",
+            code: `^^#define BUTTON 2^^
+
+  ^^String options[] = {"Red", "Blue", "Green", "Yellow"};^^
+  ^^int totalOptions = 4;^^
+  ^^int index = 0;^^
+
+  ^^void setup() {^^
+  ^^  __BLANK[BUTTON9]__  __BLANK[BUTTON10]__ = __BLANK[BUTTON11]__;^^   // define button pin number
+  ^^  Serial.begin(9600);^^
+  ^^  Serial.println(options[index]);^^
+  ^^}^^
+
+  ^^void loop() {^^
+  ^^  if (__BLANK[BUTTON12]__ == __BLANK[BUTTON13]__) {^^
+  ^^    index = index + 1;^^
+
+  ^^    if (index >= totalOptions) {^^
+  ^^      index = 0;^^
+  ^^    }^^
+
+  ^^    Serial.println(options[index]);^^
+  ^^    delay(250);^^
+  ^^  }^^
+  ^^}^^`,
+            answerKey: {
+              BUTTON9: ["int"],
+              BUTTON10: ["BUTTON"],
+              BUTTON11: ["10"],
+              BUTTON12: ["digitalRead(BUTTON)"],
+              BUTTON13: ["LOW"],
+            },
+            blankExplanations: {
+              BUTTON9:
+                "Choose a numeric type for storing a pin number constant.",
+              BUTTON10:
+                "Use the constant name for the button pin.",
+              BUTTON11:
+                "Choose a valid digital pin number for the button connection.",
+              BUTTON12:
+                "Read the button pin so you can check if it’s pressed.",
+              BUTTON13:
+                "With INPUT_PULLUP, choose the value that means pressed.",
+            },
+            blankDifficulties: {
+              BUTTON9: "easy",
+              BUTTON10: "easy",
+              BUTTON11: "easy",
+              BUTTON12: "easy",
+              BUTTON13: "easy",
+            },
+            descAfterCode:
+              "This is very close to how the focusBoard scrolls through different options. The variable `index` is like a menu cursor that moves and wraps around.",
+          },
+
+          {
+            title: "Practice 4: Only React to a Long Press",
+            descBeforeCode:
+              "Make your code respond only if the button is held down for about 2 seconds, not just tapped.",
+            code: `^^__BLANK[BUTTON14]__  __BLANK[BUTTON15]__  __BLANK[BUTTON16]__^^   // define button pin number
+
+  ^^void setup() {^^
+  ^^  pinMode(BUTTON, INPUT_PULLUP);^^
+  ^^  Serial.begin(9600);^^
+  ^^}^^
+
+  ^^void loop() {^^
+  ^^  if (digitalRead(BUTTON) == __BLANK[BUTTON17]__) {^^
+  ^^    delay(2000);^^
+
+  ^^    if (digitalRead(BUTTON) == __BLANK[BUTTON18]__) {^^
+  ^^      Serial.println("You held the button!");^^
+  ^^      delay(500);^^
+  ^^    }^^
+  ^^  }^^
+  ^^}^^`,
+            answerKey: {
+              BUTTON14: ["#define"],
+              BUTTON15: ["BUTTON"],
+              BUTTON16: ["10"],
+              BUTTON17: ["LOW"],
+              BUTTON18: ["LOW"],
+            },
+            blankExplanations: {
+              BUTTON14:
+                "Write the preprocessor keyword used to define constants.",
+              BUTTON15:
+                "Use the same constant name for the button pin.",
+              BUTTON16:
+                "Choose a valid digital pin number for the button connection.",
+              BUTTON17:
+                "With INPUT_PULLUP, choose the value that indicates the button is currently pressed.",
+              BUTTON18:
+                "If still pressed after waiting, this should match the pressed value again.",
+            },
+            blankDifficulties: {
+              BUTTON14: "easy",
+              BUTTON15: "easy",
+              BUTTON16: "easy",
+              BUTTON17: "easy",
+              BUTTON18: "easy",
+            },
+            descAfterCode:
+              "This pattern is useful for features like a 'long-press to reset' or special settings mode, where you don’t want a quick tap to trigger the action.",
+          },
+        ],
+      },
+
+      {
+        id: 4,
+        title: "Step 4: Create a Helper Function for Button",
+        desc:
+          "Real buttons can be noisy. When you press them, they may rapidly flicker between HIGH and LOW for a few milliseconds. This is called 'bouncing'. A **debounce helper function** makes sure we only react to a clean, stable press. The code will tell the computer to wait a little bit, and only count the button if it stays pressed.",
+        hint:
+          "The helper checks the pin, waits a bit, and checks again to confirm the press. Make sure variable names match in this example.",
+        codes: [
+          {
+            title: "Practice Code: Debouncing Function",
+            code: `^^#define button 4
+
+  //<< Example of how this function can be used in the void loop() 
+  void loop() {
+    if (__BLANK[HELPER1]__(__BLANK[BUTTONPINEX]__) == __BLANK[TRUEFALSE1]__) { //if the button helper function is (true/false)
+      Serial.println("Clean press detected!");
+      delay(200);
+    }
+  }
+
+  //<< Button Helper Function
+  bool __BLANK[84]__(int buttonPin) { //boolean function because it returns true or false. Not a void type. 
+    if (__BLANK[85]__) { //if high or low
+      __BLANK[86]__; //create a short delay
+      if (__BLANK[87]__) {//if hight or low
+        return __BLANK[88]__; //if the button is still pressed after a delay, return (true/false)
+      }
+      return __BLANK[89]__; //if not, return (true/false)
+    }
+  }^^
+
+  `,
+            answerKey: 
+              buildAnswerKey({
+              BUTTONPINEX: { type: "string", regex: "^(button|4)$" },
+              TRUEFALSE1: ["true", "false"],
+
+                84: K.id().bind("isPressed"),
+                85: ({
+                "type": "pattern",
+                "parts": [
+                  "digitalRead",
+                  "(",
+                  "pin",
+                  ")",
+                  "==",
+                  "LOW"
+                ],
+              } as const),
+                87: ({
+                "type": "pattern",
+                "parts": [
+                  "digitalRead",
+                  "(",
+                  "pin",
+                  ")",
+                  "==",
+                  "LOW"
+                ],
+              } as const),
+                86: ({
+                "type": "pattern",
+                "parts": [
+                  "delay",
+                  "(",
+                  {
+                    "p": "number"
+                  },
+                  ")"
+                ],
+              } as const),
+                88: K.str({ oneOf: ["true"] }),
+                89: K.str({ oneOf: ["false"] }),
+              }),
+
+            blankExplanations: {
+              84:
+                "This is the name of your helper function. It must be the same everywhere it appears (both where you call it in loop() and where you define it).",
+
+              BUTTONPINEX:
+                "This is the pin value being sent into the helper function. Most code uses the named constant you defined at the top, but some code may pass the raw pin number directly. Either way, it must represent the same physical button pin.",
+
+              TRUEFALSE1:
+                "The helper function returns a boolean value. Here you are comparing its result to a boolean literal to decide whether to print the message.",
+
+              85:
+                "This condition performs the *first read* of the input pin. It should read the state of the pin passed into the function and compare it to the electrical state that represents a press in your wiring style. Spacing around symbols does not matter, but the structure and variable name should be correct.",
+
+              86:
+                "This line adds a short wait to reduce button 'bounce' (rapid flickering of the signal right when you press). The exact number of milliseconds can vary, but it should be a small delay written with correct function-call syntax.",
+
+              87:
+                "This condition performs the *second read* after the short delay. The purpose is to confirm the button is still in the pressed-state, instead of reacting to a noisy flicker. It should use the same pin variable passed into the helper and compare the read value to a valid digital state.",
+                
+              88:
+                "This is the value returned when the press is confirmed after the second read. It should match the meaning of a clean press in your helper logic.",
+
+              89:
+                "This is the value returned when the press is not confirmed after the second read (meaning the signal changed or was not stable).",
+            },
+
+            blankDifficulties: {
+              84: "easy",
+              BUTTONPINEX: "easy",
+
+              TRUEFALSE1: "easy",
+              85: "medium",
+              86: "medium",
+
+              87: "medium",
+              88: "easy",
+              89: "medium",
+            },
+
+            descAfterCode:`The helper reads the pin, waits briefly, and checks again. If the pin is still in the pressed state, it returns true. This reduces false triggers from button bounce.
+  **Place this boolean function** __BLANK[84]__ **into your current code draft with the rest of your functions.**`,
+          },
+        ],
+      },
     {
-      id: 1,
-      title: "Step 1: Where each piece of code belongs",
-      codes: [
+        id: 5,
+        title: "Step 5: Toggling around the Main Menu",
+        hint: "Wrap-around rule: if index < 0 → go to last item. If index > last item → go back to 0.",
+
+        codes: [
+          {
+            topicTitle:`Navigation Logic Overview`,
+            descBeforeCode:`Now we will add the **navigation logic** for your **Main Menu**.
+
+  You already have a function called __BLANK[71]__() that draws the menu screen using:
+  - an index or counter variable __BLANK[68]__ to track which item is highlighted (the arrow)
+  - a total variable __BLANK[65]__ for how many menu items exist
+
+  So now our job is to:
+  1) Change __BLANK[68]__ when PREV / NEXT is pressed  
+  2) Wrap-around (so it loops from top to bottom and bottom to top)  
+  3) Use SELECT to enter the page that is currently highlighted
+
+  **Example (wrap-around idea):**
+  @ If __BLANK[68]__ is 0 and you press PREV, it should jump to the last menu item.
+  @ If __BLANK[68]__ is the last item and you press NEXT, it should jump back to 0.
+
+  In void loop, we would call __BLANK[71]__() so the OLED is constantly and forever updated by redrawing the arrow on the new item.`
+          },
+          {
+            topicTitle: `Using PREV button to toggle upward (Main Menu)`,
+            customComponent: TotalCountArrayInteractive,
+            descBeforeCode: `When the PREV button is pressed, we move **up** in the Main Menu.
+  **Here’s what this code should do:**
+  - Use your debouncing helper function __BLANK[84]__ to check PREV.
+  - Decrease __BLANK[68]__ by 1.
+  - If the index goes below 0, wrap it to the last menu item:
+    last index = __BLANK[65]__ - 1
+  - Call __BLANK[71]__() to redraw the menu with the new highlight.
+  - Add a short delay so it doesn’t scroll too fast.`,
+            code: `^^
+    if (__BLANK[84]__(PREV)) { //if the button helper function is true (previous button is truly pressed)
+      __BLANK[91]__ == __BLANK[92]__ - 1; //decrease the menu index by 1
+      if (__BLANK[93]__ < 0){ //if the menu index is less than 0
+        __BLANK[110]__ = __BLANK[94]__ - 1; //update the menu index to go to the last index so total number of menu items - 1
+      } 
+      __BLANK[95]__; //delay by a small count
+    }
+  ^^`,
+  blankDifficulties: {
+  },
+  blankExplanations: {
+
+  },
+        answerKey: buildAnswerKey({
+          90: K.same("isPressed"),
+          91: K.same("mainIndex"),
+          92: K.same("mainIndex"),
+          93: K.same("mainIndex"),
+          94: K.same("totalMain"),
+          95: ({
+          "type": "pattern",
+          "parts": [
+            "delay",
+            "(",
+            {
+              "p": "number"
+            },
+            ")"
+          ],
+        } as const),
+          110: K.same("mainIndex"),
+        }),
+          },
+          {
+            topicTitle: `Using NEXT button to toggle downward (Main Menu)`,
+            descBeforeCode: `When the NEXT button is pressed, we move **down** in the Main Menu.
+
+  **Here’s what this code should do:**
+  - Use your debouncing helper function __BLANK[84]__ to check NEXT.
+  - Increase __BLANK[68]__ by 1.
+  - If the index goes past the last item, wrap it back to 0.
+  - Call __BLANK[71]__() to redraw the menu.
+  - Add a short delay so it doesn’t scroll too fast.`,
+            code: `^^
+
+  if (__BLANK[96]__(__BLANK[97]__)) {  //if the button helper function is true (next button is truly pressed)
+    __BLANK[98]__; //increment the menu idex by one
+    if (__BLANK[99]__> __BLANK[100]__ - 1) { //if the menu index is equal to total main menu items (ex. Index is 2 and total items is 3. Remember index starts at 0)
+      mainIndex = 0; //wrap-around to first item (0th item) if past last item
+    }
+    __BLANK[101]__; //short delay
+  }
+  ^^`,// Block 2 (NEXT) — add to this code block object
+  // ,
+  answerKey: buildAnswerKey({
+    96: K.same("isPressed"),
+    97: K.str({ oneOf: ["NEXT"] }),
+    98: ({
+    "type": "pattern",
+    "parts": [
+      {
+        "p": "sameAs",
+        "target": "mainIndex"
+      },
+      {
+        "p": "oneOf",
+        "values": [
+          "=",
+          "++"
+        ]
+      },
+      {
+        "p": "sameAs",
+        "target": "mainIndex"
+      },
+      "+",
+      "1"
+    ],
+  } as const),
+    99: K.same("mainIndex"),
+    100: K.same("totalMain"),
+    111: K.same("mainIndex"),
+  }),
+          },
+          {
+            topicTitle: `Using SELECT button to enter the highlighted page`,
+            descBeforeCode: `When the SELECT button is pressed, we want to **enter** the page that is currently highlighted in the Main Menu.
+
+  **What this code should do:**
+  - Use your debouncing helper function __BLANK[84]__ to check SELECT.
+  - Look at __BLANK[68]__ to see which menu item is chosen.
+  - Change a screen variable (example: \`screenMode\`) so the program knows which screen to show next.
+  - Add a small delay so one press doesn’t count multiple times.`,
+            code: `^^
+  if (__BLANK[102]__) { //if the button helper function is true (select button is truly pressed)
+    if (__BLANK[103]__== 0) { //if the main menu index is 0 (first item in the menu)
+      __BLANK[104]__= __BLANK[105]__; // Screen variable becomes 1: Clock or Status, update the screen variable accordingly
+    } else if (__BLANK[106]__ == 1) { //if the main menu index is 1 (second item in the menu)
+      __BLANK[107]__ = __BLANK[108]__; // Screen variable becomes 2: Clock or Status
+    }
+    __BLANK[109]__; //short delay 
+  }
+  ^^`,
+        answerKey: buildAnswerKey({
+          102: ({
+          "type": "pattern",
+          "parts": [
+            {
+              "p": "sameAs",
+              "target": "isPressed"
+            },
+            "(",
+            {
+              "p": "sameAs",
+              "target": "SELECT"
+            },
+            ")"
+          ],
+        } as const),
+          103: K.same("mainIndex"),
+          104: K.same("screenMode"),
+          105: K.num({ oneOf: [1] }),
+          106: K.same("mainIndex"),
+          107: K.same("screenMode"),
+          108: K.num({ oneOf: [2] }),
+          109: ({
+          "type": "pattern",
+          "parts": [
+            "delay",
+            "(",
+            {
+              "p": "number"
+            },
+            ")"
+          ],
+        } as const),
+        }),
+          },
+        ],
+      },
+      {
+        id: 6,
+        title: "Step 6: Place the button toggle logic into the show main function",
+        desc: `Now that you have the three button logic blocks for (PREVIOUS / NEXT / SELECT), it's time to place them into your current code draft into the __BLANK[SHOWMAIN_FN]__ function. Placing the button navigation logic into the main menu function keeps your code organized and ensures that the menu responds correctly to user input every time the main menu screen is called.`,
+        codes:[{
+          topicTitle: `Warning and Tips for Placement`,
+          descBeforeCode: `Make sure to place the button logic blocks **after** the the initial drawing, so the screen is drawn first before checking for button presses. 
+  @ This way, the user sees the menu before interacting with it.
+  Make sure to place the code blocks in the **correct order**: PREV first, then NEXT, then SELECT last. 
+  @ This way, the user can navigate properly through the menu options.`,
+            code:`^^
+  void __BLANK[71]__{
+    __BLANK[72]__;
+    __BLANK[73]__;
+    __BLANK[74]__;
+    __BLANK[75]__;
+    __BLANK[76]__;
+    display.println("----------------");
+
+  int i = 0;
+  while (i < __BLANK[77]__) {
+    if (i == __BLANK[78]__) {
+      __BLANK[79]__;
+    } else {
+      __BLANK[80]__;
+    }
+
+    __BLANK[81]__;
+    __BLANK[82]__;
+  }
+
+    display.setCursor(0, 56);
+    display.println("SEL: Select");
+    __BLANK[83]__
+
+    // buttons
+    if (__BLANK[90]__(PREV)) {
+      __BLANK[91]__ == __BLANK[92]__ - 1;
+      if (__BLANK[93]__ < 0) __BLANK[110]__= __BLANK[94]__ - 1;
+      __BLANK[95]__;
+    }
+
+  if (__BLANK[96]__(__BLANK[97]__)) {
+    __BLANK[98]__;
+    if (__BLANK[99]__> __BLANK[100]__ - 1) {
+      __BLANK[111]__ = 0;
+    }
+    __BLANK[101]__;
+  }
+
+  if (__BLANK[102]__) {
+    if (__BLANK[103]__== 0) {
+      __BLANK[104]__= __BLANK[105]__; // Status -> goes to Status Menu function
+    } else if (__BLANK[106]__ == 1) {
+      __BLANK[107]__ = __BLANK[108]__; // Clock
+    }
+    __BLANK[109]__;
+  }`,
+
+  },
+  {
+          topicTitle:`Run Void Loop() to test`,
+          descBeforeCode:`After placing the button logic into your main menu function, ensure that your \`void loop()\` is able to call the main menu function repeatedly at appropriate times.
+  Just insert the following line into your currently empty main loop. Everything else remains the same.`,
+            code:`^^
+  void loop() {
+    __BLANK[SHOWMAINFUNC]__(); // Call the main menu function to display and interact with the menu
+  }
+  ^^`,
+  answerKey: buildAnswerKey({
+  SHOWMAINFUNC: K.same("showMainMenu")
+  }), 
+  blankExplanations:{
+    SHOWMAINFUNC:
+      "This should be the SAME main menu function name you used earlier. This ensures your loop calls the main menu function to display and interact with the menu.",
+  },
+  blankDifficulties:{
+    SHOWMAINFUNC: "easy"
+  }},
         {
-          topicTitle: "Arduino sketch layout (important!)",
-          descBeforeCode: `Students often get stuck because the code is correct, but it’s placed in the wrong spot.
-
-Use this simple rule:
-@ **Libraries** go at the very top (they must be first).
-@ **Constants (button pin, screen height) + global variables** (index, counters) go next (pins, arrays, counters, totals).
-@ **setup()** is for one-time initialization when the Arduino turns on. (Wire, OLED begin, pinMode, welcome screen).
-@ **loop()** runs forever to interact with users and to create dynamic content (later we will read buttons and decide which screen to show).
-@ **Functions** can go below loop() (or above setup()) — but they must be **outside** setup() and loop().
-
-Below is a “skeleton” that shows the correct order.`,
+          topicTitle:`Simulation with buttons`,
+          descBeforeCode:`After placing the button logic into your main menu function, test your code using the simulator.
+  @ This allows you to verify that the menu navigation works as expected without needing physical hardware.
+  @ Remember, all functions go to the bottom of your code draft, so ensure your main loop calls the main menu function appropriately to see the button interactions in action (see Lesson 7 for code structure).`,
+        }]
+      },
+      {
+        id: 7,
+        title: "Step 7: Toggling around the Status Menu",
+        desc: `Now that you have completed the Main Menu button navigation, it's time to implement similar button navigation logic for the **Status Menu**.
+  This involves using the PREV, NEXT, and SELECT buttons to scroll through and select different statuses from your status array.
+  Here’s a quick recap of what you need to do:
+  1) Change the status index variable __BLANK[36]__ when PREV / NEXT is pressed  
+  2) Wrap-around (so it loops from top to bottom and bottom to top)  
+  3) Use SELECT to confirm the currently highlighted status.`,
+        codes: [
+          {
+            topicTitle:`Status Menu Navigation Logic Overview`,
+            descBeforeCode:`You already have a function called showStatusMenu() that draws the status menu screen using:
+  @ an index or counter variable __BLANK[36]__ to track which status is highlighted (the arrow)
+  @ a total variable __BLANK[33]__ for how many statuses exist
+  Follow how you implemented the Main Menu button logic to create similar logic for the Status Menu.`,
           imageGridBeforeCode: {
             columns: 1,
             rows: 1,
             width: 800,
-            height: 500,
+            height: 400,
             items: [
-              { imageSrc: "/electric-status-board/arduinoStructure.png", label: "Sketch structure" }
+              { imageSrc: "/electric-status-board/loop.png", label: "Status menu loop concept" }
             ],
           },
-          descBetweenBeforeAndCode: null,
-          title: "Arduino Sketch Structure",
-          code: `^^//<< ===== 1) Libraries (top of file) =====
-#include <Wire.h> 
-#include ...
-
-//<< ===== 2) Constants + global variables (menus, pins, counters, display object) =====
-#define WIDTH __BLANK[1]__....
-Adafruit_SSD1306 display(...);
-#define PREV __BLANK[4]__
-#define ...
-
-String menu[] = {...};
-int ...
-
-//<< ===== 3) setup() runs ONCE =====
-void setup() {
-  Wire.begin();
-  display.begin(...);
-  pinMode(...);
-}
-
-//<< ===== 4) loop() runs FOREVER =====
-void loop() {
-  //<< later: read buttons, update indexes, call menus/screens
-}
-
-//<< ===== 5) Functions go OUTSIDE setup/loop =====
-void __BLANK[38]__() { ... }
-void showStatusMenu() { ... }
-void __BLANK[71]__() { ... }
-^^`,
-          answerKey: {},
-          blankExplanations: {},
-          blankDifficulties: {},
-          descAfterCode: `If your code compiles but “does nothing,” the most common cause is that a function exists but is never called (usually in setup() or loop()).`,
-          imageGridAfterCode: null,
-          descAfterImage: null,
-          hint: "Functions must be outside setup() and loop(). Call them from setup() or loop() to make them run.",
-        },
-      ],
-    },
-
-    {
-      id: 2,
-      title: "Step 2: What you have so far",
-      codes: [
-        {
-          topicTitle: "Full sketch so far",
-          descBeforeCode: `This code box shows everything you have built so far, in the correct order.
-
-As a reminder:
-@ Anything at the top (libraries/defines/arrays/counters) is **global** — every function can use it.
-@ setup() is where you initialize the OLED + buttons and show the welcome screen once.
-@ The menu functions are defined at the bottom and can be called later from loop().
-
-This is a “checkpoint” — you are not adding new logic yet, just organizing what you already wrote.`,
-          imageGridBeforeCode: null,
-          descBetweenBeforeAndCode: null,
-          title: "Full Sketch Structure So Far",
-
-          code: `
-^^//<< ===================== 1) LIBRARIES =======================================
-#include <Wire.h>
-#include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
-#include "RTClib.h"
-
-//<< ===================== 2) CONSTANTS + GLOBAL VARIABLES =====================
-//<< --- OLED setup ---
-#define WIDTH  __BLANK[1]__
-#define HEIGHT __BLANK[2]__
-#define RESET  -1
-Adafruit_SSD1306 display(WIDTH, __BLANK[3]__, &Wire, RESET);
-
-RTC_DS3231 rtc;
-
-#define PREV __BLANK[4]__
-#define NEXT __BLANK[5]__
-#define __BLANK[6]__  __BLANK[7]__
-
-__BLANK[58]__ __BLANK[59]__ = __BLANK[60]__;  // variable to hold current state
-
-//<< --- status options array ---
-__BLANK[26]__ __BLANK[27]__ = {
-  __BLANK[28]__,
-  __BLANK[29]__,
-  __BLANK[30]__,
-  __BLANK[31]__,
-};
-__BLANK[32]__ __BLANK[33]__ = __BLANK[34]__;
-__BLANK[35]__ __BLANK[36]__ = __BLANK[37]__;
-
-//<< ---------- MAIN MENU ----------
-__BLANK[70]__ __BLANK[61]__ = { //main menu array
-  __BLANK[62]__,
-  __BLANK[63]__,
-};
-__BLANK[64]__ __BLANK[65]__ = __BLANK[66]__; //total number of main menu options
-__BLANK[67]__ __BLANK[68]__ = __BLANK[69]__; //tracks the current selected main menu option
-
-
-//<< ===================== 3) SETUP (RUNS ONCE) ===============================
-
-void setup() {
-  Wire.begin();
-  display.__BLANK[8]__(__BLANK[9]__, __BLANK[10]__);
-  display.__BLANK[CLEAR]__;         // to clear display
-  __BLANK[38]__;  // show welcome message
-
-  //<< set the modes for the buttons you are using 
-  pinMode(PREV, INPUT_PULLUP);
-  pinMode(__BLANK[11]__, __BLANK[12]__);
-  __BLANK[13]__(__BLANK[14]__,  __BLANK[15]__);
-}
-
-//<< ===================== 4) LOOP (RUNS FOREVER) ============================
-void loop() {
-  //<< Your main code will go here
-  //<< Forever detect button presses
-  //<< Navigate through the main menu, status menu, and other screens from the button presses
-}
-
-//<< ===================== 5) FUNCTIONS (OUTSIDE setup/loop) =================
-//<< Function to show welcome message on screen
-__EDITOR[WELCOME]__
-
-//<< Function to show chosen status on screen
-__EDITOR[SHOW_CHOSEN_STATUS]__
-
-//<< Function to show status menu on screen
-void showStatusMenu() {
-  __BLANK[47]__;           // clear display
-  __BLANK[48]__;                   // set text size to 1
-  __BLANK[49]__;                   // set color to white
-  __BLANK[50]__;            // set cursor location to (0,0)
-  __BLANK[51]__;            // print your header
-  display.println("-------------------");       // feel free to change what this looks like 
-  int i = 0;
-  while (i < __BLANK[52]__) {
-    if (i == __BLANK[53]__) {
-      display.print(__BLANK[54]__);     // highlight the current status
-    } else {
-      display.print(__BLANK[55]__);     // keep spacing for non-selected
-    }
-    display.println(__BLANK[56]__);    // print the status text
-    __BLANK[57]__;                     // move to the next item
-  }
-  display.display();              // push everything to the screen
-}^^
-          
-//<< Function to show main menu on screen
-void __BLANK[71]__() {
-  __BLANK[72]__;                 // clear display
-  __BLANK[73]__;                 // set text size to 1
-  __BLANK[74]__;                 // set text color to white
-  __BLANK[75]__;                 // set cursor to (0,0)
-  __BLANK[76]__;                 // print header 
-  display.println("----------------");
-
-  int i = 0;
-  while (i < __BLANK[77]__) { // loop through all main menu options
-    if (i == __BLANK[78]__) { // check if this is the selected option using the counter variable
-      __BLANK[79]__;     // highlight the current main menu option
-    } else {
-      __BLANK[80]__;       // keep spacing for non-selected
-    }
-    __BLANK[81]__;     // print the main menu option text
-    __BLANK[82]__;       // move to the next item
-  }
-  __BLANK[83]__;           // push everything to the screen
-}        
-^^`,
-          answerKey: {},
-          blankExplanations: {},
-          blankDifficulties: {},
-
-          descAfterCode: `**Common placement mistakes (quick check):**
-@ If you put arrays or counters **inside setup()**, other functions may not be able to use them.
-@ If you put a function **inside loop()**, Arduino will error (functions must be outside).
-@ If your menu function prints but nothing shows, make sure the function is actually **called** and that you eventually do a \`display.display()\` after drawing.
-
-**What comes next:**
-Next lesson, you’ll connect buttons to:
-@ change __BLANK[65]__ to scroll the main menu
-@ change __BLANK[68]__ to scroll the status menu
-@ call the correct screen function based on the selection`,
-          imageGridAfterCode: null,
-          descAfterImage: null,
-          hint: "Use this as your checkpoint sketch. If something is missing, it’s usually because it was placed in the wrong section.",
-        },
-        {
-          topicTitle: "Try Simulating Main menu",
-          descBeforeCode:`Now that you have the full sketch structure, keep confirming it in the Curio simulator to see the displays working properly (without button navigation yet). Again, you can replace your Welcome Message Function with the Show Main Menu Function in the setup() to see the main menu on the screen for testing purposes.`,
-          imageGridBeforeCode: {
-            columns: 1,
-            width: 400,
-            height:350,
-            items: [
-              { imageSrc: "/electric-status-board/mainMenuBegWokwi.png",
-                label: "Example: main menu options",
-              },
-            ],
-          },
-
-        }
-      ],
-    },
-  ],
-},
-
-8: {
-  phrase:"Using buttons for Menu",
-  advanced: false,
-  steps: [
-    {
-      id: 1,
-      optional: false,
-      title: "Step 1: How Buttons Work & INPUT_PULLUP",
-      desc: `Buttons are simple switches. When you press a button, it closes the circuit so current can flow. When you release it, the circuit opens again, and current stops.
-On the Arduino, we use buttons as **digital inputs** that read either \`HIGH\` or \`LOW\`. However, if a pin is not connected to anything, it can "float" and randomly jump between \`HIGH\` and \`LOW\`. This is why we use **pull-up** (or pull-down) resistors.`,
-      codes:[{
-topicTitle: "How Input Pullup works",
-descBetweenBeforeAndCode:`**With** \`INPUT_PULLUP\`**:**
-@ The Arduino turns on an internal resistor that pulls the pin up to \`HIGH\` when the button is not pressed.
-@ The button is wired so that one side connects to the digital pin and the other side connects to GND. When the button is not pressed, the circuit is open, so the pin is not connected to ground. Because of the internal pull-up resistor, the pin stays at HIGH.
-@ When the button is pressed, the switch closes and directly connects the pin to GND. This pulls the pin \`LOW\`, overpowering the weak internal pull-up resistor.
-
-So the logic becomes:
-@ **Not pressed → \`digitalRead(pin)\` is** __BLANK[INPUTHIGHLOW1]__
-@ **Pressed → \`digitalRead(pin)\` is** __BLANK[INPUTHIGHLOW]__
-We'll use this pattern for all the buttons in the FocusBoard project.`,
-
-customComponent: InputPullupCircuitInteractive,
-
-      hint: "Remember: with INPUT_PULLUP, a pressed button reads LOW, and a released button reads HIGH.",
-      answerKey: {
-        INPUTHIGHLOW1: ["HIGH"],
-        INPUTHIGHLOW: ["LOW"],
-      },
-      blankExplanations: {
-        INPUTHIGHLOW1:
-          "Fill in whether the pin reads HIGH or LOW when the button is not pressed using INPUT_PULLUP logic.",
-        INPUTHIGHLOW:
-          "Fill in whether the pin reads HIGH or LOW when the button is pressed using INPUT_PULLUP logic.",
-      },
-      blankDifficulties: {
-        INPUTHIGHLOW1: "easy",
-        INPUTHIGHLOW: "easy",
-      },}]
-    },
-
-    {
-      id: 2,
-      optional: false,
-      title: "Step 2: Basic Button Code",
-      desc: "Here is a minimal example that reads a single button wired from pin 2 to GND, using `INPUT_PULLUP`.",
-      hint: "Notice that we print 'pressed' when the state is LOW, not HIGH.",
-      codes: [
-        {
-          code: `^^#define BUTTON 2^^                          // button is connected to digital pin 2
-
-^^void setup() {^^
-^^  pinMode(BUTTON, INPUT_PULLUP);^^           // button is defined as an INPUT with internal pull-up
-^^  Serial.begin(9600);^^
-^^}^^
-
-^^void loop() {^^
-^^  int state = digitalRead(BUTTON);^^         // read HIGH (1) or LOW (0)
-
-^^  if (state == LOW) {^^
-^^    Serial.println("Button pressed!");^^
-^^  } else {^^
-^^    Serial.println("Not pressed");^^
-^^  }^^
-
-^^  delay(100);^^                              // slow down the prints a bit
-^^}^^`,
-          descAfterCode: `Here's what is happening:
-
-- \`pinMode(BUTTON, INPUT_PULLUP);\` enables the internal pull-up resistor and expects the button to be wired to GND.
-- \`digitalRead(BUTTON)\` returns:
-  - \`LOW\` when the button is **pressed** (connected to GND),
-  - \`HIGH\` when the button is **not pressed**.
-- The \`if\` statement checks for \`LOW\` to detect the press and prints out the correct message.`,
-        },
-      ],
-    },
-
-    {
-      id: 3,
-      optional: false,
-      title: "Step 3: Button Practice Exercises",
-      desc: "Now try a few different ways of using buttons so you’re ready for the menu page logic in the FocusBoard project.",
-      hint: "All of these still use INPUT_PULLUP and treat LOW as 'pressed'.",
-      codes: [
-        {
-          title: "Practice 1: Count Button Presses",
-          topicTitle: "Practice 1: Counting the number of Button presses",
-          descBeforeCode:
-            "Each time you press the button, increase a counter by 1 and print it to the Serial Monitor.",
-          code: `^^#define BUTTON 2^^
-^^int counter = 0;^^
-
-^^void setup() {^^
-^^  pinMode(BUTTON, __BLANK[BUTTON1]__);^^     // set button as INPUT_PULLUP
-^^  Serial.begin(9600);^^
-^^}^^
-
-^^void loop() {^^
-^^  if (digitalRead(BUTTON) == __BLANK[BUTTON2]__) {^^
-^^    counter = counter + __BLANK[BUTTON3]__;^^
-^^    Serial.println(counter);^^
-^^    delay(250);^^                            // small pause so one press doesn’t count many times
-^^  }^^
-^^}^^`,
-          answerKey: {
-            BUTTON1: ["INPUT_PULLUP"],
-            BUTTON2: ["LOW"],
-            BUTTON3: ["1"],
-          },
-          blankExplanations: {
-            BUTTON1:
-              "Choose the pin mode that enables the internal pull-up resistor for a button wired to GND.",
-            BUTTON2:
-              "With INPUT_PULLUP, choose the value that indicates the button is pressed.",
-            BUTTON3:
-              "Choose how much the counter should increase by for each press.",
-          },
-          blankDifficulties: {
-            BUTTON1: "easy",
-            BUTTON2: "easy",
-            BUTTON3: "easy",
-          },
-          descAfterCode:
-            "Try pressing the button multiple times and watch the numbers go up. This is similar to how we move through menu items with each press.",
-        },
-
-        {
-          topicTitle: "Practice 2: Tracking States with Button Presses",
-          title: "Practice 2: Toggle an LED On/Off",
-          descBeforeCode:
-            "Use the button to turn an LED on and off, switching state each time you press.",
-          code: `^^__BLANK[BUTTON4]__ BUTTON 2^^
-^^#define LED 13^^
-
-^^bool ledState = false;^^
-
-^^void setup() {^^
-^^  pinMode(__BLANK[BUTTON5]__, __BLANK[BUTTON6]__);^^   // pin mode for button
-^^  pinMode(LED, OUTPUT);^^                              // pin mode for LED which is an output
-^^}^^
-
-^^void loop() {^^
-^^  if (__BLANK[BUTTON7]__ == __BLANK[BUTTON8]__) {^^    // if button is pressed
-^^    ledState = !ledState;^^                            // flip true ↔ false
-^^    digitalWrite(LED, ledState);^^                     // write true/false to LED
-^^    delay(250);^^                                      // simple debounce
-^^  }^^
-^^}^^`,
-          answerKey: {
-            BUTTON4: ["#define"],
-            BUTTON5: ["BUTTON"],
-            BUTTON6: ["INPUT_PULLUP"],
-            BUTTON7: ["digitalRead(BUTTON)"],
-            BUTTON8: ["LOW"],
-          },
-          blankExplanations: {
-            BUTTON4:
-              "Write the preprocessor keyword used to define constants like pin labels.",
-            BUTTON5:
-              "Use the constant name you defined for the button pin.",
-            BUTTON6:
-              "Choose the button pin mode that uses the internal pull-up resistor.",
-            BUTTON7:
-              "Read the button pin so you can compare it to pressed/not-pressed.",
-            BUTTON8:
-              "With INPUT_PULLUP, choose the value that indicates a press.",
-          },
-          blankDifficulties: {
-            BUTTON4: "easy",
-            BUTTON5: "easy",
-            BUTTON6: "easy",
-            BUTTON7: "easy",
-            BUTTON8: "easy",
-          },
-          descAfterCode: `First press turns the LED **on**, second press turns it **off**, and so on. This idea of flipping a state is exactly how we’ll switch screens or modes later.
-----------------------------------          
-**The \`!\` in code means "Not"**:
-It flips the answer: 
-  - true → false  
-  - false → true
-So, far example, \`!isRainy\`: if \`isRainy\` is true, then \`!isRainy\` becomes false or "not" isRainy.
-
-**The \`!=\` symbol means "is NOT equal to"**:
-So, score != 10 means "The score is not 10.
-
-**Quick Summary**:
-  \`!\`  → NOT  
-  \`==\` → is equal  
-  \`!=\` → is NOT equal
-------------------------------------`,
-        },
-
-        {
-          title: "Practice 3: Cycle Through Options in an Array",
-          descBeforeCode:
-            "This practice is similar to your menu page. Each press moves to the next item in the list and wraps around when it reaches the end.",
-          code: `^^#define BUTTON 2^^
-
-^^String options[] = {"Red", "Blue", "Green", "Yellow"};^^
-^^int totalOptions = 4;^^
-^^int index = 0;^^
-
-^^void setup() {^^
-^^  __BLANK[BUTTON9]__  __BLANK[BUTTON10]__ = __BLANK[BUTTON11]__;^^   // define button pin number
-^^  Serial.begin(9600);^^
-^^  Serial.println(options[index]);^^
-^^}^^
-
-^^void loop() {^^
-^^  if (__BLANK[BUTTON12]__ == __BLANK[BUTTON13]__) {^^
-^^    index = index + 1;^^
-
-^^    if (index >= totalOptions) {^^
-^^      index = 0;^^
-^^    }^^
-
-^^    Serial.println(options[index]);^^
-^^    delay(250);^^
-^^  }^^
-^^}^^`,
-          answerKey: {
-            BUTTON9: ["int"],
-            BUTTON10: ["BUTTON"],
-            BUTTON11: ["10"],
-            BUTTON12: ["digitalRead(BUTTON)"],
-            BUTTON13: ["LOW"],
-          },
-          blankExplanations: {
-            BUTTON9:
-              "Choose a numeric type for storing a pin number constant.",
-            BUTTON10:
-              "Use the constant name for the button pin.",
-            BUTTON11:
-              "Choose a valid digital pin number for the button connection.",
-            BUTTON12:
-              "Read the button pin so you can check if it’s pressed.",
-            BUTTON13:
-              "With INPUT_PULLUP, choose the value that means pressed.",
-          },
-          blankDifficulties: {
-            BUTTON9: "easy",
-            BUTTON10: "easy",
-            BUTTON11: "easy",
-            BUTTON12: "easy",
-            BUTTON13: "easy",
-          },
-          descAfterCode:
-            "This is very close to how the focusBoard scrolls through different options. The variable `index` is like a menu cursor that moves and wraps around.",
-        },
-
-        {
-          title: "Practice 4: Only React to a Long Press",
-          descBeforeCode:
-            "Make your code respond only if the button is held down for about 2 seconds, not just tapped.",
-          code: `^^__BLANK[BUTTON14]__  __BLANK[BUTTON15]__  __BLANK[BUTTON16]__^^   // define button pin number
-
-^^void setup() {^^
-^^  pinMode(BUTTON, INPUT_PULLUP);^^
-^^  Serial.begin(9600);^^
-^^}^^
-
-^^void loop() {^^
-^^  if (digitalRead(BUTTON) == __BLANK[BUTTON17]__) {^^
-^^    delay(2000);^^
-
-^^    if (digitalRead(BUTTON) == __BLANK[BUTTON18]__) {^^
-^^      Serial.println("You held the button!");^^
-^^      delay(500);^^
-^^    }^^
-^^  }^^
-^^}^^`,
-          answerKey: {
-            BUTTON14: ["#define"],
-            BUTTON15: ["BUTTON"],
-            BUTTON16: ["10"],
-            BUTTON17: ["LOW"],
-            BUTTON18: ["LOW"],
-          },
-          blankExplanations: {
-            BUTTON14:
-              "Write the preprocessor keyword used to define constants.",
-            BUTTON15:
-              "Use the same constant name for the button pin.",
-            BUTTON16:
-              "Choose a valid digital pin number for the button connection.",
-            BUTTON17:
-              "With INPUT_PULLUP, choose the value that indicates the button is currently pressed.",
-            BUTTON18:
-              "If still pressed after waiting, this should match the pressed value again.",
-          },
-          blankDifficulties: {
-            BUTTON14: "easy",
-            BUTTON15: "easy",
-            BUTTON16: "easy",
-            BUTTON17: "easy",
-            BUTTON18: "easy",
-          },
-          descAfterCode:
-            "This pattern is useful for features like a 'long-press to reset' or special settings mode, where you don’t want a quick tap to trigger the action.",
-        },
-      ],
-    },
-
-    {
-      id: 4,
-      title: "Step 4: Create a Helper Function for Button",
-      desc:
-        "Real buttons can be noisy. When you press them, they may rapidly flicker between HIGH and LOW for a few milliseconds. This is called 'bouncing'. A **debounce helper function** makes sure we only react to a clean, stable press. The code will tell the computer to wait a little bit, and only count the button if it stays pressed.",
-      hint:
-        "The helper checks the pin, waits a bit, and checks again to confirm the press. Make sure variable names match in this example.",
-      codes: [
-        {
-          title: "Practice Code: Debouncing Function",
-          code: `^^#define button 4
-
-//<< Example of how this function can be used in the void loop() 
-void loop() {
-  if (__BLANK[HELPER1]__(__BLANK[BUTTONPINEX]__) == __BLANK[TRUEFALSE1]__) { //if the button helper function is (true/false)
-    Serial.println("Clean press detected!");
-    delay(200);
-  }
-}
-
-//<< Button Helper Function
-bool __BLANK[84]__(int buttonPin) { //boolean function because it returns true or false. Not a void type. 
-  if (__BLANK[85]__) { //if high or low
-    __BLANK[86]__; //create a short delay
-    if (__BLANK[87]__) {//if hight or low
-      return __BLANK[88]__; //if the button is still pressed after a delay, return (true/false)
-    }
-    return __BLANK[89]__; //if not, return (true/false)
-  }
-}^^
-
-`,
-          answerKey: 
-            buildAnswerKey({
-            BUTTONPINEX: { type: "string", regex: "^(button|4)$" },
-            TRUEFALSE1: ["true", "false"],
-
-              84: K.id().bind("isPressed"),
-              85: ({
-              "type": "pattern",
-              "parts": [
-                "digitalRead",
-                "(",
-                "pin",
-                ")",
-                "==",
-                "LOW"
-              ],
-            } as const),
-              87: ({
-              "type": "pattern",
-              "parts": [
-                "digitalRead",
-                "(",
-                "pin",
-                ")",
-                "==",
-                "LOW"
-              ],
-            } as const),
-              86: ({
-              "type": "pattern",
-              "parts": [
-                "delay",
-                "(",
-                {
-                  "p": "number"
-                },
-                ")"
-              ],
-            } as const),
-              88: K.str({ oneOf: ["true"] }),
-              89: K.str({ oneOf: ["false"] }),
-            }),
-
-          blankExplanations: {
-            84:
-              "This is the name of your helper function. It must be the same everywhere it appears (both where you call it in loop() and where you define it).",
-
-            BUTTONPINEX:
-              "This is the pin value being sent into the helper function. Most code uses the named constant you defined at the top, but some code may pass the raw pin number directly. Either way, it must represent the same physical button pin.",
-
-            TRUEFALSE1:
-              "The helper function returns a boolean value. Here you are comparing its result to a boolean literal to decide whether to print the message.",
-
-            85:
-              "This condition performs the *first read* of the input pin. It should read the state of the pin passed into the function and compare it to the electrical state that represents a press in your wiring style. Spacing around symbols does not matter, but the structure and variable name should be correct.",
-
-            86:
-              "This line adds a short wait to reduce button 'bounce' (rapid flickering of the signal right when you press). The exact number of milliseconds can vary, but it should be a small delay written with correct function-call syntax.",
-
-            87:
-              "This condition performs the *second read* after the short delay. The purpose is to confirm the button is still in the pressed-state, instead of reacting to a noisy flicker. It should use the same pin variable passed into the helper and compare the read value to a valid digital state.",
-              
-            88:
-              "This is the value returned when the press is confirmed after the second read. It should match the meaning of a clean press in your helper logic.",
-
-            89:
-              "This is the value returned when the press is not confirmed after the second read (meaning the signal changed or was not stable).",
-          },
-
-          blankDifficulties: {
-            84: "easy",
-            BUTTONPINEX: "easy",
-
-            TRUEFALSE1: "easy",
-            85: "medium",
-            86: "medium",
-
-            87: "medium",
-            88: "easy",
-            89: "medium",
-          },
-
-          descAfterCode:`The helper reads the pin, waits briefly, and checks again. If the pin is still in the pressed state, it returns true. This reduces false triggers from button bounce.
-**Place this boolean function** __BLANK[84]__ **into your current code draft with the rest of your functions.**`,
-        },
-      ],
-    },
-  {
-      id: 5,
-      title: "Step 5: Toggling around the Main Menu",
-      hint: "Wrap-around rule: if index < 0 → go to last item. If index > last item → go back to 0.",
-
-      codes: [
-        {
-          topicTitle:`Navigation Logic Overview`,
-          descBeforeCode:`Now we will add the **navigation logic** for your **Main Menu**.
-
-You already have a function called __BLANK[71]__() that draws the menu screen using:
-- an index or counter variable __BLANK[68]__ to track which item is highlighted (the arrow)
-- a total variable __BLANK[65]__ for how many menu items exist
-
-So now our job is to:
-1) Change __BLANK[68]__ when PREV / NEXT is pressed  
-2) Wrap-around (so it loops from top to bottom and bottom to top)  
-3) Use SELECT to enter the page that is currently highlighted
-
-**Example (wrap-around idea):**
-@ If __BLANK[68]__ is 0 and you press PREV, it should jump to the last menu item.
-@ If __BLANK[68]__ is the last item and you press NEXT, it should jump back to 0.
-
-In void loop, we would call __BLANK[71]__() so the OLED is constantly and forever updated by redrawing the arrow on the new item.`
-        },
-        {
-          topicTitle: `Using PREV button to toggle upward (Main Menu)`,
-          customComponent: TotalCountArrayInteractive,
-          descBeforeCode: `When the PREV button is pressed, we move **up** in the Main Menu.
-**Here’s what this code should do:**
-- Use your debouncing helper function __BLANK[84]__ to check PREV.
-- Decrease __BLANK[68]__ by 1.
-- If the index goes below 0, wrap it to the last menu item:
-  last index = __BLANK[65]__ - 1
-- Call __BLANK[71]__() to redraw the menu with the new highlight.
-- Add a short delay so it doesn’t scroll too fast.`,
-          code: `^^
-  if (__BLANK[84]__(PREV)) { //if the button helper function is true (previous button is truly pressed)
-    __BLANK[91]__ == __BLANK[92]__ - 1; //decrease the menu index by 1
-    if (__BLANK[93]__ < 0){ //if the menu index is less than 0
-      __BLANK[110]__ = __BLANK[94]__ - 1; //update the menu index to go to the last index so total number of menu items - 1
-    } 
-    __BLANK[95]__; //delay by a small count
-  }
-^^`,
-blankDifficulties: {
-},
-blankExplanations: {
-
-},
-      answerKey: buildAnswerKey({
-        90: K.same("isPressed"),
-        91: K.same("mainIndex"),
-        92: K.same("mainIndex"),
-        93: K.same("mainIndex"),
-        94: K.same("totalMain"),
-        95: ({
-        "type": "pattern",
-        "parts": [
-          "delay",
-          "(",
-          {
-            "p": "number"
-          },
-          ")"
-        ],
-      } as const),
-        110: K.same("mainIndex"),
-      }),
-        },
-        {
-          topicTitle: `Using NEXT button to toggle downward (Main Menu)`,
-          descBeforeCode: `When the NEXT button is pressed, we move **down** in the Main Menu.
-
-**Here’s what this code should do:**
-- Use your debouncing helper function __BLANK[84]__ to check NEXT.
-- Increase __BLANK[68]__ by 1.
-- If the index goes past the last item, wrap it back to 0.
-- Call __BLANK[71]__() to redraw the menu.
-- Add a short delay so it doesn’t scroll too fast.`,
-          code: `^^
-
-if (__BLANK[96]__(__BLANK[97]__)) {  //if the button helper function is true (next button is truly pressed)
-  __BLANK[98]__; //increment the menu idex by one
-  if (__BLANK[99]__> __BLANK[100]__ - 1) { //if the menu index is equal to total main menu items (ex. Index is 2 and total items is 3. Remember index starts at 0)
-    mainIndex = 0; //wrap-around to first item (0th item) if past last item
-  }
-  __BLANK[101]__; //short delay
-}
-^^`,// Block 2 (NEXT) — add to this code block object
-// ,
-answerKey: buildAnswerKey({
-  96: K.same("isPressed"),
-  97: K.str({ oneOf: ["NEXT"] }),
-  98: ({
-  "type": "pattern",
-  "parts": [
-    {
-      "p": "sameAs",
-      "target": "mainIndex"
-    },
-    {
-      "p": "oneOf",
-      "values": [
-        "=",
-        "++"
-      ]
-    },
-    {
-      "p": "sameAs",
-      "target": "mainIndex"
-    },
-    "+",
-    "1"
-  ],
-} as const),
-  99: K.same("mainIndex"),
-  100: K.same("totalMain"),
-  111: K.same("mainIndex"),
-}),
-        },
-        {
-          topicTitle: `Using SELECT button to enter the highlighted page`,
-          descBeforeCode: `When the SELECT button is pressed, we want to **enter** the page that is currently highlighted in the Main Menu.
-
-**What this code should do:**
-- Use your debouncing helper function __BLANK[84]__ to check SELECT.
-- Look at __BLANK[68]__ to see which menu item is chosen.
-- Change a screen variable (example: \`screenMode\`) so the program knows which screen to show next.
-- Add a small delay so one press doesn’t count multiple times.`,
-          code: `^^
-if (__BLANK[102]__) { //if the button helper function is true (select button is truly pressed)
-  if (__BLANK[103]__== 0) { //if the main menu index is 0 (first item in the menu)
-    __BLANK[104]__= __BLANK[105]__; // Screen variable becomes 1: Clock or Status, update the screen variable accordingly
-  } else if (__BLANK[106]__ == 1) { //if the main menu index is 1 (second item in the menu)
-    __BLANK[107]__ = __BLANK[108]__; // Screen variable becomes 2: Clock or Status
-  }
-  __BLANK[109]__; //short delay 
-}
-^^`,
-      answerKey: buildAnswerKey({
-        102: ({
-        "type": "pattern",
-        "parts": [
-          {
-            "p": "sameAs",
-            "target": "isPressed"
-          },
-          "(",
-          {
-            "p": "sameAs",
-            "target": "SELECT"
-          },
-          ")"
-        ],
-      } as const),
-        103: K.same("mainIndex"),
-        104: K.same("screenMode"),
-        105: K.num({ oneOf: [1] }),
-        106: K.same("mainIndex"),
-        107: K.same("screenMode"),
-        108: K.num({ oneOf: [2] }),
-        109: ({
-        "type": "pattern",
-        "parts": [
-          "delay",
-          "(",
-          {
-            "p": "number"
-          },
-          ")"
-        ],
-      } as const),
-      }),
-        },
-      ],
-    },
-    {
-      id: 6,
-      title: "Step 6: Place the button toggle logic into the show main function",
-      desc: `Now that you have the three button logic blocks for (PREVIOUS / NEXT / SELECT), it's time to place them into your current code draft into the __BLANK[SHOWMAIN_FN]__ function. Placing the button navigation logic into the main menu function keeps your code organized and ensures that the menu responds correctly to user input every time the main menu screen is called.`,
-      codes:[{
-        topicTitle: `Warning and Tips for Placement`,
-        descBeforeCode: `Make sure to place the button logic blocks **after** the the initial drawing, so the screen is drawn first before checking for button presses. 
-@ This way, the user sees the menu before interacting with it.
-Make sure to place the code blocks in the **correct order**: PREV first, then NEXT, then SELECT last. 
-@ This way, the user can navigate properly through the menu options.`,
           code:`^^
-void __BLANK[71]__{
-  __BLANK[72]__;
-  __BLANK[73]__;
-  __BLANK[74]__;
-  __BLANK[75]__;
-  __BLANK[76]__;
-  display.println("----------------");
+  void showStatusMenu() {
+    __BLANK[47]__;
+    __BLANK[48]__;
+    __BLANK[49]__;
+    __BLANK[50]__;
+    __BLANK[51]__;
+    display.println("----------------");     
 
-int i = 0;
-while (i < __BLANK[77]__) {
-  if (i == __BLANK[78]__) {
-    __BLANK[79]__;
-  } else {
-    __BLANK[80]__;
-  }
+    int i = 0;
+    while (i < __BLANK[52]__) {
+      if (i == __BLANK[53]__) {
+        display.print(__BLANK[54]__);
+      }else{
+      display.print(__BLANK[55]__);
+      }
+      display.println(__BLANK[56]__);
+      __BLANK[57]__;
+    }
+    display.display();
+    
+    //<< --- Place the button logic blocks here in the correct order ---
+    if (__BLANK[112]__) {    // If the PREV button is pressed.
+      __BLANK[113]__ = __BLANK[114]__; // Back to main menu
+      __BLANK[115]__; // short delay
+    }
 
-  __BLANK[81]__;
-  __BLANK[82]__;
-}
+    else if (__BLANK[116]__) {        // If the NEXT button is pressed.
+      __BLANK[117]__; // Increase the status index by 1
+      if (__BLANK[118]__) { // If the status index is "greater than" the last index (total statuses - 1)
+        __BLANK[119]__ = __BLANK[120]__;
+      }
+    __BLANK[121]__; // short delay
+    }
 
-  display.setCursor(0, 56);
-  display.println("SEL: Select");
-  __BLANK[83]__
-
-  // buttons
-  if (__BLANK[90]__(PREV)) {
-    __BLANK[91]__ == __BLANK[92]__ - 1;
-    if (__BLANK[93]__ < 0) __BLANK[110]__= __BLANK[94]__ - 1;
-    __BLANK[95]__;
-  }
-
-if (__BLANK[96]__(__BLANK[97]__)) {
-  __BLANK[98]__;
-  if (__BLANK[99]__> __BLANK[100]__ - 1) {
-    __BLANK[111]__ = 0;
-  }
-  __BLANK[101]__;
-}
-
-if (__BLANK[102]__) {
-  if (__BLANK[103]__== 0) {
-    __BLANK[104]__= __BLANK[105]__; // Status -> goes to Status Menu function
-  } else if (__BLANK[106]__ == 1) {
-    __BLANK[107]__ = __BLANK[108]__; // Clock
-  }
-  __BLANK[109]__;
-}`,
-
-},
-{
-        topicTitle:`Run Void Loop() to test`,
-        descBeforeCode:`After placing the button logic into your main menu function, ensure that your \`void loop()\` is able to call the main menu function repeatedly at appropriate times.
-Just insert the following line into your currently empty main loop. Everything else remains the same.`,
-          code:`^^
-void loop() {
-  __BLANK[SHOWMAINFUNC]__(); // Call the main menu function to display and interact with the menu
-}
-^^`,
-answerKey: buildAnswerKey({
- SHOWMAINFUNC: K.same("showMainMenu")
-}), 
-blankExplanations:{
-  SHOWMAINFUNC:
-    "This should be the SAME main menu function name you used earlier. This ensures your loop calls the main menu function to display and interact with the menu.",
-},
-blankDifficulties:{
-  SHOWMAINFUNC: "easy"
-}},
-      {
-        topicTitle:`Simulation with buttons`,
-        descBeforeCode:`After placing the button logic into your main menu function, test your code using the simulator.
-@ This allows you to verify that the menu navigation works as expected without needing physical hardware.
-@ Remember, all functions go to the bottom of your code draft, so ensure your main loop calls the main menu function appropriately to see the button interactions in action (see Lesson 7 for code structure).`,
-      }]
-    },
-    {
-      id: 7,
-      title: "Step 7: Toggling around the Status Menu",
-      desc: `Now that you have completed the Main Menu button navigation, it's time to implement similar button navigation logic for the **Status Menu**.
-This involves using the PREV, NEXT, and SELECT buttons to scroll through and select different statuses from your status array.
-Here’s a quick recap of what you need to do:
-1) Change the status index variable __BLANK[36]__ when PREV / NEXT is pressed  
-2) Wrap-around (so it loops from top to bottom and bottom to top)  
-3) Use SELECT to confirm the currently highlighted status.`,
-      codes: [
-        {
-          topicTitle:`Status Menu Navigation Logic Overview`,
-          descBeforeCode:`You already have a function called showStatusMenu() that draws the status menu screen using:
-@ an index or counter variable __BLANK[36]__ to track which status is highlighted (the arrow)
-@ a total variable __BLANK[33]__ for how many statuses exist
-Follow how you implemented the Main Menu button logic to create similar logic for the Status Menu.`,
-        imageGridBeforeCode: {
-          columns: 1,
-          rows: 1,
-          width: 800,
-          height: 400,
-          items: [
-            { imageSrc: "/electric-status-board/loop.png", label: "Status menu loop concept" }
+    else if (__BLANK[122]__) {      // If the SELECT button is pressed
+      __BLANK[123]__ = __BLANK[124]__;  // Update the screen variable number to show confirmed status screen
+      __BLANK[125]__(); // short delay
+    }
+  }^^`,
+        answerKey: buildAnswerKey({
+          112: ({
+          "type": "pattern",
+          "parts": [
+            {
+              "p": "sameAs",
+              "target": "isPressed"
+            },
+            "(",
+            "PREV",
+            ")"
           ],
-        },
-        code:`^^
-void showStatusMenu() {
-  __BLANK[47]__;
-  __BLANK[48]__;
-  __BLANK[49]__;
-  __BLANK[50]__;
-  __BLANK[51]__;
-  display.println("----------------");     
-
-  int i = 0;
-  while (i < __BLANK[52]__) {
-    if (i == __BLANK[53]__) {
-      display.print(__BLANK[54]__);
-    }else{
-    display.print(__BLANK[55]__);
-    }
-    display.println(__BLANK[56]__);
-    __BLANK[57]__;
-  }
-  display.display();
+        } as const),
+          113: K.id().bind("screenMode"),
+          114: K.num({ oneOf: [0] }),
+          116: ({
+          "type": "pattern",
+          "parts": [
+            {
+              "p": "sameAs",
+              "target": "isPressed"
+            },
+            "(",
+            "NEXT",
+            ")"
+          ],
+        } as const),
+          122: ({
+          "type": "pattern",
+          "parts": [
+            {
+              "p": "sameAs",
+              "target": "isPressed"
+            },
+            "(",
+            {
+              "p": "sameAs",
+              "target": "SELECT"
+            },
+            ")"
+          ],
+        } as const),
+          115: ({
+          "type": "pattern",
+          "parts": [
+            "delay",
+            "(",
+            {
+              "p": "number"
+            },
+            ")"
+          ],
+        } as const),
+          121: ({
+          "type": "pattern",
+          "parts": [
+            "delay",
+            "(",
+            {
+              "p": "number"
+            },
+            ")"
+          ],
+        } as const),
+          125: ({
+          "type": "pattern",
+          "parts": [
+            "delay",
+            "(",
+            {
+              "p": "number"
+            },
+            ")"
+          ],
+        } as const),
+          117: ({
+          "type": "pattern",
+          "parts": [
+            {
+              "p": "sameAs",
+              "target": "statusIndex"
+            },
+            {
+              "p": "oneOf",
+              "values": [
+                "==",
+                "++"
+              ]
+            },
+            {
+              "p": "sameAs",
+              "target": "statusIndex"
+            },
+            "+",
+            "1"
+          ],
+        } as const),
+          118: ({
+          "type": "pattern",
+          "parts": [
+            {
+              "p": "sameAs",
+              "target": "statusIndex"
+            },
+            ">",
+            {
+              "p": "sameAs",
+              "target": "totalIndex"
+            },
+            "-",
+            "1"
+          ],
+        } as const),
+          119: K.same("statusIndex"),
+          123: K.same("screenMode"),
+          124: K.num({ oneOf: [3] }),
+        }),
+          },
+          {
+            topicTitle:`Simulation with Status Menu buttons`,
+            descBeforeCode:`After placing the button logic into your status menu function, test your code using the simulator. Replace your main menu function call in \`void loop()\` with the status menu function to see the button interactions in action.`,
+          }
+        ],
+      }
+    ]},
   
-  //<< --- Place the button logic blocks here in the correct order ---
-  if (__BLANK[112]__) {    // If the PREV button is pressed.
-    __BLANK[113]__ = __BLANK[114]__; // Back to main menu
-    __BLANK[115]__; // short delay
-  }
+  9:{
+    phrase:"Navigating across multiple screens",
+    advanced: false,
+    steps: [
+      {
+        id: 1,
+        title: "Navigation with void loop",
+        desc: "Now that we got all the functions we need to at least navigate through the main menu, status menu, and status screen, we can check that everything works now.",
+        codes: [{
+          topicTitle: "Fixing up the loop",
+          descBeforeCode: `When the program finishes \`setup()\`, it enters \`loop().\` The first screen shown is the Main Menu, because the screen mode variable is set to 0.
+Earlier, we used a variable called __BLANK[59]__ to store this screen mode number. 
 
-  else if (__BLANK[116]__) {        // If the NEXT button is pressed.
-    __BLANK[117]__; // Increase the status index by 1
-    if (__BLANK[118]__) { // If the status index is "greater than" the last index (total statuses - 1)
-      __BLANK[119]__ = __BLANK[120]__;
-    }
-   __BLANK[121]__; // short delay
+**You can think of this number like a TV channel:**
+If you are on channel 0, the Arduino keeps showing the Main Menu again and again inside \`loop()\`.
+Pressing the \`NEXT\` and \`PREV\` buttons only moves your selection inside the menu, but does not change the channel.
+When you press the "SELECT" button, the program changes the channel number using the debounce button function.
+Once the channel number changes, \`loop()\` will enter a different if statement, and a new screen will appear — just like switching to a new TV channel.`,
+          code:`^^
+void loop(){
+  if (__BLANK[59]__ == 0){
+    __BLANK[71]__; //go to main menu screen
   }
+  if (__BLANK[SCREENM1]__ == 1){ //if the screen mode is 1
+    __BLANK[SCREENM2]__; //go to a different screen
+  }
+  if (__BLANK[SCREENM3]__ == 2){ //if the screen mode is 2
+    __BLANK[SCREENM4]__; //go to a different screen 
+  }
+}^^
+`},{
+  topicTitle: "Simulate the project!",
+  descBeforeCode: `Update your void loop() and simulate the whole code we built so far. Make sure your code structure is correct. You should be able to use your buttons to go to different screens we made so far!`,
 
-  else if (__BLANK[122]__) {      // If the SELECT button is pressed
-    __BLANK[123]__ = __BLANK[124]__;  // Update the screen variable number to show confirmed status screen
-    __BLANK[125]__(); // short delay
-  }
-}^^`,
-      answerKey: buildAnswerKey({
-        112: ({
-        "type": "pattern",
-        "parts": [
-          {
-            "p": "sameAs",
-            "target": "isPressed"
-          },
-          "(",
-          "PREV",
-          ")"
-        ],
-      } as const),
-        113: K.id().bind("screenMode"),
-        114: K.num({ oneOf: [0] }),
-        116: ({
-        "type": "pattern",
-        "parts": [
-          {
-            "p": "sameAs",
-            "target": "isPressed"
-          },
-          "(",
-          "NEXT",
-          ")"
-        ],
-      } as const),
-        122: ({
-        "type": "pattern",
-        "parts": [
-          {
-            "p": "sameAs",
-            "target": "isPressed"
-          },
-          "(",
-          {
-            "p": "sameAs",
-            "target": "SELECT"
-          },
-          ")"
-        ],
-      } as const),
-        115: ({
-        "type": "pattern",
-        "parts": [
-          "delay",
-          "(",
-          {
-            "p": "number"
-          },
-          ")"
-        ],
-      } as const),
-        121: ({
-        "type": "pattern",
-        "parts": [
-          "delay",
-          "(",
-          {
-            "p": "number"
-          },
-          ")"
-        ],
-      } as const),
-        125: ({
-        "type": "pattern",
-        "parts": [
-          "delay",
-          "(",
-          {
-            "p": "number"
-          },
-          ")"
-        ],
-      } as const),
-        117: ({
-        "type": "pattern",
-        "parts": [
-          {
-            "p": "sameAs",
-            "target": "statusIndex"
-          },
-          {
-            "p": "oneOf",
-            "values": [
-              "==",
-              "++"
-            ]
-          },
-          {
-            "p": "sameAs",
-            "target": "statusIndex"
-          },
-          "+",
-          "1"
-        ],
-      } as const),
-        118: ({
-        "type": "pattern",
-        "parts": [
-          {
-            "p": "sameAs",
-            "target": "statusIndex"
-          },
-          ">",
-          {
-            "p": "sameAs",
-            "target": "totalIndex"
-          },
-          "-",
-          "1"
-        ],
-      } as const),
-        119: K.same("statusIndex"),
-        123: K.same("screenMode"),
-        124: K.num({ oneOf: [3] }),
-      }),
-        },
-        {
-          topicTitle:`Simulation with Status Menu buttons`,
-          descBeforeCode:`After placing the button logic into your status menu function, test your code using the simulator. Replace your main menu function call in \`void loop()\` with the status menu function to see the button interactions in action.`,
-        }
-      ],
-    }
-  ]},
+},]
+  }]
+}
 }
 
 export default function CodeBegLesson({
