@@ -3221,7 +3221,6 @@ void loop() {
                   "."
                 ]
               },
-              "mode": "exact"
             } as const),
               100: ({
               "type": "pattern",
@@ -3238,7 +3237,6 @@ void loop() {
                   "."
                 ]
               },
-              "mode": "exact"
             } as const),
               101: ({
               "type": "pattern",
@@ -3255,7 +3253,6 @@ void loop() {
                   "."
                 ]
               },
-              "mode": "exact"
             } as const),
               102: K.same("showClockScreen"),
             }),
@@ -3484,7 +3481,6 @@ void showTimeUpScreen(__BLANK[103]__, __BLANK[104]__, __BLANK[105]__){
                     "."
                   ]
                 },
-                "mode": "exact"
               } as const),
                 104: ({
                 "type": "pattern",
@@ -3499,7 +3495,6 @@ void showTimeUpScreen(__BLANK[103]__, __BLANK[104]__, __BLANK[105]__){
                     "."
                   ]
                 },
-                "mode": "exact"
               } as const),
                 105: ({
                 "type": "pattern",
@@ -3509,7 +3504,6 @@ void showTimeUpScreen(__BLANK[103]__, __BLANK[104]__, __BLANK[105]__){
                     "p": "string"
                   }
                 ],
-                "mode": "exact"
               } as const),
               }),
             blankExplanations: {
@@ -3550,17 +3544,231 @@ To prevent bugs and weird behavior, we use a helper function that keeps numbers 
 @ If the numbe ris lower than the minimum allowed, then the number is assigned the minimum value.
 
 **Parameters:**
-@ integer input 
-@ integer minimum allowed
-@ integer maximum allowed`,
-          code:`
-`
+1) integer input 
+2) integer minimum allowed
+3) integer maximum allowed`,
+          code:`^^//<<Parameters: (1) integer, (2) minimum, (3) maximum
+static int __BLANK[106]__(__BLANK[107]__, __BLANK[108]__, __BLANK[109]__) {   // Function that forces a value to stay inside a minimum and maximum range
+  if (__BLANK[110]__) {                                                      // Check if the value is smaller (<) than the allowed minimum
+    __BLANK[111]__ = __BLANK[112]__;                                          // If it is too small, replace it with the minimum allowed value
+  }
+  if (__BLANK[113]__) {                                                      // Check if the value is larger (>) than the allowed maximum
+    __BLANK[114]__ = __BLANK[115]__;                                          // If it is too large, replace it with the maximum allowed value
+  }
+  return __BLANK[116]__;                                                     // Return the final value (now guaranteed to be inside the range).
+}
+^^
+`,
+        answerKey: buildAnswerKey({
+          106: K.id().bind("clampRange"),
+          107: ({
+          "type": "pattern",
+          "parts": [
+            "int",
+            {
+              "p": "string",
+              "bindAs": "v"
+            }
+          ],
+        } as const),
+          108: ({
+          "type": "pattern",
+          "parts": [
+            "int",
+            {
+              "p": "string",
+              "bindAs": "vmin"
+            }
+          ],
+        } as const),
+          109: ({
+          "type": "pattern",
+          "parts": [
+            "int",
+            {
+              "p": "string",
+              "bindAs": "vmax"
+            }
+          ],
+        } as const),
+          110: ({
+          "type": "pattern",
+          "parts": [
+            {
+              "p": "sameAs",
+              "target": "v"
+            },
+            "<",
+            {
+              "p": "sameAs",
+              "target": "vmin"
+            }
+          ],
+        } as const),
+          111: K.same("v"),
+          112: K.same("vmin"),
+          113: ({
+          "type": "pattern",
+          "parts": [
+            {
+              "p": "sameAs",
+              "target": "v"
+            },
+            ">",
+            {
+              "p": "sameAs",
+              "target": "vmax"
+            }
+          ],
+        } as const),
+          114: K.same("v"),
+          115: K.same("vmax"),
+          116: K.same("v"),
+        }),
+        blankExplanations: {
+          106: "Name the function that limits a number so it stays within a minimum and maximum range.",
+          107: "Define the parameter that represents the value you want to constrain.",
+          108: "Define the parameter that represents the smallest allowed value.",
+          109: "Define the parameter that represents the largest allowed value.",
+          110: "Write a condition that checks whether the value is smaller than the allowed minimum (so, 'value' < minimum). Remember to use the parameter names you defined above in the parenthesis.",
+          111: "Use the parameter that stores the value being checked so it can be updated.",
+          112: "Use the parameter that represents the minimum allowed limit.",
+          113: "Write a condition that checks whether the value is larger than the allowed maximum.",
+          114: "Use the parameter that stores the value being checked so it can be updated.",
+          115: "Use the parameter that represents the maximum allowed limit.",
+          116: "Return the final value (parameter variable) after it has been constrained to the valid range.",
+        },
+        blankDifficulties: {
+          106: "easy",
+          107: "easy",
+          108: "easy",
+          109: "easy",
+          110: "intermediate",
+          111: "easy",
+          112: "easy",
+          113: "intermediate",
+          114: "easy",
+          115: "easy",
+          116: "easy",
+        },
+        },{
+        title: "Trying out",
+        code: `^^__BLANK[106]__ (30,5,25);^^`,
+        descAfterCode: `What happens? 30 is bigger than 25, so the function will output \`25\``,
         }]
       },
-
       {
         id: 4,
-        title: "Step 4: Run Structure and State Machine",
+        title: "Step 4: Set up for Pomodoro Active and Rest blocks",
+        codes:[{
+          topicTitle:"Setting Active/Work Promodoro Block",
+          descBeforeCode:`In this lesson, you will build the screen that lets the user set the length of a Pomodoro work timer.
+**This function listens for button presses and updates the timer value on the screen:**
+@ Pressing NEXT increases the number of minutes.
+@ Pressing PREV decreases the number of minutes.
+@ The value is kept within a **safe range**, so it never becomes too small or too large.
+@ The screen updates every time the value changes using the UI Helper function (**showTimerScreen**) so the user can see it immediately.
+@ Pressing SELECT confirms the choice and moves to the next step of the Pomodoro setup.
+Think of this function like a settings page on a device: you use buttons to adjust a number, see the change on the screen, and then press a button to move on once you’re happy with your choice.`,
+          code:`^^//<< ---------------- POMODORO STATE ----------------
+//<< Create a variable for minutes of the active session. Set it as 5 for now.  
+//<< PREV, NEXT buttons will decrease/increase this variable value. 
+int __BLANK[143]__ = __BLANK[144]__;        
+^^`,
+        },{
+          code:`
+void __BLANK[117]__() {                         // Function that handles selecting the first Pomodoro timer duration for active session
+
+  const int __BLANK[118]__ = __BLANK[119]__;    // Define the minimum allowed value for the timer 
+  const int __BLANK[120]__ = __BLANK[121]__;    // Define the maximum allowed value for the timer
+
+  if (__BLANK[122]__) {                         // Check if the NEXT button was pressed (use the button helper function)
+    __BLANK[123]__;                             // Increase the "active" timer variable by a fixed step (+5 minutes)
+    __BLANK[143]__ = __BLANK[126]__(__BLANK[124]__); // Keep the timer value within the allowed min/max range (use the safety lock function)
+    __BLANK[127]__;                             // Add a short delay to prevent multiple presses
+  }
+
+  if (__BLANK[128]__) {                         // Check if the PREV button was pressed
+    __BLANK[129]__;                             // Decrease the timer value by a fixed step
+    __BLANK[130]__ = __BLANK[131]__(__BLANK[132]__); // Keep the timer value within the allowed min/max range
+    __BLANK[133]__;                             // Add a short delay to prevent multiple presses
+  }
+
+  showTimerScreen(__BLANK[134]__, __BLANK[135]__, __BLANK[136]__, __BLANK[137]__, __BLANK[138]__); 
+                                                // Display the timer setup screen with title, label, current value, seconds = 0, and hint text
+
+  if (__BLANK[139]__) {                         // Check if the SELECT button was pressed
+    __BLANK[140]__ = __BLANK[141]__;             // Move to the next screen mode (Rest Timer Session) in the Pomodoro 
+    __BLANK[142]__;                             // Add a short delay to prevent multiple selections
+  }
+
+  // optional: PREV could return to menu from setup screens
+  // if (isPressed(PREV)) { 
+  // screen mode = 0 for Main Menu, followed by a longer delay so a long PREV press means go back to Main Menu}
+        }`,blankExplanations: {
+          117: "Name the function that manages the first Pomodoro timer selection screen and its button interactions.",
+          118: "Define a constant that represents the minimum allowed value for the timer setting.",
+          119: "Provide the numeric value used as the lower bound for the timer.",
+          120: "Define a constant that represents the maximum allowed value for the timer setting.",
+          121: "Provide the numeric value used as the upper bound for the timer.",
+          122: "Write the condition that detects a clean press of the NEXT button.",
+          123: "Increase the current timer value by a fixed step amount.",
+          124: "Use the variable that stores the current timer value as input to the range-limiting function.",
+          125: "Store the corrected timer value back into the variable after range checking.",
+          126: "Call the helper function that constrains a value to stay within a minimum and maximum.",
+          127: "Add a short pause to debounce the button press.",
+          128: "Write the condition that detects a clean press of the PREV button.",
+          129: "Decrease the current timer value by a fixed step amount.",
+          130: "Store the corrected timer value back into the variable after range checking.",
+          131: "Call the helper function that constrains a value to stay within a minimum and maximum.",
+          132: "Use the variable that stores the current timer value as input to the range-limiting function.",
+          133: "Add a short pause to debounce the button press.",
+          134: "Provide the title text shown at the top of the timer setup screen.",
+          135: "Provide the label text that explains what value the user is adjusting.",
+          136: "Pass the current timer value so it can be displayed on screen.",
+          137: "Provide the seconds value to display alongside the minutes.",
+          138: "Provide hint text that explains how to change the value using buttons.",
+          139: "Write the condition that detects a clean press of the SELECT button.",
+          140: "Use the variable that tracks which screen or mode the program is in.",
+          141: "Assign the value that represents advancing to the next Pomodoro setup screen.",
+          142: "Add a short pause to debounce the SELECT button press."
+        },
+        blankDifficulties: {
+          117: "easy",
+          118: "easy",
+          119: "easy",
+          120: "easy",
+          121: "easy",
+          122: "easy",
+          123: "easy",
+          124: "easy",
+          125: "easy",
+          126: "intermediate",
+          127: "easy",
+          128: "easy",
+          129: "easy",
+          130: "easy",
+          131: "intermediate",
+          132: "easy",
+          133: "easy",
+          134: "easy",
+          135: "easy",
+          136: "easy",
+          137: "easy",
+          138: "easy",
+          139: "easy",
+          140: "easy",
+          141: "intermediate",
+          142: "easy"
+        },
+
+
+
+        }]
+      },
+      {
+        id: 5,
+        title: "Step 5: Run Structure and State Machine",
         codes: [
           {
             topicTitle: "What does a Pomodoro run mean in code?",
@@ -3627,8 +3835,8 @@ Once you fill in the blanks, you have completed the function that initializes a 
       },
 
       {
-        id: 4,
-        title: "Step 4: Understanding the Timer Engine",
+        id: 6,
+        title: "Step 6: Understanding the Timer Engine",
         codes: [
           {
             topicTitle: "Choosing Block Duration and Setting endTime",
@@ -3719,8 +3927,8 @@ void startCurrentBlock() {
         ],
       },
       {
-        id: 6,
-        title: "Step 6: Checking if the Timer is Finished",
+        id: 7,
+        title: "Step 7: Checking if the Timer is Finished",
         codes: [
           {
             topicTitle: "How the Timer Knows When Time Is Up",
@@ -3773,8 +3981,8 @@ if (secondsLeft __BLANK[POMOTIMEUP]__) {
       },
 
       {
-        id: 7,
-        title: "Step 7: Countdown Runtime + Finish Screen",
+        id: 8,
+        title: "Step 8: Countdown Runtime + Finish Screen",
         codes: [
           {
             topicTitle: "Pomodoro Countdown Function",

@@ -282,8 +282,8 @@ type RegistryTable = {
 
 type PatternRow =
   | { kind: "identifier", bindAs?: string}
-  | { kind: "string" }
-  | { kind: "number" }
+  | { kind: "string", bindAs?: string }
+  | { kind: "number" ,bindAs?: string}
   | { kind: "sameAs"; target: string }
   | { kind: "oneOf"; valuesRaw: string } // comma list
   | { kind: "wildcard"; min?: string; max?: string }
