@@ -367,14 +367,14 @@ Since we want the welcome page to show up only **ONCE when we turn the device on
 `           },{
 
           // this used to be descAfterCircuit
-          code: `^^#include __BLANK[WIRE]__
+          code: `#include __BLANK[WIRE]__
 #include __BLANK[GFX]__
 #include __BLANK[DRIVER]__
 ...
-...
+...^^
 void setup(){
   Wire.begin();
-  display.__BLANK[BEGIN]__(__BLANK[BEGINA]__, __BLANK[BEGINB]__);      // Initialize OLED
+  display.__BLANK[8]__(__BLANK[9]__, __BLANK[10]__);       // Initialize OLED
   showWelcome();  // Call welcome function once at startup
 }
 
@@ -402,55 +402,67 @@ void showWelcome {
 answerKey: buildAnswerKey({
   16: K.str({ oneOf: ["display.clearDisplay"] }),
   17: K.str({ oneOf: ["display.setTextSize(1)"] }),
-  18: K.str({ oneOf: ["display.setTextColor(SSD1306_WHITE)"] }),
-  19: K.str({ oneOf: ["\"display.setCursor(0","0)\""] }),
+  18: ({
+  "type": "pattern",
+  "parts": [
+    "display",
+    ".",
+    "setTextColor",
+    "(",
+    {
+      "p": "identifier"
+    },
+    ")"
+  ],
+  "policy": {
+    "requireNoSpacesAround": [
+      "."
+    ]
+  },
+} as const),
+
+  19: K.str({ oneOf: ["display.setCursor(0","0)"] }),
   20: K.str({ oneOf: ["display.println(\"Welcome to\")"] }),
   21: K.str({ oneOf: ["display.setTextSize(2)"] }),
-  22: K.str({ oneOf: ["\"display.setCursor(0","16)\""] }),
+  22: K.str({ oneOf: ["display.setCursor(0","16)"] }),
   23: K.str({ oneOf: ["display.println(\"Status\")"] }),
-  24: K.str({ oneOf: ["\"display.setCursor(0","36)\""] }),
+  24: K.str({ oneOf: ["display.setCursor(0","36)"] }),
   25: K.str({ oneOf: ["display.println(\"Board\")"] }),
 }),
 
 blankExplanations: {
-  WELCOMEFUNCTION:
-    "This is the NAME of your welcome function (example: welcomeScreen). It must be a valid function identifier: letters/underscores, not starting with a number, no spaces.",
+16:
+  "Clears the OLED screen buffer so you start with a blank display. Use: display.clearDisplay().",
+17:
+  "Sets the text size to small for the initial text. Text size 1 is commonly used.",
+18:
+  "Sets the text color so it appears on the OLED screen. SSD1306_WHITE makes the text visible.",
+19:
+  "Moves the cursor to the top-left corner of the screen at pixel position (0, 0).",
+20:
+  "Changes the text size to a larger value so the title text stands out. Example: display.setTextSize(2).",
+21:
+  'Prints the first line of the welcome message, such as "Welcome to".',
+22:
+  "Moves the cursor down to y = 16 so the next line of text prints lower on the screen.",
+23:
+  'Prints the second line of text, such as "Status".',
+24:
+  "Moves the cursor further down to y = 36 to make space for the final line of text.",
+25:
+  'Prints the final line of text, such as "Board".',
 
-  DISPLAY1:
-    "Clears the OLED’s drawing buffer so you start with a blank screen. Use: display.clearDisplay().",
-
-  DISPLAY2:
-    "Sets the text size for the first part of the welcome screen. Common values: 1 (small), 2 (medium), 3 (large).",
-
-  DISPLAY3:
-    "Sets text color mode. Most of the time you use SSD1306_WHITE so text shows up. SSD1306_INVERSE is a fun option for highlighting.",
-
-  DISPLAY4:
-    "Moves the cursor to where the first text should start. Must be display.setCursor(x, y) where x and y are pixel coordinates.",
-
-  DISPLAY5:
-    "Optionally change the text size again (example: big title then smaller subtitle).",
-
-  DISPLAY6:
-    "Move the cursor again before the next line, so your second line prints lower on the screen.",
-
-  DISPLAY7:
-    'Print your welcome message line (example: display.println("Hello!");). You can use print or println.',
-
-  DISPLAY8:
-    "Updates the physical OLED screen by pushing the buffer to the display. Without display.display(), nothing shows up.",
 },
 
 blankDifficulties: {
-  WELCOMEFUNCTION: "easy",
-  DISPLAY1: "easy",
-  DISPLAY2: "easy",
-  DISPLAY3: "easy",
-  DISPLAY4: "easy",
-  DISPLAY5: "easy",
-  DISPLAY6: "medium",
-  DISPLAY7: "easy",
-  DISPLAY8: "easy",
+  16: "easy",
+  17: "easy",
+  18: "easy",
+  19: "easy",
+  20: "easy",
+  21: "easy",
+  22: "easy",
+  23: "easy",
 },
 
           descAfterCode: `Try to modify your welcome message to say something different! You can also change the text size and cursor positions to make it look unique.`,
@@ -468,7 +480,7 @@ Sets the size (scale) of the text.
 
 \`display.setTextColor(A);\`  
 Sets how text pixels are drawn.  
-@ **A** can be:  
+@ **A** depends on the OLED type but for be SSD106, it can be:  
     ➜ \`SSD1306_WHITE\`: pixels ON (bright text)  
     ➜ \`SSD1306_BLACK\`: pixels OFF (used to erase)  
     ➜ \`SSD1306_INVERSE\`: invert black/white for highlighting
