@@ -530,22 +530,31 @@ return true;
     }
 
 case "string": {
-  if (s.requireQuoted && !(raw.startsWith('"') || raw.startsWith("'"))) return false;
+  const isQuoted =
+    (raw.startsWith('"') && raw.endsWith('"') && raw.length >= 2) ||
+    (raw.startsWith("'") && raw.endsWith("'") && raw.length >= 2);
+
+  if (s.requireQuoted && !isQuoted) return false;
+
+  const rawForCompare =
+    s.requireQuoted && isQuoted ? raw.slice(1, -1) : raw;
 
   let ok = false;
 
   if (Array.isArray(s.oneOf) && s.oneOf.length) {
-    ok = s.oneOf.some((x: string) => normalizeWs(String(x)) === normalizeWs(raw));
+    ok = s.oneOf.some((x: string) => normalizeWs(String(x)) === normalizeWs(rawForCompare));
   } else if (s.regex && isValidRegex(s.regex)) {
-    ok = new RegExp(s.regex).test(raw);
+    ok = new RegExp(s.regex).test(rawForCompare);
   } else {
-    ok = raw.length > 0;
+    ok = rawForCompare.length > 0;
   }
 
   if (!ok) return false;
 
-  return defineOrEnforceBind(allValues, (s as any).bindAs, raw);
+  // bind should probably store the de-quoted value when requireQuoted is true
+  return defineOrEnforceBind(allValues, (s as any).bindAs, rawForCompare);
 }
+
 case "sameAs": {
   const targets: string[] = Array.isArray(s.targets) ? s.targets : [];
   const v = normalizeWs(raw);

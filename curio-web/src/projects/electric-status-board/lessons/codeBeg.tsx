@@ -96,9 +96,9 @@ This continuous on/off cycle makes the LED blink once per second.`,
 
       codes: [
         {
-          code: `^^#include <Wire.h>
-#include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>^^
+          code: `^^#include __BLANK[WIRE]__
+#include __BLANK[GFX]__
+#include __BLANK[DRIVER]__^^
 
 void setup(){
 }
@@ -119,7 +119,12 @@ Loads Adafruit’s graphics library. This provides the drawing tools you’ll us
 Loads the driver for the SSD1306 OLED controller. It knows how to send pixel-level commands so the display can show what you draw.
 
 **Together, these libraries allow the Arduino to communicate with the OLED and render text and graphics on the screen.**`,
-        },
+        answerKey: buildAnswerKey({
+          WIRE: K.str({ oneOf: ["<Wire.h>"] }),
+          DRIVER: K.str({ oneOf: ["<Adafruit_SSD1306.h>","<Adafruit_SH1106.h>","<Adafruit_SSD1309.h>","<Adafruit_SSD1327.h>","<Adafruit_SSD1351.h>","<Adafruit_SSD1331.h>","<Adafruit_SSD1305.h>","<U8g2lib.h>"] }),
+          GFX: K.str({ oneOf: ["<Adafruit_GFX.h>"] }),
+        }),
+      },      
       ],
     },
     {
@@ -132,9 +137,9 @@ Loads the driver for the SSD1306 OLED controller. It knows how to send pixel-lev
 
       codes: [
         {
-          code: `#include <Wire.h>
-#include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
+          code: `#include __BLANK[WIRE]__
+#include __BLANK[GFX]__
+#include __BLANK[DRIVER]__
 ^^
 #define WIDTH  __BLANK[1]__     // width of display in pixels
 #define HEIGHT __BLANK[2]__   // height of display in pixels
@@ -184,9 +189,9 @@ void loop(){
 
       codes: [
         {
-          code: `#include <Wire.h>
-#include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
+          code: `#include __BLANK[WIRE]__
+#include __BLANK[GFX]__
+#include __BLANK[DRIVER]__
 
 #define WIDTH  __BLANK[1]__
 #define HEIGHT __BLANK[2]__
@@ -225,7 +230,6 @@ void loop(){
       
 For example, the first blank for PREV can be 3 if you connected it to digital pin 3, as shown in the example circuit image below. Fill in the rest of the blanks for the Next and Select buttons based on your wiring.`,
 
-          // this used to be step.circuitImage
           imageGridAfterCode: {
             columns: 1,
             rows: 1,
@@ -250,9 +254,9 @@ For example, the first blank for PREV can be 3 if you connected it to digital pi
 
       codes: [
         {
-          code: `#include <Wire.h>
-#include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
+          code: `#include __BLANK[WIRE]__
+#include __BLANK[GFX]__
+#include __BLANK[DRIVER]__
 
 #define WIDTH  __BLANK[1]__
 #define HEIGHT __BLANK[2]__
@@ -309,8 +313,19 @@ Starts the I²C communication bus so the Arduino can talk to devices like the OL
 
 \`display.begin(A, B);\`  
 Initializes the OLED and prepares it for drawing.  
-@ **A**: usually **SSD1306_SWITCHCAPVCC**, which tells the display how to power its internal circuits.  
+@ **A**: usually **SSD1306_SWITCHCAPVCC**, which tells the display how to power its internal circuits. If you are not using SSD1306 OLED display, then this would be slightly different. 
 @ **B**: the OLED’s I²C address, most commonly **0x3C**.`,
+  imageGridAfterCode: {
+              columns: 1,
+              height: 420,
+              width: 700,
+              items: [
+                {
+                  imageSrc: "/electric-status-board/oledbegin().png",
+                  label: "OLED Types and their Initialization Calls",
+                },
+              ],
+            },
         },
       ],
     },
@@ -352,7 +367,9 @@ Since we want the welcome page to show up only **ONCE when we turn the device on
 `           },{
 
           // this used to be descAfterCircuit
-          code: `^^#include <Wire.h> 
+          code: `^^#include __BLANK[WIRE]__
+#include __BLANK[GFX]__
+#include __BLANK[DRIVER]__
 ...
 ...
 void setup(){
@@ -505,9 +522,9 @@ You can set cursor for certain texts to position your welcome messages in a more
     WELCOME: `Type your Welcome Function here. `,
   },
 
-code: `#include <Wire.h>
-#include <Adafruit_GFX.h>
-#include <Adafruit_SSD1306.h>
+code: `#include __BLANK[WIRE]__
+#include __BLANK[GFX]__
+#include __BLANK[DRIVER]__
 
 #define WIDTH  __BLANK[1]__
 #define HEIGHT __BLANK[2]__
@@ -2072,8 +2089,9 @@ void __BLANK[71]__() {
             descBetweenBeforeAndCode: null,
             title: "Arduino Sketch Structure",
             code: `^^//<< ===== 1) Libraries (top of file) =====
-  #include <Wire.h> 
-  #include ...
+  #include __BLANK[WIRE]__
+  #include __BLANK[GFX]__
+  #include __BLANK[DRIVER]__
 
   //<< ===== 2) Constants + global variables (menus, pins, counters, display object) =====
   #define WIDTH __BLANK[1]__....
@@ -2132,10 +2150,9 @@ void __BLANK[71]__() {
 
             code: `
   ^^//<< ===================== 1) LIBRARIES =======================================
-  #include <Wire.h>
-  #include <Adafruit_GFX.h>
-  #include <Adafruit_SSD1306.h>
-  #include "RTClib.h"
+  #include __BLANK[WIRE]__
+  #include __BLANK[GFX]__
+  #include __BLANK[DRIVER]__
 
   //<< ===================== 2) CONSTANTS + GLOBAL VARIABLES =====================
   //<< --- OLED setup ---
@@ -2218,7 +2235,7 @@ void __BLANK[71]__() {
       __BLANK[57]__;                     // move to the next item
     }
     display.display();              // push everything to the screen
-  }^^
+  }
             
   //<< Function to show main menu on screen
   void __BLANK[71]__() {
@@ -3171,20 +3188,20 @@ void __BLANK[71]__() {
 Earlier, we used a variable called __BLANK[59]__ to store this screen mode number. 
 
 **You can think of this number like a TV channel:**
-If you are on channel 0, the Arduino keeps showing the Main Menu again and again inside \`loop()\`.
-Pressing the \`NEXT\` and \`PREV\` buttons only moves your selection inside the menu, but does not change the channel.
-When you press the "SELECT" button, the program changes the channel number using the debounce button function.
-Once the channel number changes, \`loop()\` will enter a different if statement, and a new screen will appear — just like switching to a new TV channel.`,
+If you are on channel 0, the Arduino keeps showing the Main Menu again and again through a function we made called __BLANK[71]__ inside \`loop()\`.
+Pressing the \`NEXT\` and \`PREV\` buttons only moves your selection inside the Main Menu within __BLANK[71]__, but does not change the channel.
+When you press the "SELECT" button in __BLANK[71]__, the program changes the channel number using the debounce button function.
+Once the channel number changes, \`loop()\` will enter a different if statement, and a new screen will appear — just like switching to a new TV channel. You will call showStatusMenu()`,
           code:`^^
 void loop(){
   if (__BLANK[59]__ == 0){
     __BLANK[71]__; //go to main menu screen
   }
   if (__BLANK[SCREENM1]__ == 1){ //if the screen mode is 1
-    __BLANK[SCREENM2]__; //go to a different screen
+    __BLANK[SCREENM2]__; //go to that screen display
   }
   if (__BLANK[SCREENM3]__ == 2){ //if the screen mode is 2
-    __BLANK[SCREENM4]__; //go to a different screen 
+    __BLANK[SCREENM4]__; //go to that screen display
   }
 }^^
 `},{

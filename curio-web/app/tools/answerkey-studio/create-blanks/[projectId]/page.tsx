@@ -200,6 +200,8 @@ export type BlankMeta = {
   description?: string;
   bindKey?: string;
   sameAsTarget?: string;
+  requireQuoted?: boolean; // for string constraints (default false)
+
 
   // Option fields
   constraintType?: ConstraintType; // dropdown selection
@@ -487,6 +489,11 @@ const [testResult, setTestResult] = React.useState<{
 const [pendingSelectBlankId, setPendingSelectBlankId] = React.useState<string | null>(null);
 
 const [blankSearch, setBlankSearch] = React.useState("");
+
+const [requireQuotedDraft, setRequireQuotedDraft] = React.useState<"no" | "yes">("no");
+const requireQuotedDraftRef = React.useRef(requireQuotedDraft);
+React.useEffect(() => { requireQuotedDraftRef.current = requireQuotedDraft; }, [requireQuotedDraft]);
+
 
 // ------------------------------------------------------------
 // Load once on mount if ?s=... exists
@@ -776,6 +783,8 @@ function emitSingleKeyExpr(opts: {
     rangeMinRaw?: string;
     rangeMaxRaw?: string;
     sameAsTarget?: string;
+    requireQuoted?: boolean;
+
   };
 }) {
   const { blankId, answer, bindKey, bindings, constraint } = opts;
@@ -821,8 +830,15 @@ if (cType === "same_as") {
 
   if (cType === "str_oneOf") {
     const strs = parseOneOfStrs(c.allowedRaw || "");
-    return strs.length ? `K.str({ oneOf: ${JSON.stringify(strs)} })` : `K.str()`;
+    const rq = c.requireQuoted === true;
+
+    const opts: string[] = [];
+    if (strs.length) opts.push(`oneOf: ${JSON.stringify(strs)}`);
+    if (rq) opts.push(`requireQuoted: true`);
+
+    return `K.str(${opts.length ? `{ ${opts.join(", ")} }` : ""})`;
   }
+
 
   if (cType === "id_bound") {
     // requires bindKey, but it's missing
@@ -887,7 +903,7 @@ function onGenerateAnswerKey() {
         rangeMinRaw: meta?.rangeMinRaw,
         rangeMaxRaw: meta?.rangeMaxRaw,
         sameAsTarget: meta?.sameAsTarget,
-        
+        requireQuoted: meta?.requireQuoted,
       },
     });
   }
@@ -955,6 +971,8 @@ function scheduleCommitSelectedBlank(next: {
   rangeMaxRaw?: string;
   patternJson?: string;
   sameAsTarget?: string;
+  requireQuoted?: boolean;
+
 }) {
   const blankId = selectedRef.current;
   if (!blankId) return;
@@ -987,6 +1005,8 @@ function scheduleCommitSelectedBlank(next: {
                 rangeMaxRaw: next.rangeMaxRaw,
                 patternJson: next.patternJson ?? "",
                 sameAsTarget: next.sameAsTarget,
+                requireQuoted: typeof next.requireQuoted === "undefined" ? false : next.requireQuoted,
+
                 createdAt: now,
                 updatedAt: now,
             },
@@ -1013,6 +1033,8 @@ function scheduleCommitSelectedBlank(next: {
             rangeMaxRaw: typeof next.rangeMaxRaw === "undefined" ? meta.rangeMaxRaw : next.rangeMaxRaw,
             sameAsTarget: typeof next.sameAsTarget === "undefined" ? meta.sameAsTarget : next.sameAsTarget,
             patternJson: typeof next.patternJson === "undefined" ? meta.patternJson : next.patternJson,
+            requireQuoted: typeof next.requireQuoted === "undefined" ? meta.requireQuoted : next.requireQuoted,
+
           },
         },
       };
@@ -1045,6 +1067,7 @@ function applyDraftsToStoreSync(prev: BlankStore, blankId: string, next: {
   rangeMaxRaw: string;
   patternJson?: string;
   sameAsTarget: string;
+  requireQuoted: "no" | "yes";
 }): BlankStore {
 
   const now = Date.now();
@@ -1069,6 +1092,8 @@ function applyDraftsToStoreSync(prev: BlankStore, blankId: string, next: {
           updatedAt: now,
           patternJson: next.patternJson ?? "",
           sameAsTarget: next.sameAsTarget ?? "", 
+          requireQuoted: next.requireQuoted === "yes",
+
         },
       },
     };
@@ -1091,6 +1116,7 @@ function applyDraftsToStoreSync(prev: BlankStore, blankId: string, next: {
         rangeMinRaw: next.rangeMinRaw,
         rangeMaxRaw: next.rangeMaxRaw,
         sameAsTarget: next.sameAsTarget,
+        requireQuoted: next.requireQuoted === "yes",
         updatedAt: now,
       },
     },
@@ -1158,6 +1184,7 @@ React.useEffect(() => {
     setAllowedDraft("");
     setMinDraft("");
     setMaxDraft("");
+    setRequireQuotedDraft("no");
     return;
   }
 
@@ -1165,6 +1192,8 @@ React.useEffect(() => {
 
   const meta = getBlankMeta(store, selectedBlankId);
 
+  const rq = meta?.requireQuoted === true ? "yes" : "no";
+  setRequireQuotedDraft(rq); 
   setAnswerDraft(meta?.answer ?? "");
   setDescDraft(meta?.description ?? "");
   setBindDraft(meta?.bindKey ?? "");
@@ -1417,6 +1446,7 @@ function flushAllNow() {
       rangeMinRaw: minDraftRef.current ?? "",
       rangeMaxRaw: maxDraftRef.current ?? "",
       sameAsTarget: sameAsTargetDraftRef.current ?? "", 
+      requireQuoted: requireQuotedDraftRef.current ?? "no", 
     });
     storeRef.current = nextStore;
   }
@@ -2440,6 +2470,29 @@ const filteredBlanksInOrder = React.useMemo(() => {
       />
     </div>
   ) : null}
+
+  {constraintDraft === "str_oneOf" ? (
+  <div className="mt-2">
+    <div className="text-xs opacity-60">Require quotes?</div>
+    <select
+      value={requireQuotedDraft}
+      onChange={(e) => {
+        const v = e.target.value as "no" | "yes";
+        setRequireQuotedDraft(v);
+        scheduleCommitSelectedBlank({ requireQuoted: v === "yes" } as any);
+      }}
+      className="w-full rounded-xl border px-2 py-2 text-sm"
+    >
+      <option value="no">No (default)</option>
+      <option value="yes">Yes (must type &quot;...&quot; or '...')</option>
+    </select>
+
+    <div className="text-xs opacity-60 mt-1">
+      If “Yes”, students must include quotes in their answer.
+    </div>
+  </div>
+) : null}
+
 
   {constraintDraft === "num_range" ? (
     <div className="mt-2 grid grid-cols-2 gap-2">

@@ -3664,11 +3664,12 @@ static int __BLANK[106]__(__BLANK[107]__, __BLANK[108]__, __BLANK[109]__) {   //
           topicTitle:"Setting Active/Work Promodoro Block",
           descBeforeCode:`In this lesson, you will build the screen that lets the user set the length of a Pomodoro work timer.
 **This function listens for button presses and updates the timer value on the screen:**
-@ Pressing NEXT increases the number of minutes.
-@ Pressing PREV decreases the number of minutes.
+@ Pressing \`NEXT\` increases the number of minutes.
+@ Pressing \`PREV\` decreases the number of minutes.
 @ The value is kept within a **safe range**, so it never becomes too small or too large.
 @ The screen updates every time the value changes using the UI Helper function (**showTimerScreen**) so the user can see it immediately.
-@ Pressing SELECT confirms the choice and moves to the next step of the Pomodoro setup.
+@ Pressing \`SELECT\` confirms the choice and moves to the next step of the Pomodoro setup.
+
 Think of this function like a settings page on a device: you use buttons to adjust a number, see the change on the screen, and then press a button to move on once you’re happy with your choice.`,
           code:`^^//<< ---------------- POMODORO STATE ----------------
 //<< Create a variable for minutes of the active session. Set it as 5 for now.  
@@ -3676,7 +3677,7 @@ Think of this function like a settings page on a device: you use buttons to adju
 int __BLANK[143]__ = __BLANK[144]__;        
 ^^`,
         },{
-          code:`
+          code:`^^
 void __BLANK[117]__() {                         // Function that handles selecting the first Pomodoro timer duration for active session
 
   const int __BLANK[118]__ = __BLANK[119]__;    // Define the minimum allowed value for the timer 
@@ -3705,7 +3706,8 @@ void __BLANK[117]__() {                         // Function that handles selecti
   // optional: PREV could return to menu from setup screens
   // if (isPressed(PREV)) { 
   // screen mode = 0 for Main Menu, followed by a longer delay so a long PREV press means go back to Main Menu}
-        }`,blankExplanations: {
+}^^`
+        ,blankExplanations: {
           117: "Name the function that manages the first Pomodoro timer selection screen and its button interactions.",
           118: "Define a constant that represents the minimum allowed value for the timer setting.",
           119: "Provide the numeric value used as the lower bound for the timer.",
