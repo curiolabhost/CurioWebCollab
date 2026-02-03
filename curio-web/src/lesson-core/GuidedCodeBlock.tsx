@@ -9,7 +9,6 @@ import { cpp } from "@codemirror/lang-cpp";
 import { oneDark } from "@codemirror/theme-one-dark";
 import { oneDarkHighlightStyle } from "@codemirror/theme-one-dark";
 import { highlightTree, tagHighlighter, tags as t } from "@lezer/highlight";
-import EditableRegionCodeBlock from "./EditableRegionCodeBlock";
 
 // keep ONLY these from the shared util
 import {
