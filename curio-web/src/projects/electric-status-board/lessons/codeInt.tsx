@@ -1504,7 +1504,7 @@ You will fill in a few key blanks to make the loop and highlighting work.`,
             code: `^^
 //<< ---------------- TOP-LEVEL MENU ----------------
 void __BLANK[43]__() {                 // Function that draws the main menu on the OLED screen
-// ##EDIT:SHOWMAINMENU##
+// ##EDIT:SHOWMAINMENU:INDENT=1##
   __BLANK[44]__                       // Clears the display so previous screens are erased
   __BLANK[45]__                       // Sets the size of the text shown on the screen
   __BLANK[46]__                       // Sets the color of the text for the OLED display
@@ -1726,7 +1726,7 @@ __EDITOR[WELCOME]__
 
 //<< Main menu screen (from Lesson 5 Step 3)
 void __BLANK[43]__() {
-// ##EDIT:SHOWMAINMENU##
+// ##EDIT:SHOWMAINMENU:INDENT=1##
   __BLANK[44]__
   __BLANK[45]__
   __BLANK[46]__
@@ -1938,7 +1938,7 @@ __EDITOR[WELCOME]__
 
 //<< Main menu screen (from Lesson 5 Step 3)
 void __BLANK[43]__() {
-// ##EDIT:SHOWMAINMENU##
+// ##EDIT:SHOWMAINMENU:INDENT=1##
   __BLANK[44]__
   __BLANK[45]__
   __BLANK[46]__
@@ -2777,7 +2777,7 @@ You will:
 4) Print seconds with a leading 0 if needed seconds is less than 10`,
             code: `
 ^^static void __BLANK[73]__() {                 // Function that prints the current time in HH:MM:SS format
-// ##EDIT:HMSTIME##
+// ##EDIT:HMSTIME:INDENT=1##
   DateTime now = __BLANK[5]__.now();           // Get the current date and time from the RTC object
 
   int hour = now.hour();                      // Extract the hour value from the current time
@@ -3034,7 +3034,7 @@ From that snapshot, the program then extracts individual pieces of time. Calling
 - call \`display.display()\` at the end`,
             code: `^^
 void __BLANK[88]__() {                 // Function that draws the clock screen and handles navigation
-// ##EDIT:SHOWTIME##
+// ##EDIT:SHOWTIME:INDENT=1##
   __BLANK[89]__;                       // Clear the OLED screen before drawing the clock
   __BLANK[90]__;                       // Set the text color used for all clock text
 

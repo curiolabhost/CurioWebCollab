@@ -375,20 +375,20 @@ Since we want the welcome page to show up only **ONCE when we turn the device on
 void setup(){
   Wire.begin();
   display.__BLANK[8]__(__BLANK[9]__, __BLANK[10]__);       // Initialize OLED
-  showWelcome();  // Call welcome function once at startup
+  __BLANK[SHOWWELCOME]__;  // Call welcome function once at initial set up. Type --> showWelcome()
 }
 
 void loop(){
 }
 
-void showWelcome {
+void showWelcome() {
   __BLANK[16]__;  //clear display  
   __BLANK[17]__;  //text size to 1 
   __BLANK[18]__;  //text color to white
   __BLANK[19]__;  //set cursor location to (0,0)
   __BLANK[20]__;  //text size to 2
   __BLANK[21]__;  //print "Welcome to"
-  __BLANK[22]__;  //move cursor location to y = 16 
+  __BLANK[22]__;  //move cu)rsor location to y = 16 
   __BLANK[23]__;  //print "Status"
   __BLANK[24]__;  //move cursor location to y = 36
   __BLANK[25]__;  //print "Board"
@@ -400,6 +400,7 @@ void showWelcome {
 `,
 
 answerKey: buildAnswerKey({
+  SHOWWELCOME: K.str({oneOf: ["showWelcome()"]}),
   16: K.str({ oneOf: ["display.clearDisplay"] }),
   17: K.str({ oneOf: ["display.setTextSize(1)"] }),
   18: ({
@@ -421,13 +422,13 @@ answerKey: buildAnswerKey({
   },
 } as const),
 
-  19: K.str({ oneOf: ["display.setCursor(0","0)"] }),
-  20: K.str({ oneOf: ["display.println(\"Welcome to\")"] }),
-  21: K.str({ oneOf: ["display.setTextSize(2)"] }),
-  22: K.str({ oneOf: ["display.setCursor(0","16)"] }),
-  23: K.str({ oneOf: ["display.println(\"Status\")"] }),
-  24: K.str({ oneOf: ["display.setCursor(0","36)"] }),
-  25: K.str({ oneOf: ["display.println(\"Board\")"] }),
+  19: K.str({ oneOf: ["display.setCursor(0,0)"] }),
+  20: K.str({ oneOf: ["display.setTextSize(2)"] }),
+  21: K.str({ oneOf: ["display.println(\"Welcome to\")","display.print(\"Welcome to\")"] }),
+  22: K.str({ oneOf: ["display.setCursor(0,16)"] }),
+  23: K.str({ oneOf: ["display.println(\"Status\")","display.print(\"Status\")"] }),
+  24: K.str({ oneOf: ["display.setCursor(0,36)"] }),
+  25: K.str({ oneOf: ["display.println(\"Board\")","display.print(\"Board\")"] }),
 }),
 
 blankExplanations: {
@@ -550,7 +551,7 @@ Adafruit_SSD1306 display (WIDTH, __BLANK[3]__ , &Wire, RESET);
 void setup() {
   Wire.begin();
   display.__BLANK[8]__(__BLANK[9]__, __BLANK[10]__);      // Initialize OLED
-  __BLANK[38]__ //Call your own welcome function
+  __BLANK[38]__; //Call your own welcome function
 
 // set the modes for the buttons you are using 
   pinMode(PREV, INPUT_PULLUP);  // PREV button is an input, not output
@@ -562,7 +563,17 @@ __EDITOR[WELCOME]__^^
 `,
 
 answerKey: buildAnswerKey({
-  38: K.id(),
+38: ({
+  "type": "pattern",
+  "parts": [
+    {
+      "p": "identifier",
+      "bindAs": "showWelcome"
+    },
+    "(",
+    ")",
+  ],
+} as const),
 }),
       }]
     },
@@ -589,14 +600,33 @@ void showStatusScreen() {
             43: ({
             "type": "pattern",
             "parts": [
-              {
-                "p": "identifier"
-              },
+              "display",
               ".",
-              "println",
+              {
+                "p": "oneOf",
+                "values": [
+                  "println",
+                  "print"
+                ]
+              },
               "(",
               {
                 "p": "string"
+              },
+              ")"
+            ],
+          } as const),
+          }),
+          39: K.str({ oneOf: ["display.clearDisplay()"] }),
+          40: ({
+            "type": "pattern",
+            "parts": [
+              "display",
+              ".",
+              "setTextColor",
+              "(",
+              {
+                "p": "identifier"
               },
               ")"
             ],
@@ -606,12 +636,9 @@ void showStatusScreen() {
               ]
             },
           } as const),
-          39: K.str({ oneOf: ["display.clearDisplay()"] }),
-          40: K.str({ oneOf: ["display.setTextColor(SSD1306_WHITE)"] }),
           41: K.str({ oneOf: ["display.setTextSize(1)"] }),
-          42: K.str({ oneOf: ["\"display.setCursor(0","0)\""] }),
+          42: K.str({ oneOf: ["display.setCursor(0,0)"] }),
           44: K.str({ oneOf: ["display.display()"] }),
-          }),
           blankExplanations: {
               39:
                 "Clear the OLED buffer at the start of the status screen so old menu text doesn’t remain.",
@@ -660,8 +687,20 @@ void showStatusScreen() {
         {
           topicTitle: "Modify your Chosen Status Display function",
           descBeforeCode: `Change the showStatusScreen to show the status the way you want it to. Rename the function as well.
-**Important:** Make sure to simulate your new function before moving to the next step.`,
-          code: `^^  __EDITOR[SHOW_CHOSEN_STATUS]__
+**Important:** Make sure to simulate your new function before moving to the next step.
+**EDIT:** Click on \`Edit\` button on the code box header, next to \`Copy to Editor\``,
+          code: `__EDITOR[WELCOME]__
+^^
+void showStatusScreen() {
+// ##EDIT:SHOWSTATUS_SCREEN:INDENT=1## 
+  __BLANK[39]__; //clear display
+  __BLANK[40]__; //set text color to white 
+  __BLANK[41]__; //set text size to 1
+  __BLANK[42]__; //set cursor to (0,0)
+  __BLANK[43]__; //println a status string
+  __BLANK[44]__; //display 
+// ##END:SHOWSTATUS_SCREEN##
+}^^
           
           ^^`,
           editorPlaceholders: {

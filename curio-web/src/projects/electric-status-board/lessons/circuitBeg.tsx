@@ -9,7 +9,141 @@ import CodeLessonBase from "@/src/lesson-core/CodeLessonBase";
 // CIRCUIT LESSON CONTENT (CodeBeg-style shape)
 // ------------------------------------------------------------
 export const LESSON_STEPS_CIRCUIT_BEG: Record<number, { phrase: string; steps: any[] }> = {
-  1: {
+    1:{
+    phrase: "What is a Breadboard",
+    steps: [
+      {
+        id: 1,
+        title: "Regular Breadboard",
+        codes: [
+        {
+          topicTitle: "How to use Breadboard",
+          descAfterImage: `**A breadboard is a practice board that lets us build electronic circuits without soldering.**
+ 1. Each holes is where you can insert a wire or component lead to make connections.
+ 2. In the middle, holes in a row of 5 are connected together horizontally.
+ 3. The two long rows on the sides are used for power (VCC) and ground (GND) connections.
+         `,
+
+          imageGridAfterCode: {
+            columns: 1,
+            width: 600,
+            height: 400,
+            items: [
+              {
+                label: "Breadboard connections",
+                imageSrc: "/electric-status-board/circuit/breadBoardConnections.png",
+              },
+            ],
+          },
+        },{
+          topicTitle: "How Current works",
+          descBeforeCode:`**What is electric current?**
+Electric current is the movement of tiny particles called electrons through a wire.
+When electrons move, electricity is flowing.
+
+**What direction does current flow?**
+Current is said to flow from positive (+) to negative (−). The (+) indicates higher voltage, so current flows from high to low voltage. Think of it as electrical pressure: things naturally flow from high pressure to low pressure.`,
+          imageGridAfterCode: {
+            columns: 1,
+            width: 500,
+            height: 600,
+            items: [
+              {
+                label: "Current flow",
+                imageSrc: "/electric-status-board/circuit/LEDbasics.png",
+              },
+            ],
+          },
+        },
+        {
+          topicTitle: "Exercises with Breadboard",
+          descBeforeCode: `For each question, pick the circuit setup that would allow the LED to light up.
+**Problem 1:**`,
+          imageGridBeforeCode: {
+            columns: 1,
+            width: 800,
+            height: 450,
+            items: [
+              {
+                imageSrc: "/electric-status-board/circuit/breadBoardQ1.png",
+              },
+            ],
+          },
+          descAfterCode: `**Problem 2:**`,
+          imageGridAfterCode: {
+            columns: 1,
+            width: 800,
+            height: 450,
+            items: [
+              {
+                imageSrc: "/electric-status-board/circuit/breadBoardQ2.png",
+              },
+            ],
+          },
+
+
+        },
+        ],
+      },
+      {
+        id: 2,
+        title: "Breadboard Mini",
+        codes: [
+          {
+            topicTitle: "How is Breadboard Mini different?",
+            descBeforeCode: `Breadboard Mini works exactly the same but it has just a few differences:
+**Key Differences**:
+@ Holes only in a row are connected
+@ No long connection for (+) and (-). 
+
+You will try both the regular and mini breadboards to get used to using both. For the actual prototype, you may want to use the Beadboard Mini because it is much more cost-efficient.`,
+          imageGridBeforeCode: {
+            columns: 1,
+            width: 800,
+            height: 350,
+            items: [
+              {
+                label: "Breadboard Mini",
+                imageSrc: "/electric-status-board/circuit/miniBreadBoard.png",
+              },
+            ],
+          },
+          descAfterCode:`Because there are no long column connections in Breadboard Mini, the wiring can be slightly different. In this example below, the red and blue LEDs would light up for both boards. Make sure you understand how!`,
+          imageGridAfterCode: {
+            columns: 1,
+            width: 800,
+            height: 560,
+            items: [
+              {
+                label: "Regular vs Mini Breadboard",
+                imageSrc: "/electric-status-board/circuit/miniBreadBoard2.png",
+              },
+            ],
+          },
+          },
+          {
+            topicTitle:"Try wiring in simulator",
+            descBeforeCode:`Open up Wokwi Simulator, grab an Arduino Nano, and place LEDs at these locations. Try to wire from the black and red wire end points to light all the LEDs up!
+**RULE**: Do not wire directly into the LED pins, meaning do not let the wires touch the pins.`,
+            imageGridAfterCode: {
+            columns: 1,
+            width: 1000,
+            height: 480,
+            items: [
+              {
+                label: "Mini Breadboard Exercise",
+                imageSrc: "/electric-status-board/circuit/miniBreadBoard3.png",
+              },
+            ],
+          },
+          },
+        ],
+      },
+    ]
+  },
+  
+  
+  2: {
     phrase: "Circuit setup: parts, OLED wiring, libraries, and button inputs",
     steps: [
       {
@@ -72,28 +206,6 @@ By the end of this lesson, you will have a functioning OLED display and buttons 
             ],
           },
         },
-
-        {
-          topicTitle: "How to use Breadboard",
-          descAfterImage: ` A breadboard is a practice board that lets us build electronic circuits without soldering.
-1. Each holes is where you can insert a wire or component lead to make connections.
-2. In the middle, holes in a row of 5 are connected together horizontally.
-3. The two long rows on the sides are used for power (VCC) and ground (GND) connections.
-         `,
-
-          imageGridAfterCode: {
-            columns: 1,
-            width: 800,
-            height: 400,
-            items: [
-              {
-                label: "Breadboard connections",
-                imageSrc: "/electric-status-board/circuit/Breadboard_demo.png",
-              },
-            ],
-          },
-          
-        },
       ],
     },
 
@@ -150,36 +262,45 @@ By the end of this lesson, you will have a functioning OLED display and buttons 
             descBeforeCode: `An Arduino library is a collection of ready-made code that reduces the need to write complex code from scratch.
               @Open Arduino IDE → Tools → Manage Libraries
               @Search and install "Adafruit SSD1306"
-              @Search and install "Adafruit GFX Library"
-
-**Warning**: 
-The simulator Wokwi only has SSD1306 OLED implemented, if trying to use a different OLED model, please install the corresponding library in your local Arduino IDE.
-In this lesson, we will use SSD1306 OLED as an example on wokwi first. Later when building the physical circuit, you can choose a larger OLED screen which is SH1106 model that require Adafruit_SH110X library instead of SSD1306. 
-@ Be careful, as the model is different, part of the code will need to be adjusted accordingly.
-            `,
-
-            imageGridAfterCode: {
+              @Search and install "Adafruit GFX Library"`,
+              
+            imageGridBeforeCode: {
               columns: 1,
               width: 600,
              height: 390,
               items: [{ label: "Library Manager Search", imageSrc: "/electric-status-board/circuit/adafruitssd1306.png" }],
             },
           },
-                  {
+          {
+            descBeforeCode:`**Warning**: 
+The simulator Wokwi only has SSD1306 OLED implemented, if trying to use a different OLED model, please install the corresponding library in your local Arduino IDE.
+In this lesson, we will use SSD1306 OLED as an example on wokwi first. Later when building the physical circuit, you can choose a larger OLED screen which is SH1106 model that require Adafruit_SH110X library instead of SSD1306. 
+@ Be careful, as the model is different, part of the code will need to be adjusted accordingly.
+            `,            
+            imageGridAfterCode: {
+              columns: 1,
+              width: 600,
+             height: 330,
+              items: [{ label: "OLED types and their libraries", imageSrc: "/electric-status-board/circuit/adafruitlibraries.png" }],
+            },
+          },
+          {
           topicTitle: "Connect OLED to Arduino",
-          descAfterImage: `@**Step 1**: Open your wokwi page through **wokwi.com** and add the arduino uno, breadboard, and SSD1306 OLED
-@**Step 2**: Connect VCC on OLED to 5V on arduino 
-@**Step 3**: Connect GND on OLED to GND on arduino
-@**Step 4**: Connect SDA on OLED to A4 on arduino
-@**Step 5**: Connect SCL on OLED to A5 on arduino
-**Now your OLED has power and data connection.**
+          descBeforeCode: `**Step 1**: Open your wokwi page through **wokwi.com** and add the arduino uno, breadboard, and SSD1306 OLED
+**Step 2**: Connect the OLED pins to the Arduino pins this way: `,
+          imageGridBeforeCode: {
+              columns: 1,
+              width: 600,
+             height: 330,
+              items: [{ label: "OLED connections", imageSrc: "/electric-status-board/circuit/oledwiring.png" }],
+            },
+descAfterImage:`**Now your OLED has power and data connection.**
 
 **Common Issues**:
 @“SSD1306 allocation failed” → wrong display size example
 @Blank screen → wrong SDA/SCL wiring or incorrect address (0x3C/0x3D)
 @Upload stalls → reset Arduino and try again
           `,
-
           imageGridAfterCode: {
             columns: 1,
             width: 800,
