@@ -435,7 +435,6 @@ function evalBlank(rule: BlankRule, value: string): boolean {
 // Main evaluator
 /////////////////////////
 
-
 export function evalAnswerSpec(spec: AnswerSpec, value: string, allValues: Record<string, any>): boolean {
   const raw = String(value ?? "").trim();
 

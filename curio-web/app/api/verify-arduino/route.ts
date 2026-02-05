@@ -1,5 +1,20 @@
 import { NextResponse } from "next/server";
 
+<<<<<<< HEAD
+export async function POST(req: Request) {
+  try {
+    const body = await req.json();
+
+    // Directly point to your running Express server
+    const upstream = await fetch("http://ec2-3-129-218-117.us-east-2.compute.amazonaws.com:4000/verify-arduino", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    const data = await upstream.json();
+    return NextResponse.json(data, { status: upstream.status });
+=======
 export const runtime = "nodejs";
 
 export async function POST(req: Request) {
@@ -31,11 +46,16 @@ export async function POST(req: Request) {
     const status = upstream.ok ? 200 : 502;
 
     return NextResponse.json(data, { status });
+>>>>>>> a3896fd86399e894bf76635cc17f6763883ab9f6
   } catch (err: any) {
     console.error("❌ Verification route error:", err);
     return NextResponse.json(
       { ok: false, error: "Verification server not reachable" },
+<<<<<<< HEAD
+      { status: 500 }
+=======
       { status: 502 }
+>>>>>>> a3896fd86399e894bf76635cc17f6763883ab9f6
     );
   }
 }

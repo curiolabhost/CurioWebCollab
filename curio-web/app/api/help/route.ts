@@ -1,5 +1,16 @@
+<<<<<<< HEAD
+import OpenAI from "openai";
+
 export const runtime = "nodejs";
 
+function sseEvent(event: string, data: any) {
+  return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+}
+
+=======
+export const runtime = "nodejs";
+
+>>>>>>> a3896fd86399e894bf76635cc17f6763883ab9f6
 function buildPopupInstructions() {
   return [
     "You help debug Arduino/C++ compile errors.",
@@ -16,7 +27,11 @@ function buildPopupInstructions() {
     "- No code blocks.",
     "- No solution steps.",
     "- Do NOT tell the user what to type or change.",
+<<<<<<< HEAD
+    "- Avoid compiler jargon like \"undeclared identifier\" unless unavoidable.",
+=======
     '- Avoid compiler jargon like "undeclared identifier" unless unavoidable.',
+>>>>>>> a3896fd86399e894bf76635cc17f6763883ab9f6
     "- Prefer human wording: spelling error, missing semicolon, wrong type, unmatched brace, etc.",
     "- Be concrete: include line number and symbol when possible.",
   ].join("\n");
@@ -32,7 +47,11 @@ function buildPopupMoreInstructions() {
     "- Must include location (line number) and the symbol when possible.",
     "",
     "Goal:",
+<<<<<<< HEAD
+    "- Give an actionable fix hint (allowed): e.g., \"Did you mean INPUT?\"",
+=======
     '- Give an actionable fix hint (allowed): e.g., "Did you mean INPUT?"',
+>>>>>>> a3896fd86399e894bf76635cc17f6763883ab9f6
     "- You may suggest the correct spelling or the intended Arduino keyword/function name.",
     "- Do NOT include code blocks or full rewritten code.",
     "",
@@ -114,8 +133,13 @@ function buildBlankHelpInstructions(hintStyle: string, hintLevel: number) {
     hintStyle === "gentle_nudge"
       ? "- Give a gentle nudge: point them to the concept and what to re-check."
       : hintStyle === "conceptual_explanation"
+<<<<<<< HEAD
+      ? "- Give a conceptual explanation: explain what this blank represents and how to reason to the answer."
+      : "- Use a simple analogy to make the concept click, then guide them back to the blank.",
+=======
         ? "- Give a conceptual explanation: explain what this blank represents and how to reason to the answer."
         : "- Use a simple analogy to make the concept click, then guide them back to the blank.",
+>>>>>>> a3896fd86399e894bf76635cc17f6763883ab9f6
     "",
     `This is hint level ${hintLevel} (higher level = a bit more explicit).`,
     "",
@@ -129,10 +153,28 @@ function buildBlankHelpInstructions(hintStyle: string, hintLevel: number) {
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
 
+<<<<<<< HEAD
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    return new Response(sseEvent("error", { error: "Missing API KEY on server." }), {
+      status: 500,
+      headers: {
+        "Content-Type": "text/event-stream; charset=utf-8",
+        "Cache-Control": "no-cache, no-transform",
+        Connection: "keep-alive",
+        "X-Accel-Buffering": "no",
+      },
+    });
+  }
+
+  const client = new OpenAI({ apiKey });
+  const model = process.env.OPENAI_MODEL || "gpt-4o-mini";
+=======
   const base =
     process.env.TOOL_SERVER_BASE_URL ||
     process.env.OLLAMA_BASE_URL || // backward compat if you used this before
     "http://3.150.166.11:4000";
+>>>>>>> a3896fd86399e894bf76635cc17f6763883ab9f6
 
   const {
     mode = "arduino-verify",
@@ -146,7 +188,10 @@ export async function POST(req: Request) {
     hintStyle = "gentle_nudge",
     hintLevel = 1,
 
+<<<<<<< HEAD
+=======
     // optional lesson context
+>>>>>>> a3896fd86399e894bf76635cc17f6763883ab9f6
     lessonId = null,
     title = null,
     description = null,
@@ -159,6 +204,18 @@ export async function POST(req: Request) {
     modeNorm === "popup"
       ? buildPopupInstructions()
       : modeNorm === "popup-more"
+<<<<<<< HEAD
+      ? buildPopupMoreInstructions()
+      : modeNorm === "popup-lesson"
+      ? buildPopupLessonInstructions()
+      : modeNorm === "project-coach"
+      ? buildProjectCoachInstructions(Number(sentences) || 8, String(verbosity || "brief"))
+      : modeNorm === "blank-help"
+      ? buildBlankHelpInstructions(String(hintStyle || "gentle_nudge"), Number(hintLevel) || 1)
+      : buildVerifyInstructions(Number(sentences) || 3, String(verbosity || "brief"));
+
+  // Build user text (include the word "json" explicitly when we request json_object format)
+=======
         ? buildPopupMoreInstructions()
         : modeNorm === "popup-lesson"
           ? buildPopupLessonInstructions()
@@ -178,6 +235,7 @@ export async function POST(req: Request) {
                 );
 
   // Build the "userText" your tool server will feed to Ollama/OpenAI
+>>>>>>> a3896fd86399e894bf76635cc17f6763883ab9f6
   let userText =
     `Mode: ${modeNorm}\n\n` +
     `Compiler errors (if any):\n${JSON.stringify(errors, null, 2)}\n\n` +
@@ -208,10 +266,27 @@ export async function POST(req: Request) {
       `Code:\n${code}`;
   }
 
+<<<<<<< HEAD
+  console.log("[AI HELP] mode =", modeNorm, "sentences =", sentences, "verbosity =", verbosity);
+
+  const encoder = new TextEncoder();
+
+=======
+>>>>>>> a3896fd86399e894bf76635cc17f6763883ab9f6
   const max_output_tokens =
     modeNorm === "popup"
       ? 80
       : modeNorm === "popup-more"
+<<<<<<< HEAD
+      ? 220
+      : modeNorm === "popup-lesson"
+      ? 520
+      : modeNorm === "blank-help"
+      ? 450
+      : modeNorm === "project-coach"
+      ? 1100
+      : 450;
+=======
         ? 220
         : modeNorm === "popup-lesson"
           ? 520
@@ -220,11 +295,75 @@ export async function POST(req: Request) {
             : modeNorm === "project-coach"
               ? 1100
               : 450;
+>>>>>>> a3896fd86399e894bf76635cc17f6763883ab9f6
 
   const temperature =
     modeNorm === "popup"
       ? 0.2
       : modeNorm === "popup-more"
+<<<<<<< HEAD
+      ? 0.3
+      : modeNorm === "popup-lesson"
+      ? 0.4
+      : modeNorm === "blank-help"
+      ? 0.35
+      : 0.4;
+
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      try {
+        const createArgs: any = {
+          model,
+          instructions,
+          input: [{ role: "user", content: userText }],
+          stream: true,
+          temperature,
+          max_output_tokens,
+        };
+
+        // If project-coach, force JSON object output via Responses API
+        if (modeNorm === "project-coach") {
+          createArgs.text = { format: { type: "json_object" } };
+        }
+
+        const openaiStream = await client.responses.create(createArgs);
+
+        for await (const event of openaiStream as any) {
+          if (event.type === "response.output_text.delta") {
+            const delta = event.delta ?? "";
+            if (delta) controller.enqueue(encoder.encode(sseEvent("token", { token: delta })));
+          }
+
+          if (event.type === "response.completed") {
+            controller.enqueue(encoder.encode(sseEvent("done", { ok: true })));
+          }
+
+          if (event.type === "response.failed" || event.type === "error") {
+            const msg = event?.error?.message || event?.message || "AI request failed.";
+            controller.enqueue(encoder.encode(sseEvent("error", { error: msg })));
+            controller.enqueue(encoder.encode(sseEvent("done", { ok: false })));
+          }
+        }
+
+        controller.close();
+      } catch (err: any) {
+        const msg = err?.message || "AI request crashed.";
+        controller.enqueue(encoder.encode(sseEvent("error", { error: msg })));
+        controller.enqueue(encoder.encode(sseEvent("done", { ok: false })));
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "text/event-stream; charset=utf-8",
+      "Cache-Control": "no-cache, no-transform",
+      Connection: "keep-alive",
+      "X-Accel-Buffering": "no",
+    },
+  });
+=======
         ? 0.3
         : modeNorm === "popup-lesson"
           ? 0.4
@@ -303,4 +442,5 @@ export async function POST(req: Request) {
   } finally {
     clearTimeout(t);
   }
+>>>>>>> a3896fd86399e894bf76635cc17f6763883ab9f6
 }
