@@ -229,10 +229,12 @@ For example, the first blank for PREV can be 3 if you connected it to digital pi
           imageGridAfterCode: {
             columns: 1,
             rows: 1,
+            width: 700,
+            height: 550,
             items: [
               {
                 imageSrc:
-                  "https://dummyimage.com/600x400/ddd/000.png&text=Example+Circuit+Image",
+                  "/electric-status-board/circuit/button_wiring.png",
                 label: "Example circuit image",
               },
             ],
