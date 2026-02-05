@@ -35,10 +35,10 @@ export type CheckPolicy = {
 export type PatternPart =
   | string
   | { p: "sameAs"; target: string }
-  | { p: "identifier" }
-  | { p: "number" }
-  | { p: "string" }
-  | { p: "oneOf"; values: string[] }
+  | { p: "identifier"; bindAs?: string }
+  | { p: "number"; bindAs?: string }
+  | { p: "string"; bindAs?: string }
+  | { p: "oneOf"; values: string[]; bindAs?: string } // optional
   | { p: "any"; specs: PatternPart[] };
 
 export type BlankTypedSpec =
@@ -186,7 +186,7 @@ function tokenize(input: string): Token[] {
     // identifier
     if (/[A-Za-z_]/.test(ch)) {
       let j = i + 1;
-      // ✅ bounds check prevents RegExp.test(undefined) => "undefined" infinite loop
+      //  bounds check prevents RegExp.test(undefined) => "undefined" infinite loop
       while (j < src.length && /[A-Za-z0-9_]/.test(src[j])) j++;
       tokens.push({ kind: "id", text: src.slice(i, j) });
       i = j;
@@ -249,7 +249,6 @@ function applyPolicy(raw: string, policy?: CheckPolicy): { ok: boolean; tokens?:
     }
   }
 
-  // ✅ Correct regex: "no spaces around '.'" etc
   if (p.requireNoSpacesAround?.length) {
     for (const op of p.requireNoSpacesAround) {
       const esc = escapeRegExpLiteral(op);
@@ -347,22 +346,43 @@ function matchPattern(parts: PatternPart[], tokens: Token[], allValues: Record<s
       continue;
     }
 
-    if (p.p === "identifier" && t.kind !== "id") return false;
-    if (p.p === "number" && t.kind !== "num") return false;
-    if (p.p === "string" && t.kind !== "str") return false;
+    // --- leaf matchers ---
+    if (p.p === "identifier") {
+      if (t.kind !== "id") return false;
+      if (p.bindAs) allValues[p.bindAs] = t.text; // bind identifier
+      continue;
+    }
 
-    if (p.p === "oneOf" && !p.values.includes(t.text)) return false;
+    if (p.p === "number") {
+      if (t.kind !== "num") return false;
+      continue;
+    }
+
+    if (p.p === "string") {
+      if (t.kind !== "str") return false;
+      if (p.bindAs) allValues[p.bindAs] = t.text; 
+      continue;
+    }
+
+    if (p.p === "oneOf") {
+      if (!p.values.includes(t.text)) return false;
+      if (p.bindAs) allValues[p.bindAs] = t.text; 
+      continue;
+    }
+
     if (p.p === "sameAs") {
       const key = String(p.target ?? "").trim();
       const existing = normalizeWs(String(allValues?.[key] ?? ""));
-      if (!existing) return true; // nothing to compare yet
-      return normalizeWs(t.text) === existing;
+
+      if (existing) {
+        if (normalizeWs(t.text) !== existing) return false;
+      }
+      continue; 
     }
-
-
 
     if (p.p === "any") {
       if (!p.specs.some((s) => matchPattern([s], [t], allValues))) return false;
+      continue;
     }
   }
 
@@ -373,16 +393,42 @@ function matchPattern(parts: PatternPart[], tokens: Token[], allValues: Record<s
 // Legacy BlankRule
 /////////////////////////
 
-function evalBlank(rule: BlankRule, value: string): boolean {
-  const v = normalizeWs(value);
+function normalizeExprLoose(s: string) {
+  return String(s ?? "")
+    .replace(/\s+/g, "")   // remove ALL whitespace
+    .trim();
+}
 
-  if (rule.equals != null) return normalizeWs(rule.equals) === v;
-  if (rule.oneOf) return rule.oneOf.some((x) => normalizeWs(x) === v);
-  if (rule.contains) return v.includes(normalizeWs(rule.contains));
-  if (rule.matches && isValidRegex(rule.matches)) return new RegExp(rule.matches).test(String(value ?? ""));
+
+function evalBlank(rule: BlankRule, value: string): boolean {
+  const strict = normalizeWs(value);
+  const loose = normalizeExprLoose(value);
+
+  if (rule.equals != null) {
+    const targetStrict = normalizeWs(rule.equals);
+    const targetLoose = normalizeExprLoose(rule.equals);
+
+    // accept either form
+    return strict === targetStrict || loose === targetLoose;
+  }
+
+  if (rule.oneOf) {
+    return rule.oneOf.some((x) => {
+      return (
+        normalizeWs(x) === strict ||
+        normalizeExprLoose(x) === loose
+      );
+    });
+  }
+
+  if (rule.contains) return strict.includes(normalizeWs(rule.contains));
+  if (rule.matches && isValidRegex(rule.matches))
+    return new RegExp(rule.matches).test(String(value ?? ""));
 
   return false;
 }
+
+
 
 
 /////////////////////////
@@ -483,22 +529,31 @@ return true;
     }
 
 case "string": {
-  if (s.requireQuoted && !(raw.startsWith('"') || raw.startsWith("'"))) return false;
+  const isQuoted =
+    (raw.startsWith('"') && raw.endsWith('"') && raw.length >= 2) ||
+    (raw.startsWith("'") && raw.endsWith("'") && raw.length >= 2);
+
+  if (s.requireQuoted && !isQuoted) return false;
+
+  const rawForCompare =
+    s.requireQuoted && isQuoted ? raw.slice(1, -1) : raw;
 
   let ok = false;
 
   if (Array.isArray(s.oneOf) && s.oneOf.length) {
-    ok = s.oneOf.some((x: string) => normalizeWs(String(x)) === normalizeWs(raw));
+    ok = s.oneOf.some((x: string) => normalizeWs(String(x)) === normalizeWs(rawForCompare));
   } else if (s.regex && isValidRegex(s.regex)) {
-    ok = new RegExp(s.regex).test(raw);
+    ok = new RegExp(s.regex).test(rawForCompare);
   } else {
-    ok = raw.length > 0;
+    ok = rawForCompare.length > 0;
   }
 
   if (!ok) return false;
 
-  return defineOrEnforceBind(allValues, (s as any).bindAs, raw);
+  // bind should probably store the de-quoted value when requireQuoted is true
+  return defineOrEnforceBind(allValues, (s as any).bindAs, rawForCompare);
 }
+
 case "sameAs": {
   const targets: string[] = Array.isArray(s.targets) ? s.targets : [];
   const v = normalizeWs(raw);

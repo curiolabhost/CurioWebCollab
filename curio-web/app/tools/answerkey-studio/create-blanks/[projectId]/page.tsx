@@ -2,7 +2,6 @@
 
 import * as React from "react";
 import Link from "next/link";
-<<<<<<< HEAD
 import { inferBlankValues } from "@/src/lesson-core/authoring/blankAnswerInfer";
 import { generateKeyFromReference } from "@/src/lesson-core/blankKeyGenerator";
 import {
@@ -11,6 +10,7 @@ import {
   type BlankTypedSpec,
   evalAnswerSpec,
 } from "@/src/lesson-core/blankCheckUtils";
+import { useParams } from "next/navigation";
 
 import { K } from "@/src/lesson-core/blankKeyBuilder";
 
@@ -35,6 +35,9 @@ const LS_ANSWERKEY_SNIPPET = "curio:answerkey:studio:answerKeySnippet:v1";
 const LS_ANSWERKEY_REPORT  = "curio:answerkey:studio:answerKeyReport:v1";
 const LS_TEST_VALUE        = "curio:answerkey:studio:testValue:v1";
 
+// notes
+const LS_NOTES = "curio:answerkey:studio:notes:v1";
+
 
 function safeJsonParse<T>(raw: string | null): T | null {
   if (!raw) return null;
@@ -45,23 +48,61 @@ function safeJsonParse<T>(raw: string | null): T | null {
   }
 }
 
-function lsGet(key: string) {
+function lsGet(key: string, projectId: string) {
   if (typeof window === "undefined") return "";
-  return window.localStorage.getItem(key) || "";
+  return window.localStorage.getItem(k(key, projectId)) || "";
 }
-function lsSet(key: string, value: string) {
+function lsSet(key: string, projectId: string, value: string) {
   if (typeof window === "undefined") return;
-  window.localStorage.setItem(key, value);
+
+  const fullKey = k(key, projectId);
+  const prev = window.localStorage.getItem(fullKey);
+
+  // Guard: don't stomp existing data with empty string
+  if ((value ?? "") === "" && (prev ?? "") !== "") {
+    return;
+  }
+
+  window.localStorage.setItem(fullKey, value);
 }
-function lsGetJson<T>(key: string, fallback: T): T {
+
+function lsSetJson(key: string, projectId: string, value: any) {
+  if (typeof window === "undefined") return;
+
+  const fullKey = k(key, projectId);
+  const prev = window.localStorage.getItem(fullKey);
+
+  const next = JSON.stringify(value);
+
+  // detect "empty BlankStore"
+  const isEmptyStore =
+    value &&
+    typeof value === "object" &&
+    value.uidByDisplay &&
+    Object.keys(value.uidByDisplay).length === 0 &&
+    value.metaByUid &&
+    Object.keys(value.metaByUid).length === 0;
+
+  // Guard: don't stomp an existing non-empty store with an empty one
+  if (isEmptyStore && (prev ?? "").length > 10) {
+    return;
+  }
+
+  window.localStorage.setItem(fullKey, next);
+}
+
+function lsGetJson<T>(key: string, projectId: string, fallback: T): T {
   if (typeof window === "undefined") return fallback;
-  const v = safeJsonParse<T>(window.localStorage.getItem(key));
-  return (v ?? fallback) as T;
+  try {
+    const raw = window.localStorage.getItem(k(key, projectId));
+    const parsed = raw ? (JSON.parse(raw) as T) : null;
+    return (parsed ?? fallback) as T;
+  } catch {
+    return fallback;
+  }
 }
-function lsSetJson(key: string, value: any) {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(key, JSON.stringify(value));
-}
+
+
 
 function replaceRange(str: string, start: number, end: number, insert: string) {
   return str.slice(0, start) + insert + str.slice(end);
@@ -73,6 +114,38 @@ function escapeHtml(s: string) {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
 }
+
+function migrateLegacyProject(projectId: string) {
+  if (typeof window === "undefined") return;
+
+  const LEGACY_KEYS = [
+    LS_PROJECT_CODE,
+    LS_TEMPLATE_CODE,
+    LS_SOLVED_CODE,
+    LS_BLANK_COUNTER,
+    LS_BLANK_STORE,
+    LS_ANSWERKEY_SNIPPET,
+    LS_ANSWERKEY_REPORT,
+    LS_TEST_VALUE,
+    LS_TABLES_KEY,
+    LS_ACTIVE_ID_KEY,
+    LS_ANSWERS_MAP,
+  ];
+
+  let copied = 0;
+
+  for (const baseKey of LEGACY_KEYS) {
+    const legacyVal = localStorage.getItem(baseKey);
+    if (legacyVal == null) continue;
+
+    const newKey = k(baseKey, projectId);
+    localStorage.setItem(newKey, legacyVal); // overwrite
+    copied++;
+  }
+
+  alert(`Force imported ${copied} legacy keys into project "${projectId}". Reload the page.`);
+}
+
 
 function extractBlanksInOrder(template: string): string[] {
   const ids: string[] = [];
@@ -115,13 +188,21 @@ export type ConstraintType =
   | "num_oneOf"
   | "id_bound"
   | "str_oneOf"
-  | "expr_ref";
+  | "same_as"
+  | "pat_array_empty"    // identifier[]
+  | "pat_array_index"    // identifier[ identifier | number ]
+  | "expr_ref"
+  | "pattern_custom";
 
 export type BlankMeta = {
   uid: BlankUID;
   answer: string;
   description?: string;
   bindKey?: string;
+  sameAsTarget?: string;
+  requireQuoted?: boolean; // for string constraints (default false)
+
+
   // Option fields
   constraintType?: ConstraintType; // dropdown selection
   allowedRaw?: string;             // for oneOf: "64, 32" or for str: '"A","B"' or 'A,B'
@@ -129,6 +210,7 @@ export type BlankMeta = {
   rangeMaxRaw?: string;            // for range
   createdAt: number;
   updatedAt: number;
+  patternJson?: string;
   generatedKeyExpr?: string; // e.g. 'K.num({ oneOf: [64, 32] })'
 };
 
@@ -189,6 +271,9 @@ type RegistryRow = {
   scope: "project" | "lesson";
 };
 
+
+
+
 type RegistryTable = {
   id: string;
   title: string;
@@ -197,6 +282,22 @@ type RegistryTable = {
   updatedAt: number;
 };
 
+type PatternRow =
+  | { kind: "identifier", bindAs?: string}
+  | { kind: "string", bindAs?: string }
+  | { kind: "number" ,bindAs?: string}
+  | { kind: "sameAs"; target: string }
+  | { kind: "oneOf"; valuesRaw: string } // comma list
+  | { kind: "wildcard"; min?: string; max?: string }
+  | { kind: "literal"; text: string };
+
+function parseCsvOps(raw: string): string[] {
+  return String(raw ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
 function persistNow(args: {
   store: any;
   tables: any;
@@ -204,34 +305,41 @@ function persistNow(args: {
   projectCode: string;
   templateCode: string;
   solvedCode: string;
+  projectId: string;
 }) {
   if (typeof window === "undefined") return;
 
-  // write immediately (no setTimeout)
-  window.localStorage.setItem(LS_BLANK_STORE, JSON.stringify(args.store));
-  window.localStorage.setItem(LS_TABLES_KEY, JSON.stringify(args.tables));
- window.localStorage.setItem(LS_ACTIVE_ID_KEY, args.activeId ?? "");
+  const pid = args.projectId;
 
+  window.localStorage.setItem(k(LS_BLANK_STORE, pid), JSON.stringify(args.store));
+  window.localStorage.setItem(k(LS_TABLES_KEY, pid), JSON.stringify(args.tables));
+  window.localStorage.setItem(k(LS_ACTIVE_ID_KEY, pid), args.activeId ?? "");
 
-  window.localStorage.setItem(LS_PROJECT_CODE, args.projectCode);
-  window.localStorage.setItem(LS_TEMPLATE_CODE, args.templateCode);
-  window.localStorage.setItem(LS_SOLVED_CODE, args.solvedCode);
+  window.localStorage.setItem(k(LS_PROJECT_CODE, pid), args.projectCode);
+  window.localStorage.setItem(k(LS_TEMPLATE_CODE, pid), args.templateCode);
+  window.localStorage.setItem(k(LS_SOLVED_CODE, pid), args.solvedCode);
 }
 
-function loadRegistryTables(): RegistryTable[] {
+
+function loadRegistryTables(projectId: string): RegistryTable[] {
   if (typeof window === "undefined") return [];
-  const parsed = safeJsonParse<RegistryTable[]>(window.localStorage.getItem(LS_TABLES_KEY));
+  const parsed = safeJsonParse<RegistryTable[]>(window.localStorage.getItem(k(LS_TABLES_KEY, projectId)));
   return Array.isArray(parsed) ? parsed : [];
 }
 
-function loadRegistryActiveId(): string | null {
+function loadRegistryActiveId(projectId: string): string | null {
   if (typeof window === "undefined") return null;
-  return window.localStorage.getItem(LS_ACTIVE_ID_KEY);
+  return window.localStorage.getItem(k(LS_ACTIVE_ID_KEY, projectId));
 }
 
-function buildBindingsFromActiveRegistry(): Record<string, string> {
-  const tables = loadRegistryTables();
-  const activeId = loadRegistryActiveId();
+
+function k(base: string, projectId: string) {
+  return `${base}:${projectId}`;
+}
+
+function buildBindingsFromActiveRegistry(projectId: string): Record<string, string> {
+  const tables = loadRegistryTables(projectId);
+  const activeId = loadRegistryActiveId(projectId);
   const active = (activeId && tables.find((t) => t.id === activeId)) || tables[0] || null;
   if (!active) return {};
 
@@ -249,7 +357,6 @@ function buildBindingsFromActiveRegistry(): Record<string, string> {
   }
   return bindings;
 }
-
 
 const AutoGrowTextarea = React.forwardRef<HTMLTextAreaElement, AutoGrowProps>(function AutoGrowTextarea(
   { maxVh = 0.7, ...props },
@@ -303,14 +410,48 @@ const AutoGrowTextarea = React.forwardRef<HTMLTextAreaElement, AutoGrowProps>(fu
   );
 });
 
-export default function CreateBlanksPage() {
+export default function CreateBlanksPage(){
 
-    const [answerKeySnippet, setAnswerKeySnippet] = React.useState("");
-    const [answerKeyReport, setAnswerKeyReport] = React.useState("");
+  const params = useParams<{ projectId?: string }>();
+  const rawId = params?.projectId as string | undefined;
+  const projectId = rawId ? decodeURIComponent(rawId) : null;
+  if (!projectId) {
+    return <div className="p-6 text-sm opacity-70">Loading…</div>;
+  }
+
+  const pid = projectId;
+
+
+  const get = React.useCallback((key: string) => lsGet(key, projectId), [projectId]);
+  const set = React.useCallback((key: string, value: string) => lsSet(key, projectId, value), [projectId]);
+  const getJson = React.useCallback(
+    <T,>(key: string, fallback: T) => lsGetJson<T>(key, projectId, fallback),
+    [projectId]
+  );
+  const setJson = React.useCallback((key: string, value: any) => lsSetJson(key, projectId, value), [projectId]);
+  const kk = React.useCallback((base: string) => k(base, projectId), [projectId]);
+
+
+  const [answerKeySnippet, setAnswerKeySnippet] = React.useState("");
+  const [answerKeyReport, setAnswerKeyReport] = React.useState("");
   const [createMode, setCreateMode] = React.useState(false);
   const [saveStatus, setSaveStatus] = React.useState<string>("");
   const [didLoad, setDidLoad] = React.useState(false);
+  const [patternRowsDraft, setPatternRowsDraft] = React.useState<PatternRow[]>([
+    { kind: "identifier" },
+    { kind: "literal", text: "." },
+    { kind: "literal", text: "println" },
+    { kind: "literal", text: "(" },
+    { kind: "string" },
+    { kind: "literal", text: ")" },
+    ]);
 
+    const [patternModeDraft, setPatternModeDraft] = React.useState<"exact" | "contains">("exact");
+    const [patternNoSpaceOpsDraft, setPatternNoSpaceOpsDraft] = React.useState("."); // input like "." or ".,::"
+
+    const [sameAsTargetDraft, setSameAsTargetDraft] = React.useState("");
+    const sameAsTargetDraftRef = React.useRef(sameAsTargetDraft);
+    React.useEffect(() => { sameAsTargetDraftRef.current = sameAsTargetDraft; }, [sameAsTargetDraft]);
 
 
   const [solved, setSolved] = React.useState("");
@@ -345,8 +486,67 @@ const [testResult, setTestResult] = React.useState<{
   bound?: Record<string, string>;
 } | null>(null);
 
-
 const [pendingSelectBlankId, setPendingSelectBlankId] = React.useState<string | null>(null);
+
+const [blankSearch, setBlankSearch] = React.useState("");
+
+const [requireQuotedDraft, setRequireQuotedDraft] = React.useState<"no" | "yes">("no");
+const requireQuotedDraftRef = React.useRef(requireQuotedDraft);
+React.useEffect(() => { requireQuotedDraftRef.current = requireQuotedDraft; }, [requireQuotedDraft]);
+
+
+// ------------------------------------------------------------
+// Load once on mount if ?s=... exists
+// ------------------------------------------------------------
+React.useEffect(() => {
+  if (!projectId) return;
+  if (typeof window === "undefined") return;
+
+  const sp = new URLSearchParams(window.location.search);
+  const s = sp.get("s");
+  if (!s) return;
+
+  try {
+    const json = decodeURIComponent(
+      escape(window.atob(decodeURIComponent(s)))
+    );
+    const payload = JSON.parse(json) as {
+      v: number;
+      projectId: string;
+      projectCode: string;
+      templateCode: string;
+      solvedCode: string;
+      store: any;
+      tables: any;
+      activeId: string | null;
+    };
+
+    // Write into localStorage for THIS projectId
+    persistNow({
+      store: payload.store,
+      tables: payload.tables,
+      activeId: payload.activeId ?? null,
+      projectCode: payload.projectCode ?? "",
+      templateCode: payload.templateCode ?? "",
+      solvedCode: payload.solvedCode ?? "",
+      projectId,
+    });
+
+    // Clean the URL so it doesn't keep re-importing on refresh
+    sp.delete("s");
+    const nextUrl =
+      window.location.pathname + (sp.toString() ? `?${sp.toString()}` : "");
+    window.history.replaceState({}, "", nextUrl);
+
+    setSaveStatus("Imported from share link ✓");
+  } catch (e) {
+    console.warn("Share import failed", e);
+    setSaveStatus("Share import failed (bad link)");
+  }
+}, [projectId]);
+
+
+
 React.useLayoutEffect(() => {
   if (!pendingSelectBlankId) return;
 
@@ -370,6 +570,27 @@ React.useLayoutEffect(() => {
 
   setPendingSelectBlankId(null);
 }, [template, pendingSelectBlankId]);
+
+
+
+const [notes, setNotes] = React.useState("");
+
+// hydrate notes when projectId changes
+React.useEffect(() => {
+  if (!projectId) return;
+  setNotes(lsGet(LS_NOTES, projectId) || "");
+}, [projectId]);
+
+// persist notes (debounced)
+React.useEffect(() => {
+  if (!projectId) return;
+
+  const t = window.setTimeout(() => {
+    lsSet(LS_NOTES, projectId, notes);
+  }, 250);
+
+  return () => window.clearTimeout(t);
+}, [projectId, notes]);
 
 
 // debounce commit
@@ -408,6 +629,59 @@ function parseOneOfNums(raw: string): number[] {
   }
   return out;
 }
+function rowsToPatternParts(rows: PatternRow[]) {
+  const parts: any[] = [];
+
+  for (const r of rows) {
+    if (r.kind === "literal") {
+      const t = String((r as any).text ?? "");
+      if (t.trim() !== "") parts.push(t);
+      continue;
+    }
+
+    if (r.kind === "identifier") {
+      const bindAs = (r.bindAs ?? "").trim();
+      parts.push(bindAs ? { p: "identifier", bindAs } : { p: "identifier" });
+      continue;
+    }
+
+    if (r.kind === "string") {
+      const bindAs = (r.bindAs ?? "").trim();
+      parts.push(bindAs ? { p: "string", bindAs } : { p: "string" });
+      continue;
+    }
+
+    if (r.kind === "number") {
+      const bindAs = (r.bindAs ?? "").trim();
+      parts.push(bindAs ? { p: "number", bindAs } : { p: "number" });
+      continue;
+    }
+
+    if (r.kind === "sameAs") {
+      parts.push({ p: "sameAs", target: String((r as any).target ?? "") });
+      continue;
+    }
+
+    if (r.kind === "oneOf") {
+      parts.push({ p: "oneOf", values: parseCsv(String((r as any).valuesRaw ?? "")) });
+      continue;
+    }
+
+    if (r.kind === "wildcard") {
+      const min = (r as any).min?.trim() === "" ? undefined : Number((r as any).min);
+      const max = (r as any).max?.trim() === "" ? undefined : Number((r as any).max);
+      parts.push({
+        p: "wildcard",
+        min: Number.isFinite(min as any) ? min : undefined,
+        max: Number.isFinite(max as any) ? max : undefined,
+      });
+      continue;
+    }
+  }
+
+  return parts;
+}
+
 
 function parseOneOfStrs(raw: string): string[] {
   // allow: A,B  OR  "A","B"
@@ -420,6 +694,25 @@ function parseOneOfStrs(raw: string): string[] {
     return t;
   });
 }
+function buildPatternSpecFromDraft() {
+  const parts = rowsToPatternParts(patternRowsDraft);
+  const ops = parseCsvOps(patternNoSpaceOpsDraft);
+
+  const spec: any = {
+    type: "pattern",
+    parts,
+    policy: ops.length ? { requireNoSpacesAround: ops } : undefined,
+    mode: patternModeDraft, //
+  };
+
+  // remove undefined fields so JSON is clean
+  if (!spec.policy) delete spec.policy;
+  if (!spec.mode) delete spec.mode;
+
+  return spec;
+}
+
+
 
 function upsertAnswerKeyLine(existing: string, blankId: string, newLine: string) {
   const id = String(blankId).trim();
@@ -452,6 +745,33 @@ function upsertAnswerKeyLine(existing: string, blankId: string, newLine: string)
   return `${existing.trimEnd()}\n  ${id}: ${newLine},\n`;
 }
 
+function makeShareLink() {
+  // make sure current edits are committed to store + written to localStorage
+  flushAllNow();
+
+  // Build payload from CURRENT state (refs are safest)
+  const payload = {
+    v: 1,
+    projectId: pid,
+    projectCode: get(LS_PROJECT_CODE) || solvedRef.current || "",
+    templateCode: templateRef.current || "",
+    solvedCode: solvedRef.current || "",
+    store: storeRef.current,
+    tables: loadRegistryTables(pid),
+    activeId: loadRegistryActiveId(pid),
+  };
+
+  const json = JSON.stringify(payload);
+  const b64 = window.btoa(unescape(encodeURIComponent(json)));
+
+  const url = new URL(window.location.href);
+  url.searchParams.set("s", encodeURIComponent(b64));
+
+  navigator.clipboard?.writeText(url.toString()).catch(() => {});
+  setSaveStatus("Share link copied ✓");
+}
+
+
 function emitSingleKeyExpr(opts: {
   blankId: string;
   answer: string;
@@ -462,6 +782,9 @@ function emitSingleKeyExpr(opts: {
     allowedRaw?: string;
     rangeMinRaw?: string;
     rangeMaxRaw?: string;
+    sameAsTarget?: string;
+    requireQuoted?: boolean;
+
   };
 }) {
   const { blankId, answer, bindKey, bindings, constraint } = opts;
@@ -484,6 +807,22 @@ function emitSingleKeyExpr(opts: {
     return `K.num(${parts.length ? `{ ${parts.join(", ")} }` : ""})`;
   }
 
+if (cType === "same_as") {
+  let target = String(c.sameAsTarget ?? "").trim(); // bind key
+
+  // If user typed quotes, strip ONE layer: "mainIndex" -> mainIndex, 'mainIndex' -> mainIndex
+  if (
+    (target.startsWith('"') && target.endsWith('"')) ||
+    (target.startsWith("'") && target.endsWith("'"))
+  ) {
+    target = target.slice(1, -1);
+  }
+
+  return `K.same(${JSON.stringify(target)})`;
+}
+
+
+
   if (cType === "num_oneOf") {
     const nums = parseOneOfNums(c.allowedRaw || "");
     return nums.length ? `K.num({ oneOf: ${JSON.stringify(nums)} })` : `K.num()`;
@@ -491,13 +830,29 @@ function emitSingleKeyExpr(opts: {
 
   if (cType === "str_oneOf") {
     const strs = parseOneOfStrs(c.allowedRaw || "");
-    return strs.length ? `K.str({ oneOf: ${JSON.stringify(strs)} })` : `K.str()`;
+    const rq = c.requireQuoted === true;
+
+    const opts: string[] = [];
+    if (strs.length) opts.push(`oneOf: ${JSON.stringify(strs)}`);
+    if (rq) opts.push(`requireQuoted: true`);
+
+    return `K.str(${opts.length ? `{ ${opts.join(", ")} }` : ""})`;
   }
+
 
   if (cType === "id_bound") {
     // requires bindKey, but it's missing
     return `K.id()`;
   }
+
+    // pattern presets
+  if (cType === "pat_array_empty") {
+    return `({ type: "pattern", parts: [{ p: "identifier" }, "[", "]"] } as const)`;
+  }
+  if (cType === "pat_array_index") {
+    return `({ type: "pattern", parts: [{ p: "identifier" }, "[", { p: "any", specs: [{ p: "identifier" }, { p: "number" }] }, "]"] } as const)`;
+  }
+
 
   // expr_ref fallback
   const hasStructure = /[\[\]\(\)\{\},.+\-*/=!<>:]/.test(ans);
@@ -525,20 +880,34 @@ function onGenerateAnswerKey() {
     return;
   }
 
-  const bindings = buildBindingsFromActiveRegistry();
+  const bindings = buildBindingsFromActiveRegistry(pid);
 
-  const expr = emitSingleKeyExpr({
-    blankId: id,
-    answer,
-    bindKey: meta?.bindKey,
-    bindings,
-    constraint: {
-      constraintType: meta?.constraintType,
-      allowedRaw: meta?.allowedRaw,
-      rangeMinRaw: meta?.rangeMinRaw,
-      rangeMaxRaw: meta?.rangeMaxRaw,
-    },
-  });
+  let expr: string;
+
+  if (meta?.constraintType === "pattern_custom") {
+    const parsed = safeJsonParse<any>(meta.patternJson ?? "");
+    if (!parsed || parsed.type !== "pattern" || !Array.isArray(parsed.parts)) {
+      alert("Pattern JSON is missing/invalid. Click 'Save pattern' in the Pattern builder first.");
+      return;
+    }
+    expr = `(${JSON.stringify(parsed, null, 2)} as const)`;
+  } else {
+    expr = emitSingleKeyExpr({
+      blankId: id,
+      answer,
+      bindKey: meta?.bindKey,
+      bindings,
+      constraint: {
+        constraintType: meta?.constraintType,
+        allowedRaw: meta?.allowedRaw,
+        rangeMinRaw: meta?.rangeMinRaw,
+        rangeMaxRaw: meta?.rangeMaxRaw,
+        sameAsTarget: meta?.sameAsTarget,
+        requireQuoted: meta?.requireQuoted,
+      },
+    });
+  }
+
 
   //  1) Update the big snippet (incremental upsert)
   setAnswerKeySnippet((prev) => {
@@ -600,6 +969,10 @@ function scheduleCommitSelectedBlank(next: {
   allowedRaw?: string;
   rangeMinRaw?: string;
   rangeMaxRaw?: string;
+  patternJson?: string;
+  sameAsTarget?: string;
+  requireQuoted?: boolean;
+
 }) {
   const blankId = selectedRef.current;
   if (!blankId) return;
@@ -630,6 +1003,9 @@ function scheduleCommitSelectedBlank(next: {
                 allowedRaw: next.allowedRaw,
                 rangeMinRaw: next.rangeMinRaw,
                 rangeMaxRaw: next.rangeMaxRaw,
+                patternJson: next.patternJson ?? "",
+                sameAsTarget: next.sameAsTarget,
+                requireQuoted: typeof next.requireQuoted === "undefined" ? false : next.requireQuoted,
 
                 createdAt: now,
                 updatedAt: now,
@@ -655,6 +1031,9 @@ function scheduleCommitSelectedBlank(next: {
             allowedRaw: typeof next.allowedRaw === "undefined" ? meta.allowedRaw : next.allowedRaw,
             rangeMinRaw: typeof next.rangeMinRaw === "undefined" ? meta.rangeMinRaw : next.rangeMinRaw,
             rangeMaxRaw: typeof next.rangeMaxRaw === "undefined" ? meta.rangeMaxRaw : next.rangeMaxRaw,
+            sameAsTarget: typeof next.sameAsTarget === "undefined" ? meta.sameAsTarget : next.sameAsTarget,
+            patternJson: typeof next.patternJson === "undefined" ? meta.patternJson : next.patternJson,
+            requireQuoted: typeof next.requireQuoted === "undefined" ? meta.requireQuoted : next.requireQuoted,
 
           },
         },
@@ -662,6 +1041,21 @@ function scheduleCommitSelectedBlank(next: {
     });
   }, 250);
 }
+
+function commitPatternToSelectedBlank(nextRows?: PatternRow[], nextMode?: "exact" | "contains", nextOps?: string) {
+  const spec = {
+    ...buildPatternSpecFromDraft(),
+    ...(typeof nextMode !== "undefined" ? { mode: nextMode } : {}),
+  };
+
+  const json = JSON.stringify(spec, null, 2);
+
+  scheduleCommitSelectedBlank({
+    patternJson: json,
+    constraintType: "pattern_custom",
+  } as any);
+}
+
 
 function applyDraftsToStoreSync(prev: BlankStore, blankId: string, next: {
   answer: string;
@@ -671,7 +1065,11 @@ function applyDraftsToStoreSync(prev: BlankStore, blankId: string, next: {
   allowedRaw: string;
   rangeMinRaw: string;
   rangeMaxRaw: string;
+  patternJson?: string;
+  sameAsTarget: string;
+  requireQuoted: "no" | "yes";
 }): BlankStore {
+
   const now = Date.now();
   const uid = resolveBlankUid(prev, blankId);
 
@@ -692,6 +1090,10 @@ function applyDraftsToStoreSync(prev: BlankStore, blankId: string, next: {
           rangeMaxRaw: next.rangeMaxRaw ?? "",
           createdAt: now,
           updatedAt: now,
+          patternJson: next.patternJson ?? "",
+          sameAsTarget: next.sameAsTarget ?? "", 
+          requireQuoted: next.requireQuoted === "yes",
+
         },
       },
     };
@@ -713,6 +1115,8 @@ function applyDraftsToStoreSync(prev: BlankStore, blankId: string, next: {
         allowedRaw: next.allowedRaw,
         rangeMinRaw: next.rangeMinRaw,
         rangeMaxRaw: next.rangeMaxRaw,
+        sameAsTarget: next.sameAsTarget,
+        requireQuoted: next.requireQuoted === "yes",
         updatedAt: now,
       },
     },
@@ -780,6 +1184,7 @@ React.useEffect(() => {
     setAllowedDraft("");
     setMinDraft("");
     setMaxDraft("");
+    setRequireQuotedDraft("no");
     return;
   }
 
@@ -787,6 +1192,8 @@ React.useEffect(() => {
 
   const meta = getBlankMeta(store, selectedBlankId);
 
+  const rq = meta?.requireQuoted === true ? "yes" : "no";
+  setRequireQuotedDraft(rq); 
   setAnswerDraft(meta?.answer ?? "");
   setDescDraft(meta?.description ?? "");
   setBindDraft(meta?.bindKey ?? "");
@@ -795,6 +1202,8 @@ React.useEffect(() => {
   setAllowedDraft(meta?.allowedRaw ?? "");
   setMinDraft(meta?.rangeMinRaw ?? "");
   setMaxDraft(meta?.rangeMaxRaw ?? "");
+  setSameAsTargetDraft(meta?.sameAsTarget ?? "");
+
 }, [selectedBlankId, store]);
 
 
@@ -882,99 +1291,47 @@ React.useEffect(() => {
 }, []);
 
 // navigation / persistence / BFCache handling
+
 React.useEffect(() => {
-  const rehydrateFromLS = () => {
-    const project = lsGet(LS_PROJECT_CODE);
-    const storedSolved = lsGet(LS_SOLVED_CODE);
-    const storedTemplate = lsGet(LS_TEMPLATE_CODE);
+  if (!projectId) return;
+
+  const hydrateOnce = () => {
+    const project = get(LS_PROJECT_CODE);
+    const storedSolved = get(LS_SOLVED_CODE);
+    const storedTemplate = get(LS_TEMPLATE_CODE);
 
     const initialSolved = storedSolved || project || "";
     const initialTemplate = storedTemplate || initialSolved || "";
 
-    setSolved(initialSolved);
-    setTemplate(initialTemplate);
+    // if LS is empty but we already have real state, do NOT overwrite
+    // (prevents "wipe" when coming back via history)
+    const lsLooksEmpty =
+      !storedSolved &&
+      !storedTemplate &&
+      !project &&
+      Object.keys(getJson<BlankStore>(LS_BLANK_STORE, { uidByDisplay: {}, metaByUid: {} }).uidByDisplay || {}).length === 0;
 
-    setAnswerKeySnippet(lsGet(LS_ANSWERKEY_SNIPPET) || "");
-    setAnswerKeyReport(lsGet(LS_ANSWERKEY_REPORT) || "");
-    setTestValue(lsGet(LS_TEST_VALUE) || "");
+    const stateLooksReal =
+      (templateRef.current && templateRef.current.trim().length > 0) ||
+      (solvedRef.current && solvedRef.current.trim().length > 0) ||
+      Object.keys(storeRef.current.uidByDisplay || {}).length > 0;
 
-    const storedStore = lsGetJson<BlankStore>(LS_BLANK_STORE, {
-      uidByDisplay: {},
-      metaByUid: {},
-    });
-    setStore(storedStore);
-
-    const storedCounter = Number(lsGet(LS_BLANK_COUNTER) || "1");
-    const c =
-      Number.isFinite(storedCounter) && storedCounter > 0
-        ? storedCounter
-        : 1;
-
-    setCounter(nextAvailableCounter(initialTemplate, c));
-
-    setDidLoad(true);
-  };
-
-  const onPageHide = () => {
-    flushAllNow();
-  };
-
-  const onVisibilityChange = () => {
-    if (document.visibilityState === "hidden") {
-      flushAllNow();
-    } else if (document.visibilityState === "visible") {
-      rehydrateFromLS();
+    if (lsLooksEmpty && stateLooksReal) {
+      return; // don't stomp state (and therefore don't trigger empty writes)
     }
-  };
-
-  const onPageShow = () => {
-    // always rehydrate when coming back (BFCache or not)
-    rehydrateFromLS();
-  };
-
-  const onFocus = () => {
-    rehydrateFromLS();
-  };
-
-  window.addEventListener("pagehide", onPageHide);
-  document.addEventListener("visibilitychange", onVisibilityChange);
-  window.addEventListener("pageshow", onPageShow);
-  window.addEventListener("focus", onFocus);
-
-  return () => {
-    flushAllNow();
-    window.removeEventListener("pagehide", onPageHide);
-    document.removeEventListener("visibilitychange", onVisibilityChange);
-    window.removeEventListener("pageshow", onPageShow);
-    window.removeEventListener("focus", onFocus);
-  };
-}, []);
-
-
-
-  // load from localStorage (with migration)
-  React.useEffect(() => {
-    const project = lsGet(LS_PROJECT_CODE);
-    const storedSolved = lsGet(LS_SOLVED_CODE);
-    const storedTemplate = lsGet(LS_TEMPLATE_CODE);
-
-    const initialSolved = storedSolved || project || "";
-    const initialTemplate = storedTemplate || initialSolved || "";
 
     setSolved(initialSolved);
     setTemplate(initialTemplate);
-    
 
-    setAnswerKeySnippet(lsGet(LS_ANSWERKEY_SNIPPET) || "");
-    setAnswerKeyReport(lsGet(LS_ANSWERKEY_REPORT) || "");
-    setTestValue(lsGet(LS_TEST_VALUE) || "");
-
+    setAnswerKeySnippet(get(LS_ANSWERKEY_SNIPPET) || "");
+    setAnswerKeyReport(get(LS_ANSWERKEY_REPORT) || "");
+    setTestValue(get(LS_TEST_VALUE) || "");
 
     // load new store
-    const storedStore = lsGetJson<BlankStore>(LS_BLANK_STORE, { uidByDisplay: {}, metaByUid: {} });
+    const storedStore = getJson<BlankStore>(LS_BLANK_STORE, { uidByDisplay: {}, metaByUid: {} });
 
     // migrate legacy answersMap if needed and if store looks empty
-    const legacyAnswers = lsGetJson<Record<string, string>>(LS_ANSWERS_MAP, {});
+    const legacyAnswers = getJson<Record<string, string>>(LS_ANSWERS_MAP, {});
     let nextStore = storedStore;
 
     const storeEmpty = !storedStore || Object.keys(storedStore.uidByDisplay || {}).length === 0;
@@ -997,30 +1354,55 @@ React.useEffect(() => {
       }
 
       nextStore = { uidByDisplay, metaByUid };
-      lsSetJson(LS_BLANK_STORE, nextStore);
+      setJson(LS_BLANK_STORE, nextStore);
     }
 
     setStore(nextStore);
-    const storedCounter = Number(lsGet(LS_BLANK_COUNTER) || "1");
+
+    const storedCounter = Number(get(LS_BLANK_COUNTER) || "1");
     const c = Number.isFinite(storedCounter) && storedCounter > 0 ? storedCounter : 1;
     setCounter(nextAvailableCounter(initialTemplate, c));
+
     setDidLoad(true);
-  }, []);
+  };
+
+  hydrateOnce();
+
+  // only flush on hide; do NOT rehydrate on focus/pageshow
+  const onPageHide = () => flushAllNow();
+  const onVisibilityChange = () => {
+    if (document.visibilityState === "hidden") flushAllNow();
+  };
+
+  window.addEventListener("pagehide", onPageHide);
+  document.addEventListener("visibilitychange", onVisibilityChange);
+
+  return () => {
+    flushAllNow();
+    window.removeEventListener("pagehide", onPageHide);
+    document.removeEventListener("visibilitychange", onVisibilityChange);
+  };
+}, [projectId, get, getJson, setJson]);
+
+
+  // load from localStorage (with migration)
 
   React.useEffect(() => {
   if (!didLoad) return;
-  lsSet(LS_SOLVED_CODE, solved);
+  set(LS_SOLVED_CODE, solved);
 }, [solved, didLoad]);
 
 React.useEffect(() => {
   if (!didLoad) return;
-  lsSet(LS_TEMPLATE_CODE, template);
+  set(LS_TEMPLATE_CODE, template);
 }, [template, didLoad]);
 
 React.useEffect(() => {
   if (!didLoad) return;
-  lsSet(LS_BLANK_COUNTER, String(counter));
+  set(LS_BLANK_COUNTER, String(counter));
 }, [counter, didLoad]);
+
+const persistTimerRef = React.useRef<number | null>(null);
 
 React.useEffect(() => {
   if (!didLoad) return;
@@ -1028,16 +1410,13 @@ React.useEffect(() => {
   if (persistTimerRef.current) window.clearTimeout(persistTimerRef.current);
 
   persistTimerRef.current = window.setTimeout(() => {
-    lsSetJson(LS_BLANK_STORE, storeRef.current); // or `store` is fine
+    setJson(LS_BLANK_STORE, storeRef.current); // or `store` is fine
   }, 400);
 
   return () => {
     if (persistTimerRef.current) window.clearTimeout(persistTimerRef.current);
   };
 }, [store, didLoad]);
-
-const persistTimerRef = React.useRef<number | null>(null);
-
 
 
 function flushAllNow() {
@@ -1066,26 +1445,47 @@ function flushAllNow() {
       allowedRaw: allowedDraftRef.current ?? "",
       rangeMinRaw: minDraftRef.current ?? "",
       rangeMaxRaw: maxDraftRef.current ?? "",
+      sameAsTarget: sameAsTargetDraftRef.current ?? "", 
+      requireQuoted: requireQuotedDraftRef.current ?? "no", 
     });
     storeRef.current = nextStore;
   }
 
   // 2) Persist other UI textareas/inputs that otherwise reset on remount
-  window.localStorage.setItem(LS_ANSWERKEY_SNIPPET, answerKeySnippetRef.current ?? "");
-  window.localStorage.setItem(LS_ANSWERKEY_REPORT, answerKeyReportRef.current ?? "");
-  window.localStorage.setItem(LS_TEST_VALUE, testValueRef.current ?? "");
+localStorage.setItem(k(LS_ANSWERKEY_SNIPPET, pid), answerKeySnippetRef.current ?? "");
+window.localStorage.setItem(k(LS_ANSWERKEY_REPORT, pid), answerKeyReportRef.current ?? "");
+window.localStorage.setItem(k(LS_TEST_VALUE, pid), testValueRef.current ?? "");
+window.localStorage.setItem(k(LS_BLANK_COUNTER, pid), String(counterRef.current ?? 1));
+
+  // --- GUARD: don't overwrite an existing project with empty state ---
+  const existingStoreRaw = window.localStorage.getItem(k(LS_BLANK_STORE, pid)) || "";
+  const existingSolved   = window.localStorage.getItem(k(LS_SOLVED_CODE, pid)) || "";
+  const existingTemplate = window.localStorage.getItem(k(LS_TEMPLATE_CODE, pid)) || "";
+
+  const existingLooksReal =
+    existingStoreRaw.length > 10 || existingSolved.trim().length > 0 || existingTemplate.trim().length > 0;
+
+  const nextLooksEmpty =
+    Object.keys((nextStore?.uidByDisplay || {})).length === 0 &&
+    (templateRef.current ?? "").trim().length === 0 &&
+    (solvedRef.current ?? "").trim().length === 0;
+
+  // If localStorage already has real data, never stomp it with empty.
+  if (existingLooksReal && nextLooksEmpty) {
+    return;
+  }
+
 
   // 3) Persist core data immediately (no debounce)
-  persistNow({
-    store: nextStore,
-    tables: loadRegistryTables(),
-    activeId: loadRegistryActiveId(),
-    projectCode: lsGet(LS_PROJECT_CODE) || "",
-    templateCode: templateRef.current ?? "",
-    solvedCode: solvedRef.current ?? "",
-  });
-
-  window.localStorage.setItem(LS_BLANK_COUNTER, String(counterRef.current ?? 1));
+persistNow({
+  store: nextStore,
+  tables: loadRegistryTables(pid),
+  activeId: loadRegistryActiveId(pid),
+  projectCode: get(LS_PROJECT_CODE) || "",
+  templateCode: templateRef.current ?? "",
+  solvedCode: solvedRef.current ?? "",
+  projectId: pid,
+});
 }
 
 function onSave() {
@@ -1158,6 +1558,12 @@ function onSave() {
   
 
   function makeBlank() {
+    const ta = templateTextareaRef.current;
+    const prevTaScrollTop = ta?.scrollTop ?? 0;
+    const prevTaScrollLeft = ta?.scrollLeft ?? 0;
+    const winX = window.scrollX;
+    const winY = window.scrollY;
+
     if (!sel) return;
     if (!createMode) return;
 
@@ -1195,7 +1601,16 @@ function onSave() {
     setSelectedBlankId(blankName);
     setPendingSelectBlankId(blankName);
 
-    // visually highlight the newly created blank by selecting it in the textarea
+    requestAnimationFrame(() => {
+  window.scrollTo(winX, winY);
+
+  const el = templateTextareaRef.current;
+  if (el) {
+    el.scrollTop = prevTaScrollTop;
+    el.scrollLeft = prevTaScrollLeft;
+  }
+});
+
   }
 
   function resetFromSolved() {
@@ -1212,6 +1627,7 @@ function onSave() {
 
     undoStackRef.current = [];
     redoStackRef.current = [];
+    
   }
 
   async function copyToClipboard(text: string) {
@@ -1324,13 +1740,44 @@ function onSave() {
     setCounter(nextAvailableCounter(nextTemplate, counterRef.current));
   }
 
+  function buildPatternSpec(cType: ConstraintType): AnswerSpec | null {
+  if (cType === "pat_array_empty") {
+    return {
+      type: "pattern",
+      parts: [{ p: "identifier" }, "[", "]"],
+    };
+  }
+
+  if (cType === "pat_array_index") {
+    return {
+      type: "pattern",
+      parts: [
+        { p: "identifier" },
+        "[",
+        { p: "any", specs: [{ p: "identifier" }, { p: "number" }] },
+        "]",
+      ],
+    };
+  }
+
+  return null;
+}
+
+
     function buildAnswerSpecForBlank(meta: BlankMeta, bindings: Record<string, string>): AnswerSpec {
     const ans = String(meta.answer ?? "").trim();
+
+
     const cType = (meta.constraintType || "expr_ref") as ConstraintType;
+
 
     // If you explicitly bound this blank, treat it as identifier (bound)
     // regardless of other settings (you can remove this if you want strict behavior).
     const explicitBind = String(meta.bindKey ?? "").trim();
+
+    const pat = buildPatternSpec(cType);
+    if (pat) return pat;
+
 
     if (cType === "num_any") {
         const spec: BlankTypedSpec = { type: "number" };
@@ -1378,6 +1825,8 @@ function onSave() {
     return generateKeyFromReference(ans, { bind: bindings });
     }
 
+    
+
     function onTestKey() {
   if (!selectedBlankId) {
     setTestResult({ ok: false, message: "No blank selected." });
@@ -1390,7 +1839,7 @@ function onSave() {
     return;
   }
 
-  const bindings = buildBindingsFromActiveRegistry();
+  const bindings = buildBindingsFromActiveRegistry(pid);
   const spec = buildAnswerSpecForBlank(meta, bindings);
 
   // This object is used for identifier bindings (bindAs).
@@ -1447,20 +1896,44 @@ function onSave() {
 
   // ------------ Blanks list ------------
 
-  const blanksInOrder = React.useMemo(() => {
-    const ids = extractBlanksInOrder(template);
-    const uniqIds = unique(ids);
+const blanksInOrder = React.useMemo(() => {
+  const ids = extractBlanksInOrder(template);
+  const uniqIds = unique(ids);
 
-    return uniqIds.map((id) => {
-      const answer = getBlankMeta(store, id)?.answer ?? "";
-      const preview = String(answer).replace(/\s+/g, " ").trim();
-      return {
-        id,
-        preview: preview.length > 60 ? preview.slice(0, 60) + "…" : preview,
-        count: ids.filter((x) => x === id).length,
-      };
-    });
-  }, [template, store]);
+  // sort by numeric blank id (1,2,3,...,10,11...)
+  const sortedIds = [...uniqIds].sort((a, b) => Number(a) - Number(b));
+
+  return sortedIds.map((id) => {
+    const answer = getBlankMeta(store, id)?.answer ?? "";
+    const preview = String(answer).replace(/\s+/g, " ").trim();
+    return {
+      id,
+      preview: preview.length > 60 ? preview.slice(0, 60) + "…" : preview,
+      // keep count based on occurrences in the template
+      count: ids.filter((x) => x === id).length,
+    };
+  });
+}, [template, store]);
+
+const filteredBlanksInOrder = React.useMemo(() => {
+  const q = blankSearch.trim().toLowerCase();
+  if (!q) return blanksInOrder;
+
+  return blanksInOrder.filter((b) => {
+    const id = String(b.id ?? "");
+    const placeholder = `__BLANK[${id}]__`.toLowerCase();
+
+    const meta = getBlankMeta(store, id);
+    const ans = String(meta?.answer ?? "").toLowerCase();
+
+    // match id, placeholder, or answer contents
+    return (
+      id.toLowerCase().includes(q) ||
+      placeholder.includes(q) ||
+      ans.includes(q)
+    );
+  });
+}, [blankSearch, blanksInOrder, store]);
 
 
 
@@ -1520,7 +1993,9 @@ function onSave() {
         <div className="flex items-center gap-3 flex-wrap">
           <button
             type="button"
-            onClick={() => window.history.back()}
+            onClick={() => {flushAllNow(); 
+              window.history.back();
+            }}
             className="rounded-xl border px-3 py-2 text-sm hover:bg-gray-100"
           >
             ← Back
@@ -1530,7 +2005,7 @@ function onSave() {
           <button
             type="button"
             onClick={undo}
-            className="rounded-xl border px-3 py-2 text-sm hover:bg-gray-100"
+            className="rounded-xl border px-3 py-1 text-sm hover:bg-gray-100"
             title="Undo (Ctrl/Cmd+Z)"
           >
             Undo
@@ -1539,50 +2014,45 @@ function onSave() {
           <button
             type="button"
             onClick={redo}
-            className="rounded-xl border px-3 py-2 text-sm hover:bg-gray-100"
+            className="rounded-xl border px-3 py-1 text-sm hover:bg-gray-100"
             title="Redo (Ctrl/Cmd+Shift+Z or Ctrl/Cmd+Y)"
           >
             Redo
           </button>
-          <button
-  type="button"
-  onClick={onSave}
-  className="rounded-xl border px-3 py-2 text-sm hover:bg-gray-100"
-  title="Save to local storage"
->
-  Save
-</button>
 
-{saveStatus ? (
-  <div className="text-xs opacity-70">{saveStatus}</div>
-) : null}
+          <button
+            type="button"
+            onClick={onSave}
+            className="rounded-xl border px-3 py-1 text-sm hover:bg-gray-100"
+            title="Save to local storage"
+          >
+            Save
+          </button>
+
+        {saveStatus ? (
+          <div className="text-xs opacity-70">{saveStatus}</div>
+        ) : null}
 
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
-          <Link
-            href="/tools/answerkey-studio"
-            className="rounded-xl border px-3 py-2 text-sm hover:bg-blue-100"
-            title="Return to AnswerKey Studio (template + solved will be there)"
-          >
-            Go to AnswerKey Studio →
-          </Link>
-
           <button
             type="button"
-            onClick={resetFromSolved}
+            onClick={makeShareLink}
             className="rounded-xl border px-3 py-2 text-sm hover:bg-gray-100"
+            title="Copy a shareable link that includes the current project data"
           >
-            Reset
+            Share link
           </button>
+
         </div>
       </div>
 
       {/* Toggle + instructions */}
-      <div className="rounded-2xl border p-4 mb-4">
+      <div className="rounded-2xl bg-blue-50 border p-4 mb-4">
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
-            <div className="font-medium">Blank creation mode</div>
+            <div className="font-medium text-blue-900">Blank creation mode</div>
             <div className="text-sm opacity-70">
               Turn this on, then drag-highlight code in the template and click “Make Blank”. Click any{" "}
               <span className="font-mono">__BLANK[...]__</span> to open/close the inspector.
@@ -1594,7 +2064,7 @@ function onSave() {
               type="button"
               onClick={() => setCreateMode((v) => !v)}
               className={[
-                "rounded-xl px-3 py-2 text-sm border hover:bg-gray-100 transition-colors",
+                "rounded-xl px-3 py-2 text-sm border hover:bg-indigo-200 transition-colors",
                 createMode ? "bg-black text-white" : "",
               ].join(" ")}
             >
@@ -1641,7 +2111,7 @@ function onSave() {
             <button
               type="button"
               onClick={() => copyToClipboard(template)}
-              className="rounded-xl border px-3 py-2 text-sm hover:bg-gray-100"
+              className="rounded-xl border px-3 py-2 text-sm hover:bg-indigo-200"
             >
               Copy template
             </button>
@@ -1649,7 +2119,7 @@ function onSave() {
             <button
               type="button"
               onClick={() => copyToClipboard(solved)}
-              className="rounded-xl border px-3 py-2 text-sm hover:bg-gray-100"
+              className="rounded-xl border px-3 py-2 text-sm hover:bg-indigo-200"
             >
               Copy solved
             </button>
@@ -1662,42 +2132,43 @@ function onSave() {
         {/* Editors */}
         <div className="xl:col-span-9">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-            <section className="rounded-2xl border p-4 lg:col-span-6">
+            <section className="rounded-2xl bg-red-50 border p-4 lg:col-span-6">
               <div className="font-medium mb-2">Solved code (reference)</div>
               <div className="text-sm opacity-70 mb-2">This stays as your ground truth.</div>
               <AutoGrowTextarea
                 value={solved}
                 onChange={(e) => setSolved(e.target.value)}
-                className="w-full rounded-xl border p-3 font-mono text-sm max-h-[70vh] overflow-auto"
+                className="w-full rounded-xl border p-3 bg-neutral-50 font-mono text-sm max-h-[70vh] overflow-auto"
                 placeholder="Paste full project code here (solved/reference)"
                 spellCheck={false}
               />
             </section>
 
-            <section className="rounded-2xl border p-4 lg:col-span-6">
+            <section className="rounded-2xl bg-indigo-100 border p-4 lg:col-span-6">
               <div className="font-medium mb-2">Template code (Blank this out)</div>
-              
-              <div className="text-sm opacity-70 mb-2">Highlight text to blank. Click existing blanks to edit/remove.</div>
-                            <button
-              type="button"
-              disabled={!createMode || !sel}
-              onClick={makeBlank}
-              className={[
-                "rounded-xl mb-2 px-3 py-1 text-sm border transition-colors",
-                createMode && sel
-                  ? "bg-blue-900 text-white border-blue-900 hover:bg-blue-800"
-                  : "border-blue-900 text-blue-900 opacity-70 hover:bg-blue-50",
-              ].join(" ")}
-            >
-              Make Blank
-            </button>
+                <div className="flex items-center justify-between gap-3 mb-1">
+                  <div className="text-sm opacity-70 mb-2">Create blanks here.</div>
+                  <button
+                    type="button"
+                    onClick={makeBlank}
+                    disabled={!createMode || !sel}
+                    className={[
+                      "rounded-xl border px-3 py-1 text-sm",
+                      createMode && sel ? "bg-blue-900 text-white border-blue-900 hover:bg-blue-800"
+                      : "border-blue-900 text-blue-900 opacity-70 hover:bg-blue-50",
+                    ].join(" ")}
+                  >
+                    Make Blank
+                  </button>
+                </div>
+
                     <AutoGrowTextarea
                     ref={templateTextareaRef}
                     value={template}
                     onChange={(e) => setTemplate(e.target.value)}
                     onMouseUp={(e) => captureSelectionFromTextarea(e.currentTarget)}
                     onKeyUp={(e) => captureSelectionFromTextarea(e.currentTarget)}
-                    className="w-full rounded-xl border p-3 font-mono text-sm max-h-[70vh] overflow-auto whitespace-pre-wrap break-words"
+                    className="w-full bg-neutral-50 rounded-xl border p-3 font-mono text-sm max-h-[70vh] overflow-auto whitespace-pre-wrap break-words"
                     placeholder="Template code you will turn into blanks"
                     spellCheck={false}
                     />
@@ -1710,6 +2181,36 @@ function onSave() {
           </div>
 
           {/* Debug / export: store */}
+          {/* Notes */}
+<section className="rounded-2xl border p-4 mt-4">
+  <div className="flex items-center justify-between gap-3 flex-wrap">
+    <div>
+      <div className="font-medium">Notes</div>
+      <div className="text-sm opacity-70">
+        Write your post-it notes here (autosaves).
+      </div>
+    </div>
+
+    <button
+      type="button"
+      onClick={() => setNotes("")}
+      className="rounded-xl border px-3 py-2 text-sm hover:bg-gray-100"
+      title="Clear notes"
+      disabled={!notes}
+    >
+      Clear
+    </button>
+  </div>
+
+  <textarea
+    value={notes}
+    onChange={(e) => setNotes(e.target.value)}
+    className="mt-3 w-full rounded-xl border p-3 bg-neutral-50 text-sm min-h-[180px] whitespace-pre-wrap"
+    placeholder="Notes"
+    spellCheck={false}
+  />
+</section>
+
 <section className="rounded-2xl border p-4 mt-4">
   <div className="flex items-center justify-between gap-3 flex-wrap">
     <div>
@@ -1718,6 +2219,29 @@ function onSave() {
         Click an item to open/close the inspector.
       </div>
     </div>
+
+    <div className="mt-3 flex gap-2 items-center">
+      <input
+        value={blankSearch}
+        onChange={(e) => setBlankSearch(e.target.value)}
+        className="w-full rounded-xl border px-3 py-2 text-sm"
+        placeholder='Search blanks… (e.g. "12", "__BLANK[12]__", or "digitalWrite")'
+      />
+      <button
+        type="button"
+        onClick={() => setBlankSearch("")}
+        className="rounded-xl border px-3 py-2 text-sm hover:bg-gray-100"
+        disabled={!blankSearch.trim()}
+        title="Clear search"
+      >
+        Clear
+      </button>
+    </div>
+
+    <div className="text-xs opacity-60 mt-2">
+      Showing {filteredBlanksInOrder.length} of {blanksInOrder.length}
+    </div>
+
 
     <div className="flex items-center gap-2">
       <div className="text-sm opacity-70">
@@ -1754,60 +2278,58 @@ function onSave() {
   </div>
 
   {/* Scroll container */}
-  <div className="mt-3 max-h-[420px] overflow-auto pr-2 space-y-2">
-    {blanksInOrder.length === 0 ? (
-      <div className="text-sm opacity-70">No blanks yet.</div>
-    ) : (
-      blanksInOrder.map((b, idx) => {
-        const uid = resolveBlankUid(store, b.id);
-        const meta = getBlankMeta(store, b.id);
-        const ans = meta?.answer ?? "";
-        const keyExpr = meta?.generatedKeyExpr ?? "";
-        const active = selectedBlankId === b.id;
+  <div
+  className="mt-3 h-[420px] overflow-y-scroll pr-2 space-y-2 rounded-xl"
+  style={{ scrollbarGutter: "stable" as any }}
+>
+    {filteredBlanksInOrder.map((b, idx) => {
+  const uid = resolveBlankUid(store, b.id);
+  const meta = getBlankMeta(store, b.id);
+  const ans = meta?.answer ?? "";
+  const keyExpr = meta?.generatedKeyExpr ?? "";
+  const active = selectedBlankId === b.id;
 
-        return (
-          <button
-            key={b.id}
-            type="button"
-            onClick={() => openInspectorToggle(b.id)} // ✅ toggle behavior like template overlay
-            className={[
-              "w-full text-left rounded-xl border px-3 py-2 hover:bg-gray-50",
-              active ? "border-indigo-400 bg-indigo-50" : "",
-            ].join(" ")}
-            title="Click to open/close inspector"
-          >
-            <div className="flex items-center justify-between gap-2">
-              <div className="font-mono text-sm">__BLANK[{b.id}]__</div>
-              <div className="text-xs opacity-60">#{idx + 1}</div>
-            </div>
+  return (
+    <button
+      key={b.id}
+      type="button"
+      onClick={() => openInspectorToggle(b.id)}
+      className={[
+        "w-full text-left rounded-xl border px-3 py-2 hover:bg-gray-50",
+        active ? "border-indigo-400 bg-indigo-50" : "",
+      ].join(" ")}
+      title="Click to open/close inspector"
+    >
+      <div className="flex items-center justify-between gap-2">
+        <div className="font-mono text-sm">__BLANK[{b.id}]__</div>
+        <div className="text-xs opacity-60">#{idx + 1}</div>
+      </div>
 
-            {/* preview + count (same as old Blanks list) */}
-            <div className="text-xs opacity-70 mt-1">
-              {b.preview ? (
-                b.preview
-              ) : (
-                <span className="italic">no stored answer</span>
-              )}
-              {b.count > 1 ? <span className="ml-2">(x{b.count})</span> : null}
-            </div>
+      <div className="text-xs opacity-70 mt-1">
+        {b.preview ? b.preview : <span className="italic">no stored answer</span>}
+        {b.count > 1 ? <span className="ml-2">(x{b.count})</span> : null}
+      </div>
 
-            {/* readable answer details */}
-            <div className="text-xs opacity-60 mt-2">
-              answer: <span className="font-mono">"{ans}"</span>
-            </div>
-            <div className="text-xs opacity-60 mt-1">
-              uid: <span className="font-mono">{uid ?? "(none)"}</span>
-            </div>
+      <div className="text-xs opacity-60 mt-2">
+        answer: <span className="font-mono">"{ans}"</span>
+      </div>
+      <div className="text-xs opacity-60 mt-1">
+        uid: <span className="font-mono">{uid ?? "(none)"}</span>
+      </div>
 
-            {keyExpr ? (
-              <div className="text-xs opacity-60 mt-1">
-                key: <span className="font-mono">{keyExpr}</span>
-              </div>
-            ) : null}
-          </button>
-        );
-      })
-    )}
+      {keyExpr ? (
+        <div className="text-xs opacity-60 mt-1">
+          key: <span className="font-mono">{keyExpr}</span>
+        </div>
+      ) : null}
+    </button>
+  );
+})}
+
+<div className="text-xs opacity-60 py-2 text-center">
+  End of list — showing {blanksInOrder.length} blanks
+</div>
+
   </div>
 </section>
 
@@ -1819,7 +2341,7 @@ function onSave() {
           {/* Blanks list */}
 
           {/* Inspector */}
-          <section className="rounded-2xl border p-4">
+          <section className="rounded-2xl border p-4 sticky top-4 self-start">
             <div className="font-medium">Blank Inspector</div>
 
             {!selectedBlankId ? (
@@ -1925,9 +2447,15 @@ function onSave() {
     <option value="id_bound">Identifier (bound)</option>
     <option value="str_oneOf">String (one of…)</option>
     <option value="expr_ref">Expr (reference-based) (fallback)</option>
+    <option value="pat_array_empty">Pattern: identifier[]</option>
+    <option value="pat_array_index">Pattern: identifier[ i | 3 ]</option>
+    <option value="pattern_custom">Pattern (custom builder)</option>
+    <option value="same_as">Same as… (K.same)</option>
+
+
   </select>
 
-  {constraintDraft === "num_oneOf" || constraintDraft === "str_oneOf" ? (
+{constraintDraft === "num_oneOf" || constraintDraft === "str_oneOf" ? (
     <div className="mt-2">
       <div className="text-xs opacity-60">Allowed values (comma-separated)</div>
       <input
@@ -1942,6 +2470,29 @@ function onSave() {
       />
     </div>
   ) : null}
+
+  {constraintDraft === "str_oneOf" ? (
+  <div className="mt-2">
+    <div className="text-xs opacity-60">Require quotes?</div>
+    <select
+      value={requireQuotedDraft}
+      onChange={(e) => {
+        const v = e.target.value as "no" | "yes";
+        setRequireQuotedDraft(v);
+        scheduleCommitSelectedBlank({ requireQuoted: v === "yes" } as any);
+      }}
+      className="w-full rounded-xl border px-2 py-2 text-sm"
+    >
+      <option value="no">No (default)</option>
+      <option value="yes">Yes (must type &quot;...&quot; or '...')</option>
+    </select>
+
+    <div className="text-xs opacity-60 mt-1">
+      If “Yes”, students must include quotes in their answer.
+    </div>
+  </div>
+) : null}
+
 
   {constraintDraft === "num_range" ? (
     <div className="mt-2 grid grid-cols-2 gap-2">
@@ -1979,6 +2530,224 @@ function onSave() {
       Uses <span className="font-mono">Bind key</span> below (required).
     </div>
   ) : null}
+
+  {constraintDraft === "same_as" ? (
+  <div className="mt-2">
+    <div className="text-xs opacity-60">Same as (target key)</div>
+    <input
+      value={sameAsTargetDraft}
+      onChange={(e) => {
+        const v = e.target.value;
+        setSameAsTargetDraft(v);
+        scheduleCommitSelectedBlank({ sameAsTarget: v } as any);
+      }}
+      className="w-full rounded-xl border px-2 py-2 font-mono text-sm"
+      placeholder='e.g., "A" or "statusList"'
+    />
+    <div className="text-xs opacity-60 mt-1">
+      Must match the value bound under this key during checking.
+    </div>
+  </div>
+) : null}
+
+
+  {constraintDraft === "pattern_custom" ? (
+  <div className="mt-3 rounded-xl border p-3 space-y-2">
+    <div className="flex items-center justify-between">
+      <div className="text-xs opacity-70">Pattern builder</div>
+
+      <div className="flex items-center gap-2">
+        <select
+          value={patternModeDraft}
+          onChange={(e) => {
+            const v = e.target.value as "exact" | "contains";
+            setPatternModeDraft(v);
+          }}
+          className="rounded-lg border px-2 py-1 text-xs"
+        >
+          <option value="exact">Exact</option>
+          <option value="contains">Contains</option>
+        </select>
+      </div>
+    </div>
+
+    {patternRowsDraft.map((row, idx) => (
+      <div key={idx} className="flex items-center gap-2">
+        <select
+          value={row.kind}
+          onChange={(e) => {
+            const kind = e.target.value as PatternRow["kind"];
+            setPatternRowsDraft((prev) => {
+              const next = [...prev];
+              if (kind === "literal") next[idx] = { kind: "literal", text: "" };
+              else if (kind === "sameAs") next[idx] = { kind: "sameAs", target: "" };
+              else if (kind === "oneOf") next[idx] = { kind: "oneOf", valuesRaw: "" };
+              else if (kind === "wildcard") next[idx] = { kind: "wildcard", min: "", max: "" };
+              else {
+                const prevRow: any = next[idx];
+                const keepBind = prevRow?.bindAs ?? "";
+                next[idx] = { kind, bindAs: keepBind } as any;
+                }
+              return next;
+            });
+          }}
+          className="rounded-lg border px-2 py-1 text-xs"
+        >
+          <option value="literal">Literal</option>
+          <option value="identifier">p(identifier)</option>
+          <option value="string">p(string)</option>
+          <option value="number">p(number)</option>
+          <option value="sameAs">p(sameAs)</option>
+          <option value="oneOf">p(oneOf)</option>
+          <option value="wildcard">p(wildcard)</option>
+        </select>
+
+        {row.kind === "literal" ? (
+          <input
+            value={row.text}
+            onChange={(e) => {
+              const v = e.target.value;
+              setPatternRowsDraft((prev) => {
+                const next = [...prev];
+                next[idx] = { kind: "literal", text: v };
+                return next;
+              });
+            }}
+            className="flex-1 rounded-lg border px-2 py-1 font-mono text-xs"
+            placeholder='e.g. ".", "println", "(", ")"'
+          />
+        ) : null}
+
+        {row.kind === "sameAs" ? (
+          <input
+            value={row.target}
+            onChange={(e) => {
+              const v = e.target.value;
+              setPatternRowsDraft((prev) => {
+                const next = [...prev];
+                next[idx] = { kind: "sameAs", target: v };
+                return next;
+              });
+            }}
+            className="flex-1 rounded-lg border px-2 py-1 font-mono text-xs"
+            placeholder="target key (e.g. A)"
+          />
+        ) : null}
+
+        {row.kind === "oneOf" ? (
+          <input
+            value={row.valuesRaw}
+            onChange={(e) => {
+              const v = e.target.value;
+              setPatternRowsDraft((prev) => {
+                const next = [...prev];
+                next[idx] = { kind: "oneOf", valuesRaw: v };
+                return next;
+              });
+            }}
+            className="flex-1 rounded-lg border px-2 py-1 font-mono text-xs"
+            placeholder='e.g. println, print'
+          />
+        ) : null}
+
+        {row.kind === "wildcard" ? (
+          <div className="flex items-center gap-2">
+            <input
+              value={row.min ?? ""}
+              onChange={(e) => {
+                const v = e.target.value;
+                setPatternRowsDraft((prev) => {
+                  const next = [...prev];
+                  next[idx] = { ...row, min: v };
+                  return next;
+                });
+              }}
+              className="w-16 rounded-lg border px-2 py-1 font-mono text-xs"
+              placeholder="min"
+            />
+            <input
+              value={row.max ?? ""}
+              onChange={(e) => {
+                const v = e.target.value;
+                setPatternRowsDraft((prev) => {
+                  const next = [...prev];
+                  next[idx] = { ...row, max: v };
+                  return next;
+                });
+              }}
+              className="w-16 rounded-lg border px-2 py-1 font-mono text-xs"
+              placeholder="max"
+            />
+          </div>
+        ) : null}
+
+        {(row.kind === "identifier" || row.kind === "string" || row.kind === "number") ? (
+            <input
+                value={(row as any).bindAs ?? ""}
+                onChange={(e) => {
+                const v = e.target.value;
+                setPatternRowsDraft((prev) => {
+                    const next = [...prev];
+                    next[idx] = { ...(next[idx] as any), bindAs: v };
+                    return next;
+                });
+                }}
+                className="w-28 rounded-lg border px-2 py-1 font-mono text-xs"
+                placeholder="bindAs"
+                title='Optional: bind token value (e.g. "arrVar")'
+            />
+            ) : null}
+
+
+        <button
+          type="button"
+          onClick={() => setPatternRowsDraft((prev) => prev.filter((_r, j) => j !== idx))}
+          className="rounded-lg border px-2 py-1 text-xs hover:bg-gray-100"
+        >
+          ✕
+        </button>
+      </div>
+    ))}
+
+    <div className="flex items-center gap-2 pt-1">
+      <button
+        type="button"
+        onClick={() => setPatternRowsDraft((prev) => [...prev, { kind: "literal", text: "" }])}
+        className="rounded-lg border px-2 py-1 text-xs hover:bg-gray-100"
+      >
+        + Add part
+      </button>
+
+      <div className="flex-1" />
+
+      <button
+        type="button"
+        onClick={() => commitPatternToSelectedBlank()}
+        className="rounded-lg border px-2 py-1 text-xs bg-blue-200 hover:bg-blue-300"
+      >
+        Save pattern
+      </button>
+    </div>
+
+    <div className="pt-2">
+      <div className="text-xs opacity-60">No-spaces-around ops (comma-separated)</div>
+      <input
+        value={patternNoSpaceOpsDraft}
+        onChange={(e) => setPatternNoSpaceOpsDraft(e.target.value)}
+        className="w-full rounded-lg border px-2 py-1 font-mono text-xs"
+        placeholder="e.g. . , ::"
+      />
+    </div>
+
+    <details className="pt-2">
+      <summary className="text-xs opacity-70 cursor-pointer">Preview spec</summary>
+      <pre className="mt-2 text-xs whitespace-pre-wrap opacity-80">
+        {JSON.stringify(buildPatternSpecFromDraft(), null, 2)}
+      </pre>
+    </details>
+  </div>
+) : null}
+
 </div>
 
     <div className="flex items-center justify-between py-2 gap-2">
@@ -2030,7 +2799,11 @@ function onSave() {
       onChange={(e) => setTestValue(e.target.value)}
       className="w-full rounded-xl border px-2 py-2 font-mono text-sm"
       placeholder={
-        constraintDraft === "num_oneOf"
+          constraintDraft === "pat_array_empty"
+            ? "e.g., myArr[]"
+            : constraintDraft === "pat_array_index"
+            ? "e.g., myArr[i] or myArr[3]"
+        :constraintDraft === "num_oneOf"
           ? "e.g., 64"
           : constraintDraft === "num_range"
           ? "e.g., 128"
@@ -2039,6 +2812,8 @@ function onSave() {
           : constraintDraft === "id_bound"
           ? "e.g., counter"
           : "e.g., 64"
+          
+
       }
     />
   </div>
@@ -2132,124 +2907,10 @@ function onSave() {
             )}
           </section>
         </div>
-=======
-
-const LS_PROJECTS = "curio:createblanks:projects:v1";
-
-function loadProjects(): string[] {
-  try {
-    const raw = localStorage.getItem(LS_PROJECTS);
-    const arr = raw ? JSON.parse(raw) : [];
-    return Array.isArray(arr) ? arr : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveProjects(projects: string[]) {
-  localStorage.setItem(LS_PROJECTS, JSON.stringify(projects));
-}
-
-function normalizeId(s: string) {
-  return s.trim().replace(/\s+/g, "-");
-}
-
-export default function CreateBlanksProjectsPage() {
-  const [projects, setProjects] = React.useState<string[]>([]);
-  const [name, setName] = React.useState("");
-
-  React.useEffect(() => {
-    setProjects(loadProjects());
-  }, []);
-
-  function createProject() {
-    const id = normalizeId(name);
-    if (!id) return;
-
-    const next = Array.from(new Set([id, ...projects]));
-    setProjects(next);
-    saveProjects(next);
-    setName("");
-  }
-
-  function removeProject(id: string) {
-    const next = projects.filter((p) => p !== id);
-    setProjects(next);
-    saveProjects(next);
-  }
-
-  return (
-    <div className="mx-auto w-full max-w-[900px] px-6 py-6">
-      <div className="flex items-center justify-between gap-3 mb-4">
-        <button
-          type="button"
-          onClick={() => window.history.back()}
-          className="rounded-xl border px-3 py-2 text-sm hover:bg-gray-100"
-        >
-          ← Back
-        </button>
-
-        <h1 className="text-xl font-semibold">Create Blanks Projects</h1>
-      </div>
-
-      <div className="rounded-2xl border p-4 mb-4">
-        <div className="text-sm opacity-70 mb-2">
-          Make a new project ID (it becomes the URL).
-        </div>
-
-        <div className="flex gap-2">
-          <input
-            className="w-full rounded-xl border px-3 py-2 font-mono text-sm"
-            placeholder='e.g. "focusboard" or "lesson-01"'
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-          <button
-            type="button"
-            onClick={createProject}
-            className="rounded-xl border px-3 py-2 text-sm hover:bg-gray-100"
-          >
-            Create
-          </button>
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        {projects.length === 0 ? (
-          <div className="text-sm opacity-70">No projects yet.</div>
-        ) : (
-          projects.map((id) => (
-            <div
-              key={id}
-              className="rounded-2xl border p-4 flex items-center justify-between"
-            >
-              <div className="font-mono">{id}</div>
-              <div className="flex gap-2">
-                <Link
-                  className="rounded-xl border px-3 py-2 text-sm hover:bg-indigo-100"
-                  href={`/tools/answerkey-studio/create-blanks/${encodeURIComponent(
-                    id
-                  )}`}
-                >
-                  Open →
-                </Link>
-                <button
-                  type="button"
-                  onClick={() => removeProject(id)}
-                  className="rounded-xl border px-3 py-2 text-sm hover:bg-gray-100"
-                >
-                  Remove
-                </button>
-              </div>
-            </div>
-          ))
-        )}
->>>>>>> a3896fd86399e894bf76635cc17f6763883ab9f6
       </div>
     </div>
   );
 }
-<<<<<<< HEAD
 
 function RenameRow({ currentId, onRename }: { currentId: string; onRename: (newId: string) => void }) {
   const [v, setV] = React.useState(currentId);
@@ -2272,5 +2933,3 @@ function RenameRow({ currentId, onRename }: { currentId: string; onRename: (newI
     </div>
   );
 }
-=======
->>>>>>> a3896fd86399e894bf76635cc17f6763883ab9f6

@@ -50,3 +50,10 @@ build/
 .vscode/
 .DS_Store
 .env
+
+# Secrets
+assets/APIKEY.txt
+curio-web/public/electric-status-board/APIKEY.txt
+.env
+.env.local
+.vercel

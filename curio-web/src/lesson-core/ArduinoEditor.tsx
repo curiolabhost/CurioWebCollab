@@ -523,6 +523,9 @@ function coachTagBg(tag: CoachTag) {
     });
   };
 
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:4000";
+
+
   async function streamHelpSSE(payload: any, onToken: (t: string) => void) {
     const res = await fetch("http://"+BASE_URL+":4000/ai/help", {
       method: "POST",
@@ -530,67 +533,104 @@ function coachTagBg(tag: CoachTag) {
       body: JSON.stringify(payload),
     });
 
-    if (!res.ok) {
-      const t = await res.text().catch(() => "");
-      throw new Error(`AI route failed (${res.status}): ${t}`);
-    }
-    if (!res.body) {
-      throw new Error("AI route returned no body (streaming not enabled).");
-    }
+  if (!res.ok) {
+    const t = await res.text().catch(() => "");
+    throw new Error(`AI route failed (${res.status}): ${t}`);
+  }
 
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
+  const contentType = (res.headers.get("content-type") || "").toLowerCase();
 
-    while (true) {
-      const { value: chunk, done } = await reader.read();
-      if (done) break;
+  // ----------------------------
+  // JSON MODE (your Express server)
+  // ----------------------------
+if (contentType.includes("application/json")) {
+  const data = await res.json().catch(() => null);
 
-      buffer += decoder.decode(chunk, { stream: true });
+  if (!data) throw new Error("AI returned invalid JSON.");
+  if (data.ok === false) throw new Error(data.error || "AI failed.");
 
-      const events = buffer.split("\n\n");
-      buffer = events.pop() ?? "";
+  let out: any =
+    data.text ??
+    data.coach ??
+    data.coachJson ??
+    data.payload ??
+    data.result ??
+    data.data ??
+    data;
 
-      for (const evt of events) {
-        const lines = evt.split("\n");
-        let eventType = "message";
-        let data = "";
+  // If server returns an object, stringify it so it starts with "{"
+  if (typeof out !== "string") out = JSON.stringify(out);
 
-        for (const line of lines) {
-          if (line.startsWith("event:")) eventType = line.slice(6).trim();
-          else if (line.startsWith("data:")) data += line.slice(5).trim();
+  const text = String(out || "");
+  if (text) onToken(text);
+
+  return; // IMPORTANT: stop here
+}
+  // ----------------------------
+  // SSE MODE (text/event-stream)
+  // ----------------------------
+  if (!res.body) {
+    throw new Error("AI route returned no body.");
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+
+  while (true) {
+    const { value: chunk, done } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(chunk, { stream: true });
+
+    const events = buffer.split("\n\n");
+    buffer = events.pop() ?? "";
+
+    for (const evt of events) {
+      const lines = evt.split("\n");
+      let eventType = "message";
+      let data = "";
+
+      for (const line of lines) {
+        if (line.startsWith("event:")) eventType = line.slice(6).trim();
+        else if (line.startsWith("data:")) data += line.slice(5).trim();
+      }
+
+      if (eventType === "token") {
+        try {
+          const parsed = JSON.parse(data || "{}");
+          if (parsed?.token) onToken(parsed.token);
+        } catch {
+          // ignore
         }
+      }
 
-        if (eventType === "token") {
-          try {
-            const parsed = JSON.parse(data || "{}");
-            if (parsed?.token) onToken(parsed.token);
-          } catch {
-            // ignore malformed chunks
-          }
-        }
+      if (eventType === "done") {
+        setStatus("AI explanation complete.");
+        return; // IMPORTANT: stop reading
+      }
 
-        if (eventType === "done") setStatus("AI explanation complete.");
-        if (eventType === "error") {
-          let msg = "AI request failed.";
-          try {
-            msg = JSON.parse(data || "{}")?.error || msg;
-          } catch {}
+      if (eventType === "error") {
+        let msg = "AI request failed.";
+        try {
+          msg = JSON.parse(data || "{}")?.error || msg;
+        } catch {}
 
-          const isRateLimit =
-            /rate limit/i.test(msg) ||
-            /Limit \d+, Used \d+/i.test(msg) ||
-            /Please try again/i.test(msg);
+        const isRateLimit =
+          /rate limit/i.test(msg) ||
+          /Please try again/i.test(msg);
 
-          // Throw, but tag it so callers can show a friendly message
-          const err = new Error(msg) as Error & { code?: string };
-          if (isRateLimit) err.code = "RATE_LIMIT";
-          throw err;
-        }
-
+        const err = new Error(msg) as Error & { code?: string };
+        if (isRateLimit) err.code = "RATE_LIMIT";
+        throw err;
       }
     }
   }
+
+  // If SSE stream ended without "done", still return cleanly
+  setStatus("AI explanation complete.");
+}
+
 
   function updatePopover(popoverId: string, patch: Partial<PopoverItem>) {
     setPopovers((prev) => {
@@ -599,6 +639,8 @@ function coachTagBg(tag: CoachTag) {
     });
   }
   
+
+  // One function for BOTH popup + verify
   const sendErrorToAI = async (
     mode: HelpMode,
     snippetOrCode: string,
@@ -678,7 +720,7 @@ if (target === "bottom") {
     const trimmed = acc.trim();
 
     if (mode === "project-coach") {
-      // ✅ never crash UI on bad output
+      // never crash UI on bad output
       if (!trimmed.startsWith("{")) {
         setCoachJson(null);
         setCompilerOutput(trimmed);
