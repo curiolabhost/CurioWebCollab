@@ -1,0 +1,96 @@
+[35m.vscode/codeBackup.js[m[36m:[m[32m135[m[36m:[m// [1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m====
+[35m.vscode/codeBackup.js[m[36m:[m[32m137[m[36m:[m// [1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m====
+[35m.vscode/codeBackup.js[m[36m:[m[32m187[m[36m:[m// [1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m====
+[35m.vscode/codeBackup.js[m[36m:[m[32m189[m[36m:[m// [1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m====
+[35m.vscode/codeBackup.js[m[36m:[m[32m310[m[36m:[m// [1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m====
+[35m.vscode/codeBackup.js[m[36m:[m[32m312[m[36m:[m// [1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m====
+[35m.vscode/codeBackup.js[m[36m:[m[32m322[m[36m:[m// [1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m==
+[35m.vscode/codeBackup.js[m[36m:[m[32m324[m[36m:[m// [1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m==
+[35m.vscode/codeBackup.js[m[36m:[m[32m449[m[36m:[m// [1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m====
+[35m.vscode/codeBackup.js[m[36m:[m[32m451[m[36m:[m// [1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m====
+[35m.vscode/codeBackup.js[m[36m:[m[32m477[m[36m:[m// [1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m====
+[35m.vscode/codeBackup.js[m[36m:[m[32m479[m[36m:[m// [1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m====
+[35m.vscode/codeBackup.js[m[36m:[m[32m608[m[36m:[m  /* [1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m==
+[35m.vscode/codeBackup.js[m[36m:[m[32m610[m[36m:[m  [1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m== */
+[35m.vscode/codeBackup.js[m[36m:[m[32m658[m[36m:[m  /* [1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m==
+[35m.vscode/codeBackup.js[m[36m:[m[32m660[m[36m:[m  [1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m== */
+[35m.vscode/codeBackup.js[m[36m:[m[32m695[m[36m:[m  /* [1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m==
+[35m.vscode/codeBackup.js[m[36m:[m[32m697[m[36m:[m  [1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m== */
+[35m.vscode/codeBackup.js[m[36m:[m[32m823[m[36m:[m  /* [1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m==
+[35m.vscode/codeBackup.js[m[36m:[m[32m825[m[36m:[m  [1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m== */
+[35m.vscode/codeBackup.js[m[36m:[m[32m1105[m[36m:[m * [1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m====
+[35m.vscode/codeBackup.js[m[36m:[m[32m1107[m[36m:[m * [1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m====
+[35mapp/projects/electric-status-board/components/CodeLessonBase.js[m[36m:[m[32m54[m[36m:[m  /* [1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m==
+[35mapp/projects/electric-status-board/components/CodeLessonBase.js[m[36m:[m[32m56[m[36m:[m  [1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m== */
+[35mapp/projects/electric-status-board/components/CodeLessonBase.js[m[36m:[m[32m75[m[36m:[m  /* [1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m==
+[35mapp/projects/electric-status-board/components/CodeLessonBase.js[m[36m:[m[32m77[m[36m:[m  [1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m== */
+[35mapp/projects/electric-status-board/components/CodeLessonBase.js[m[36m:[m[32m90[m[36m:[m  /* [1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m==
+[35mapp/projects/electric-status-board/components/CodeLessonBase.js[m[36m:[m[32m92[m[36m:[m  [1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m== */
+[35mapp/projects/electric-status-board/components/CodeLessonBase.js[m[36m:[m[32m107[m[36m:[m  /* [1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m==
+[35mapp/projects/electric-status-board/components/CodeLessonBase.js[m[36m:[m[32m109[m[36m:[m  [1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m== */
+[35mapp/projects/electric-status-board/components/CodeLessonBase.js[m[36m:[m[32m119[m[36m:[m  /* [1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m==
+[35mapp/projects/electric-status-board/components/CodeLessonBase.js[m[36m:[m[32m121[m[36m:[m  [1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m== */
+[35mapp/projects/electric-status-board/components/CodeLessonBase.js[m[36m:[m[32m130[m[36m:[m  /* [1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m==
+[35mapp/projects/electric-status-board/components/CodeLessonBase.js[m[36m:[m[32m132[m[36m:[m  [1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m== */
+[35mapp/projects/electric-status-board/components/CodeLessonBase.js[m[36m:[m[32m135[m[36m:[m  /* [1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m==
+[35mapp/projects/electric-status-board/components/CodeLessonBase.js[m[36m:[m[32m137[m[36m:[m  [1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m== */
+[35mapp/projects/electric-status-board/components/CodeLessonBase.js[m[36m:[m[32m232[m[36m:[m  /* [1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m==
+[35mapp/projects/electric-status-board/components/CodeLessonBase.js[m[36m:[m[32m234[m[36m:[m  [1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m== */
+[35mapp/projects/electric-status-board/components/CodeLessonBase.js[m[36m:[m[32m374[m[36m:[m  /* [1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m==
+[35mapp/projects/electric-status-board/components/CodeLessonBase.js[m[36m:[m[32m376[m[36m:[m  [1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m== */
+[35mapp/projects/electric-status-board/components/GuidedCodeBlock.js[m[36m:[m[32m81[m[36m:[m/* [1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m==
+[35mapp/projects/electric-status-board/components/GuidedCodeBlock.js[m[36m:[m[32m83[m[36m:[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m== */
+[35mapp/projects/electric-status-board/components/GuidedCodeBlock.js[m[36m:[m[32m290[m[36m:[m/* [1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m==
+[35mapp/projects/electric-status-board/components/GuidedCodeBlock.js[m[36m:[m[32m292[m[36m:[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m== */
+[35mapp/projects/electric-status-board/components/GuidedCodeBlock.js[m[36m:[m[32m443[m[36m:[m  /* [1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m==
+[35mapp/projects/electric-status-board/components/GuidedCodeBlock.js[m[36m:[m[32m446[m[36m:[m  [1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m== */
+[35mapp/projects/electric-status-board/components/GuidedCodeBlock.js[m[36m:[m[32m471[m[36m:[m  /* [1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m==
+[35mapp/projects/electric-status-board/components/GuidedCodeBlock.js[m[36m:[m[32m473[m[36m:[m  [1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m== */
+[35mapp/projects/electric-status-board/components/GuidedCodeBlock.js[m[36m:[m[32m521[m[36m:[m  /* [1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m==
+[35mapp/projects/electric-status-board/components/GuidedCodeBlock.js[m[36m:[m[32m523[m[36m:[m  [1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m== */
+[35mapp/projects/electric-status-board/components/GuidedCodeBlock.js[m[36m:[m[32m545[m[36m:[m  /* [1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m==
+[35mapp/projects/electric-status-board/components/GuidedCodeBlock.js[m[36m:[m[32m547[m[36m:[m  [1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m== */
+[35mapp/projects/electric-status-board/components/GuidedCodeBlock.js[m[36m:[m[32m658[m[36m:[m  /* [1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m==
+[35mapp/projects/electric-status-board/components/GuidedCodeBlock.js[m[36m:[m[32m660[m[36m:[m  [1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m== */
+[35mapp/projects/electric-status-board/components/GuidedCodeBlock.js[m[36m:[m[32m756[m[36m:[m  /* [1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m==
+[35mapp/projects/electric-status-board/components/GuidedCodeBlock.js[m[36m:[m[32m759[m[36m:[m  [1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m== */
+[35mapp/projects/electric-status-board/components/GuidedCodeBlock.js[m[36m:[m[32m789[m[36m:[m  /* [1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m==
+[35mapp/projects/electric-status-board/components/GuidedCodeBlock.js[m[36m:[m[32m791[m[36m:[m  [1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m== */
+[35mapp/projects/electric-status-board/components/GuidedCodeBlock.js[m[36m:[m[32m916[m[36m:[m  /* [1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m==
+[35mapp/projects/electric-status-board/components/GuidedCodeBlock.js[m[36m:[m[32m918[m[36m:[m  [1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m[1;31m=======[m== */
+[35mcurio-web/.gitignore[m[36m:[m[32m42[m[36m:[m[1;31m<<<<<<<[m HEAD
+[35mcurio-web/.gitignore[m[36m:[m[32m43[m[36m:[m[1;31m=======[m
+[35mcurio-web/.gitignore[m[36m:[m[32m47[m[36m:[m[1;31m>>>>>>>[m a3896fd86399e894bf76635cc17f6763883ab9f6
+[35mcurio-web/app/admin/analytics/page.tsx[m[36m:[m[32m1[m[36m:[m[1;31m<<<<<<<[m HEAD
+[35mcurio-web/app/admin/analytics/page.tsx[m[36m:[m[32m10[m[36m:[m[1;31m=======[m
+[35mcurio-web/app/admin/analytics/page.tsx[m[36m:[m[32m21[m[36m:[m[1;31m>>>>>>>[m a3896fd86399e894bf76635cc17f6763883ab9f6
+[35mcurio-web/app/api/help/route.ts[m[36m:[m[32m1[m[36m:[m[1;31m<<<<<<<[m HEAD
+[35mcurio-web/app/api/help/route.ts[m[36m:[m[32m10[m[36m:[m[1;31m=======[m
+[35mcurio-web/app/api/help/route.ts[m[36m:[m[32m13[m[36m:[m[1;31m>>>>>>>[m a3896fd86399e894bf76635cc17f6763883ab9f6
+[35mcurio-web/app/api/help/route.ts[m[36m:[m[32m30[m[36m:[m[1;31m<<<<<<<[m HEAD
+[35mcurio-web/app/api/help/route.ts[m[36m:[m[32m32[m[36m:[m[1;31m=======[m
+[35mcurio-web/app/api/help/route.ts[m[36m:[m[32m34[m[36m:[m[1;31m>>>>>>>[m a3896fd86399e894bf76635cc17f6763883ab9f6
+[35mcurio-web/app/api/help/route.ts[m[36m:[m[32m50[m[36m:[m[1;31m<<<<<<<[m HEAD
+[35mcurio-web/app/api/help/route.ts[m[36m:[m[32m52[m[36m:[m[1;31m=======[m
+[35mcurio-web/app/api/help/route.ts[m[36m:[m[32m54[m[36m:[m[1;31m>>>>>>>[m a3896fd86399e894bf76635cc17f6763883ab9f6
+[35mcurio-web/app/api/help/route.ts[m[36m:[m[32m136[m[36m:[m[1;31m<<<<<<<[m HEAD
+[35mcurio-web/app/api/help/route.ts[m[36m:[m[32m139[m[36m:[m[1;31m=======[m
+[35mcurio-web/app/api/help/route.ts[m[36m:[m[32m142[m[36m:[m[1;31m>>>>>>>[m a3896fd86399e894bf76635cc17f6763883ab9f6
+[35mcurio-web/app/api/help/route.ts[m[36m:[m[32m156[m[36m:[m[1;31m<<<<<<<[m HEAD
+[35mcurio-web/app/api/help/route.ts[m[36m:[m[32m172[m[36m:[m[1;31m=======[m
+[35mcurio-web/app/api/help/route.ts[m[36m:[m[32m177[m[36m:[m[1;31m>>>>>>>[m a3896fd86399e894bf76635cc17f6763883ab9f6
+[35mcurio-web/app/api/help/route.ts[m[36m:[m[32m191[m[36m:[m[1;31m<<<<<<<[m HEAD
+[35mcurio-web/app/api/help/route.ts[m[36m:[m[32m192[m[36m:[m[1;31m=======[m
+[35mcurio-web/app/api/help/route.ts[m[36m:[m[32m194[m[36m:[m[1;31m>>>>>>>[m a3896fd86399e894bf76635cc17f6763883ab9f6
+[35mcurio-web/app/api/help/route.ts[m[36m:[m[32m207[m[36m:[m[1;31m<<<<<<<[m HEAD
+[35mcurio-web/app/api/help/route.ts[m[36m:[m[32m218[m[36m:[m[1;31m=======[m
+[35mcurio-web/app/api/help/route.ts[m[36m:[m[32m238[m[36m:[m[1;31m>>>>>>>[m a3896fd86399e894bf76635cc17f6763883ab9f6
+[35mcurio-web/app/api/help/route.ts[m[36m:[m[32m269[m[36m:[m[1;31m<<<<<<<[m HEAD
+[35mcurio-web/app/api/help/route.ts[m[36m:[m[32m274[m[36m:[m[1;31m=======[m
+[35mcurio-web/app/api/help/route.ts[m[36m:[m[32m275[m[36m:[m[1;31m>>>>>>>[m a3896fd86399e894bf76635cc17f6763883ab9f6
+[35mcurio-web/app/api/help/route.ts[m[36m:[m[32m280[m[36m:[m[1;31m<<<<<<<[m HEAD
+[35mcurio-web/app/api/help/route.ts[m[36m:[m[32m289[m[36m:[m[1;31m=======[m
+[35mcurio-web/app/api/help/route.ts[m[36m:[m[32m298[m[36m:[m[1;31m>>>>>>>[m a3896fd86399e894bf76635cc17f6763883ab9f6
+[35mcurio-web/app/api/help/route.ts[m[36m:[m[32m304[m[36m:[m[1;31m<<<<<<<[m HEAD
+[35mcurio-web/app/api/help/route.ts[m[36m:[m[32m366[m[36m:[m[1;31m=======[m
+[35mcurio-web/app/api/help/route.ts[m[36m:[m[32m445[m[36m:[m[1;31m>>>>>>>[m a3896fd86399e894bf76635cc17f6763883ab9f6
