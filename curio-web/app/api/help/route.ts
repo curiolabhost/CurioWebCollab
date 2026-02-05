@@ -15,7 +15,7 @@ function buildPopupInstructions() {
     "Rules:",
     "- Max 20 words.",
     "- No line breaks.",
-    "- No code blocks. ihihihihihihihihih",
+    "- No code blocks.",
     "- No solution steps.",
     "- Do NOT tell the user what to type or change.",
     '- Avoid compiler jargon like "undeclared identifier" unless unavoidable.',
