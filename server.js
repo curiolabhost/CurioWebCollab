@@ -343,7 +343,4 @@ app.listen(PORT, "0.0.0.0", () => {
   console.log("  • GET  /health");
   console.log("  • POST /verify-arduino");
   console.log("  • POST /ai/help (streaming SSE)");
-  console.log("✅ SERVER.JS VERSION = 2026-02-05 (instructions+userText enabled)");
-console.log("✅ has instructions?", typeof req.body?.instructions, "has userText?", typeof req.body?.userText);
-
 });
