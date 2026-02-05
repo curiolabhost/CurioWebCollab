@@ -321,7 +321,6 @@ descAfterImage:`**Now your OLED has power and data connection.**
         },
         ],
       },
-
       {
         id: "circuit-3",
         title: "Step 3: Run an Example Sketch",
@@ -329,11 +328,18 @@ descAfterImage:`**Now your OLED has power and data connection.**
           {
             topicTitle: "Confirm the OLED Works",
             descBeforeCode: `Before building your own menu, run a known working test.
+After you downloaded the Adafruit library on Arduino IDE software, follow these steps:
 **Step 1:** Open the example sketch:
-@File → Examples → Adafruit SSD1306 → ssd1306_128x64.i2c
-@ If trying this on wokwi, change the line #define SCREEN_ADDRESS 0x3D into #define SCREEN_ADDRESS 0x3C to make it work
-
-**Step 2:** Upload the sketch to your Arduino:
+@ File → Examples → Adafruit SSD1306 → ssd1306_128x64.i2c
+@ If using Wokwi for simulation, copy and paste the test code to wokwi. Then, change the line \`#define SCREEN_ADDRESS 0x3D\` into \`#define SCREEN_ADDRESS 0x3C\` to make it work.`,
+            imageGridBeforeCode: {
+              columns: 1,
+              width: 530,
+             height: 530,
+              items: [{ label: "Finding the test code", imageSrc: "/electric-status-board/circuit/adafruitTest.png" }],
+            },
+            descAfterCode:
+`**Step 2:** Upload the sketch to your Arduino:
 @Tools → Port → Select the correct COM port for your Arduino
 @Tools → Board → Select correct board type (e.g., Arduino Uno)
 @Sketch → Upload
@@ -363,7 +369,6 @@ Once this is done, you are good to proceed to building your own menu system!
           },
         ],
       },
-
       {
         id: "circuit-4",
         title: "Step 4: PushButtons with Internal Pull-Ups",
