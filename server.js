@@ -152,9 +152,6 @@ app.post("/verify-arduino", (req, res) => {
   }
 });
 
-// ----------------------
-// /ai/help - streaming SSE hints from Ollama
-// ----------------------
 app.post("/ai/help", async (req, res) => {
   console.log("🤖 POST /ai/help called");
 
@@ -182,7 +179,6 @@ app.post("/ai/help", async (req, res) => {
   if (typeof res.flushHeaders === "function") res.flushHeaders();
   res.write(": keep-alive\n\n");
 
-  // Keep-alive ping
   const ping = setInterval(() => {
     try { res.write(": ping\n\n"); } catch {}
   }, 15000);
@@ -193,9 +189,9 @@ app.post("/ai/help", async (req, res) => {
     clearInterval(ping);
   });
 
-  // Build the prompt
+  // Build prompt
   let prompt = "";
-  if (typeof instructions === "string" && typeof userText === "string") {
+  if (instructions && userText) {
     prompt = `${instructions}\n\n${userText}`;
   } else {
     if (!code.trim() && !question.trim()) {
@@ -206,10 +202,6 @@ app.post("/ai/help", async (req, res) => {
     prompt =
       modeNorm === "arduino-verify"
         ? `You are a friendly Arduino tutor. Explain these errors with hints only. Do NOT give the students the answer. Keep your responses ${verbosity} and roughly ${sentences} sentences long.
-
-When analyzing C++ or Arduino code, assume whitespace is syntactically irrelevant except in preprocessor directives, string literals, and explicit line continuations.
-Do not cite whitespace as a cause of error unless one of those cases is present.
-Compiler error messages are authoritative.
 
 Sketch:
 \`\`\`cpp
@@ -231,7 +223,7 @@ ${question}`;
 
   if (!prompt.trim()) {
     clearInterval(ping);
-    res.write(`event: error\ndata: ${JSON.stringify({ error: "Prompt was empty. Check mode/question/instructions payload." })}\n\n`);
+    res.write(`event: error\ndata: ${JSON.stringify({ error: "Prompt was empty." })}\n\n`);
     res.end();
     return;
   }
@@ -253,7 +245,6 @@ ${question}`;
       const text = await ollamaRes.text().catch(() => "");
       throw new Error(`Ollama HTTP ${ollamaRes.status} ${ollamaRes.statusText} ${text}`);
     }
-    if (!ollamaRes.body) throw new Error("No Ollama stream");
 
     const reader = ollamaRes.body.getReader();
     const decoder = new TextDecoder("utf-8");
@@ -269,37 +260,42 @@ ${question}`;
       while ((newlineIndex = buffer.indexOf("\n")) !== -1) {
         const line = buffer.slice(0, newlineIndex).trim();
         buffer = buffer.slice(newlineIndex + 1);
-
         if (!line) continue;
 
-        let json;
         try {
-          json = JSON.parse(line);
+          const json = JSON.parse(line);
+          const token = json.message?.content;
+          if (token) {
+            // STREAM token to client
+            res.write(`event: token\ndata: ${JSON.stringify({ token })}\n\n`);
+            // LOG token to backend console
+            console.log("💬 token:", token);
+          }
         } catch {
           buffer = line + "\n" + buffer; // partial JSON, wait for more
           break;
         }
-
-        const token = json.message?.content;
-        if (token) res.write(`event: token\ndata: ${JSON.stringify({ token })}\n\n`);
       }
     }
 
-    // Final flush of any remaining JSON
+    // Final flush of remaining buffer
     if (buffer.trim()) {
       try {
         const json = JSON.parse(buffer);
         const token = json.message?.content;
-        if (token) res.write(`event: token\ndata: ${JSON.stringify({ token })}\n\n`);
+        if (token) {
+          res.write(`event: token\ndata: ${JSON.stringify({ token })}\n\n`);
+          console.log("💬 token:", token);
+        }
       } catch {}
     }
 
-    // End stream
     if (!aborted) {
       res.write(`event: done\ndata: {}\n\n`);
       clearInterval(ping);
       res.end();
     }
+
   } catch (err) {
     console.error("❌ Ollama streaming error:", err);
     clearInterval(ping);
