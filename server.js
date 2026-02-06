@@ -311,6 +311,7 @@ ${question}`;
           res.write(
             `event: token\ndata: ${JSON.stringify({ token })}\n\n`
           );
+          await new Promise(r => setImmediate(r));
         }
 
         if (json.done) {
@@ -327,16 +328,11 @@ ${question}`;
           res.write(
             `event: token\ndata: ${JSON.stringify({ token })}\n\n`
           );
+          await new Promise(r => setImmediate(r));
         }
       } catch {
         // ignore trailing partial frame
       }
-    }
-
-    if (!aborted) {
-      res.write(`event: done\ndata: {}\n\n`);
-      clearInterval(ping);
-      res.end();
     }
 
     if (!aborted) {
