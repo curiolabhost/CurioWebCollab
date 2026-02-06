@@ -153,13 +153,12 @@ app.post("/verify-arduino", (req, res) => {
 });
 
 // ----------------------
-// /ai/help - streaming hints with error context (Ollama)
+// /ai/help - streaming SSE hints from Ollama
 // ----------------------
 app.post("/ai/help", async (req, res) => {
   console.log("🤖 POST /ai/help called");
 
   const {
-    // legacy inputs
     code = "",
     errors = [],
     mode = "arduino-verify",
@@ -167,31 +166,25 @@ app.post("/ai/help", async (req, res) => {
     language = "cpp",
     verbosity = "brief",
     sentences = 3,
-
-    // NEW inputs from Next.js proxy (your route.ts)
     instructions = null,
     userText = null,
     temperature = 0,
     max_output_tokens = 400,
   } = req.body || {};
 
-  const modeNorm = String(mode || "").trim().toLowerCase();
+  const modeNorm = String(mode).trim().toLowerCase();
 
   // SSE headers
   res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
   res.setHeader("Cache-Control", "no-cache, no-transform");
   res.setHeader("Connection", "keep-alive");
-  res.setHeader("X-Accel-Buffering", "no"); // helps on some reverse proxies
+  res.setHeader("X-Accel-Buffering", "no");
   if (typeof res.flushHeaders === "function") res.flushHeaders();
-
-  // keep-alive comment
   res.write(": keep-alive\n\n");
 
-  // Optional periodic ping to keep some proxies from timing out
+  // Keep-alive ping
   const ping = setInterval(() => {
-    try {
-      res.write(": ping\n\n");
-    } catch {}
+    try { res.write(": ping\n\n"); } catch {}
   }, 15000);
 
   let aborted = false;
@@ -200,18 +193,14 @@ app.post("/ai/help", async (req, res) => {
     clearInterval(ping);
   });
 
-  // ✅ Build prompt:
-  // If Next.js sent instructions + userText, use those (supports popup modes).
+  // Build the prompt
   let prompt = "";
   if (typeof instructions === "string" && typeof userText === "string") {
     prompt = `${instructions}\n\n${userText}`;
   } else {
-    // Fallback: old behavior
-    if (!String(code).trim() && !String(question).trim()) {
+    if (!code.trim() && !question.trim()) {
       clearInterval(ping);
-      return res
-        .status(400)
-        .json({ ok: false, error: "Provide either 'code' or 'question'." });
+      return res.status(400).json({ ok: false, error: "Provide either 'code' or 'question'." });
     }
 
     prompt =
@@ -228,9 +217,7 @@ ${String(code).slice(0, 4000)}
 \`\`\`
 
 Errors:
-${(errors || [])
-  .map((e) => `Line ${e?.line || 1}: ${e?.message || "Unknown error"}`)
-  .join("\n")}`
+${(errors || []).map(e => `Line ${e?.line || 1}: ${e?.message || "Unknown error"}`).join("\n")}`
         : `You are a programming tutor. Explain clearly:
 
 ${language} code:
@@ -242,20 +229,14 @@ Question:
 ${question}`;
   }
 
-  // If prompt is empty somehow, fail fast (prevents "Sure." behavior)
-  if (!String(prompt).trim()) {
+  if (!prompt.trim()) {
     clearInterval(ping);
-    res.write(
-      `event: error\ndata: ${JSON.stringify({
-        error: "Prompt was empty. Check mode/question/instructions payload.",
-      })}\n\n`
-    );
+    res.write(`event: error\ndata: ${JSON.stringify({ error: "Prompt was empty. Check mode/question/instructions payload." })}\n\n`);
     res.end();
     return;
   }
 
   try {
-    // NOTE: if you’re on Node < 18, fetch may not exist.
     const ollamaRes = await fetch(`${OLLAMA_HOST}/api/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -263,24 +244,19 @@ ${question}`;
         model: OLLAMA_MODEL,
         stream: true,
         temperature: Number(temperature) || 0,
-        options: {
-          // ✅ cap output (makes popup modes fast + prevents rambling)
-          num_predict: Math.max(16, Number(max_output_tokens) || 400),
-        },
+        options: { num_predict: Math.max(16, Number(max_output_tokens) || 400) },
         messages: [{ role: "user", content: prompt }],
       }),
     });
 
     if (!ollamaRes.ok) {
       const text = await ollamaRes.text().catch(() => "");
-      throw new Error(
-        `Ollama HTTP ${ollamaRes.status} ${ollamaRes.statusText} ${text}`
-      );
+      throw new Error(`Ollama HTTP ${ollamaRes.status} ${ollamaRes.statusText} ${text}`);
     }
     if (!ollamaRes.body) throw new Error("No Ollama stream");
+
     const reader = ollamaRes.body.getReader();
     const decoder = new TextDecoder("utf-8");
-
     let buffer = "";
 
     while (!aborted) {
@@ -289,10 +265,10 @@ ${question}`;
 
       buffer += decoder.decode(value, { stream: true });
 
-      let newline;
-      while ((newline = buffer.indexOf("\n")) !== -1) {
-        const line = buffer.slice(0, newline).trim();
-        buffer = buffer.slice(newline + 1);
+      let newlineIndex;
+      while ((newlineIndex = buffer.indexOf("\n")) !== -1) {
+        const line = buffer.slice(0, newlineIndex).trim();
+        buffer = buffer.slice(newlineIndex + 1);
 
         if (!line) continue;
 
@@ -300,54 +276,25 @@ ${question}`;
         try {
           json = JSON.parse(line);
         } catch {
-          // Partial JSON: wait for more data
-          buffer = line + "\n" + buffer;
+          buffer = line + "\n" + buffer; // partial JSON, wait for more
           break;
         }
 
         const token = json.message?.content;
-        if (token) {
-          res.write(
-            `event: token\ndata: ${JSON.stringify({ token })}\n\n`
-          );
-        }
+        if (token) res.write(`event: token\ndata: ${JSON.stringify({ token })}\n\n`);
       }
     }
 
-    // Final flush (optional but safe)
+    // Final flush of any remaining JSON
     if (buffer.trim()) {
       try {
         const json = JSON.parse(buffer);
         const token = json.message?.content;
-        if (token) {
-          res.write(
-            `event: token\ndata: ${JSON.stringify({ token })}\n\n`
-          );
-        }
+        if (token) res.write(`event: token\ndata: ${JSON.stringify({ token })}\n\n`);
       } catch {}
     }
 
-    if (!aborted) {
-      res.write(`event: done\ndata: {}\n\n`);
-      clearInterval(ping);
-      res.end();
-    }
-    // Flush any remaining buffered JSON
-    if (buffer.trim()) {
-      try {
-        const json = JSON.parse(buffer);
-        const token = json.message?.content;
-        if (token) {
-          res.write(
-            `event: token\ndata: ${JSON.stringify({ token })}\n\n`
-          );
-          await new Promise(r => setImmediate(r));
-        }
-      } catch {
-        // ignore trailing partial frame
-      }
-    }
-
+    // End stream
     if (!aborted) {
       res.write(`event: done\ndata: {}\n\n`);
       clearInterval(ping);
@@ -356,12 +303,10 @@ ${question}`;
   } catch (err) {
     console.error("❌ Ollama streaming error:", err);
     clearInterval(ping);
-    res.write(
-      `event: error\ndata: ${JSON.stringify({
-        error: "AI request failed. Check server logs.",
-      })}\n\n`
-    );
-    res.end();
+    if (!aborted) {
+      res.write(`event: error\ndata: ${JSON.stringify({ error: "AI request failed. Check server logs." })}\n\n`);
+      res.end();
+    }
   }
 });
 
