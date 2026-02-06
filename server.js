@@ -282,7 +282,6 @@ ${question}`;
     const decoder = new TextDecoder("utf-8");
 
     let buffer = "";
-    let sawDone = false;
 
     while (!aborted) {
       const { value, done } = await reader.read();
@@ -301,7 +300,7 @@ ${question}`;
         try {
           json = JSON.parse(line);
         } catch {
-          // ❗ incomplete JSON — put it back and wait for more data
+          // Partial JSON: wait for more data
           buffer = line + "\n" + buffer;
           break;
         }
@@ -311,13 +310,27 @@ ${question}`;
           res.write(
             `event: token\ndata: ${JSON.stringify({ token })}\n\n`
           );
-          await new Promise(r => setImmediate(r));
-        }
-
-        if (json.done) {
-          sawDone = true; // semantic completion only
         }
       }
+    }
+
+    // Final flush (optional but safe)
+    if (buffer.trim()) {
+      try {
+        const json = JSON.parse(buffer);
+        const token = json.message?.content;
+        if (token) {
+          res.write(
+            `event: token\ndata: ${JSON.stringify({ token })}\n\n`
+          );
+        }
+      } catch {}
+    }
+
+    if (!aborted) {
+      res.write(`event: done\ndata: {}\n\n`);
+      clearInterval(ping);
+      res.end();
     }
     // Flush any remaining buffered JSON
     if (buffer.trim()) {
