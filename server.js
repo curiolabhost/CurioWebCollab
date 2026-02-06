@@ -35,7 +35,7 @@ const PORT = Number(process.env.PORT || 4000);
 
 // Ollama
 const OLLAMA_HOST = process.env.OLLAMA_HOST || "http://127.0.0.1:11434";
-const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "qwen2.5-coder:1.5b";
+const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "cogito-2.1:671b-cloud";
 
 // Arduino CLI
 const ARDUINO_CLI =
