@@ -35,7 +35,7 @@ const PORT = Number(process.env.PORT || 4000);
 
 // Ollama
 const OLLAMA_HOST = process.env.OLLAMA_HOST || "http://127.0.0.1:11434";
-const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "cogito-2.1:671b-cloud";
+const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "qwen3-coder-next:cloud";
 
 // Arduino CLI
 const ARDUINO_CLI =
@@ -278,44 +278,65 @@ ${question}`;
       );
     }
     if (!ollamaRes.body) throw new Error("No Ollama stream");
-
     const reader = ollamaRes.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
+    const decoder = new TextDecoder("utf-8");
 
-    while (true) {
+    let buffer = "";
+    let sawDone = false;
+
+    while (!aborted) {
       const { value, done } = await reader.read();
       if (done) break;
 
       buffer += decoder.decode(value, { stream: true });
 
-      const lines = buffer.split("\n");
-      buffer = lines.pop() || "";
+      let newline;
+      while ((newline = buffer.indexOf("\n")) !== -1) {
+        const line = buffer.slice(0, newline).trim();
+        buffer = buffer.slice(newline + 1);
 
-      for (const line of lines) {
-        if (!line.trim()) continue;
+        if (!line) continue;
 
         let json;
         try {
           json = JSON.parse(line);
         } catch {
-          continue;
+          // ❗ incomplete JSON — put it back and wait for more data
+          buffer = line + "\n" + buffer;
+          break;
         }
 
         const token = json.message?.content;
         if (token) {
-          res.write(`event: token\ndata: ${JSON.stringify({ token })}\n\n`);
+          res.write(
+            `event: token\ndata: ${JSON.stringify({ token })}\n\n`
+          );
         }
 
         if (json.done) {
-          res.write(`event: done\ndata: {}\n\n`);
-          clearInterval(ping);
-          res.end();
-          return;
+          sawDone = true; // semantic completion only
         }
       }
+    }
+    // Flush any remaining buffered JSON
+    if (buffer.trim()) {
+      try {
+        const json = JSON.parse(buffer);
+        const token = json.message?.content;
+        if (token) {
+          res.write(
+            `event: token\ndata: ${JSON.stringify({ token })}\n\n`
+          );
+        }
+      } catch {
+        // ignore trailing partial frame
+      }
+    }
 
-      if (aborted) return;
+    if (!aborted) {
+      res.write(`event: done\ndata: {}\n\n`);
+      clearInterval(ping);
+      res.end();
     }
 
     if (!aborted) {
