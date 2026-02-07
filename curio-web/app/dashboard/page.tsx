@@ -1,17 +1,14 @@
 // app/dashboard/page.tsx
-"use client";
-
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { auth } from "@clerk/nextjs/server";
+import { redirect } from "next/navigation";
 import { DashboardHome } from "@/app/components/DashboardHome";
 
-export default function DashboardPage() {
-  const router = useRouter();
+export default async function DashboardPage() {
+  const { userId } = await auth();
 
-  useEffect(() => {
-    const stored = localStorage.getItem("currentUser");
-    if (!stored) router.replace("/account-setup/login");
-  }, [router]);
+  if (!userId) {
+    redirect("/sign-in");
+  }
 
   return <DashboardHome />;
 }

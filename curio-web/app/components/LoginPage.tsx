@@ -21,6 +21,7 @@ import {
 
 interface LoginPageProps {
   onLogin?: (user: { email: string; name: string }) => void;
+  initialMode?: "signin" | "signup";
 }
 
 /**
@@ -33,8 +34,10 @@ interface LoginPageProps {
  * need it. If you want to run something after sign-in, do it via redirects
  * (afterSignInUrl / afterSignUpUrl) or read user state with useUser().
  */
-export function LoginPage({ onLogin }: LoginPageProps) {
-  const [isSignup, setIsSignup] = useState(false);
+export function LoginPage({ onLogin, initialMode = "signin" }: LoginPageProps) {
+
+  const [isSignup, setIsSignup] = useState(initialMode === "signup");
+
   const [signupStep, setSignupStep] = useState(1);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -211,9 +214,9 @@ export function LoginPage({ onLogin }: LoginPageProps) {
                     card: "shadow-none border-0 p-0",
                   },
                 }}
-                // You can set these in env too; this is optional.
-                // afterSignUpUrl="/dashboard"
-                // afterSignInUrl="/dashboard"
+                afterSignUpUrl="/dashboard"
+                afterSignInUrl="/dashboard"
+                signInUrl="/sign-in"
               />
             </div>
           </div>
@@ -321,7 +324,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
 
             {/* Right Side */}
             <div className="w-full max-w-md mx-auto lg:mx-0">
-              <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-200">
+              <div className="bg-white rounded-2xl p-6 ">
                 {!isSignup ? (
                   <>
                     <div className="mb-6">
@@ -329,15 +332,15 @@ export function LoginPage({ onLogin }: LoginPageProps) {
                       <p className="text-gray-600">Sign in to continue learning</p>
                     </div>
 
-                    {/* ✅ Clerk SignIn UI */}
+                    {/* Clerk SignIn UI */}
                     <SignIn
                       appearance={{
                         elements: {
                           card: "shadow-none border-0 p-0",
                         },
                       }}
-                      // afterSignInUrl="/dashboard"
-                      // signUpUrl="/sign-up"
+                      afterSignInUrl="/dashboard"
+                      signUpUrl="/sign-up"
                     />
                   </>
                 ) : (

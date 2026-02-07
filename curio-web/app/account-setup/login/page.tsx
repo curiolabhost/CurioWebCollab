@@ -1,14 +1,7 @@
-"use client";
+//account-setup/login/page.tsx
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { redirect } from "next/navigation";
 
-export default function AccountSetupLoginPage() {
-  const router = useRouter();
-
-  useEffect(() => {
-    router.replace("/sign-in");
-  }, [router]);
-
-  return null;
+export default function Page() {
+  redirect("/sign-in");
 }

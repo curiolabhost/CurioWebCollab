@@ -4,6 +4,8 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useClerk } from "@clerk/nextjs";
+
 
 import {
   Calendar,
@@ -610,10 +612,13 @@ useEffect(() => {
     setShowScheduleModal(false);
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("currentUser");
-    router.push("/account-setup/login");
+  const { signOut } = useClerk();
+
+  const handleLogout = async () => {
+    setProfileMenuOpen(false);
+    await signOut({ redirectUrl: "/sign-in" });
   };
+
 
   const handleContinue = () => {
     if (!activePtr?.slug || !activePtr?.lessonSlug) return;
@@ -762,7 +767,7 @@ useEffect(() => {
                 <span>Admin Panel</span>
               </button>
 
-              <span className="text-gray-600">Welcome, Student!</span>
+              <span className="text-gray-600">Welcome! </span>
 
               <div className="relative">
                 <button

@@ -1,3 +1,5 @@
+//app/components/HomePage.tsx
+
 "use client";
 
 import React, { useState } from "react";
@@ -56,15 +58,16 @@ export function HomePage({ onNavigateToLogin, onNavigateToDashboard }: HomePageP
             </div>
 
             <div className="hidden md:flex items-center gap-3">
-              <SignedOut>
-                <SignInButton mode="modal">
-                  <Button variant="ghost">Log in</Button>
-                </SignInButton>
+<SignedOut>
+  <Link href="/sign-in">
+    <Button variant="ghost">Log in</Button>
+  </Link>
 
-                <SignUpButton mode="modal">
-                  <Button>Sign up</Button>
-                </SignUpButton>
-              </SignedOut>
+  <Link href="/sign-up">
+    <Button>Sign up</Button>
+  </Link>
+</SignedOut>
+
 
               <SignedIn>
                 <UserButton />
@@ -96,23 +99,21 @@ export function HomePage({ onNavigateToLogin, onNavigateToDashboard }: HomePageP
                 Curricula
               </a>
 
-            <div className="pt-3 border-t border-gray-200 space-y-2">
-              <SignInButton mode="modal">
-                <Button
-                  variant="ghost"
-                  className="w-full"
-                  onClick={() => setMobileMenuOpen(false)}
-                >
-                  Log in
-                </Button>
-              </SignInButton>
+<div className="pt-3 border-t border-gray-200 space-y-2">
+  <Link href="/sign-in" onClick={() => setMobileMenuOpen(false)}>
+    <Button variant="ghost" className="w-full">
+      Log in
+    </Button>
+  </Link>
 
-              <SignUpButton mode="modal">
-                <Button className="w-full" onClick={() => setMobileMenuOpen(false)}>
-                  Sign up
-                </Button>
-              </SignUpButton>
-            </div>
+  <Link href="/sign-up" onClick={() => setMobileMenuOpen(false)}>
+    <Button className="w-full">
+      Sign up
+    </Button>
+  </Link>
+</div>
+
+
 
             </div>
           </div>
@@ -143,10 +144,13 @@ export function HomePage({ onNavigateToLogin, onNavigateToDashboard }: HomePageP
               </p>
 
               <div className="space-y-4">
-                <Button className="w-full sm:w-auto" onClick={onNavigateToLogin}>
-                  Get started
-                  <ChevronRight className="w-5 h-5 ml-1" />
-                </Button>
+                <Link href="/sign-in">
+                  <Button className="w-full sm:w-auto">
+                    Get started
+                    <ChevronRight className="w-5 h-5 ml-1" />
+                  </Button>
+                </Link>
+
 
                 <Button
                   variant="outline"

@@ -57,3 +57,5 @@ curio-web/public/electric-status-board/APIKEY.txt
 .env
 .env.local
 .vercel
+
+/generated/prisma
