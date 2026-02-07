@@ -3,9 +3,6 @@
 import { useState } from "react";
 import Link from "next/link";
 import {
-  User,
-  Mail,
-  Lock,
   Cpu,
   ChevronRight,
   ChevronLeft,
@@ -14,24 +11,39 @@ import {
 
 import { Button } from "./ui/button";
 import { ImageWithFallback } from "./ui/ImageWithFallback";
+import {
+  SignedIn,
+  SignedOut,
+  UserButton,
+  SignIn,
+  SignUp,
+} from "@clerk/nextjs";
 
 interface LoginPageProps {
-  onLogin: (user: { email: string; name: string }) => void;
+  onLogin?: (user: { email: string; name: string }) => void;
 }
 
+/**
+ * This page now uses Clerk for real auth.
+ * - No localStorage password storage
+ * - No manual email/password verification
+ * - Keeps your layout + styling
+ *
+ * NOTE: Your onLogin callback is kept for compatibility, but Clerk auth does not
+ * need it. If you want to run something after sign-in, do it via redirects
+ * (afterSignInUrl / afterSignUpUrl) or read user state with useUser().
+ */
 export function LoginPage({ onLogin }: LoginPageProps) {
   const [isSignup, setIsSignup] = useState(false);
   const [signupStep, setSignupStep] = useState(1);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
-  const [error, setError] = useState("");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // Signup form data
+  // Signup form data (kept for your multi-step UX)
   const [age, setAge] = useState("");
   const [grade, setGrade] = useState("");
   const [codingExperience, setCodingExperience] = useState("");
+
+  const [error, setError] = useState("");
 
   const resetToLogin = () => {
     setIsSignup(false);
@@ -45,60 +57,6 @@ export function LoginPage({ onLogin }: LoginPageProps) {
     setSignupStep(1);
     setError("");
     setMobileMenuOpen(false);
-  };
-
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-
-    if (!email || !password) {
-      setError("Please fill in all fields");
-      return;
-    }
-
-    const storedUsers = localStorage.getItem("users");
-    const users = storedUsers ? JSON.parse(storedUsers) : [];
-
-    const user = users.find((u: any) => u.email === email && u.password === password);
-    if (!user) {
-      setError("Invalid email or password");
-      return;
-    }
-
-    onLogin({ email, name: user.name });
-  };
-
-  const handleSignupSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-
-    if (!email || !password || !name) {
-      setError("Please fill in all fields");
-      return;
-    }
-
-    const storedUsers = localStorage.getItem("users");
-    const users = storedUsers ? JSON.parse(storedUsers) : [];
-
-    if (users.find((u: any) => u.email === email)) {
-      setError("User with this email already exists");
-      return;
-    }
-
-    const newUser = {
-      email,
-      password,
-      name,
-      age,
-      grade,
-      codingExperience,
-      // add isAdmin flag
-      // isAdmin: email.includes("@acuriolab.org"), // example simple check - not very secure
-    };
-
-    users.push(newUser);
-    localStorage.setItem("users", JSON.stringify(users));
-    onLogin({ email, name });
   };
 
   const handleNextStep = () => {
@@ -245,57 +203,18 @@ export function LoginPage({ onLogin }: LoginPageProps) {
               <p className="text-gray-600">Almost there! Let&apos;s set up your login</p>
             </div>
 
-            <div className="space-y-4">
-              <div>
-                <label htmlFor="signup-name" className="block text-gray-700 mb-2">
-                  Full Name
-                </label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input
-                    type="text"
-                    id="signup-name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
-                    placeholder="John Doe"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label htmlFor="signup-email" className="block text-gray-700 mb-2">
-                  Email
-                </label>
-                <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input
-                    type="email"
-                    id="signup-email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
-                    placeholder="you@example.com"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label htmlFor="signup-password" className="block text-gray-700 mb-2">
-                  Password
-                </label>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input
-                    type="password"
-                    id="signup-password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
-                    placeholder="••••••••"
-                  />
-                </div>
-              </div>
+            {/* Step 4 is now Clerk SignUp UI */}
+            <div className="mt-2">
+              <SignUp
+                appearance={{
+                  elements: {
+                    card: "shadow-none border-0 p-0",
+                  },
+                }}
+                // You can set these in env too; this is optional.
+                // afterSignUpUrl="/dashboard"
+                // afterSignInUrl="/dashboard"
+              />
             </div>
           </div>
         );
@@ -306,17 +225,12 @@ export function LoginPage({ onLogin }: LoginPageProps) {
   };
 
   return (
-    // ✅ Match Figma background (use gray-50 instead of pure white)
     <div className="min-h-screen bg-gray-50 flex flex-col">
-      {/* Header/nav: Curio click goes to /account-setup */}
       <nav className="border-b border-gray-200 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center gap-8">
-              <Link
-                href="/account-setup"
-                className="text-primary text-xl font-semibold hover:opacity-90 transition"
-              >
+              <Link href="/account-setup" className="text-primary text-xl font-semibold hover:opacity-90 transition">
                 Curio
               </Link>
 
@@ -324,27 +238,20 @@ export function LoginPage({ onLogin }: LoginPageProps) {
                 <a href="#" className="text-gray-600 hover:text-primary transition-colors">
                   About us
                 </a>
-                {/*<a href="#" className="text-gray-600 hover:text-primary transition-colors">
-                  CurioLab
-                </a>
-                <a href="#" className="text-gray-600 hover:text-primary transition-colors">
-                  Store
-                </a>
-                <a href="#" className="text-gray-600 hover:text-primary transition-colors">
-                  Blogs
-                </a>
-                <a href="#" className="text-gray-600 hover:text-primary transition-colors">
-                  Curriculum
-                </a>
-                 */}
               </div>
             </div>
 
             <div className="hidden md:flex items-center gap-3">
-              <Button variant="ghost" onClick={resetToLogin}>
-                Log in
-              </Button>
-              <Button onClick={resetToSignup}>Sign up</Button>
+              <SignedOut>
+                <Button variant="ghost" onClick={resetToLogin}>
+                  Log in
+                </Button>
+                <Button onClick={resetToSignup}>Sign up</Button>
+              </SignedOut>
+
+              <SignedIn>
+                <UserButton />
+              </SignedIn>
             </div>
 
             <button className="md:hidden p-2" onClick={() => setMobileMenuOpen((v) => !v)}>
@@ -356,45 +263,44 @@ export function LoginPage({ onLogin }: LoginPageProps) {
         {mobileMenuOpen && (
           <div className="md:hidden border-t border-gray-200 bg-white">
             <div className="px-4 py-3 space-y-3">
-<Link href="/about" className="text-gray-600 hover:text-primary transition-colors">
+              <Link href="/about" className="text-gray-600 hover:text-primary transition-colors">
                 About Us
               </Link>
-              {/*<a href="#" className="block text-gray-600">
-              <a href="#" className="block text-gray-600">
-                CurioLab
-              </a>
-              <a href="#" className="block text-gray-600">
-                Store
-              </a>
-              <a href="#" className="block text-gray-600">
-                Blogs
-              </a>
-              <a href="#" className="block text-gray-600">
-                Curriculu
-              </a>*/}
 
-              <div className="pt-3 border-t border-gray-200 space-y-2">
-                <Button variant="ghost" className="w-full" onClick={resetToLogin}>
-                  Log in
-                </Button>
-                <Button className="w-full" onClick={resetToSignup}>
-                  Sign up
-                </Button>
+              <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-200">
+                <SignedOut>
+                  <h2 className="text-gray-900 text-2xl font-semibold mb-2">Get started</h2>
+                  <p className="text-gray-600 mb-6">Create a Curio account to save progress across devices.</p>
+
+                  <div className="space-y-3">
+                    <Button className="w-full" onClick={resetToSignup}>
+                      Sign up
+                    </Button>
+                    <Button variant="outline" className="w-full" onClick={resetToLogin}>
+                      Log in
+                    </Button>
+                  </div>
+                </SignedOut>
+
+                <SignedIn>
+                  <h2 className="text-gray-900 text-2xl font-semibold mb-2">You’re signed in</h2>
+                  <p className="text-gray-600 mb-6">Continue to your dashboard.</p>
+                  <Button className="w-full" onClick={() => (window.location.href = "/dashboard")}>
+                    Go to dashboard
+                  </Button>
+                </SignedIn>
               </div>
             </div>
           </div>
         )}
       </nav>
 
-      {/* Main Content */}
       <div className="flex-1 flex items-center">
         <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             {/* Left Side */}
             <div className="hidden lg:block">
               <div className="relative">
-                {/* ✅ If your image is in /public/homepageMain.png, this works.
-                    If it's inside /app/assets, move it to /public or import it. */}
                 <ImageWithFallback
                   src="/homepageMain.png"
                   alt="Student learning electronics"
@@ -423,68 +329,16 @@ export function LoginPage({ onLogin }: LoginPageProps) {
                       <p className="text-gray-600">Sign in to continue learning</p>
                     </div>
 
-                    <form onSubmit={handleLogin} className="space-y-4">
-                      <div>
-                        <label htmlFor="email" className="block text-gray-700 mb-2">
-                          Email
-                        </label>
-                        <div className="relative">
-                          <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                          <input
-                            type="email"
-                            id="email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
-                            placeholder="you@example.com"
-                          />
-                        </div>
-                      </div>
-
-                      <div>
-                        <label htmlFor="password" className="block text-gray-700 mb-2">
-                          Password
-                        </label>
-                        <div className="relative">
-                          <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                          <input
-                            type="password"
-                            id="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition"
-                            placeholder="••••••••"
-                          />
-                        </div>
-                      </div>
-
-                      {error && (
-                        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-                          {error}
-                        </div>
-                      )}
-
-                      <button
-                        type="submit"
-                        className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-lg transition"
-                      >
-                        Sign In
-                      </button>
-                    </form>
-
-                    <div className="mt-6 text-center">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsSignup(true);
-                          setSignupStep(1);
-                          setError("");
-                        }}
-                        className="text-indigo-600 hover:text-indigo-700 transition"
-                      >
-                        Don&apos;t have an account? Sign up
-                      </button>
-                    </div>
+                    {/* ✅ Clerk SignIn UI */}
+                    <SignIn
+                      appearance={{
+                        elements: {
+                          card: "shadow-none border-0 p-0",
+                        },
+                      }}
+                      // afterSignInUrl="/dashboard"
+                      // signUpUrl="/sign-up"
+                    />
                   </>
                 ) : (
                   <>
@@ -505,7 +359,6 @@ export function LoginPage({ onLogin }: LoginPageProps) {
                       onSubmit={(e) => {
                         e.preventDefault();
                         if (signupStep < 4) handleNextStep();
-                        else handleSignupSubmit(e);
                       }}
                     >
                       {renderSignupStep()}
@@ -516,26 +369,28 @@ export function LoginPage({ onLogin }: LoginPageProps) {
                         </div>
                       )}
 
-                      <div className="flex gap-3 mt-6">
-                        {signupStep > 1 && (
-                          <button
-                            type="button"
-                            onClick={handlePrevStep}
-                            className="flex items-center gap-2 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
-                          >
-                            <ChevronLeft className="w-4 h-4" />
-                            <span>Back</span>
-                          </button>
-                        )}
+                      {signupStep < 4 && (
+                        <div className="flex gap-3 mt-6">
+                          {signupStep > 1 && (
+                            <button
+                              type="button"
+                              onClick={handlePrevStep}
+                              className="flex items-center gap-2 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
+                            >
+                              <ChevronLeft className="w-4 h-4" />
+                              <span>Back</span>
+                            </button>
+                          )}
 
-                        <button
-                          type="submit"
-                          className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
-                        >
-                          <span>{signupStep === 4 ? "Create Account" : "Continue"}</span>
-                          {signupStep < 4 && <ChevronRight className="w-4 h-4" />}
-                        </button>
-                      </div>
+                          <button
+                            type="submit"
+                            className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition"
+                          >
+                            <span>Continue</span>
+                            <ChevronRight className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
                     </form>
 
                     <div className="mt-6 text-center">
@@ -558,9 +413,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
                 )}
               </div>
 
-              <p className="text-center text-gray-500 mt-6">
-                Start your journey into Arduino and electronics
-              </p>
+              <p className="text-center text-gray-500 mt-6">Start your journey into Arduino and electronics</p>
             </div>
           </div>
         </div>

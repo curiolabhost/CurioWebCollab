@@ -6,6 +6,21 @@ datasource db {
   provider = "postgresql"
 }
 
+
+enum Role {
+  ADMIN
+  STUDENT
+}
+
+model User {
+  id        String   @id          // store Clerk userId
+  email     String?
+  role      Role     @default(STUDENT)
+  createdAt DateTime @default(now())
+
+  progresses LessonProgress[]
+}
+
 model LessonProgress {
   id          String   @id @default(cuid())
   userId      String
@@ -14,6 +29,8 @@ model LessonProgress {
   stepKey     String
   status      String
   updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id])
 
   @@unique([userId, projectSlug, lessonSlug, stepKey])
 }

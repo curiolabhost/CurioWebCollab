@@ -5,6 +5,15 @@ import Link from "next/link";
 import { Menu, ChevronRight, ArrowRight } from "lucide-react";
 import { Button } from "./ui/button";
 import { ImageWithFallback } from "./ui/ImageWithFallback";
+import {
+  SignInButton,
+  SignUpButton,
+  SignedIn,
+  SignedOut,
+  UserButton,
+} from "@clerk/nextjs";
+
+
 
 import { PROJECTS } from "../data/projects";
 
@@ -47,11 +56,22 @@ export function HomePage({ onNavigateToLogin, onNavigateToDashboard }: HomePageP
             </div>
 
             <div className="hidden md:flex items-center gap-3">
-              <Button variant="ghost" onClick={onNavigateToLogin}>
-                Log in
-              </Button>
-              <Button onClick={onNavigateToLogin}>Sign up</Button>
+              <SignedOut>
+                <SignInButton mode="modal">
+                  <Button variant="ghost">Log in</Button>
+                </SignInButton>
+
+                <SignUpButton mode="modal">
+                  <Button>Sign up</Button>
+                </SignUpButton>
+              </SignedOut>
+
+              <SignedIn>
+                <UserButton />
+              </SignedIn>
             </div>
+
+
 
             <button className="md:hidden p-2" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
               <Menu className="w-6 h-6" />
@@ -76,14 +96,24 @@ export function HomePage({ onNavigateToLogin, onNavigateToDashboard }: HomePageP
                 Curricula
               </a>
 
-              <div className="pt-3 border-t border-gray-200 space-y-2">
-                <Button variant="ghost" className="w-full" onClick={onNavigateToLogin}>
+            <div className="pt-3 border-t border-gray-200 space-y-2">
+              <SignInButton mode="modal">
+                <Button
+                  variant="ghost"
+                  className="w-full"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
                   Log in
                 </Button>
-                <Button className="w-full" onClick={onNavigateToLogin}>
+              </SignInButton>
+
+              <SignUpButton mode="modal">
+                <Button className="w-full" onClick={() => setMobileMenuOpen(false)}>
                   Sign up
                 </Button>
-              </div>
+              </SignUpButton>
+            </div>
+
             </div>
           </div>
         )}

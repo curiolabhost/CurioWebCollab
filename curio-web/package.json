@@ -9,8 +9,10 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@clerk/nextjs": "^6.37.3",
     "@codemirror/lang-cpp": "^6.0.3",
     "@monaco-editor/react": "^4.7.0",
+    "@prisma/adapter-pg": "^7.3.0",
     "@prisma/client": "^7.3.0",
     "@uiw/codemirror-themes": "^4.25.4",
     "@uiw/react-codemirror": "^4.25.4",
@@ -18,6 +20,7 @@
     "monaco-editor": "^0.55.1",
     "next": "^16.1.1",
     "openai": "^6.16.0",
+    "pg": "^8.18.0",
     "prisma": "^7.3.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3"
