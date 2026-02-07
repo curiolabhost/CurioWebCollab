@@ -35,7 +35,7 @@ const PORT = Number(process.env.PORT || 4000);
 
 // Ollama
 const OLLAMA_HOST = process.env.OLLAMA_HOST || "http://127.0.0.1:11434";
-const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "qwen2.5-coder:1.5b";
+const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "qwen3-coder-next:cloud";
 
 // Arduino CLI
 const ARDUINO_CLI =
@@ -152,14 +152,10 @@ app.post("/verify-arduino", (req, res) => {
   }
 });
 
-// ----------------------
-// /ai/help - streaming hints with error context (Ollama)
-// ----------------------
 app.post("/ai/help", async (req, res) => {
   console.log("🤖 POST /ai/help called");
 
   const {
-    // legacy inputs
     code = "",
     errors = [],
     mode = "arduino-verify",
@@ -167,31 +163,24 @@ app.post("/ai/help", async (req, res) => {
     language = "cpp",
     verbosity = "brief",
     sentences = 3,
-
-    // NEW inputs from Next.js proxy (your route.ts)
     instructions = null,
     userText = null,
     temperature = 0,
     max_output_tokens = 400,
   } = req.body || {};
 
-  const modeNorm = String(mode || "").trim().toLowerCase();
+  const modeNorm = String(mode).trim().toLowerCase();
 
   // SSE headers
   res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
   res.setHeader("Cache-Control", "no-cache, no-transform");
   res.setHeader("Connection", "keep-alive");
-  res.setHeader("X-Accel-Buffering", "no"); // helps on some reverse proxies
+  res.setHeader("X-Accel-Buffering", "no");
   if (typeof res.flushHeaders === "function") res.flushHeaders();
-
-  // keep-alive comment
   res.write(": keep-alive\n\n");
 
-  // Optional periodic ping to keep some proxies from timing out
   const ping = setInterval(() => {
-    try {
-      res.write(": ping\n\n");
-    } catch {}
+    try { res.write(": ping\n\n"); } catch {}
   }, 15000);
 
   let aborted = false;
@@ -200,27 +189,19 @@ app.post("/ai/help", async (req, res) => {
     clearInterval(ping);
   });
 
-  // ✅ Build prompt:
-  // If Next.js sent instructions + userText, use those (supports popup modes).
+  // Build prompt
   let prompt = "";
-  if (typeof instructions === "string" && typeof userText === "string") {
+  if (instructions && userText) {
     prompt = `${instructions}\n\n${userText}`;
   } else {
-    // Fallback: old behavior
-    if (!String(code).trim() && !String(question).trim()) {
+    if (!code.trim() && !question.trim()) {
       clearInterval(ping);
-      return res
-        .status(400)
-        .json({ ok: false, error: "Provide either 'code' or 'question'." });
+      return res.status(400).json({ ok: false, error: "Provide either 'code' or 'question'." });
     }
 
     prompt =
       modeNorm === "arduino-verify"
         ? `You are a friendly Arduino tutor. Explain these errors with hints only. Do NOT give the students the answer. Keep your responses ${verbosity} and roughly ${sentences} sentences long.
-
-When analyzing C++ or Arduino code, assume whitespace is syntactically irrelevant except in preprocessor directives, string literals, and explicit line continuations.
-Do not cite whitespace as a cause of error unless one of those cases is present.
-Compiler error messages are authoritative.
 
 Sketch:
 \`\`\`cpp
@@ -228,9 +209,7 @@ ${String(code).slice(0, 4000)}
 \`\`\`
 
 Errors:
-${(errors || [])
-  .map((e) => `Line ${e?.line || 1}: ${e?.message || "Unknown error"}`)
-  .join("\n")}`
+${(errors || []).map(e => `Line ${e?.line || 1}: ${e?.message || "Unknown error"}`).join("\n")}`
         : `You are a programming tutor. Explain clearly:
 
 ${language} code:
@@ -242,20 +221,14 @@ Question:
 ${question}`;
   }
 
-  // If prompt is empty somehow, fail fast (prevents "Sure." behavior)
-  if (!String(prompt).trim()) {
+  if (!prompt.trim()) {
     clearInterval(ping);
-    res.write(
-      `event: error\ndata: ${JSON.stringify({
-        error: "Prompt was empty. Check mode/question/instructions payload.",
-      })}\n\n`
-    );
+    res.write(`event: error\ndata: ${JSON.stringify({ error: "Prompt was empty." })}\n\n`);
     res.end();
     return;
   }
 
   try {
-    // NOTE: if you’re on Node < 18, fetch may not exist.
     const ollamaRes = await fetch(`${OLLAMA_HOST}/api/chat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -263,59 +236,58 @@ ${question}`;
         model: OLLAMA_MODEL,
         stream: true,
         temperature: Number(temperature) || 0,
-        options: {
-          // ✅ cap output (makes popup modes fast + prevents rambling)
-          num_predict: Math.max(16, Number(max_output_tokens) || 400),
-        },
+        options: { num_predict: Math.max(16, Number(max_output_tokens) || 400) },
         messages: [{ role: "user", content: prompt }],
       }),
     });
 
     if (!ollamaRes.ok) {
       const text = await ollamaRes.text().catch(() => "");
-      throw new Error(
-        `Ollama HTTP ${ollamaRes.status} ${ollamaRes.statusText} ${text}`
-      );
+      throw new Error(`Ollama HTTP ${ollamaRes.status} ${ollamaRes.statusText} ${text}`);
     }
-    if (!ollamaRes.body) throw new Error("No Ollama stream");
 
     const reader = ollamaRes.body.getReader();
-    const decoder = new TextDecoder();
+    const decoder = new TextDecoder("utf-8");
     let buffer = "";
 
-    while (true) {
+    while (!aborted) {
       const { value, done } = await reader.read();
       if (done) break;
 
       buffer += decoder.decode(value, { stream: true });
 
-      const lines = buffer.split("\n");
-      buffer = lines.pop() || "";
+      let newlineIndex;
+      while ((newlineIndex = buffer.indexOf("\n")) !== -1) {
+        const line = buffer.slice(0, newlineIndex).trim();
+        buffer = buffer.slice(newlineIndex + 1);
+        if (!line) continue;
 
-      for (const line of lines) {
-        if (!line.trim()) continue;
-
-        let json;
         try {
-          json = JSON.parse(line);
+          const json = JSON.parse(line);
+          const token = json.message?.content;
+          if (token) {
+            // STREAM token to client
+            res.write(`event: token\ndata: ${JSON.stringify({ token })}\n\n`);
+            // LOG token to backend console
+            console.log("💬 token:", token);
+          }
         } catch {
-          continue;
+          buffer = line + "\n" + buffer; // partial JSON, wait for more
+          break;
         }
+      }
+    }
 
+    // Final flush of remaining buffer
+    if (buffer.trim()) {
+      try {
+        const json = JSON.parse(buffer);
         const token = json.message?.content;
         if (token) {
           res.write(`event: token\ndata: ${JSON.stringify({ token })}\n\n`);
+          console.log("💬 token:", token);
         }
-
-        if (json.done) {
-          res.write(`event: done\ndata: {}\n\n`);
-          clearInterval(ping);
-          res.end();
-          return;
-        }
-      }
-
-      if (aborted) return;
+      } catch {}
     }
 
     if (!aborted) {
@@ -323,15 +295,14 @@ ${question}`;
       clearInterval(ping);
       res.end();
     }
+
   } catch (err) {
     console.error("❌ Ollama streaming error:", err);
     clearInterval(ping);
-    res.write(
-      `event: error\ndata: ${JSON.stringify({
-        error: "AI request failed. Check server logs.",
-      })}\n\n`
-    );
-    res.end();
+    if (!aborted) {
+      res.write(`event: error\ndata: ${JSON.stringify({ error: "AI request failed. Check server logs." })}\n\n`);
+      res.end();
+    }
   }
 });
 
