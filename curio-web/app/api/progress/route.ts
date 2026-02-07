@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { auth } from "@clerk/nextjs/server"; // ✅
+import { auth } from "@clerk/nextjs/server";
+
+type ProgressStatus = "done" | "todo";
 
 export async function POST(req: Request) {
   try {
-    const { userId } = await auth(); // ✅
+    const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Not signed in" }, { status: 401 });
     }
@@ -12,9 +14,16 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { projectSlug, lessonSlug, stepKey, status } = body || {};
 
-    if (!projectSlug || !lessonSlug || !stepKey || !status) {
+    if (!projectSlug || !lessonSlug || !stepKey || status == null) {
       return NextResponse.json({ error: "Missing fields" }, { status: 400 });
     }
+
+    // Normalize status (accept DONE/TODO/etc but store lowercase)
+    const rawStatus = String(status || "").toLowerCase();
+    if (rawStatus !== "done" && rawStatus !== "todo") {
+      return NextResponse.json({ error: "Invalid status" }, { status: 400 });
+    }
+    const normalizedStatus = rawStatus as ProgressStatus;
 
     // Ensure the foreign-key parent exists (User row keyed by Clerk userId)
     await prisma.user.upsert({
@@ -32,11 +41,16 @@ export async function POST(req: Request) {
           stepKey,
         },
       },
-      update: { status },
-      create: { userId, projectSlug, lessonSlug, stepKey, status },
+      update: { status: normalizedStatus },
+      create: {
+        userId,
+        projectSlug,
+        lessonSlug,
+        stepKey,
+        status: normalizedStatus,
+      },
     });
 
-    // ✅ include userId so you can verify instantly in the response
     return NextResponse.json({ ok: true, userId, saved });
   } catch (e: any) {
     console.error(e);
@@ -46,7 +60,7 @@ export async function POST(req: Request) {
 
 export async function GET(req: Request) {
   try {
-    const { userId } = await auth(); // ✅
+    const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "Not signed in" }, { status: 401 });
     }

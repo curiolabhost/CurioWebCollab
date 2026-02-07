@@ -6,7 +6,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useClerk } from "@clerk/nextjs";
 
-
 import {
   Calendar,
   Clock,
@@ -39,32 +38,45 @@ type ProjectSchedule = {
 
 type CompletedProject = {
   project: Project;
-  totalHours: number;
+  totalHours: number; // (approx; you can replace later with timers)
   startedDate: Date;
   completedDate: Date;
-};
-
-type StoredCompletedProject = {
-  slug: string;
-  totalHours: number;
-  startedDateISO: string;
-  completedDateISO: string;
 };
 
 type ActivePtr = { slug: string; lessonSlug: string };
 type NavState = { lesson: number; stepIndex: number };
 
-const COMPLETED_PROJECTS_KEY = "curio:dashboard:completedProjects";
-const STARTED_AT_KEY = (slug: string) => `curio:${slug}:startedAt`;
+type DashboardServerResponse = {
+  active: { projectSlug: string; lessonSlug: string; updatedAt?: string } | null;
+  lastSeen:
+    | {
+        projectSlug: string;
+        lessonSlug: string;
+        lessonIndex: number;
+        stepIndex: number;
+        updatedAt?: string;
+      }
+    | null;
+  startedAtByProject: Record<string, string>; // ISO
+  completions: Array<{
+    projectSlug: string;
+    completedAt: string; // ISO
+    totalStepsAtCompletion: number;
+  }>;
+};
+
+type ProgressSummaryResponse = {
+  // done counts per lesson slug
+  doneByLessonSlug: Record<string, number>;
+};
 
 function startOfWeekKey(d = new Date()) {
   // Monday-based week
   const date = new Date(d);
   const day = date.getDay(); // 0 Sun ... 6 Sat
-  const diffToMonday = (day + 6) % 7; // Mon=0, Tue=1 ... Sun=6
+  const diffToMonday = (day + 6) % 7; // Mon=0 ... Sun=6
   date.setDate(date.getDate() - diffToMonday);
   date.setHours(0, 0, 0, 0);
-
   const yyyy = date.getFullYear();
   const mm = String(date.getMonth() + 1).padStart(2, "0");
   const dd = String(date.getDate()).padStart(2, "0");
@@ -85,22 +97,37 @@ function writeJson(key: string, value: any) {
     localStorage.setItem(key, JSON.stringify(value));
   } catch {}
 }
-async function fetchDoneCount(projectSlug: string, lessonSlug: string): Promise<number> {
-  try {
-    const qs = new URLSearchParams({ projectSlug, lessonSlug });
-    const res = await fetch(`/api/progress?${qs.toString()}`, { cache: "no-store" });
-    if (!res.ok) return 0;
 
-    const data = await res.json();
-
-    // Expecting { rows: [{ stepKey, status: "done" | "todo" | ... }, ...] }
-    const rows = Array.isArray(data?.rows) ? data.rows : [];
-    return rows.filter((r: any) => r?.status === "done").length;
-  } catch {
-    return 0;
-  }
+function labelizeLessonSlug(lessonSlug: string) {
+  const last = (lessonSlug || "").split("/").pop() || "";
+  return last
+    .replace(/[-_]+/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+    .trim();
 }
 
+function prettyLevelFromLessonSlug(lessonSlug: string) {
+  const last = (lessonSlug || "").split("/").pop() || "";
+  const parts = last.split(/[-_]/g).filter(Boolean);
+  const suffix = (parts[parts.length - 1] || "").toLowerCase();
+
+  if (suffix === "beg" || suffix === "beginner") return "Beginner";
+  if (suffix === "adv" || suffix === "advanced") return "Advanced";
+  if (suffix === "int" || suffix === "intermediate") return "Intermediate";
+
+  return labelizeLessonSlug(lessonSlug);
+}
+
+function levelSuffixFromLessonSlug(lessonSlug: string | null | undefined) {
+  const last = (lessonSlug || "").split("/").pop() || "";
+  const parts = last.split(/[-_]/g).filter(Boolean);
+  const suffix = (parts[parts.length - 1] || "").toLowerCase();
+
+  if (suffix === "beg" || suffix === "beginner") return "beg";
+  if (suffix === "int" || suffix === "intermediate") return "int";
+  if (suffix === "adv" || suffix === "advanced") return "adv";
+  return null;
+}
 
 /**
  * Project.hours is like "8-10 hours" or "15-20 hours".
@@ -139,64 +166,56 @@ function daysBetween(a: Date, b: Date) {
   return Math.ceil((b.getTime() - a.getTime()) / msPerDay);
 }
 
-function labelizeLessonSlug(lessonSlug: string) {
-  // "code-beg" -> "Code Beg", "levels/beginner" -> "Beginner"
-  const last = (lessonSlug || "").split("/").pop() || "";
-  return last
-    .replace(/[-_]+/g, " ")
-    .replace(/\b\w/g, (c) => c.toUpperCase())
-    .trim();
+async function fetchDashboard(): Promise<DashboardServerResponse> {
+  const res = await fetch("/api/dashboard", { cache: "no-store" });
+  if (!res.ok) {
+    // keep UI functional even if backend missing
+    return { active: null, lastSeen: null, startedAtByProject: {}, completions: [] };
+  }
+  return (await res.json()) as DashboardServerResponse;
 }
 
-function prettyLevelFromLessonSlug(lessonSlug: string) {
-  const last = (lessonSlug || "").split("/").pop() || "";
-  const parts = last.split(/[-_]/g).filter(Boolean);
-  const suffix = (parts[parts.length - 1] || "").toLowerCase();
-
-  if (suffix === "beg" || suffix === "beginner") return "Beginner";
-  if (suffix === "adv" || suffix === "advanced") return "Advanced";
-  if (suffix === "int" || suffix === "intermediate") return "Intermediate";
-
-  // fallback to original formatting
-  return labelizeLessonSlug(lessonSlug);
+async function fetchProgressSummary(
+  projectSlug: string,
+  lessonSlugs: string[]
+): Promise<ProgressSummaryResponse> {
+  try {
+    const qs = new URLSearchParams();
+    qs.set("projectSlug", projectSlug);
+    qs.set("lessonSlugs", lessonSlugs.join(","));
+    const res = await fetch(`/api/progress/summary?${qs.toString()}`, { cache: "no-store" });
+    if (!res.ok) return { doneByLessonSlug: {} };
+    return (await res.json()) as ProgressSummaryResponse;
+  } catch {
+    return { doneByLessonSlug: {} };
+  }
 }
-
-function levelSuffixFromLessonSlug(lessonSlug: string | null | undefined) {
-  const last = (lessonSlug || "").split("/").pop() || "";
-  const parts = last.split(/[-_]/g).filter(Boolean);
-  const suffix = (parts[parts.length - 1] || "").toLowerCase();
-
-  if (suffix === "beg" || suffix === "beginner") return "beg";
-  if (suffix === "int" || suffix === "intermediate") return "int";
-  if (suffix === "adv" || suffix === "advanced") return "adv";
-  return null;
-}
-
-
 
 export function DashboardHome() {
   const router = useRouter();
-  const projects = PROJECTS;
+  const { signOut } = useClerk();
 
+  const projects = PROJECTS;
   const availableProjects = projects.filter((p) => p.available);
   const unavailableProjects = projects.filter((p) => !p.available);
 
-  // --- REAL current project pointer + real progress ---
+  // --- Server-backed: active pointer, last seen, startedAt, completions ---
   const [activePtr, setActivePtr] = useState<ActivePtr | null>(null);
-  const [activeProgress, setActiveProgress] = useState<number>(0);
   const [activeNav, setActiveNav] = useState<NavState | null>(null);
 
-  const [activeTotalSteps, setActiveTotalSteps] = useState<number>(0);
-  const [activeDoneCount, setActiveDoneCount] = useState<number>(0);
+  const [startedAtByProject, setStartedAtByProject] = useState<Record<string, string>>({});
+  const [completionEvents, setCompletionEvents] = useState<
+    Array<{ projectSlug: string; completedAt: string; totalStepsAtCompletion: number }>
+  >([]);
 
-  // Track totals (Coding + Circuits)
-  //const CODING_SLUG = "code-beg";
-  //const CIRCUITS_SLUG = "circuit-beg";
-
-  const [codeTotalSteps, setCodeTotalSteps] = useState<number>(0);
+  // --- Server-backed: done counts per track (we only need done counts; totals are deterministic) ---
   const [codeDoneCount, setCodeDoneCount] = useState<number>(0);
-  const [circuitTotalSteps, setCircuitTotalSteps] = useState<number>(0);
   const [circuitDoneCount, setCircuitDoneCount] = useState<number>(0);
+
+  // Totals are still pulled from localStorage because they’re deterministic to the lesson content.
+  // If you later want, we can compute totals from registries or return totals from the server.
+  const [codeTotalSteps, setCodeTotalSteps] = useState<number>(0);
+  const [circuitTotalSteps, setCircuitTotalSteps] = useState<number>(0);
 
   // --- UI state ---
   const [showScheduleModal, setShowScheduleModal] = useState(false);
@@ -204,285 +223,217 @@ export function DashboardHome() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
 
-  // Weekly pacing baseline
+  // schedule (still local — not part of the 5 core truth items)
+  const [schedule, setSchedule] = useState<ProjectSchedule>({ daysPerWeek: 3, hoursPerDay: 2 });
+  const [tempSchedule, setTempSchedule] = useState<ProjectSchedule>({ daysPerWeek: 3, hoursPerDay: 2 });
+
+  // Weekly pacing baseline (local fallback)
   const [weekStartDoneStepsAll, setWeekStartDoneStepsAll] = useState<number>(0);
   const [weekKey, setWeekKey] = useState<string>(() => startOfWeekKey());
 
-  // Completed projects (local storage)
-  const [completedList, setCompletedList] = useState<CompletedProject[]>([]);
-
-  // --- Per-project schedule stored locally ---
-  const [schedule, setSchedule] = useState<ProjectSchedule>({ daysPerWeek: 3, hoursPerDay: 2 });
-  const [tempSchedule, setTempSchedule] = useState<ProjectSchedule>({
-    daysPerWeek: 3,
-    hoursPerDay: 2,
-  });
-
-  // Load completed projects once
+  // --- Load dashboard from server ---
   useEffect(() => {
-    const stored = readJson<StoredCompletedProject[]>(COMPLETED_PROJECTS_KEY) ?? [];
-    const rebuilt: CompletedProject[] = [];
+    let cancelled = false;
 
-    for (const item of stored) {
-      const proj = PROJECTS.find((p) => p.slug === item.slug);
-      if (!proj) continue;
+    async function load() {
+      const dash = await fetchDashboard();
+      if (cancelled) return;
 
-      const started = new Date(item.startedDateISO);
-      const completed = new Date(item.completedDateISO);
-      if (!Number.isFinite(started.getTime()) || !Number.isFinite(completed.getTime())) continue;
+      setStartedAtByProject(dash.startedAtByProject || {});
+      setCompletionEvents(Array.isArray(dash.completions) ? dash.completions : []);
 
-      rebuilt.push({
-        project: proj,
-        totalHours: Number.isFinite(item.totalHours) ? item.totalHours : 0,
-        startedDate: started,
-        completedDate: completed,
-      });
-    }
-
-    setCompletedList(rebuilt);
-  }, []);
-
-  // Helper to persist completed list
-  function persistCompleted(next: CompletedProject[]) {
-    setCompletedList(next);
-
-    const stored: StoredCompletedProject[] = next.map((c) => ({
-      slug: c.project.slug,
-      totalHours: c.totalHours,
-      startedDateISO: c.startedDate.toISOString(),
-      completedDateISO: c.completedDate.toISOString(),
-    }));
-
-    writeJson(COMPLETED_PROJECTS_KEY, stored);
-  }
-
-  // Load pointer + progress + nav on mount, and refresh on custom events/storage
-  useEffect(() => {
-    async function refreshActive() {
-      let ptr: { slug: string; lessonSlug: string } | null = null;
-
-      try {
-        const raw = localStorage.getItem("curio:activeLesson");
-        ptr = raw ? JSON.parse(raw) : null;
-      } catch {
-        ptr = null;
+      // Server active pointer
+      if (dash.active?.projectSlug && dash.active?.lessonSlug) {
+        setActivePtr({ slug: dash.active.projectSlug, lessonSlug: dash.active.lessonSlug });
+      } else {
+        // (optional fallback) keep old local behavior so you don’t go blank while migrating
+        let ptr: ActivePtr | null = null;
+        try {
+          const raw = localStorage.getItem("curio:activeLesson");
+          ptr = raw ? JSON.parse(raw) : null;
+        } catch {}
+        setActivePtr(ptr);
       }
 
-      setActivePtr(ptr);
-
-      if (!ptr?.slug || !ptr?.lessonSlug) {
-        setActiveProgress(0);
+      // Server last-seen location
+      if (dash.lastSeen?.projectSlug && dash.lastSeen?.lessonSlug) {
+        setActiveNav({
+          lesson: Number(dash.lastSeen.lessonIndex) || 0,
+          stepIndex: Number(dash.lastSeen.stepIndex) || 0,
+        });
+      } else {
+        // local fallback (migration)
+        // we’ll set it after activePtr is known (below)
         setActiveNav(null);
-        setActiveTotalSteps(0);
-        setActiveDoneCount(0);
-        setCodeTotalSteps(0);
+      }
+    }
+
+    void load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // After activePtr is known, load done counts (server) + totals (local) + nav fallback
+  useEffect(() => {
+    let cancelled = false;
+
+    async function refreshForActive() {
+      if (!activePtr?.slug || !activePtr?.lessonSlug) {
         setCodeDoneCount(0);
-        setCircuitTotalSteps(0);
         setCircuitDoneCount(0);
+        setCodeTotalSteps(0);
+        setCircuitTotalSteps(0);
         return;
       }
 
-      const progressKey = `curio:${ptr.slug}:${ptr.lessonSlug}:overallProgress`;
+      const level = levelSuffixFromLessonSlug(activePtr.lessonSlug);
+      const codingSlug = level ? `code-${level}` : "code-beg";
+      const circuitsSlug = level ? `circuit-${level}` : "circuit-beg";
 
-      try {
-        const raw = localStorage.getItem(progressKey);
-        const n = raw ? JSON.parse(raw) : 0;
-        setActiveProgress(typeof n === "number" ? n : 0);
-      } catch {
-        setActiveProgress(0);
+      // totals (deterministic) still from localStorage keys set by lessons
+      const readTotal = (lessonSlug: string) => {
+        const totalKey = `curio:${activePtr.slug}:${lessonSlug}:totalStepsAllLessons`;
+        try {
+          const raw = localStorage.getItem(totalKey);
+          const n = raw ? JSON.parse(raw) : 0;
+          return typeof n === "number" && Number.isFinite(n) ? n : 0;
+        } catch {
+          return 0;
+        }
+      };
+
+      const codeTotal = readTotal(codingSlug);
+      const circuitTotal = readTotal(circuitsSlug);
+
+      if (!cancelled) {
+        setCodeTotalSteps(codeTotal);
+        setCircuitTotalSteps(circuitTotal);
       }
 
-      const navKey = `curio:${ptr.slug}:${ptr.lessonSlug}:nav`;
+      // done counts from server (core truth)
+      const summary = await fetchProgressSummary(activePtr.slug, [codingSlug, circuitsSlug]);
+      if (cancelled) return;
 
-      try {
-        const raw = localStorage.getItem(navKey);
-        const nav = raw ? JSON.parse(raw) : null;
+      setCodeDoneCount(summary.doneByLessonSlug?.[codingSlug] ?? 0);
+      setCircuitDoneCount(summary.doneByLessonSlug?.[circuitsSlug] ?? 0);
 
-        const lessonNum = typeof nav?.lesson === "number" ? nav.lesson : parseInt(nav?.lesson, 10);
-        const stepNum =
-          typeof nav?.stepIndex === "number" ? nav.stepIndex : parseInt(nav?.stepIndex, 10);
-
-        setActiveNav(
-          Number.isFinite(lessonNum) && Number.isFinite(stepNum)
-            ? { lesson: lessonNum, stepIndex: stepNum }
-            : null
-        );
-      } catch {
-        setActiveNav(null);
+      // local fallback for nav if server didn't give it
+      if (!activeNav) {
+        const navKey = `curio:${activePtr.slug}:${activePtr.lessonSlug}:nav`;
+        try {
+          const raw = localStorage.getItem(navKey);
+          const nav = raw ? JSON.parse(raw) : null;
+          const lessonNum = typeof nav?.lesson === "number" ? nav.lesson : parseInt(nav?.lesson, 10);
+          const stepNum =
+            typeof nav?.stepIndex === "number" ? nav.stepIndex : parseInt(nav?.stepIndex, 10);
+          if (Number.isFinite(lessonNum) && Number.isFinite(stepNum)) {
+            setActiveNav({ lesson: lessonNum, stepIndex: stepNum });
+          }
+        } catch {}
       }
-
-      // Totals/done for the currently active lessonSlug (used for "Continue" context)
-      const totalStepsKey = `curio:${ptr.slug}:${ptr.lessonSlug}:totalStepsAllLessons`;
-      try {
-        const raw = localStorage.getItem(totalStepsKey);
-        const n = raw ? JSON.parse(raw) : 0;
-        setActiveTotalSteps(typeof n === "number" && Number.isFinite(n) ? n : 0);
-      } catch {
-        setActiveTotalSteps(0);
-      }
-
-try {
-  const done = await fetchDoneCount(ptr.slug, ptr.lessonSlug);
-  setActiveDoneCount(done);
-} catch {
-  setActiveDoneCount(0);
-}
-
-
-      // Totals/done for BOTH tracks (used for overall progress + time estimates)
-    async function readTotalsFor(lessonSlug: string): Promise<{ total: number; done: number }> {
-      if (!ptr) return { total: 0, done: 0 };
-
-      const totalKey = `curio:${ptr.slug}:${lessonSlug}:totalStepsAllLessons`;
-
-      let total = 0;
-      try {
-        const raw = localStorage.getItem(totalKey);
-        const n = raw ? JSON.parse(raw) : 0;
-        total = typeof n === "number" && Number.isFinite(n) ? n : 0;
-      } catch {
-        total = 0;
-      }
-
-      const done = await fetchDoneCount(ptr.slug, lessonSlug);
-      return { total, done };
     }
 
-
-
-            const level = levelSuffixFromLessonSlug(ptr.lessonSlug);
-
-            // same level as whatever the active card is showing
-            const codingSlug = level ? `code-${level}` : "code-beg";
-            const circuitsSlug = level ? `circuit-${level}` : "circuit-beg";
-
-      const [coding, circuits] = await Promise.all([
-        readTotalsFor(codingSlug),
-        readTotalsFor(circuitsSlug),
-      ]);
-
-      setCodeTotalSteps(coding.total);
-      setCodeDoneCount(coding.done);
-
-      setCircuitTotalSteps(circuits.total);
-      setCircuitDoneCount(circuits.done);
-
-    }
-
-    void refreshActive();
-
-    const onActive = () => void refreshActive();
-
-    const onStorage = (e: StorageEvent) => {
-      if (
-        e.key === "curio:activeLesson" ||
-        (e.key &&
-          (e.key.endsWith(":overallProgress") ||
-            e.key.endsWith(":nav") ||
-            e.key.endsWith(":totalStepsAllLessons") ||
-            e.key.endsWith(":doneSet")))
-      ) {
-        void refreshActive();
-      }
-    };
-
-    window.addEventListener("curio:activeLesson", onActive as any);
-    window.addEventListener("curio:progress", onActive as any);
-    window.addEventListener("storage", onStorage);
-
+    void refreshForActive();
     return () => {
-      window.removeEventListener("curio:activeLesson", onActive as any);
-      window.removeEventListener("curio:progress", onActive as any);
-      window.removeEventListener("storage", onStorage);
+      cancelled = true;
     };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activePtr?.slug, activePtr?.lessonSlug]);
 
+  // schedule load (local)
   useEffect(() => {
     if (!activePtr?.slug) return;
-
     const key = `curio:dashboard:schedule:${activePtr.slug}`;
     const saved = readJson<ProjectSchedule>(key);
-
     if (saved?.daysPerWeek && saved?.hoursPerDay) {
       setSchedule(saved);
       setTempSchedule(saved);
     }
   }, [activePtr?.slug]);
 
-  // Use pretty label for display
-  const currentLevelDisplay = useMemo(() => {
-    return activePtr?.lessonSlug ? prettyLevelFromLessonSlug(activePtr.lessonSlug) : "";
-  }, [activePtr]);
-
-  // Keep raw slug label for parseHoursToNumber (beg/adv/int detection)
-  const currentLevelLabelForHours = useMemo(() => {
-    return activePtr?.lessonSlug ? labelizeLessonSlug(activePtr.lessonSlug) : "";
-  }, [activePtr]);
-
-  // Overall progress across Coding + Circuits (falls back to activeProgress if we don't have totals yet)
-  const totalStepsAll = useMemo(() => {
-    return Math.max(0, codeTotalSteps + circuitTotalSteps);
-  }, [codeTotalSteps, circuitTotalSteps]);
-
-  const doneStepsAll = useMemo(() => {
-    return Math.max(0, codeDoneCount + circuitDoneCount);
-  }, [codeDoneCount, circuitDoneCount]);
-
-  const isActiveComplete = useMemo(() => {
-  return !!activePtr?.slug && totalStepsAll > 0 && doneStepsAll >= totalStepsAll;
-}, [activePtr?.slug, totalStepsAll, doneStepsAll]);
-
-
-
-
-const currentProject = useMemo(() => {
-  if (!activePtr?.slug) return null;
-
-  // If this project is currently complete, don't show it in Current tab
-  if (totalStepsAll > 0 && doneStepsAll >= totalStepsAll) return null;
-
-  return PROJECTS.find((p) => p.slug === activePtr.slug) ?? null;
-}, [activePtr, totalStepsAll, doneStepsAll]);
-
-  // Week baseline init (local)
+  // Weekly baseline init (local fallback)
   useEffect(() => {
     if (!activePtr?.slug) return;
 
-    const wk = startOfWeekKey(); // changes automatically when a new week begins
+    const wk = startOfWeekKey();
     setWeekKey(wk);
 
     const storageKey = `curio:${activePtr.slug}:week:${wk}:doneStart`;
+    const totalDoneAll = (codeDoneCount || 0) + (circuitDoneCount || 0);
 
     const stored = readJson<number>(storageKey);
     if (typeof stored === "number" && Number.isFinite(stored)) {
       setWeekStartDoneStepsAll(stored);
     } else {
-      writeJson(storageKey, doneStepsAll);
-      setWeekStartDoneStepsAll(doneStepsAll);
+      writeJson(storageKey, totalDoneAll);
+      setWeekStartDoneStepsAll(totalDoneAll);
     }
-  }, [activePtr?.slug, doneStepsAll]);
+  }, [activePtr?.slug, codeDoneCount, circuitDoneCount]);
+
+  const currentLevelDisplay = useMemo(() => {
+    return activePtr?.lessonSlug ? prettyLevelFromLessonSlug(activePtr.lessonSlug) : "";
+  }, [activePtr]);
+
+  const currentLevelLabelForHours = useMemo(() => {
+    return activePtr?.lessonSlug ? labelizeLessonSlug(activePtr.lessonSlug) : "";
+  }, [activePtr]);
+
+  const totalStepsAll = useMemo(() => Math.max(0, codeTotalSteps + circuitTotalSteps), [codeTotalSteps, circuitTotalSteps]);
+  const doneStepsAll = useMemo(() => Math.max(0, codeDoneCount + circuitDoneCount), [codeDoneCount, circuitDoneCount]);
+
+  const currentProject = useMemo(() => {
+    if (!activePtr?.slug) return null;
+    return PROJECTS.find((p) => p.slug === activePtr.slug) ?? null;
+  }, [activePtr]);
+
+  // server completion events drive Completed tab (NOT localStorage)
+  const completedList = useMemo<CompletedProject[]>(() => {
+    const out: CompletedProject[] = [];
+    for (const evt of completionEvents) {
+      const proj = PROJECTS.find((p) => p.slug === evt.projectSlug);
+      if (!proj) continue;
+
+      const startedISO = startedAtByProject?.[evt.projectSlug];
+      const startedDate = startedISO ? new Date(startedISO) : new Date(evt.completedAt);
+      const completedDate = new Date(evt.completedAt);
+
+      if (!Number.isFinite(startedDate.getTime()) || !Number.isFinite(completedDate.getTime())) continue;
+
+      // totalHours here is an approximation based on project range (same as Current card)
+      // you can replace with real timers later.
+      const hoursEstimate = parseHoursToNumber(proj.hours || "", {
+        levelLabel: currentLevelLabelForHours,
+        difficulties: (proj.difficulties ?? []) as any,
+      });
+
+      out.push({
+        project: proj,
+        totalHours: Math.max(0, Math.round(hoursEstimate)),
+        startedDate,
+        completedDate,
+      });
+    }
+
+    // newest first
+    out.sort((a, b) => b.completedDate.getTime() - a.completedDate.getTime());
+    return out;
+  }, [completionEvents, startedAtByProject, currentLevelLabelForHours]);
 
   const progressPercent = useMemo(() => {
-    if (totalStepsAll > 0) {
-      return Math.min(100, Math.max(0, Math.round((doneStepsAll / totalStepsAll) * 100)));
-    }
-    return Math.min(100, Math.max(0, Math.round(activeProgress)));
-  }, [totalStepsAll, doneStepsAll, activeProgress]);
+    if (totalStepsAll > 0) return Math.min(100, Math.max(0, Math.round((doneStepsAll / totalStepsAll) * 100)));
+    return 0;
+  }, [totalStepsAll, doneStepsAll]);
 
-  // Total hours chosen based on range + level label + whether project has Advanced
   const estimatedHoursNumber = useMemo(() => {
     const hoursText = currentProject?.hours ?? "";
     const diffs = currentProject?.difficulties ?? [];
     return Math.max(
       1,
-      parseHoursToNumber(hoursText, {
-        levelLabel: currentLevelLabelForHours,
-        difficulties: diffs as any,
-      })
+      parseHoursToNumber(hoursText, { levelLabel: currentLevelLabelForHours, difficulties: diffs as any })
     );
   }, [currentProject, currentLevelLabelForHours]);
 
-  // Step-based time remaining (preferred when we have step counts)
   const stepsRemainingAll = useMemo(() => {
     if (totalStepsAll <= 0) return 0;
     return Math.max(0, totalStepsAll - doneStepsAll);
@@ -493,95 +444,40 @@ const currentProject = useMemo(() => {
     return estimatedHoursNumber / totalStepsAll;
   }, [estimatedHoursNumber, totalStepsAll]);
 
-  const codeStepsRemaining = useMemo(() => {
-    return codeTotalSteps > 0 ? Math.max(0, codeTotalSteps - codeDoneCount) : 0;
-  }, [codeTotalSteps, codeDoneCount]);
+  const codeStepsRemaining = useMemo(() => (codeTotalSteps > 0 ? Math.max(0, codeTotalSteps - codeDoneCount) : 0), [
+    codeTotalSteps,
+    codeDoneCount,
+  ]);
 
-  const circuitStepsRemaining = useMemo(() => {
-    return circuitTotalSteps > 0 ? Math.max(0, circuitTotalSteps - circuitDoneCount) : 0;
-  }, [circuitTotalSteps, circuitDoneCount]);
+  const circuitStepsRemaining = useMemo(
+    () => (circuitTotalSteps > 0 ? Math.max(0, circuitTotalSteps - circuitDoneCount) : 0),
+    [circuitTotalSteps, circuitDoneCount]
+  );
 
   const hoursRemaining = useMemo(() => {
-    if (hoursPerStep <= 0) {
-      return Math.max(0, estimatedHoursNumber - Math.round((estimatedHoursNumber * progressPercent) / 100));
-    }
+    if (hoursPerStep <= 0) return 0;
     return stepsRemainingAll * hoursPerStep;
-  }, [hoursPerStep, stepsRemainingAll, estimatedHoursNumber, progressPercent]);
+  }, [hoursPerStep, stepsRemainingAll]);
 
-  const codeHoursRemaining = useMemo(() => {
-    if (hoursPerStep <= 0) return 0;
-    return codeStepsRemaining * hoursPerStep;
-  }, [codeStepsRemaining, hoursPerStep]);
+  const codeHoursRemaining = useMemo(() => (hoursPerStep <= 0 ? 0 : codeStepsRemaining * hoursPerStep), [
+    codeStepsRemaining,
+    hoursPerStep,
+  ]);
 
-  const circuitHoursRemaining = useMemo(() => {
-    if (hoursPerStep <= 0) return 0;
-    return circuitStepsRemaining * hoursPerStep;
-  }, [circuitStepsRemaining, hoursPerStep]);
+  const circuitHoursRemaining = useMemo(() => (hoursPerStep <= 0 ? 0 : circuitStepsRemaining * hoursPerStep), [
+    circuitStepsRemaining,
+    hoursPerStep,
+  ]);
 
-  // Approx hours completed for display
   const hoursCompletedApprox = useMemo(() => {
-    if (totalStepsAll > 0 && hoursPerStep > 0) {
-      return Math.round(Math.max(0, estimatedHoursNumber - hoursRemaining));
-    }
-    return Math.round((estimatedHoursNumber * progressPercent) / 100);
-  }, [totalStepsAll, hoursPerStep, estimatedHoursNumber, hoursRemaining, progressPercent]);
-
-  // Ensure "startedAt" exists once a project becomes active
-  useEffect(() => {
-    if (!activePtr?.slug) return;
-
-    const key = STARTED_AT_KEY(activePtr.slug);
-    const existing = readJson<string>(key);
-    if (!existing) {
-      writeJson(key, new Date().toISOString());
-    }
-  }, [activePtr?.slug]);
-
-  // Auto-move project to Completed when (done/total)=1, AND total>0
-useEffect(() => {
-  if (!activePtr?.slug) return;
-  if (!currentProject) return;
-
-  const slug = activePtr.slug;
-  const inCompleted = completedList.some((c) => c.project.slug === slug);
-
-  // If not complete anymore, REMOVE from completed
-  if (!isActiveComplete) {
-    if (inCompleted) {
-      persistCompleted(completedList.filter((c) => c.project.slug !== slug));
-    }
-    return;
-  }
-
-  // If complete, ADD to completed (if missing)
-  if (!inCompleted) {
-    const startedISO = readJson<string>(STARTED_AT_KEY(slug));
-    const startedDate = startedISO ? new Date(startedISO) : new Date();
-
-    const nextEntry: CompletedProject = {
-      project: currentProject,
-      totalHours: Math.max(0, hoursCompletedApprox),
-      startedDate: Number.isFinite(startedDate.getTime()) ? startedDate : new Date(),
-      completedDate: new Date(),
-    };
-
-    persistCompleted([nextEntry, ...completedList]);
-  }
-
-  // Optional: clear pointer so it doesn't show as "current"
-  try {
-    localStorage.removeItem("curio:activeLesson");
-    window.dispatchEvent(new Event("curio:activeLesson"));
-  } catch {}
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-}, [activePtr?.slug, isActiveComplete, currentProject, hoursCompletedApprox, completedList]);
-
+    if (totalStepsAll > 0 && hoursPerStep > 0) return Math.round(Math.max(0, estimatedHoursNumber - hoursRemaining));
+    return 0;
+  }, [totalStepsAll, hoursPerStep, estimatedHoursNumber, hoursRemaining]);
 
   const calculateCompletionDate = () => {
     const remainingHours = Math.max(0, hoursRemaining);
     const hoursPerWeek = Math.max(0.5, schedule.daysPerWeek * schedule.hoursPerDay);
     const weeksNeeded = Math.ceil(remainingHours / hoursPerWeek);
-
     const completionDate = new Date();
     completionDate.setDate(completionDate.getDate() + weeksNeeded * 7);
     return completionDate.toLocaleDateString();
@@ -593,14 +489,13 @@ useEffect(() => {
     endOfWeek.setDate(now.getDate() + (7 - now.getDay()));
 
     const hoursPerWeek = Math.max(0, schedule.daysPerWeek * schedule.hoursPerDay);
+    const stepsTargetThisWeek = hoursPerStep > 0 ? Math.max(0, Math.round(hoursPerWeek / hoursPerStep)) : 0;
 
-    const stepsTargetThisWeek =
-      hoursPerStep > 0 ? Math.max(0, Math.round(hoursPerWeek / hoursPerStep)) : 0;
-
+    // weekly progress: today this is a local baseline fallback.
+    // If you add "doneAt" timestamps on server, we can compute true weekly done across devices.
     const stepsDoneThisWeek = Math.max(0, doneStepsAll - weekStartDoneStepsAll);
 
     const remainingTarget = Math.max(0, stepsTargetThisWeek - stepsDoneThisWeek);
-
     const stepsDue = Math.min(stepsRemainingAll, remainingTarget);
 
     return {
@@ -620,13 +515,10 @@ useEffect(() => {
     setShowScheduleModal(false);
   };
 
-  const { signOut } = useClerk();
-
   const handleLogout = async () => {
     setProfileMenuOpen(false);
     await signOut({ redirectUrl: "/sign-in" });
   };
-
 
   const handleContinue = () => {
     if (!activePtr?.slug || !activePtr?.lessonSlug) return;
@@ -636,11 +528,6 @@ useEffect(() => {
   const lastWatchedText = useMemo(() => {
     if (!activeNav) return "—";
     return `Lesson ${activeNav.lesson}, Step ${activeNav.stepIndex + 1}`;
-  }, [activeNav]);
-
-  const upNextText = useMemo(() => {
-    if (!activeNav) return "—";
-    return `Lesson ${activeNav.lesson}, Step ${activeNav.stepIndex + 2}`;
   }, [activeNav]);
 
   const dueInfo = useMemo(() => calculateStepsDue(), [
@@ -671,11 +558,7 @@ useEffect(() => {
               </div>
               <h2 className="text-lg font-semibold text-gray-900">Menu</h2>
             </div>
-            <button
-              onClick={() => setSidebarOpen(false)}
-              className="p-2 hover:bg-gray-100 rounded-lg"
-              aria-label="Close sidebar"
-            >
+            <button onClick={() => setSidebarOpen(false)} className="p-2 hover:bg-gray-100 rounded-lg" aria-label="Close sidebar">
               <X className="w-5 h-5 text-gray-600" />
             </button>
           </div>
@@ -692,34 +575,22 @@ useEffect(() => {
               <span>My Projects</span>
             </button>
 
-            <button
-              onClick={() => setSidebarOpen(false)}
-              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 text-gray-700 rounded-lg transition-colors"
-            >
+            <button onClick={() => setSidebarOpen(false)} className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 text-gray-700 rounded-lg transition-colors">
               <Compass className="w-5 h-5" />
               <span>Explore</span>
             </button>
 
-            <button
-              onClick={() => setSidebarOpen(false)}
-              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 text-gray-700 rounded-lg transition-colors"
-            >
+            <button onClick={() => setSidebarOpen(false)} className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 text-gray-700 rounded-lg transition-colors">
               <BarChart className="w-5 h-5" />
               <span>Performance</span>
             </button>
 
-            <button
-              onClick={() => setSidebarOpen(false)}
-              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 text-gray-700 rounded-lg transition-colors"
-            >
+            <button onClick={() => setSidebarOpen(false)} className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 text-gray-700 rounded-lg transition-colors">
               <FileText className="w-5 h-5" />
               <span>Tasks</span>
             </button>
 
-            <button
-              onClick={() => setSidebarOpen(false)}
-              className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 text-gray-700 rounded-lg transition-colors"
-            >
+            <button onClick={() => setSidebarOpen(false)} className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 text-gray-700 rounded-lg transition-colors">
               <MessageSquare className="w-5 h-5" />
               <span>Messages</span>
             </button>
@@ -728,9 +599,7 @@ useEffect(() => {
       </div>
 
       {/* Sidebar Overlay */}
-      {sidebarOpen && (
-        <div className="fixed inset-0 bg-black/50 z-40" onClick={() => setSidebarOpen(false)} />
-      )}
+      {sidebarOpen && <div className="fixed inset-0 bg-black/50 z-40" onClick={() => setSidebarOpen(false)} />}
 
       {/* Header */}
       <header className="bg-white border-b border-gray-200">
@@ -738,22 +607,14 @@ useEffect(() => {
           <div className="flex items-center justify-between">
             {/* Left */}
             <div className="flex items-center gap-3">
-              {/* Back button */}
-              <button
-                onClick={() => router.push("/")}
-                className="flex items-center gap-2 text-sky-600 hover:text-sky-700 transition-colors"
-              >
+              <button onClick={() => router.push("/")} className="flex items-center gap-2 text-sky-600 hover:text-sky-700 transition-colors">
                 <ArrowLeft className="w-5 h-5" />
                 <span className="font-medium">Back</span>
               </button>
 
               <div className="h-6 w-px bg-gray-200 mx-1" />
 
-              <button
-                onClick={() => setSidebarOpen(true)}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                aria-label="Open sidebar"
-              >
+              <button onClick={() => setSidebarOpen(true)} className="p-2 hover:bg-gray-100 rounded-lg transition-colors" aria-label="Open sidebar">
                 <Menu className="w-6 h-6 text-gray-700" />
               </button>
 
@@ -766,11 +627,10 @@ useEffect(() => {
 
             {/* Right */}
             <div className="flex items-center gap-4">
-
-              {/* Admin panel button  -- possibly add a check for isAdmin here later*/}
               <button
-                onClick={() => router.push('/admin')}
-                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 text-gray-700 rounded-lg transition-colors">
+                onClick={() => router.push("/admin")}
+                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 text-gray-700 rounded-lg transition-colors"
+              >
                 <Settings className="w-5 h-5" />
                 <span>Admin Panel</span>
               </button>
@@ -801,10 +661,7 @@ useEffect(() => {
                       <span>My Progress</span>
                     </button>
                     <div className="border-t border-gray-200 my-2" />
-                    <button
-                      onClick={handleLogout}
-                      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-red-50 text-red-600 transition-colors text-left"
-                    >
+                    <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 hover:bg-red-50 text-red-600 transition-colors text-left">
                       <LogOut className="w-5 h-5" />
                       <span>Log Out</span>
                     </button>
@@ -814,13 +671,8 @@ useEffect(() => {
             </div>
           </div>
 
-          {/* Close profile menu when clicking anywhere else */}
           {profileMenuOpen && (
-            <button
-              className="fixed inset-0 z-40 cursor-default"
-              onClick={() => setProfileMenuOpen(false)}
-              aria-hidden
-            />
+            <button className="fixed inset-0 z-40 cursor-default" onClick={() => setProfileMenuOpen(false)} aria-hidden />
           )}
         </div>
       </header>
@@ -833,9 +685,7 @@ useEffect(() => {
               onClick={() => setActiveTab("current")}
               className={[
                 "pb-2 border-b-2 transition-colors",
-                activeTab === "current"
-                  ? "border-sky-700 text-sky-800"
-                  : "border-transparent text-gray-500 hover:text-gray-700",
+                activeTab === "current" ? "border-sky-700 text-sky-800" : "border-transparent text-gray-500 hover:text-gray-700",
               ].join(" ")}
             >
               <h2 className="text-xl font-semibold">Your Current Project</h2>
@@ -845,9 +695,7 @@ useEffect(() => {
               onClick={() => setActiveTab("completed")}
               className={[
                 "pb-2 border-b-2 transition-colors",
-                activeTab === "completed"
-                  ? "border-sky-700 text-sky-800"
-                  : "border-transparent text-gray-500 hover:text-gray-700",
+                activeTab === "completed" ? "border-sky-700 text-sky-800" : "border-transparent text-gray-500 hover:text-gray-700",
               ].join(" ")}
             >
               <h2 className="text-xl font-semibold">Completed Projects</h2>
@@ -858,26 +706,15 @@ useEffect(() => {
           {activeTab === "current" ? (
             <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
               {!currentProject ? (
-                <div className="text-gray-700">
-                  No active project yet. Open a project and start a lesson — then come back here.
-                </div>
+                <div className="text-gray-700">No active project yet. Open a project and start a lesson — then come back here.</div>
               ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                   {/* Left Side */}
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 mb-4">Continue Learning</h3>
 
-                    <div
-                      className="relative mb-4 rounded-xl overflow-hidden group cursor-pointer"
-                      onClick={handleContinue}
-                      role="button"
-                      aria-label="Continue current lesson"
-                    >
-                      <img
-                        src={currentProject.image}
-                        alt={currentProject.title}
-                        className="w-full h-64 object-cover"
-                      />
+                    <div className="relative mb-4 rounded-xl overflow-hidden group cursor-pointer" onClick={handleContinue} role="button" aria-label="Continue current lesson">
+                      <img src={currentProject.image} alt={currentProject.title} className="w-full h-64 object-cover" />
                       <div className="absolute inset-0 bg-black/40 flex items-center justify-center group-hover:bg-black/50 transition-all">
                         <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
                           <Play className="w-8 h-8 text-sky-600 ml-1" />
@@ -901,8 +738,7 @@ useEffect(() => {
                           <strong>{dueInfo.stepsDue} steps due</strong> by {dueInfo.dueDate}
                         </div>
                         <div className="text-xs text-orange-700/80 mt-1">
-                          This week target: {dueInfo.stepsTargetThisWeek} • Done: {dueInfo.stepsDoneThisWeek} • Week:{" "}
-                          {dueInfo.weekKey}
+                          This week target: {dueInfo.stepsTargetThisWeek} • Done: {dueInfo.stepsDoneThisWeek} • Week: {dueInfo.weekKey}
                         </div>
                       </div>
                     </div>
@@ -912,15 +748,11 @@ useEffect(() => {
                   <div>
                     <div className="flex items-start justify-between mb-4 gap-4">
                       <div>
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                          {currentProject.title}
-                        </h3>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2">{currentProject.title}</h3>
                         <p className="text-gray-600">{currentProject.description}</p>
                       </div>
 
-                      <span className="px-3 py-1 bg-sky-100 text-sky-700 rounded-full text-sm whitespace-nowrap">
-                        {currentProject.category}
-                      </span>
+                      <span className="px-3 py-1 bg-sky-100 text-sky-700 rounded-full text-sm whitespace-nowrap">{currentProject.category}</span>
                     </div>
 
                     {/* Progress Bar */}
@@ -930,10 +762,7 @@ useEffect(() => {
                         <span className="text-sm">{progressPercent}%</span>
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-3">
-                        <div
-                          className="bg-gradient-to-r from-sky-800 to-sky-600 h-3 rounded-full transition-all"
-                          style={{ width: `${progressPercent}%` }}
-                        />
+                        <div className="bg-gradient-to-r from-sky-800 to-sky-600 h-3 rounded-full transition-all" style={{ width: `${progressPercent}%` }} />
                       </div>
                     </div>
 
@@ -946,21 +775,14 @@ useEffect(() => {
                         </div>
 
                         <div className="text-xl">
-                          {hoursCompletedApprox}h{" "}
-                          <span className="text-gray-500">/ ~{estimatedHoursNumber}h</span>
+                          {hoursCompletedApprox}h <span className="text-gray-500">/ ~{estimatedHoursNumber}h</span>
                         </div>
 
                         {totalStepsAll > 0 ? (
                           <div className="text-sm text-gray-600 mt-1 space-y-1">
-                            <div>
-                              ~{Math.ceil(hoursRemaining)}h left ({stepsRemainingAll} steps)
-                            </div>
-                            <div className="text-gray-500">
-                              Coding: ~{Math.ceil(codeHoursRemaining)}h left ({codeStepsRemaining} steps)
-                            </div>
-                            <div className="text-gray-500">
-                              Circuits: ~{Math.ceil(circuitHoursRemaining)}h left ({circuitStepsRemaining} steps)
-                            </div>
+                            <div>~{Math.ceil(hoursRemaining)}h left ({stepsRemainingAll} steps)</div>
+                            <div className="text-gray-500">Coding: ~{Math.ceil(codeHoursRemaining)}h left ({codeStepsRemaining} steps)</div>
+                            <div className="text-gray-500">Circuits: ~{Math.ceil(circuitHoursRemaining)}h left ({circuitStepsRemaining} steps)</div>
                           </div>
                         ) : null}
                       </div>
@@ -1010,7 +832,7 @@ useEffect(() => {
                 {completedList.length === 0 ? (
                   <div className="text-gray-600">No completed projects yet.</div>
                 ) : (
-                  completedList.map((completed: CompletedProject, index: number) => {
+                  completedList.map((completed, index) => {
                     const daysTaken = daysBetween(completed.startedDate, completed.completedDate);
 
                     return (
@@ -1018,17 +840,11 @@ useEffect(() => {
                         key={`${completed.project.id}-${index}`}
                         className="flex flex-col md:flex-row items-start md:items-center gap-6 p-4 border border-gray-200 rounded-xl hover:border-sky-300 hover:bg-sky-50 transition-all cursor-pointer"
                       >
-                        <img
-                          src={completed.project.image}
-                          alt={completed.project.title}
-                          className="w-full md:w-32 h-48 md:h-32 object-cover rounded-lg"
-                        />
+                        <img src={completed.project.image} alt={completed.project.title} className="w-full md:w-32 h-48 md:h-32 object-cover rounded-lg" />
 
                         <div className="flex-1 w-full">
                           <div className="flex items-start justify-between mb-2 gap-3">
-                            <h3 className="text-lg font-semibold text-gray-900">
-                              {completed.project.title}
-                            </h3>
+                            <h3 className="text-lg font-semibold text-gray-900">{completed.project.title}</h3>
 
                             <div className="flex flex-wrap gap-2 justify-end">
                               {(completed.project.difficulties ?? []).map((level) => (
@@ -1085,10 +901,7 @@ useEffect(() => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {availableProjects.map((project) => (
-              <div
-                key={project.id}
-                className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100 hover:shadow-lg transition-shadow cursor-pointer"
-              >
+              <div key={project.id} className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100 hover:shadow-lg transition-shadow cursor-pointer">
                 <img src={project.image} alt={project.title} className="w-full h-48 object-cover" />
 
                 <div className="p-5">
@@ -1142,10 +955,7 @@ useEffect(() => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {unavailableProjects.map((project) => (
-              <div
-                key={project.id}
-                className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100 hover:shadow-lg transition-shadow cursor-pointer"
-              >
+              <div key={project.id} className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100 hover:shadow-lg transition-shadow cursor-pointer">
                 <img src={project.image} alt={project.title} className="w-full h-48 object-cover" />
 
                 <div className="p-5">
@@ -1237,16 +1047,10 @@ useEffect(() => {
             </div>
 
             <div className="flex items-center justify-end gap-3">
-              <button
-                onClick={() => setShowScheduleModal(false)}
-                className="px-4 py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50"
-              >
+              <button onClick={() => setShowScheduleModal(false)} className="px-4 py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50">
                 Cancel
               </button>
-              <button
-                onClick={handleSaveSchedule}
-                className="px-4 py-2 rounded-lg bg-sky-700 text-white hover:bg-sky-800"
-              >
+              <button onClick={handleSaveSchedule} className="px-4 py-2 rounded-lg bg-sky-700 text-white hover:bg-sky-800">
                 Save
               </button>
             </div>

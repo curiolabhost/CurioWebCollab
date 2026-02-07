@@ -12,7 +12,7 @@ export default function ProjectsPage() {
   };
 
   const logoutAndGoHome = async () => {
-    // ✅ Ends the Clerk session (no localStorage auth)
+    // Ends the Clerk session (no localStorage auth)
     await signOut({ redirectUrl: "/account-setup" });
 
     // (Optional) If redirectUrl doesn't run for some reason:

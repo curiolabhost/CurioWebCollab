@@ -6,19 +6,23 @@ datasource db {
   provider = "postgresql"
 }
 
-
 enum Role {
   ADMIN
   STUDENT
 }
 
 model User {
-  id        String   @id          // store Clerk userId
+  id        String   @id          // Clerk userId
   email     String?
   role      Role     @default(STUDENT)
   createdAt DateTime @default(now())
 
-  progresses LessonProgress[]
+  progresses      LessonProgress[]
+  activeLesson    ActiveLesson?
+  lessonLocations LessonLocation[]
+  projectStarts   ProjectStart[]
+  completions     ProjectCompletion[]
+  schedules       ProjectSchedule[]
 }
 
 model LessonProgress {
@@ -30,8 +34,93 @@ model LessonProgress {
   status      String
   updatedAt   DateTime @updatedAt
 
-  user User @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, projectSlug, lessonSlug, stepKey])
+  @@index([userId, projectSlug, lessonSlug])
 }
 
+/**
+ * (2) Current active project + active lesson pointer
+ * one per user
+ */
+model ActiveLesson {
+  userId      String   @id
+  projectSlug String
+  lessonSlug  String
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, updatedAt])
+}
+
+/**
+ * (3) Last-seen location inside a lesson
+ * one row per (user, project, lesson)
+ */
+model LessonLocation {
+  id          String   @id @default(cuid())
+  userId      String
+  projectSlug String
+  lessonSlug  String
+  lessonIndex Int
+  stepIndex   Int
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, projectSlug, lessonSlug])
+  @@index([userId, projectSlug])
+}
+
+/**
+ * (4) StartedAt per project
+ * one row per (user, project)
+ */
+model ProjectStart {
+  id          String   @id @default(cuid())
+  userId      String
+  projectSlug String
+  startedAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, projectSlug])
+  @@index([userId, startedAt])
+}
+
+/**
+ * (5) Completion events
+ * one row per (user, project)
+ */
+model ProjectCompletion {
+  id                   String   @id @default(cuid())
+  userId               String
+  projectSlug          String
+  completedAt          DateTime @default(now())
+  totalStepsAtCompletion Int?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, projectSlug])
+  @@index([userId, completedAt])
+}
+
+/**
+ * Dashboard schedule: days/week + hours/day (per project)
+ * (you asked to sync schedule too)
+ */
+model ProjectSchedule {
+  id          String   @id @default(cuid())
+  userId      String
+  projectSlug String
+  daysPerWeek Int      @default(3)
+  hoursPerDay Float    @default(2)
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, projectSlug])
+  @@index([userId, projectSlug])
+}

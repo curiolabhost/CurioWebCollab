@@ -466,6 +466,48 @@ export default function CodeLessonBase({
 }: any) {
   const router = useRouter();
 
+  async function apiSetActiveLesson(projectSlug: string, lessonSlug: string) {
+  await fetch("/api/active-lesson", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    cache: "no-store",
+    body: JSON.stringify({ projectSlug, lessonSlug }),
+  }).catch(() => {});
+}
+
+async function apiSetLastSeen(
+  projectSlug: string,
+  lessonSlug: string,
+  lessonIndex: number,
+  stepIndex: number
+) {
+  await fetch("/api/last-seen", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    cache: "no-store",
+    body: JSON.stringify({ projectSlug, lessonSlug, lessonIndex, stepIndex }),
+  }).catch(() => {});
+}
+
+async function apiEnsureProjectStart(projectSlug: string) {
+  await fetch("/api/project-start", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    cache: "no-store",
+    body: JSON.stringify({ projectSlug }),
+  }).catch(() => {});
+}
+
+async function apiProjectComplete(projectSlug: string, totalStepsAtCompletion: number) {
+  await fetch("/api/project-complete", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    cache: "no-store",
+    body: JSON.stringify({ projectSlug, totalStepsAtCompletion }),
+  }).catch(() => {});
+}
+
+
 async function apiSaveStepStatus(stepKey: string, status: "DONE" | "TODO") {
   const ptr = parseCurioPtr(storagePrefix);
   if (!ptr) return;
@@ -733,6 +775,11 @@ React.useEffect(() => {
       window.localStorage.setItem("curio:activeLesson", JSON.stringify(ptr));
       window.dispatchEvent(new Event("curio:activeLesson"));
     } catch {}
+
+    void apiSetActiveLesson(ptr.slug, ptr.lessonSlug);
+     void apiEnsureProjectStart(ptr.slug);
+
+
   }, [storagePrefix]);
 
   const EDITOR_KEYS = React.useMemo(() => {

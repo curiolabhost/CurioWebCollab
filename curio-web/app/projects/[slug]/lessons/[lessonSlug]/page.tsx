@@ -1,5 +1,6 @@
 //Layout control for project lessons
 
+import ActiveLessonTracker from "@/app/components/ActiveLessonTracker";
 
 import * as React from "react";
 import Link from "next/link";
@@ -188,6 +189,7 @@ return (
         padding: "0px", // let CodeLessonBase handle padding
       }}
     >
+      <ActiveLessonTracker slug={slug} lessonSlug={lessonSlug} />
       <Lesson slug={slug} lessonSlug={lessonSlug} />
     </main>
   </div>
