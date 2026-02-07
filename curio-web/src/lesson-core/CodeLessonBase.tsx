@@ -466,6 +466,48 @@ export default function CodeLessonBase({
 }: any) {
   const router = useRouter();
 
+async function apiSaveStepStatus(stepKey: string, status: "DONE" | "TODO") {
+  const ptr = parseCurioPtr(storagePrefix);
+  if (!ptr) return;
+
+  const res = await fetch("/api/progress", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    cache: "no-store",
+    body: JSON.stringify({
+      projectSlug: ptr.slug,
+      lessonSlug: ptr.lessonSlug,
+      stepKey,
+      status,
+    }),
+  });
+
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err?.error || `POST /api/progress failed (${res.status})`);
+  }
+
+  return await res.json().catch(() => null);
+}
+
+
+async function apiLoadDoneSet() {
+  const ptr = parseCurioPtr(storagePrefix);
+  if (!ptr) return null;
+
+  const res = await fetch(
+    `/api/progress?projectSlug=${encodeURIComponent(ptr.slug)}&lessonSlug=${encodeURIComponent(
+      ptr.lessonSlug
+    )}`,
+    { cache: "no-store" }
+  );
+
+  if (!res.ok) return null;
+  const json = await res.json();
+  return (json?.rows ?? []) as Array<{ stepKey: string; status: string }>;
+}
+
+
   /* ============================================================
      Coding | Circuits toggle
   ============================================================ */
@@ -789,11 +831,46 @@ React.useEffect(() => {
   const advancedUnlocked =
     totalNormalStepsAllLessons > 0 && doneNormalCount >= totalNormalStepsAllLessons;
 
-  React.useEffect(() => {
+React.useEffect(() => {
+  if (isAdminView) return; // keep admin separate for now
+
+  let alive = true;
+
+  (async () => {
+    // 1) show something immediately (optional): keep local fallback
     const raw = storageGetJson<string[]>(KEYS.doneSetKey);
-    if (Array.isArray(raw)) setDoneSet(new Set(raw));
+    if (Array.isArray(raw) && raw.length) {
+      setDoneSet(new Set(raw));
+    }
+
+    // 2) then overwrite with backend truth
+    const rows = await apiLoadDoneSet();
+    if (!alive) return;
+
+    if (rows) {
+      const done = new Set(
+        rows
+          .filter((r) => String(r.status).toUpperCase() === "DONE")
+          .map((r) => r.stepKey)
+      );
+      setDoneSet(done);
+
+      // optional: keep local cache in sync
+      storageSetJson(KEYS.doneSetKey, Array.from(done));
+    }
+
     setDoneSetLoaded(true);
-  }, [KEYS.doneSetKey]);
+  })().catch((e) => {
+    console.error(e);
+    if (!alive) return;
+    setDoneSetLoaded(true);
+  });
+
+  return () => {
+    alive = false;
+  };
+}, [KEYS.doneSetKey, storagePrefix, isAdminView]);
+
 
   React.useEffect(() => {
     if (!doneSetLoaded) return;
@@ -1044,23 +1121,64 @@ React.useEffect(() => {
   const currentStepKey = makeStepKey(lesson, safeStepIndex);
   const isDone = effectiveDoneSet.has(currentStepKey);
 
-  const markDone = () => {
-    if (isAdminView) return; // prevent marking done in admin view
-    setDoneSet((prev) => {
-      const next = new Set(prev);
-      next.add(currentStepKey);
-      return next;
-    });
-  };
+const markDone = async () => {
+  if (isAdminView) return;
 
-  const unmarkDone = () => {
-    if (isAdminView) return; // prevent unmarking done in admin view
+  // optimistic
+  setDoneSet((prev) => {
+    const next = new Set(prev);
+    next.add(currentStepKey);
+    return next;
+  });
+
+  try {
+    await apiSaveStepStatus(currentStepKey, "DONE");
+
+    // notify dashboard + any listeners
+    try {
+      window.dispatchEvent(new Event("curio:progress"));
+    } catch {}
+  } catch (e) {
+    console.error(e);
+
+    // rollback
     setDoneSet((prev) => {
       const next = new Set(prev);
       next.delete(currentStepKey);
       return next;
     });
-  };
+  }
+};
+
+const unmarkDone = async () => {
+  if (isAdminView) return;
+
+  // optimistic
+  setDoneSet((prev) => {
+    const next = new Set(prev);
+    next.delete(currentStepKey);
+    return next;
+  });
+
+  try {
+    await apiSaveStepStatus(currentStepKey, "TODO");
+
+    try {
+      window.dispatchEvent(new Event("curio:progress"));
+    } catch {}
+  } catch (e) {
+    console.error(e);
+
+    // rollback
+    setDoneSet((prev) => {
+      const next = new Set(prev);
+      next.add(currentStepKey);
+      return next;
+    });
+  }
+};
+
+
 
   // Step navigation (skip advanced lessons until unlocked)
   function isLessonLocked(lessonNum: number) {

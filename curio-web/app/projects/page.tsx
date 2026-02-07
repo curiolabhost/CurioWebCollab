@@ -1,17 +1,22 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useClerk } from "@clerk/nextjs";
 
 export default function ProjectsPage() {
   const router = useRouter();
+  const { signOut } = useClerk();
 
   const goHome = () => {
     router.push("/account-setup?force=1");
   };
 
-  const logoutAndGoHome = () => {
-    localStorage.removeItem("currentUser");
-    router.push("/account-setup");
+  const logoutAndGoHome = async () => {
+    // ✅ Ends the Clerk session (no localStorage auth)
+    await signOut({ redirectUrl: "/account-setup" });
+
+    // (Optional) If redirectUrl doesn't run for some reason:
+    // router.push("/account-setup");
   };
 
   return (
@@ -45,12 +50,8 @@ export default function ProjectsPage() {
 
       {/* Main content */}
       <main className="bg-white rounded-xl shadow p-6">
-        <h1 className="text-2xl font-semibold text-gray-900 mb-2">
-          Projects
-        </h1>
-        <p className="text-gray-600">
-          Choose a project to get started.
-        </p>
+        <h1 className="text-2xl font-semibold text-gray-900 mb-2">Projects</h1>
+        <p className="text-gray-600">Choose a project to get started.</p>
       </main>
     </div>
   );

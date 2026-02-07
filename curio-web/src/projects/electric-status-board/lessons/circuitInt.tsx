@@ -4,17 +4,11 @@
 import * as React from "react";
 import CodeLessonBase from "@/src/lesson-core/CodeLessonBase";
 
-/**
- * Notes (matching codeBeg conventions):
- * - lessonSteps is: Record<number, { phrase: string; steps: any[] }>
- * - Any local images should be served from /public/lesson-assets/
- *   Example: "/lesson-assets/arduino_uno.png" 
- */
 
 // ------------------------------------------------------------
 // CIRCUIT LESSON CONTENT (CodeBeg-style shape)
 // ------------------------------------------------------------
-export const LESSON_STEPS_CIRCUIT_INT: Record<number, { phrase: string; steps: any[] }> = {
+export const LESSON_STEPS_CIRCUIT_BEG: Record<number, { phrase: string; steps: any[] }> = {
     1:{
     phrase: "What is a Breadboard",
     steps: [
@@ -154,7 +148,7 @@ You will try both the regular and mini breadboards to get used to using both. Fo
     steps: [
       {
         id: "circuit-intro",
-        title: "Introduction to Circuit Setup",
+        title: "Step 1: Introduction to Circuit Setup",
         codes: [
           {
             topicTitle: "Overview",
@@ -175,7 +169,7 @@ By the end of this lesson, you will have a functioning OLED display and buttons 
       },
       {
         id: "circuit-1",
-        title: "Step 1: Circuit Materials Overview",
+        title: "Step 2: Circuit Materials Overview",
     codes: [
         {
           topicTitle: "Materials",
@@ -217,7 +211,7 @@ By the end of this lesson, you will have a functioning OLED display and buttons 
 
     {
         id: "arduino-setup",
-        title: "Step 1: Arduino UNO Setup",
+        title: "Step 3: Arduino UNO Setup",
         codes: [
           {
             topicTitle: "Arduino UNO Overview",
@@ -261,7 +255,7 @@ By the end of this lesson, you will have a functioning OLED display and buttons 
       },
       {
         id: "circuit-2",
-        title: "Step 2: Install OLED Libraries",
+        title: "Step 4: Install OLED Libraries",
         codes: [
           {
             topicTitle: "Install the Libraries",
@@ -314,16 +308,17 @@ descAfterImage:`**Now your OLED has power and data connection.**
             items: [
               {
                 label: "Wokwi Page Demoenstration",
-                imageSrc: "/electric-status-board/circuit/wokwipage.png",
+                imageSrc: "/electric-status-board/circuit/fixed.png",
               },
             ],
           },
         },
         ],
       },
+
       {
         id: "circuit-3",
-        title: "Step 3: Run an Example Sketch",
+        title: "Step 5: Run an Example Sketch",
         codes: [
           {
             topicTitle: "Confirm the OLED Works",
@@ -369,9 +364,10 @@ Once this is done, you are good to proceed to building your own menu system!
           },
         ],
       },
+
       {
         id: "circuit-4",
-        title: "Step 4: PushButtons with Internal Pull-Ups",
+        title: "Step 6: PushButtons with Internal Pull-Ups",
         codes: [
           {
             topicTitle: "Button Wiring (INPUT_PULLUP)",
@@ -418,7 +414,7 @@ Button State Logic:
       },
       {
         id: "RTC-setup",
-        title: "Step 5: RTC Module Setup",
+        title: "Step 7: RTC Module Setup",
         codes: [
           {
             topicTitle: "RTC DS1307 Wiring",
@@ -450,7 +446,7 @@ Button State Logic:
 // ------------------------------------------------------------
 // Screen Wrapper
 // ------------------------------------------------------------
-export default function CircuitIntLesson({
+export default function CircuitBegLesson({
   slug,
   lessonSlug,
 }: {
@@ -459,7 +455,7 @@ export default function CircuitIntLesson({
 }) {
   return (
     <CodeLessonBase
-      lessonSteps={LESSON_STEPS_CIRCUIT_INT}
+      lessonSteps={LESSON_STEPS_CIRCUIT_BEG}
       storagePrefix={`curio:${slug}:${lessonSlug}`}
       apiBaseUrl={process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:4000"}
     />
