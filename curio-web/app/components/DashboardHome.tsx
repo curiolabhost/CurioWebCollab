@@ -85,6 +85,22 @@ function writeJson(key: string, value: any) {
     localStorage.setItem(key, JSON.stringify(value));
   } catch {}
 }
+async function fetchDoneCount(projectSlug: string, lessonSlug: string): Promise<number> {
+  try {
+    const qs = new URLSearchParams({ projectSlug, lessonSlug });
+    const res = await fetch(`/api/progress?${qs.toString()}`, { cache: "no-store" });
+    if (!res.ok) return 0;
+
+    const data = await res.json();
+
+    // Expecting { rows: [{ stepKey, status: "done" | "todo" | ... }, ...] }
+    const rows = Array.isArray(data?.rows) ? data.rows : [];
+    return rows.filter((r: any) => r?.status === "done").length;
+  } catch {
+    return 0;
+  }
+}
+
 
 /**
  * Project.hours is like "8-10 hours" or "15-20 hours".
@@ -242,7 +258,7 @@ export function DashboardHome() {
 
   // Load pointer + progress + nav on mount, and refresh on custom events/storage
   useEffect(() => {
-    function refreshActive() {
+    async function refreshActive() {
       let ptr: { slug: string; lessonSlug: string } | null = null;
 
       try {
@@ -305,43 +321,33 @@ export function DashboardHome() {
         setActiveTotalSteps(0);
       }
 
-      const doneSetKey = `curio:${ptr.slug}:${ptr.lessonSlug}:doneSet`;
-      try {
-        const raw = localStorage.getItem(doneSetKey);
-        const arr = raw ? JSON.parse(raw) : [];
-        setActiveDoneCount(Array.isArray(arr) ? arr.length : 0);
-      } catch {
-        setActiveDoneCount(0);
-      }
+try {
+  const done = await fetchDoneCount(ptr.slug, ptr.lessonSlug);
+  setActiveDoneCount(done);
+} catch {
+  setActiveDoneCount(0);
+}
+
 
       // Totals/done for BOTH tracks (used for overall progress + time estimates)
-function readTotalsFor(lessonSlug: string): { total: number; done: number } {
-  if (!ptr) return { total: 0, done: 0 };
+    async function readTotalsFor(lessonSlug: string): Promise<{ total: number; done: number }> {
+      if (!ptr) return { total: 0, done: 0 };
 
-  const totalKey = `curio:${ptr.slug}:${lessonSlug}:totalStepsAllLessons`;
-  const doneKey  = `curio:${ptr.slug}:${lessonSlug}:doneSet`;
+      const totalKey = `curio:${ptr.slug}:${lessonSlug}:totalStepsAllLessons`;
 
-  let total = 0;
-  let done = 0;
+      let total = 0;
+      try {
+        const raw = localStorage.getItem(totalKey);
+        const n = raw ? JSON.parse(raw) : 0;
+        total = typeof n === "number" && Number.isFinite(n) ? n : 0;
+      } catch {
+        total = 0;
+      }
 
-  try {
-    const raw = localStorage.getItem(totalKey);
-    const n = raw ? JSON.parse(raw) : 0;
-    total = typeof n === "number" && Number.isFinite(n) ? n : 0;
-  } catch {
-    total = 0;
-  }
+      const done = await fetchDoneCount(ptr.slug, lessonSlug);
+      return { total, done };
+    }
 
-  try {
-    const raw = localStorage.getItem(doneKey);
-    const arr = raw ? JSON.parse(raw) : [];
-    done = Array.isArray(arr) ? arr.length : 0;
-  } catch {
-    done = 0;
-  }
-
-  return { total, done };
-}
 
 
             const level = levelSuffixFromLessonSlug(ptr.lessonSlug);
@@ -350,20 +356,22 @@ function readTotalsFor(lessonSlug: string): { total: number; done: number } {
             const codingSlug = level ? `code-${level}` : "code-beg";
             const circuitsSlug = level ? `circuit-${level}` : "circuit-beg";
 
-            const coding = readTotalsFor(codingSlug);
-            const circuits = readTotalsFor(circuitsSlug);
-
+      const [coding, circuits] = await Promise.all([
+        readTotalsFor(codingSlug),
+        readTotalsFor(circuitsSlug),
+      ]);
 
       setCodeTotalSteps(coding.total);
       setCodeDoneCount(coding.done);
 
       setCircuitTotalSteps(circuits.total);
       setCircuitDoneCount(circuits.done);
+
     }
 
-    refreshActive();
+    void refreshActive();
 
-    const onActive = () => refreshActive();
+    const onActive = () => void refreshActive();
 
     const onStorage = (e: StorageEvent) => {
       if (
@@ -374,7 +382,7 @@ function readTotalsFor(lessonSlug: string): { total: number; done: number } {
             e.key.endsWith(":totalStepsAllLessons") ||
             e.key.endsWith(":doneSet")))
       ) {
-        refreshActive();
+        void refreshActive();
       }
     };
 
