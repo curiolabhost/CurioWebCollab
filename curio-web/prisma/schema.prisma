@@ -12,7 +12,7 @@ enum Role {
 }
 
 model User {
-  id        String   @id          // Clerk userId
+  id        String   @id // Clerk userId
   email     String?
   role      Role     @default(STUDENT)
   createdAt DateTime @default(now())
@@ -23,6 +23,8 @@ model User {
   projectStarts   ProjectStart[]
   completions     ProjectCompletion[]
   schedules       ProjectSchedule[]
+  lessonStates    LessonState[]
+  profile         UserProfile?
 }
 
 model LessonProgress {
@@ -95,10 +97,10 @@ model ProjectStart {
  * one row per (user, project)
  */
 model ProjectCompletion {
-  id                   String   @id @default(cuid())
-  userId               String
-  projectSlug          String
-  completedAt          DateTime @default(now())
+  id                     String   @id @default(cuid())
+  userId                 String
+  projectSlug            String
+  completedAt            DateTime @default(now())
   totalStepsAtCompletion Int?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -118,9 +120,40 @@ model ProjectSchedule {
   daysPerWeek Int      @default(3)
   hoursPerDay Float    @default(2)
   updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, projectSlug])
   @@index([userId, projectSlug])
+}
+
+model LessonState {
+  id          String @id @default(cuid())
+  userId      String
+  projectSlug String
+  lessonSlug  String
+
+  // store blanks + editor blocks + edit regions in ONE json blob
+  blanks Json @default("{}")
+
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, projectSlug, lessonSlug])
+  @@index([userId, projectSlug, lessonSlug])
+}
+
+model UserProfile {
+  userId String  @id
+  age    Int?
+  grade  String?
+  school String?
+  goals  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

@@ -24,6 +24,7 @@ import {
   Compass,
   FolderOpen,
   ArrowLeft,
+  ShieldCheck,
 } from "lucide-react";
 
 import type { Project } from "@/app/data/projects";
@@ -63,6 +64,7 @@ type DashboardServerResponse = {
     completedAt: string; // ISO
     totalStepsAtCompletion: number;
   }>;
+   scheduleByProject?: Record<string, { daysPerWeek: number; hoursPerDay: number }>;
 };
 
 type ProgressSummaryResponse = {
@@ -230,6 +232,10 @@ export function DashboardHome() {
   // Weekly pacing baseline (local fallback)
   const [weekStartDoneStepsAll, setWeekStartDoneStepsAll] = useState<number>(0);
   const [weekKey, setWeekKey] = useState<string>(() => startOfWeekKey());
+  const [scheduleByProject, setScheduleByProject] = useState<
+    Record<string, { daysPerWeek: number; hoursPerDay: number }>
+  >({});
+
 
   // --- Load dashboard from server ---
   useEffect(() => {
@@ -237,6 +243,7 @@ export function DashboardHome() {
 
     async function load() {
       const dash = await fetchDashboard();
+      setScheduleByProject(dash.scheduleByProject || {});
       if (cancelled) return;
 
       setStartedAtByProject(dash.startedAtByProject || {});
@@ -343,14 +350,29 @@ export function DashboardHome() {
 
   // schedule load (local)
   useEffect(() => {
-    if (!activePtr?.slug) return;
-    const key = `curio:dashboard:schedule:${activePtr.slug}`;
-    const saved = readJson<ProjectSchedule>(key);
-    if (saved?.daysPerWeek && saved?.hoursPerDay) {
-      setSchedule(saved);
-      setTempSchedule(saved);
-    }
-  }, [activePtr?.slug]);
+  if (!activePtr?.slug) return;
+
+  // 1) server truth
+  const serverSched = scheduleByProject?.[activePtr.slug];
+  if (serverSched?.daysPerWeek && serverSched?.hoursPerDay) {
+    const s: ProjectSchedule = {
+      daysPerWeek: serverSched.daysPerWeek,
+      hoursPerDay: serverSched.hoursPerDay,
+    };
+    setSchedule(s);
+    setTempSchedule(s);
+    return;
+  }
+
+  // 2) fallback local (optional)
+  const key = `curio:dashboard:schedule:${activePtr.slug}`;
+  const saved = readJson<ProjectSchedule>(key);
+  if (saved?.daysPerWeek && saved?.hoursPerDay) {
+    setSchedule(saved);
+    setTempSchedule(saved);
+  }
+}, [activePtr?.slug, scheduleByProject]);
+
 
   // Weekly baseline init (local fallback)
   useEffect(() => {
@@ -507,13 +529,43 @@ export function DashboardHome() {
     };
   };
 
-  const handleSaveSchedule = () => {
-    if (activePtr?.slug) {
-      writeJson(`curio:dashboard:schedule:${activePtr.slug}`, tempSchedule);
-      setSchedule(tempSchedule);
-    }
+const handleSaveSchedule = async () => {
+  if (!activePtr?.slug) {
     setShowScheduleModal(false);
-  };
+    return;
+  }
+
+  // optimistic UI
+  setSchedule(tempSchedule);
+
+  // optional local fallback cache
+  writeJson(`curio:dashboard:schedule:${activePtr.slug}`, tempSchedule);
+
+  // persist to backend
+  const res = await fetch("/api/schedule", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      projectSlug: activePtr.slug,
+      daysPerWeek: tempSchedule.daysPerWeek,
+      hoursPerDay: tempSchedule.hoursPerDay,
+    }),
+  }).catch(() => null);
+
+  // refresh scheduleByProject in memory (so UI matches server without reload)
+  if (res && res.ok) {
+    const json = (await res.json().catch(() => null)) as any;
+    const row = json?.row;
+    if (row?.projectSlug) {
+      setScheduleByProject((prev) => ({
+        ...prev,
+        [row.projectSlug]: { daysPerWeek: row.daysPerWeek, hoursPerDay: row.hoursPerDay },
+      }));
+    }
+  }
+
+  setShowScheduleModal(false);
+};
 
   const handleLogout = async () => {
     setProfileMenuOpen(false);
@@ -627,15 +679,7 @@ export function DashboardHome() {
 
             {/* Right */}
             <div className="flex items-center gap-4">
-              <button
-                onClick={() => router.push("/admin")}
-                className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 text-gray-700 rounded-lg transition-colors"
-              >
-                <Settings className="w-5 h-5" />
-                <span>Admin Panel</span>
-              </button>
 
-              <span className="text-gray-600">Welcome! </span>
 
               <div className="relative">
                 <button
@@ -648,17 +692,32 @@ export function DashboardHome() {
 
                 {profileMenuOpen && (
                   <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-200 py-2 z-50">
-                    <button className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left">
+                    <button
+                      onClick={() => {
+                        setProfileMenuOpen(false);
+                        router.push("/account");
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left"
+                    >
                       <UserIcon className="w-5 h-5 text-gray-600" />
                       <span>User Information</span>
                     </button>
+
+                    <button className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left">
+                      <BarChart className="w-5 h-5 text-gray-600" />
+                      <span>My Progress</span>
+                    </button>
+
                     <button className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left">
                       <Settings className="w-5 h-5 text-gray-600" />
                       <span>Settings</span>
                     </button>
-                    <button className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left">
-                      <BarChart className="w-5 h-5 text-gray-600" />
-                      <span>My Progress</span>
+                    <button
+                      onClick={() => router.push("/admin")}
+                      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 text-gray-700 rounded-lg transition-colors"
+                    >
+                      <ShieldCheck className="w-5 h-5" />
+                      <span>Admin Panel</span>
                     </button>
                     <div className="border-t border-gray-200 my-2" />
                     <button onClick={handleLogout} className="w-full flex items-center gap-3 px-4 py-3 hover:bg-red-50 text-red-600 transition-colors text-left">

@@ -3,6 +3,8 @@ import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { prisma as db } from "@/lib/prisma";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
@@ -42,16 +44,19 @@ export async function GET() {
     select: { projectSlug: true, completedAt: true, totalStepsAtCompletion: true },
   });
 
-  // (Schedule is part of "dashboard should be backed" too)
-  const schedules = await db.projectSchedule.findMany({
-    where: { userId },
-    select: { projectSlug: true, daysPerWeek: true, hoursPerDay: true, updatedAt: true },
-  });
+//schedule
+const schedules = await db.projectSchedule.findMany({
+  where: { userId },
+  orderBy: { updatedAt: "desc" },
+  distinct: ["projectSlug"],
+  select: { projectSlug: true, daysPerWeek: true, hoursPerDay: true },
+});
 
-  const scheduleByProject: Record<string, { daysPerWeek: number; hoursPerDay: number }> = {};
-  for (const s of schedules) {
-    scheduleByProject[s.projectSlug] = { daysPerWeek: s.daysPerWeek, hoursPerDay: s.hoursPerDay };
-  }
+const scheduleByProject: Record<string, { daysPerWeek: number; hoursPerDay: number }> = {};
+for (const s of schedules) {
+  scheduleByProject[s.projectSlug] = { daysPerWeek: s.daysPerWeek, hoursPerDay: s.hoursPerDay };
+}
+
 
   return NextResponse.json({
     active: active
@@ -81,5 +86,11 @@ export async function GET() {
     })),
 
     scheduleByProject,
-  });
+  },
+    {
+    headers: {
+      "Cache-Control": "no-store",
+    },
+  }
+);
 }

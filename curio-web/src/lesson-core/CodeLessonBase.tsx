@@ -1297,10 +1297,150 @@ const unmarkDone = async () => {
   /* ============================================================
      GuidedCodeBlock shared state + persistence (per step)
   ============================================================ */
-
   const guidedUiKeyForThisStep = `${KEYS.localBlanksPrefixKey}:UI:${currentStepKey}`;
+
+  // ============================================================
+  // GLOBAL BLANKS (SERVER-BACKED, optimistic)
+  // - mergedBlanks stays the same
+  // - setGlobalBlanks keeps the same signature GuidedCodeBlock uses
+  // ============================================================
   const [globalLoaded, setGlobalLoaded] = React.useState(false);
-  const [globalBlanks, setGlobalBlanks] = React.useState<Record<string, any>>({});
+  const [globalBlanks, setGlobalBlanksState] = React.useState<Record<string, any>>({});
+
+  const pendingPatchRef = React.useRef<Record<string, any>>({});
+  const flushTimerRef = React.useRef<any>(null);
+
+  const ptr = React.useMemo(() => parseCurioPtr(storagePrefix), [storagePrefix]);
+  const projectSlug = ptr?.slug || "";
+  const lessonSlug = ptr?.lessonSlug || "";
+
+  async function apiLoadLessonState() {
+    if (!projectSlug || !lessonSlug) return null;
+
+    const res = await fetch(
+      `/api/lesson-state?projectSlug=${encodeURIComponent(projectSlug)}&lessonSlug=${encodeURIComponent(lessonSlug)}`,
+      { cache: "no-store" }
+    ).catch(() => null);
+
+    if (!res || !res.ok) return null;
+    return await res.json().catch(() => null);
+  }
+
+  async function apiPatchLessonState(patch: Record<string, any>) {
+    if (!projectSlug || !lessonSlug) return;
+
+    const res = await fetch(
+      `/api/lesson-state?projectSlug=${encodeURIComponent(projectSlug)}&lessonSlug=${encodeURIComponent(lessonSlug)}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+        body: JSON.stringify({ patch }),
+      }
+    ).catch(() => null);
+
+    if (!res || !res.ok) {
+      // if request fails, re-queue patch so we don't lose work
+      pendingPatchRef.current = { ...(patch || {}), ...(pendingPatchRef.current || {}) };
+    }
+  }
+
+  const flushGlobalNow = React.useCallback(async () => {
+    if (flushTimerRef.current) {
+      clearTimeout(flushTimerRef.current);
+      flushTimerRef.current = null;
+    }
+
+    const patch = pendingPatchRef.current || {};
+    pendingPatchRef.current = {};
+
+    if (!Object.keys(patch).length) return;
+    await apiPatchLessonState(patch);
+  }, [projectSlug, lessonSlug]);
+
+  const scheduleFlush = React.useCallback(() => {
+    if (flushTimerRef.current) return;
+    flushTimerRef.current = setTimeout(() => {
+      void flushGlobalNow();
+    }, 400);
+  }, [flushGlobalNow]);
+
+  // Keep the SAME signature GuidedCodeBlock expects
+  const setGlobalBlanks: React.Dispatch<React.SetStateAction<Record<string, any>>> =
+    React.useCallback((updater) => {
+      setGlobalBlanksState((prev) => {
+        const next =
+          typeof updater === "function" ? (updater as any)(prev) : (updater || {});
+
+        const patch: Record<string, any> = {};
+
+        // additions/changes
+        for (const [k, v] of Object.entries(next || {})) {
+          if ((prev || {})[k] !== v) patch[k] = v;
+        }
+
+        // deletions (needed for "Revert")
+        for (const k of Object.keys(prev || {})) {
+          if (!(k in (next || {}))) patch[k] = null; // server should treat null as delete
+        }
+
+        if (Object.keys(patch).length) {
+          pendingPatchRef.current = { ...(pendingPatchRef.current || {}), ...patch };
+          scheduleFlush();
+        }
+
+        return next;
+      });
+    }, [scheduleFlush]);
+
+  // Load from server when opening lesson
+  React.useEffect(() => {
+    let alive = true;
+
+    (async () => {
+      setGlobalLoaded(false);
+
+      // OPTIONAL: show local cache instantly (prevents "flash empty" on reload)
+      const cached = storageGetJson<Record<string, any>>(KEYS.globalBlanksKey);
+      if (cached && typeof cached === "object") {
+        setGlobalBlanksState(cached);
+      }
+
+      const json = await apiLoadLessonState();
+      if (!alive) return;
+
+      const blanks =
+        json?.blanks && typeof json.blanks === "object" ? (json.blanks as Record<string, any>) : {};
+
+      setGlobalBlanksState(blanks);
+
+      // OPTIONAL: keep local cache updated for faster reloads
+      storageSetJson(KEYS.globalBlanksKey, blanks);
+
+      setGlobalLoaded(true);
+    })().catch(() => {
+      if (!alive) return;
+      setGlobalLoaded(true);
+    });
+
+    return () => {
+      alive = false;
+      void flushGlobalNow();
+    };
+  }, [projectSlug, lessonSlug, KEYS.globalBlanksKey, flushGlobalNow]);
+
+  // Flush pending patches on unmount/tab close (extra safety)
+  React.useEffect(() => {
+    const onBeforeUnload = () => {
+      // best-effort; fetch may be canceled but it's still worth trying
+      void flushGlobalNow();
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => {
+      window.removeEventListener("beforeunload", onBeforeUnload);
+      void flushGlobalNow();
+    };
+  }, [flushGlobalNow]);
 
   const [blankStatus, setBlankStatus] = React.useState<Record<string, boolean>>({});
   const [activeBlankHint, setActiveBlankHint] = React.useState<any>(null);
@@ -1390,19 +1530,6 @@ const checkInlineBlank = React.useCallback(
     },
     [step]
   );
-
-React.useEffect(() => {
-  const raw = storageGetJson<Record<string, any>>(KEYS.globalBlanksKey);
-  setGlobalBlanks(raw && typeof raw === "object" ? raw : {});
-  setGlobalLoaded(true);
-}, [KEYS.globalBlanksKey]);
-
-
-React.useEffect(() => {
-  if (!globalLoaded) return;  // prevents wipe on refresh
-  storageSetJson(KEYS.globalBlanksKey, globalBlanks || {});
-}, [KEYS.globalBlanksKey, globalBlanks, globalLoaded]);
-
 
   React.useEffect(() => {
   const ui = storageGetJson<any>(guidedUiKeyForThisStep);
