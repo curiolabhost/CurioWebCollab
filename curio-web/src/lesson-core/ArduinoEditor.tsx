@@ -16,7 +16,8 @@ void loop() {
 }
 `;
 
-const BASE_URL = "3.131.179.138"
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:4000";
+
 
 const ARDUINO_FUNCS = [
   "pinMode",
@@ -53,12 +54,17 @@ type ArduinoEditorProps = {
   height?: string | number;
   width?: string | number;
 
-  // Lesson-mode persistence (localStorage, per lesson)
+  // Lesson-mode persistence
   storageKey?: string;
 
-  // File-mode (opened from Files > Open; content handed off via localStorage token)
+  // File-mode persistence
   fileToken?: string;
+
+  // Backend identity (required for server persistence)
+  projectSlug?: string;
+  lessonSlug?: string;
 };
+
 
 type VerifyError = {
   line: number;
@@ -94,6 +100,25 @@ function safeNameFromPath(name: string) {
   return s || "ElectricBoard.ino";
 }
 
+async function fetchArduinoState(projectSlug: string, lessonSlug: string) {
+  const qs = new URLSearchParams({ projectSlug, lessonSlug });
+  const res = await fetch(`/api/arduino-state?${qs.toString()}`, { cache: "no-store" });
+  if (!res.ok) return null;
+  return (await res.json()) as { ok: boolean; arduino?: { code?: string } | null };
+}
+
+async function saveArduinoState(projectSlug: string, lessonSlug: string, code: string) {
+  const res = await fetch("/api/arduino-state", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ projectSlug, lessonSlug, code }),
+  });
+  if (!res.ok) return null;
+  return (await res.json()) as { ok: boolean; arduino?: { code?: string } | null };
+}
+
+
+
 // Text formatting
 function formatAIText(text: string) {
   if (!text) return "";
@@ -112,6 +137,8 @@ export default function ArduinoEditor({
   width = "100%",
   storageKey,
   fileToken,
+  projectSlug,
+  lessonSlug,
 }: ArduinoEditorProps) {
   const isFileMode = !!fileToken;
 
@@ -128,6 +155,8 @@ export default function ArduinoEditor({
   const [popovers, setPopovers] = React.useState<PopoverItem[]>([]);
   const [coachJson, setCoachJson] = React.useState<CoachPayload | null>(null);
   const [coachRaw, setCoachRaw] = React.useState<string>(""); // optional for debugging
+
+  const [isSaving, setIsSaving] = React.useState(false);
 
 
   const popoversRef = React.useRef<PopoverItem[]>([]);
@@ -147,6 +176,9 @@ export default function ArduinoEditor({
   const editorRef = React.useRef<any>(null);
   const monacoRef = React.useRef<any>(null);
   const rafRef = React.useRef<number | null>(null);
+
+  const serverSaveTimerRef = React.useRef<number | null>(null);
+
 
   // -------- Files menu state --------
   const [filesMenuOpen, setFilesMenuOpen] = React.useState(false);
@@ -209,20 +241,53 @@ export default function ArduinoEditor({
       return;
     }
 
-    if (storageKey) {
-      const saved = window.localStorage.getItem(storageKey);
-      setValue(saved ?? DEFAULT_SKETCH);
-      setStatus("Ready.");
-      setFileHandle(null);
-      setFileName("ElectricBoard.ino");
+  if (storageKey) {
+    // If we have backend identity, load from server first
+    const canServer = !!(projectSlug && lessonSlug && !fileToken);
+
+    if (canServer) {
+      (async () => {
+        try {
+          const r = await fetchArduinoState(projectSlug!, lessonSlug!);
+          const serverCode = r?.ok ? r?.arduino?.code : null;
+
+          if (typeof serverCode === "string" && serverCode.length > 0) {
+            setValue(serverCode);
+            setStatus("Loaded from server.");
+            try {
+              window.localStorage.setItem(storageKey, serverCode);
+            } catch {}
+          } else {
+            const saved = window.localStorage.getItem(storageKey);
+            setValue(saved ?? DEFAULT_SKETCH);
+            setStatus("Loaded from device (fallback).");
+          }
+        } catch {
+          const saved = window.localStorage.getItem(storageKey);
+          setValue(saved ?? DEFAULT_SKETCH);
+          setStatus("Loaded from device (fallback).");
+        } finally {
+          setFileHandle(null);
+          setFileName("ElectricBoard.ino");
+        }
+      })();
+
       return;
     }
 
+    // No backend identity -> local only
+    const saved = window.localStorage.getItem(storageKey);
+    setValue(saved ?? DEFAULT_SKETCH);
+    setStatus("Ready.");
+    setFileHandle(null);
+    setFileName("ElectricBoard.ino");
+    return;
+  }
     setValue(DEFAULT_SKETCH);
     setStatus("Ready.");
     setFileHandle(null);
     setFileName("ElectricBoard.ino");
-  }, [storageKey, fileToken]);
+  }, [storageKey, fileToken, projectSlug, lessonSlug]);
 
   /* ============================================================
      Sync across tabs (LESSON MODE ONLY)
@@ -273,25 +338,48 @@ export default function ArduinoEditor({
     };
   }, [filesMenuOpen]);
 
-  const onChange = (v: string | undefined) => {
-    const text = v ?? "";
-    setValue(text);
-    setStatus("Editing...");
+const onChange = (v: string | undefined) => {
+  const text = v ?? "";
+  setValue(text);
+  setStatus("Editing...");
 
-    if (!storageKey || isFileMode) return;
-
+  // ---------- Local save (lesson-mode only) ----------
+  if (storageKey && !isFileMode) {
     if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
 
     rafRef.current = window.requestAnimationFrame(() => {
       try {
         window.localStorage.setItem(storageKey, text);
         setLastSaved(new Date());
-        setStatus("Saved (lesson).");
+        setStatus("Saved (device).");
       } catch {
         setStatus("Save failed (storage).");
       }
     });
-  };
+  }
+
+  // ---------- Backend save (only if we have identity + lesson mode) ----------
+  const canServer = !!(projectSlug && lessonSlug && storageKey && !isFileMode);
+  if (!canServer) return;
+
+  if (serverSaveTimerRef.current) window.clearTimeout(serverSaveTimerRef.current);
+
+  serverSaveTimerRef.current = window.setTimeout(async () => {
+    try {
+      const r = await saveArduinoState(projectSlug!, lessonSlug!, text);
+      if (!r?.ok) {
+        setStatus("Save failed (server).");
+        return;
+      }
+      setLastSaved(new Date());
+      setStatus("Saved (server).");
+    } catch (e) {
+      console.error(e);
+      setStatus("Save failed (server).");
+    }
+  }, 700);
+};
+
 
 
   type CoachLine = { tag: "OK" | "WARN" | "TIP" | "NEXT" | "IDEA" | "PLAIN"; text: string };
@@ -527,7 +615,7 @@ function coachTagBg(tag: CoachTag) {
 
 
   async function streamHelpSSE(payload: any, onToken: (t: string) => void) {
-    const res = await fetch("http://"+BASE_URL+":4000/ai/help", {
+    const res = await fetch(`${API_BASE}/ai/help`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
@@ -931,6 +1019,106 @@ if (existing) {
 
   const hasFooterContent = !!compilerOutput || !!coachJson || !!coachRaw;
 
+  const reloadFromServer = async () => {
+  // File mode should NOT reload from backend (it’s loaded from token/file)
+  if (isFileMode) {
+    setStatus("Reload not available in File mode.");
+    return;
+  }
+
+  // Need identity to pull from backend
+  if (!projectSlug || !lessonSlug) {
+    setStatus("Reload failed: missing project/lesson identity.");
+    return;
+  }
+
+  setStatus("Reloading from server...");
+
+  try {
+    const r = await fetchArduinoState(projectSlug, lessonSlug);
+    const serverCode = r?.ok ? r?.arduino?.code : null;
+
+    if (typeof serverCode === "string" && serverCode.length > 0) {
+      setValue(serverCode);
+      setLastSaved(new Date());
+      setStatus("Reloaded from server.");
+
+      // keep local cache in sync (optional but useful)
+      if (storageKey) {
+        try {
+          window.localStorage.setItem(storageKey, serverCode);
+        } catch {}
+      }
+
+      // clear any previous error markers
+      if (editorRef.current && monacoRef.current) {
+        monacoRef.current.editor.setModelMarkers(editorRef.current.getModel(), "verify", []);
+      }
+
+      // close popovers + clear outputs (optional UX)
+      setCompilerOutput("");
+      setCoachJson(null);
+      setCoachRaw("");
+      setLastErrors([]);
+      setPopovers([]);
+      setAiHelpMap({});
+      return;
+    }
+
+    // If server has nothing saved yet: fallback to local or default
+    const local = storageKey ? window.localStorage.getItem(storageKey) : null;
+    setValue(local ?? DEFAULT_SKETCH);
+    setStatus("Server had no saved code (loaded fallback).");
+  } catch (e) {
+    console.error(e);
+    setStatus("Reload failed (server).");
+  }
+  };
+
+  const saveNowToServer = async () => {
+  if (isFileMode) {
+    setStatus("Save to server not available in File mode.");
+    return;
+  }
+  if (!projectSlug || !lessonSlug) {
+    setStatus("Save failed: missing project/lesson identity.");
+    return;
+  }
+
+  // Cancel any pending debounced save, so we don't double-save
+  if (serverSaveTimerRef.current) {
+    window.clearTimeout(serverSaveTimerRef.current);
+    serverSaveTimerRef.current = null;
+  }
+
+  setIsSaving(true);
+  setStatus("Saving to server...");
+
+  try {
+    const r = await saveArduinoState(projectSlug, lessonSlug, value ?? "");
+    if (!r?.ok) {
+      setStatus("Save failed (server).");
+      return;
+    }
+
+    setLastSaved(new Date());
+    setStatus("Saved (server).");
+
+    // Optional: keep local cache aligned too
+    if (storageKey) {
+      try {
+        window.localStorage.setItem(storageKey, value ?? "");
+      } catch {}
+    }
+  } catch (e) {
+    console.error(e);
+    setStatus("Save failed (server).");
+  } finally {
+    setIsSaving(false);
+  }
+};
+
+
   const handleVerify = async () => {
     if (!editorRef.current || !monacoRef.current) return;
 
@@ -943,7 +1131,7 @@ if (existing) {
     setAiHelpMap({});
 
     try {
-      const res = await fetch("http://"+BASE_URL+":4000/verify-arduino", {
+      const res = await fetch(`${API_BASE}/verify-arduino`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code: value }),
@@ -1370,9 +1558,45 @@ if (existing) {
             Expand
           </button>
 
-          <button type="button" onClick={handleReset} style={{ ...toolbarButtonStyle, opacity: 0.8 }}>
-            Reset
+          <button
+            type="button"
+            onClick={saveNowToServer}
+            style={{
+              ...toolbarButtonStyle,
+              opacity: isSaving || isFileMode || !projectSlug || !lessonSlug ? 0.6 : 1,
+              cursor: isSaving || isFileMode || !projectSlug || !lessonSlug ? "not-allowed" : "pointer",
+            }}
+            disabled={isSaving || isFileMode || !projectSlug || !lessonSlug}
+            title={
+              isSaving
+                ? "Saving..."
+                : isFileMode
+                ? "Server save disabled in File mode"
+                : !projectSlug || !lessonSlug
+                ? "Missing projectSlug/lessonSlug"
+                : "Save now to server"
+            }
+          >
+            {isSaving ? "Saving..." : "Save"}
           </button>
+
+
+          <button
+            type="button"
+            onClick={reloadFromServer}
+            style={{ ...toolbarButtonStyle, opacity: 0.9 }}
+            disabled={isFileMode || !projectSlug || !lessonSlug}
+            title={
+              isFileMode
+                ? "Reload disabled in File mode"
+                : !projectSlug || !lessonSlug
+                ? "Missing projectSlug/lessonSlug"
+                : "Reload latest code from server"
+            }
+          >
+            ⟳
+          </button>
+
         </div>
       </div>
 
