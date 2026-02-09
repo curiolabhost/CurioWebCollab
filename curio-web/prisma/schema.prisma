@@ -24,6 +24,7 @@ model User {
   completions     ProjectCompletion[]
   schedules       ProjectSchedule[]
   lessonStates    LessonState[]
+  circuitStates   CircuitState[]
   profile         UserProfile?
 }
 
@@ -156,4 +157,22 @@ model UserProfile {
   updatedAt DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model CircuitState {
+  id          String @id @default(cuid())
+  userId      String
+  projectSlug String
+  lessonSlug  String
+
+  wokwiUrl    String?
+  diagramJson Json? // store parsed JSON (or null)
+
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, projectSlug, lessonSlug])
+  @@index([userId, projectSlug, lessonSlug])
 }

@@ -2144,6 +2144,8 @@ const inlineRafRef = React.useRef<number | null>(null);
           codeKey={EDITOR_KEYS.arduinoSketchKey}
           diagramKey={EDITOR_KEYS.wokwiDiagramKey}
           defaultWokwiUrl=""
+          projectSlug={projectSlug}
+          lessonSlug={lessonSlug}
         />
       ) : (
         <ArduinoEditor 

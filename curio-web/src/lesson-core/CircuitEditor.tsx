@@ -16,7 +16,38 @@ type CircuitEditorProps = {
 
   showExit?: boolean;
   onExit?: () => void;
+  projectSlug?: string;
+  lessonSlug?: string;
+
 };
+
+async function fetchCircuitState(projectSlug: string, lessonSlug: string) {
+  const qs = new URLSearchParams({ projectSlug, lessonSlug });
+  const res = await fetch(`/api/circuit-state?${qs.toString()}`, { cache: "no-store" });
+  if (!res.ok) return null;
+  return (await res.json()) as {
+    ok: boolean;
+    circuit?: { wokwiUrl?: string | null; diagramJson?: any; updatedAt?: string } | null;
+  };
+}
+
+async function saveCircuitState(
+  projectSlug: string,
+  lessonSlug: string,
+  payload: { wokwiUrl?: string | null; diagramJson?: any | null }
+) {
+  const res = await fetch("/api/circuit-state", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ projectSlug, lessonSlug, ...payload }),
+  });
+  if (!res.ok) return null;
+  return (await res.json()) as {
+    ok: boolean;
+    circuit?: { wokwiUrl?: string | null; diagramJson?: any; updatedAt?: string } | null;
+  };
+}
+
 
 export default function CircuitEditor({
   screenTitle = "Circuit",
@@ -27,6 +58,9 @@ export default function CircuitEditor({
   height = "100%",
   width = "100%",
   showExit = false,
+  projectSlug,
+  lessonSlug,
+
   onExit,
 }: CircuitEditorProps) {
   const hasWindow = typeof window !== "undefined";
@@ -41,18 +75,56 @@ export default function CircuitEditor({
   // toggle the Load panel (link + diagram.json)
   const [showLoad, setShowLoad] = React.useState(false);
 
+  const [status, setStatus] = React.useState("Ready.");
+  const [isSaving, setIsSaving] = React.useState(false);
+
+
   React.useEffect(() => {
     if (!storage) return;
 
-    const savedUrl = storage.getItem(wokwiUrlKey) || "";
-    const urlToUse = savedUrl || defaultWokwiUrl || "";
-    setWokwiUrl(urlToUse);
-    setWokwiUrlDraft(urlToUse);
+    const canServer = !!(projectSlug && lessonSlug);
 
-    const savedDiag = storage.getItem(diagramKey) || "";
-    setSavedDiagram(savedDiag);
-    setDiagramDraft(savedDiag);
-  }, [storage, wokwiUrlKey, diagramKey, defaultWokwiUrl]);
+    (async () => {
+      try {
+        if (canServer) {
+          const r = await fetchCircuitState(projectSlug!, lessonSlug!);
+          const serverUrl = r?.ok ? (r.circuit?.wokwiUrl ?? "") : "";
+          const serverDiag = r?.ok && r.circuit?.diagramJson ? JSON.stringify(r.circuit.diagramJson, null, 2) : "";
+
+          // If server has anything, use it (and sync local backup)
+          if (serverUrl || serverDiag) {
+            const urlToUse = serverUrl || defaultWokwiUrl || "";
+            setWokwiUrl(urlToUse);
+            setWokwiUrlDraft(urlToUse);
+            setSavedDiagram(serverDiag);
+            setDiagramDraft(serverDiag);
+
+            try {
+              storage.setItem(wokwiUrlKey, urlToUse);
+              storage.setItem(diagramKey, serverDiag);
+            } catch {}
+
+            setStatus("Loaded from server.");
+            return;
+          }
+        }
+
+        // Fallback: local storage
+        const savedUrl = storage.getItem(wokwiUrlKey) || "";
+        const urlToUse = savedUrl || defaultWokwiUrl || "";
+        setWokwiUrl(urlToUse);
+        setWokwiUrlDraft(urlToUse);
+
+        const savedDiag = storage.getItem(diagramKey) || "";
+        setSavedDiagram(savedDiag);
+        setDiagramDraft(savedDiag);
+
+        setStatus("Loaded from device.");
+      } catch {
+        setStatus("Load failed.");
+      }
+    })();
+  }, [storage, wokwiUrlKey, diagramKey, defaultWokwiUrl, projectSlug, lessonSlug]);
 
   const isLikelyWokwiUrl = (u: string) => {
     if (!u) return false;
@@ -64,16 +136,40 @@ export default function CircuitEditor({
     }
   };
 
-  const saveWokwiUrl = () => {
+  const saveWokwiUrl = async () => {
     const next = (wokwiUrlDraft || "").trim();
     if (!next) return alert("Paste a Wokwi share link first.");
     if (!isLikelyWokwiUrl(next)) {
       return alert("That doesn't look like a Wokwi link (should include wokwi.com).");
     }
+
     storage?.setItem(wokwiUrlKey, next);
     setWokwiUrl(next);
+
+    if (projectSlug && lessonSlug) {
+      setIsSaving(true);
+      setStatus("Saving link to server...");
+      try {
+        const r = await saveCircuitState(projectSlug, lessonSlug, { wokwiUrl: next });
+        if (!r?.ok) {
+          setStatus("Save failed (server).");
+          alert("Saved locally, but server save failed.");
+          return;
+        }
+        setStatus("Saved (server).");
+      } catch {
+        setStatus("Save failed (server).");
+        alert("Saved locally, but server save failed.");
+      } finally {
+        setIsSaving(false);
+      }
+    } else {
+      setStatus("Saved locally.");
+    }
+
     alert("Saved Wokwi link.");
   };
+
 
   const openWokwiNewTab = () => {
     if (!wokwiUrl) return alert("No Wokwi link saved yet.");
@@ -90,17 +186,40 @@ export default function CircuitEditor({
     alert("Curio code copied. Paste it into Wokwi.");
   };
 
-  const saveDiagramJson = () => {
+  const saveDiagramJson = async () => {
     const raw = (diagramDraft || "").trim();
     if (!raw) return alert("Paste diagram.json content first.");
 
     try {
       const parsed = JSON.parse(raw);
       const pretty = JSON.stringify(parsed, null, 2);
+
       storage?.setItem(diagramKey, pretty);
       setSavedDiagram(pretty);
       setDiagramDraft(pretty);
-      alert("Saved diagram.json to Curio (local backup).");
+
+      if (projectSlug && lessonSlug) {
+        setIsSaving(true);
+        setStatus("Saving diagram to server...");
+        try {
+          const r = await saveCircuitState(projectSlug, lessonSlug, { diagramJson: parsed });
+          if (!r?.ok) {
+            setStatus("Save failed (server).");
+            alert("Saved locally, but server save failed.");
+            return;
+          }
+          setStatus("Saved (server).");
+        } catch {
+          setStatus("Save failed (server).");
+          alert("Saved locally, but server save failed.");
+        } finally {
+          setIsSaving(false);
+        }
+      } else {
+        setStatus("Saved locally.");
+      }
+
+      alert("Saved diagram.json to Curio.");
     } catch {
       alert("diagram.json is not valid JSON. Please paste the full file contents.");
     }
@@ -118,6 +237,35 @@ export default function CircuitEditor({
     setSavedDiagram("");
     setDiagramDraft("");
   };
+    const reloadFromServer = async () => {
+    if (!projectSlug || !lessonSlug) {
+      setStatus("Reload failed: missing project/lesson identity.");
+      return;
+    }
+    setStatus("Reloading from server...");
+
+    try {
+      const r = await fetchCircuitState(projectSlug, lessonSlug);
+      const serverUrl = r?.ok ? (r.circuit?.wokwiUrl ?? "") : "";
+      const serverDiag = r?.ok && r.circuit?.diagramJson ? JSON.stringify(r.circuit.diagramJson, null, 2) : "";
+
+      const urlToUse = serverUrl || defaultWokwiUrl || "";
+      setWokwiUrl(urlToUse);
+      setWokwiUrlDraft(urlToUse);
+      setSavedDiagram(serverDiag);
+      setDiagramDraft(serverDiag);
+
+      try {
+        storage?.setItem(wokwiUrlKey, urlToUse);
+        storage?.setItem(diagramKey, serverDiag);
+      } catch {}
+
+      setStatus("Reloaded from server.");
+    } catch {
+      setStatus("Reload failed (server).");
+    }
+  };
+
 
   return (
     <div
@@ -176,6 +324,17 @@ export default function CircuitEditor({
           >
             {showLoad ? "Close" : "Load"}
           </button>
+
+          <button
+            type="button"
+            onClick={reloadFromServer}
+            style={{ ...toolbarButtonStyle, opacity: !projectSlug || !lessonSlug ? 0.6 : 1 }}
+            disabled={!projectSlug || !lessonSlug}
+            title={!projectSlug || !lessonSlug ? "Missing projectSlug/lessonSlug" : "Reload from server"}
+          >
+            ⟳
+          </button>
+
 
           <button type="button" onClick={copyCurioCode} style={toolbarButtonStyle}>
             Copy Code
