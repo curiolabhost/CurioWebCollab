@@ -620,7 +620,7 @@ You can set cursor for certain texts to position your welcome messages in a more
               height:350,
               items: [
                 {
-                  imageSrc: "/electric-status-board/welcomeFunc.png",
+                  imageSrc: "/electric-status-board/welcomeFunc2.png",
                   label: "Example: welcome function",
                 },
               ],

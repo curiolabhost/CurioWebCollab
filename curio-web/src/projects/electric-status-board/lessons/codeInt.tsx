@@ -476,7 +476,7 @@ void showWelcome() {
 
   __BLANK[24]__; //set text size to 2
   __BLANK[25]__; //set cursor (0,16)
-  __BLANK[26]__; //print "Timer"
+  __BLANK[26]__; //print "FocusBoard"
 
   __BLANK[27]__; //send display to the screen
   __BLANK[28]__; //short delay
@@ -602,7 +602,7 @@ void showWelcome() {
                     values: ["println", "print"],
                   },
                   "(",
-                  "\"Timer\"",
+                  "\"FocusBoard\"",
                   ")",
                 ],
                 policy: {
@@ -694,7 +694,7 @@ Updates the physical OLED screen by sending the entire buffer to the display har
               height: 350,
               items: [
                 {
-                  imageSrc: "/electric-status-board/welcomeFunc.png",
+                  imageSrc: "/electric-status-board/welcomeFunc2.png",
                   label: "Example: welcome function",
                 },
               ],
@@ -723,7 +723,7 @@ void showWelcome() {
 
   __BLANK[24]__; //set text size to 2
   __BLANK[25]__; //set cursor (0,16)
-  __BLANK[26]__; //print "Timer"
+  __BLANK[26]__; //print "FocusBoard"
 
   __BLANK[27]__; //send display to the screen
   __BLANK[28]__; //short delay
