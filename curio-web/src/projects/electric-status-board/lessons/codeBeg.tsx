@@ -690,139 +690,7 @@ answerKey: buildAnswerKey({
 
       }
     ]
-    },
-
-    {
-      id: 3,
-      title: "Step 3: Display Chosen Status",
-      desc: "In order to display the status that we want we need to clear the screen then print the status chosen from the menu screen",
-
-      codes: [
-        {
-          code: `__EDITOR[WELCOME]__
- ^^  
-void showStatusScreen() {
-  __BLANK[39]__; //clear display
-  __BLANK[40]__; //set text color to white 
-  __BLANK[41]__; //set text size to 1
-  __BLANK[42]__; //set cursor to (0,0)
-  __BLANK[43]__; //println a status string
-  __BLANK[44]__; //display 
-}^^`,
-
-          answerKey: buildAnswerKey({
-            43: ({
-            "type": "pattern",
-            "parts": [
-              "display",
-              ".",
-              {
-                "p": "oneOf",
-                "values": [
-                  "println",
-                  "print"
-                ]
-              },
-              "(",
-              {
-                "p": "string"
-              },
-              ")"
-            ],
-          } as const),
-          }),
-          39: K.str({ oneOf: ["display.clearDisplay()"] }),
-          40: ({
-            "type": "pattern",
-            "parts": [
-              "display",
-              ".",
-              "setTextColor",
-              "(",
-              {
-                "p": "identifier"
-              },
-              ")"
-            ],
-            "policy": {
-              "requireNoSpacesAround": [
-                "."
-              ]
-            },
-          } as const),
-          41: K.str({ oneOf: ["display.setTextSize(1)"] }),
-          42: K.str({ oneOf: ["display.setCursor(0,0)"] }),
-          44: K.str({ oneOf: ["display.display()"] }),
-          blankExplanations: {
-              39:
-                "Clear the OLED buffer at the start of the status screen so old menu text doesn’t remain.",
-              40:
-                "You will set the color of the text to white using an appropriate color code for SSD1306 module",
-              41:
-                "Set the text size for the status screen (example: display.setTextSize(2);).",
-              42:
-                "Set the cursor position for where the status text should start (example: display.setCursor(0, 0);).",
-              43:
-                'Print the status text. Example: display.println("Studying"); or display.println(option);',
-              44:
-                "Push the buffer to the OLED so the printed status actually appears. Use display.display().",
-            },
-            blankDifficulties: {
-              STATUSFUNCTION: "easy",
-              STATUSCODE1: "easy",
-              STATUSCODE2: "easy",
-              STATUSCODE3: "easy",
-              STATUSCODE4: "easy",
-              DISPLAY9: "easy",
-            },
-
-
-          descAfterCode: `Here are specific instructions on what each line of the code should do at it's minimum. You can also add more functinalities to this in the code editor.
-**Line 1:** clear the display.
-**Line 2:** set text size.
-**Line 3:** set cursor location.
-**Line 4:** print an example status like "Studying, Working, Coding, etc".`,
-        },{
-            topicTitle: "Try Simulation",
-            descBeforeCode:`Paste the code into simaulator and run it to check if the status message displays as intended. Replace your Welcome Message Function with the Status Function in the setup() to see the status message on the screen.`,
-            imageGridBeforeCode: {
-              columns: 1,
-              width: 400,
-              height:350,
-              items: [
-                {
-                  imageSrc: "/electric-status-board/statusScreen.png",
-                  label: "Example: status screen",
-                },
-              ],
-            },  
-
-        },
-        {
-          topicTitle: "Modify your Chosen Status Display function",
-          descBeforeCode: `Change the showStatusScreen to show the status the way you want it to. Rename the function as well.
-**Important:** Make sure to simulate your new function before moving to the next step.
-**EDIT:** Click on \`Edit\` button on the code box header, next to \`Copy to Editor\``,
-          code: `__EDITOR[WELCOME]__
-^^
-void showStatusScreen() {
-// ##EDIT:SHOWSTATUS_SCREEN:INDENT=1## 
-  __BLANK[39]__; //clear display
-  __BLANK[40]__; //set text color to white 
-  __BLANK[41]__; //set text size to 1
-  __BLANK[42]__; //set cursor to (0,0)
-  __BLANK[43]__; //println a status string
-  __BLANK[44]__; //display 
-// ##END:SHOWSTATUS_SCREEN##
-}^^
-          
-          ^^`,
-          editorPlaceholders: {
-            SHOW_CHOSEN_STATUS: `Type your own Show Status Function here. `,
-          }
-      },
-    ],
-  },]
+    },]
 },
 
   5: {
@@ -996,6 +864,9 @@ answerKey: buildAnswerKey({
   58: K.str({ oneOf: ["int"] }),
   59: K.id().bind("screenMode"),
   60: K.num({ oneOf: [0] }),
+  SCREEN1: K.str(),
+  SCREEN2: K.str(),
+  SCREEN3: K.str(),
 }),  
 
 blankExplanations: {
@@ -1051,7 +922,7 @@ int select = numbers [1];^^
 char favLetters[] = {'A', 'D', 'F', 'H', 'K', 'M'};
 char best = favLetters[3];^^
 
-//<< Create an array of String of four differet colors. ^^
+//<< Create an array of String of four different colors. ^^
 __BLANK[ARRAYTYPE]__  __BLANK[ARRAYNAME]__ = __BLANK[ARRAY]__;
 
 //<< Assign a variable named favoriteColor that calls your favorite color within the array. 
@@ -1279,9 +1150,140 @@ __BLANK[35]__ __BLANK[36]__ = __BLANK[37]__;^^`,
             },
       ],
     },
+        {
+      id: 7,
+      title: "Step 3: Display Chosen Status",
+      desc: "In order to display the status that we want we need to clear the screen then print the status chosen from the menu screen",
+
+      codes: [
+        {
+          code: `__EDITOR[WELCOME]__
+ ^^  
+void showStatusScreen() {
+  __BLANK[39]__; //clear display
+  __BLANK[40]__; //set text color to white 
+  __BLANK[41]__; //set text size to 1
+  __BLANK[42]__; //set cursor to (0,0)
+  __BLANK[43]__; //println a status string
+  __BLANK[44]__; //display 
+}^^`,
+
+          answerKey: buildAnswerKey({
+            43: ({
+            "type": "pattern",
+            "parts": [
+              "display",
+              ".",
+              {
+                "p": "oneOf",
+                "values": [
+                  "println",
+                  "print"
+                ]
+              },
+              "(",
+              {
+                "p": "string"
+              },
+              ")"
+            ],
+          } as const),
+          }),
+          39: K.str({ oneOf: ["display.clearDisplay()"] }),
+          40: ({
+            "type": "pattern",
+            "parts": [
+              "display",
+              ".",
+              "setTextColor",
+              "(",
+              {
+                "p": "identifier"
+              },
+              ")"
+            ],
+            "policy": {
+              "requireNoSpacesAround": [
+                "."
+              ]
+            },
+          } as const),
+          41: K.str({ oneOf: ["display.setTextSize(1)"] }),
+          42: K.str({ oneOf: ["display.setCursor(0,0)"] }),
+          44: K.str({ oneOf: ["display.display()"] }),
+          blankExplanations: {
+              39:
+                "Clear the OLED buffer at the start of the status screen so old menu text doesn’t remain.",
+              40:
+                "You will set the color of the text to white using an appropriate color code for SSD1306 module",
+              41:
+                "Set the text size for the status screen (example: display.setTextSize(2);).",
+              42:
+                "Set the cursor position for where the status text should start (example: display.setCursor(0, 0);).",
+              43:
+                'Print the status text. Example: display.println("Studying"); or display.println(option);',
+              44:
+                "Push the buffer to the OLED so the printed status actually appears. Use display.display().",
+            },
+            blankDifficulties: {
+              STATUSFUNCTION: "easy",
+              STATUSCODE1: "easy",
+              STATUSCODE2: "easy",
+              STATUSCODE3: "easy",
+              STATUSCODE4: "easy",
+              DISPLAY9: "easy",
+            },
+
+
+          descAfterCode: `Here are specific instructions on what each line of the code should do at it's minimum. You can also add more functinalities to this in the code editor.
+**Line 1:** clear the display.
+**Line 2:** set text size.
+**Line 3:** set cursor location.
+**Line 4:** print an example status like "Studying, Working, Coding, etc".`,
+        },{
+            topicTitle: "Try Simulation",
+            descBeforeCode:`Paste the code into simaulator and run it to check if the status message displays as intended. Replace your Welcome Message Function with the Status Function in the setup() to see the status message on the screen.`,
+            imageGridBeforeCode: {
+              columns: 1,
+              width: 400,
+              height:350,
+              items: [
+                {
+                  imageSrc: "/electric-status-board/statusScreen.png",
+                  label: "Example: status screen",
+                },
+              ],
+            },  
+
+        },
+        {
+          topicTitle: "Modify your Chosen Status Display function",
+          descBeforeCode: `Change the showStatusScreen to show the status the way you want it to. Rename the function as well.
+**Important:** Make sure to simulate your new function before moving to the next step.
+**EDIT:** Click on \`Edit\` button on the code box header, next to \`Copy to Editor\``,
+          code: `__EDITOR[WELCOME]__
+^^
+void showStatusScreen() {
+// ##EDIT:SHOWSTATUS_SCREEN:INDENT=1## 
+  __BLANK[39]__; //clear display
+  __BLANK[40]__; //set text color to white 
+  __BLANK[41]__; //set text size to 1
+  __BLANK[42]__; //set cursor to (0,0)
+  __BLANK[43]__; //println a status string
+  __BLANK[44]__; //display 
+// ##END:SHOWSTATUS_SCREEN##
+}^^
+          
+          ^^`,
+          editorPlaceholders: {
+            SHOW_CHOSEN_STATUS: `Type your own Show Status Function here. `,
+          }
+      },
+    ],
+  },
 
     {
-      id: 7,
+      id: 8,
       title: "Step 7: Function for Chosen Status Display",
       desc:
         "Now we create a menu page, where pressing Next or Previous button allows the user to toggle around the status options",
