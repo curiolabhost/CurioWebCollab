@@ -232,21 +232,22 @@ void loop(){
               "Enter the Arduino digital pin used for your Select button (0–13). This must match the pin you connected in your wiring.",
           },
 
-          descAfterCode: `Use the digital pin numbers on your Arduino from **your circuit design**, which are the ones you used for the previous, next, and select buttons.
-      
-For example, the first blank for PREV can be 3 if you connected it to digital pin 3, as shown in the example circuit image below. Fill in the rest of the blanks for the Next and Select buttons based on your wiring.`,
+             imageGridAfterCode: {
+              columns: 1,
+              width: 600,
+              height: 480,
+              items: [
+                {
+                  imageSrc: "/electric-status-board/circuit/final_wiring.png",
+                  label: "Example Circuit Image Reference",
+                },
+              ],
+            },
+            descAfterCode: `Use the digital pin numbers from **your circuit design** (the pins you actually wired for PREV, NEXT, and SELECT).
 
-          imageGridAfterCode: {
-            columns: 1,
-            rows: 1,
-            items: [
-              {
-                imageSrc:
-                  "https://dummyimage.com/600x400/ddd/000.png&text=Example+Circuit+Image",
-                label: "Example circuit image",
-              },
-            ],
-          },
+Example: If your PREV button is connected to digital pin 3 like in the circuit image above, then PREV would be 3. Fill the rest based on your wiring.`,
+            descAfterImage: null,
+            hint: "Later, we'll set these pins to INPUT_PULLUP, which means the button will read LOW when pressed and HIGH when released.",
         },
       ],
     },
@@ -391,13 +392,14 @@ void showWelcome() {
   __BLANK[16]__;  //clear display  
   __BLANK[17]__;  //text size to 1 
   __BLANK[18]__;  //text color to white
+
   __BLANK[19]__;  //set cursor location to (0,0)
-  __BLANK[20]__;  //text size to 2
   __BLANK[21]__;  //print "Welcome to"
-  __BLANK[22]__;  //move cu)rsor location to y = 16 
-  __BLANK[23]__;  //print "Status"
-  __BLANK[24]__;  //move cursor location to y = 36
-  __BLANK[25]__;  //print "Board"
+
+
+  __BLANK[20]__;  //text size to 2
+  __BLANK[22]__;  //move cursor location to (0,16) 
+  __BLANK[23]__;  //print "FocusBoard"
 
   display.display(); //update the OLED screen
   delay(1200);
@@ -407,8 +409,27 @@ void showWelcome() {
 
 answerKey: buildAnswerKey({
   SHOWWELCOME: K.str({oneOf: ["showWelcome()"]}),
-  16: K.str({ oneOf: ["display.clearDisplay()"] }),
-  17: K.str({ oneOf: ["display.setTextSize(1)"] }),
+  16: {
+        type: "pattern",
+        parts: ["display", ".", "clearDisplay", "(",")" ],
+      } as const,
+  17: {
+                type: "pattern",
+                parts: [
+                  "display",
+                  ".",
+                  {
+                    p: "oneOf",
+                    values: ["setTextSize"],
+                  },
+                  "(",
+                  "1",
+                  ")",
+                ],
+                policy: {
+                  requireNoSpacesAround: ["."],
+                },
+              } as const,
   18: ({
   "type": "pattern",
   "parts": [
@@ -428,13 +449,95 @@ answerKey: buildAnswerKey({
   },
 } as const),
 
-  19: K.str({ oneOf: ["display.setCursor(0,0)"] }),
-  20: K.str({ oneOf: ["display.setTextSize(2)"] }),
-  21: K.str({ oneOf: ["display.println(\"Welcome to\")","display.print(\"Welcome to\")"] }),
-  22: K.str({ oneOf: ["display.setCursor(0,16)"] }),
-  23: K.str({ oneOf: ["display.println(\"Status\")","display.print(\"Status\")"] }),
-  24: K.str({ oneOf: ["display.setCursor(0,36)"] }),
-  25: K.str({ oneOf: ["display.println(\"Board\")","display.print(\"Board\")"] }),
+  19: {
+                type: "pattern",
+                parts: [
+                  "display",
+                  ".",
+                  {
+                    p: "oneOf",
+                    values: ["setCursor"],
+                  },
+                  "(",
+                  "0",
+                  ",",
+                  "0",
+                  ")",
+                ],
+                policy: {
+                  requireNoSpacesAround: ["."],
+                },
+              } as const,
+  20: {
+                type: "pattern",
+                parts: [
+                  "display",
+                  ".",
+                  {
+                    p: "oneOf",
+                    values: ["setTextSize"],
+                  },
+                  "(",
+                  "2",
+                  ")",
+                ],
+                policy: {
+                  requireNoSpacesAround: ["."],
+                },
+              } as const,
+  21: {
+                type: "pattern",
+                parts: [
+                  "display",
+                  ".",
+                  {
+                    p: "oneOf",
+                    values: ["println", "print"],
+                  },
+                  "(",
+                  '"Welcome to"',
+                  ")",
+                ],
+                policy: {
+                  requireNoSpacesAround: ["."],
+                },
+              } as const,
+  22: {
+                type: "pattern",
+                parts: [
+                  "display",
+                  ".",
+                  {
+                    p: "oneOf",
+                    values: ["setCursor"],
+                  },
+                  "(",
+                  "0",
+                  ",",
+                  "16",
+                  ")",
+                ],
+                policy: {
+                  requireNoSpacesAround: ["."],
+                },
+              } as const,
+  23: {
+                type: "pattern",
+                parts: [
+                  "display",
+                  ".",
+                  {
+                    p: "oneOf",
+                    values: ["println", "print"],
+                  },
+                  "(",
+                  "\"FocusBoard\"",
+                  ")",
+                ],
+                policy: {
+                  requireNoSpacesAround: ["."],
+                },
+              } as const,
 }),
 
 blankExplanations: {

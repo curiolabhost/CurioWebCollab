@@ -47,7 +47,7 @@ export const LESSON_STEPS_INTERMEDIATE: Record<
 #include __BLANK[2]__ //driver for the OLED controller
 #include __BLANK[3]__ //clock module
 
-__BLANK[4]__ __BLANK[5]__ //create clock object^^
+__BLANK[4]__ __BLANK[5]__; //create clock object^^
 
 void setup(){
 }
@@ -58,17 +58,16 @@ void loop(){
               1: K.str({ oneOf: ["<Adafruit_GFX.h>"] }),
               2: K.str({ oneOf: ["<Adafruit_SSD1306.h>","<Adafruit_SH1106.h>","<Adafruit_SSD1309.h>","<Adafruit_SSD1327.h>","<Adafruit_SSD1351.h>","<Adafruit_SSD1331.h>","<Adafruit_SSD1305.h>","<U8g2lib.h>"]  }),
               3: K.str({ oneOf: ["<RTClib.h>"] }),
-            }),
             4: K.id(),
             5: K.id(),
+                        }),
 
             blankExplanations: {
               1: "This is the graphics helper library that gives you drawing tools (text, shapes, cursor control) for the OLED.",
               2: "This is the OLED driver library for the SSD1306 chip. It handles sending pixel data to the screen.",
               3: "This is a real-time clock (RTC) library. Use the one that matches your clock module (the module type matters).",
-              4: "This line creates an object that lets your code talk to a DS3231 real-time clock chip.",
-              5: "Type the clock device type here. Potential types you could be using are: RTC_DS1307 and RTC_PCD8523",
-              6: "Type the clock object here. This object can be named anything (banana, rtc, clock, myClock, etc.) ",
+              4: "Type the clock device type here. Potential types you could be using are: RTC_DS1307 and RTC_PCD8523",
+              5: "Type the clock object here. This object can be named anything (banana, rtc, clock, myClock, etc.) ",
             },
             blankDifficulties: {
               1: "easy",
@@ -133,6 +132,8 @@ The object name does not need to be "rtc", it is just a variable name so you can
 #include __BLANK[1]__ 
 #include __BLANK[2]__
 #include __BLANK[3]__
+
+__BLANK[4]__ __BLANK[5]__; 
 ^^
 #define __BLANK[6]__  __BLANK[7]__ // define width pixels (constant name followed by value)
 #define __BLANK[8]__ __BLANK[9]__ // define height pixels
@@ -191,6 +192,8 @@ void loop(){
 #include __BLANK[1]__
 #include __BLANK[2]__
 #include __BLANK[3]__
+
+__BLANK[4]__ __BLANK[5]__; 
 
 #define __BLANK[6]__  __BLANK[7]__ 
 #define __BLANK[8]__ __BLANK[9]__ 
@@ -264,6 +267,8 @@ Example: If your PREV button is connected to digital pin 3 like in the circuit i
 #include __BLANK[1]__
 #include __BLANK[2]__
 #include __BLANK[3]__
+
+__BLANK[4]__ __BLANK[5]__; 
 
 #define __BLANK[6]__  __BLANK[7]__ 
 #define __BLANK[8]__ __BLANK[9]__ 
@@ -359,7 +364,7 @@ Starts the I²C communication bus so the Arduino can talk to devices like the OL
 
 \`display.begin(A, B);\`  
 Initializes the OLED and prepares it for drawing.  
-@ **A**: usually **SSD1306_SWITCHCAPVCC**, which tells the display how to power its internal circuits.  
+@ **A**: usually **SSD1306_SWITCHCAPVCC**, which tells the display how to power its internal circuits. If you are not using SSD1306 OLED display, then this would be slightly different. 
 @ **B**: the OLED’s I²C address, most commonly **0x3C**.
 
 \`pinMode(A,B);\`  
@@ -369,7 +374,17 @@ Configures the button pins as inputs with internal pull-up resistors.
       - Button not pressed → reads **HIGH**  
       - Button pressed → reads **LOW**
 `,
-            imageGridAfterCode: null,
+              imageGridAfterCode: {
+              columns: 1,
+              height: 420,
+              width: 700,
+              items: [
+                {
+                  imageSrc: "/electric-status-board/oledbegin().png",
+                  label: "OLED Types and their Initialization Calls",
+                },
+              ],
+            },
             descAfterImage: null,
             hint: "INPUT_PULLUP ties the pin internally to Vcc, so a button to GND reads LOW when pressed.",
           },
@@ -422,7 +437,7 @@ Since we want the welcome page to show up only **ONCE when we turn the device on
 #include __BLANK[2]__
 #include __BLANK[3]__
 
-__BLANK[4]__ __BLANK[5]__; //clock object
+__BLANK[4]__ __BLANK[5]__; 
 
 //<< OLED
 #define __BLANK[6]__  __BLANK[7]__
@@ -699,29 +714,73 @@ Type your code in the editor box below. You can reference the \`showWelcome()\` 
             },
             code: `^^//<< Example welcome page function (for reference only)
 void showWelcome() {
-  __BLANK[29]__ //clear display  
-  __BLANK[20]__ //set text size to 1
-  __BLANK[21]__ //set display color to white
+  __BLANK[29]__; //clear display  
+  __BLANK[20]__; //set text size to 1
+  __BLANK[21]__; //set display color to white
 
-  __BLANK[22]__ //set cursor to (0,0)
-  __BLANK[23]__ //print "Welcome to"
+  __BLANK[22]__; //set cursor to (0,0)
+  __BLANK[23]__; //print "Welcome to"
 
-  __BLANK[24]__ //set text size to 2
-  __BLANK[25]__ //set cursor (0,16)
-  __BLANK[26]__ //print "Timer"
+  __BLANK[24]__; //set text size to 2
+  __BLANK[25]__; //set cursor (0,16)
+  __BLANK[26]__; //print "Timer"
 
-  __BLANK[27]__ //send display to the screen
-  __BLANK[28]__ //short delay
+  __BLANK[27]__; //send display to the screen
+  __BLANK[28]__; //short delay
 }
 
 //<< Create your own welcome function to be used for your project
 __EDITOR[WELCOME]__
 
 ^^`,
-            descAfterCode:`What is your new Welcome Function called?   __BLANK[WELCOMENAME]__`,
+            descAfterCode:`What is your new Welcome Function called?   __BLANK[WELCOMEFUNC]__`,
+            answerKey: buildAnswerKey({
+              WELCOMEFUNC: K.id(),
+            }),
+          },{
+            topicTitle: "Try Simulation",
+            descBeforeCode: `Paste your new code into the simulator and run it to see your personalized welcome message come to life on the OLED screen!`,
+code:
+`^^#include <Wire.h>
+#include __BLANK[1]__
+#include __BLANK[2]__
+#include __BLANK[3]__
+
+__BLANK[4]__ __BLANK[5]__; //clock object
+
+//<< OLED
+#define __BLANK[6]__  __BLANK[7]__
+#define __BLANK[8]__ __BLANK[9]__
+#define RESET  -1
+Adafruit_SSD1306 display(__BLANK[10]__, __BLANK[11]__, &Wire, RESET);
+
+//<< Buttons 
+#define PREV __BLANK[12]__
+#define __BLANK[13]__ __BLANK[14]__
+#define __BLANK[15]__  __BLANK[16]__
+
+void setup() {
+  Wire.begin();
+  __BLANK[17]__; 
+//<< Produce welcome message upon starting the board   
+  __BLANK[WELCOMENAME]__(); 
+
+//<<buttons being used
+  pinMode(PREV, INPUT_PULLUP);                 
+  __BLANK[18]__;
+  __BLANK[19]__;
+}
+
+void loop(){
+}
+
+__EDITOR[WELCOME]__
+}
+^^`,
             answerKey: buildAnswerKey({
               WELCOMENAME: K.id().bind("WELCOMENAME"),
             }),
+
           },
         ],
       },
