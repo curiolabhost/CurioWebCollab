@@ -1032,21 +1032,21 @@ String __BLANK[FOOD6]__ = __BLANK[FOOD8]__[__BLANK[FOOD7]__]; // create a variab
 
     {
       id: 5,
-      title: "Step 5: Creating Lists for Menu Options",
+      title: "Step 5: Creating Lists for Status Menu Options",
       desc: `Instead of making many separate variables for each status, we store them all in a single array so the menu can move through them easily.
         
 Think of at least four status that relates to your daily acitivity, like studying, working, playing, etc.
 Place those status in an array. Create a name for that array.
 
-**Warning: Some boards or screen diplays have limitations with memories, so instead of using \`String\` for variable type of the status arrays, use \`const char*\`. 
-
+**Warning:** Some boards or screen diplays have limitations with memories, so instead of using \`String\` for variable type of the status arrays, use \`const char*\`. 
 `,
       hint: "This is the same structure used in your favoriteColor array.",
 
       codes: [
         {
+          topicTitle: "Create Array for Status Menu Options",
           code: `^^//<< List of menu status messages
-__BLANK[26]__ __BLANK[27]__ = { //use const char* for type and name the array
+__BLANK[26]__ __BLANK[27]__[] = { //use const char* for type and name the array
   __BLANK[28]__, //status 1
   __BLANK[29]__, //status 2
   __BLANK[30]__, //status 3
@@ -1054,21 +1054,19 @@ __BLANK[26]__ __BLANK[27]__ = { //use const char* for type and name the array
 };^^`,
         answerKey: buildAnswerKey({
           26: K.str({ oneOf: ["const char*"] }),
-  27: ({
-          "type": "pattern",
-          "parts": [
-            {
-              "p": "identifier",
-              "bindAs": "statusList"
-            },
-            "[",
-            "]"
-          ],
+          27: ({
+                  "type": "pattern",
+                  "parts": [
+                    {
+                      "p": "identifier",
+                      "bindAs": "statusList"
+                    },
+                  ],
         } as const),
-          28: K.str(),
-          29: K.str(),
-          30: K.str(),
-          31: K.str(),
+          28: K.str({ requireQuoted: true }).bind("status1"),
+          29: K.str({ requireQuoted: true }),
+          30: K.str({ requireQuoted: true }),
+          31: K.str({ requireQuoted: true }),
         }),
 
         blankExplanations: {
@@ -1100,7 +1098,7 @@ __BLANK[26]__ __BLANK[27]__ = { //use const char* for type and name the array
   - __BLANK[27]__ [2] → __BLANK[30]__ 
   - __BLANK[27]__ [3] → __BLANK[31]__
 
-  This list allows your program to display different messages simply by picking a number.`,
+This list allows your program to display different messages simply by picking a number.`,
         },
       ],
     },
@@ -1114,16 +1112,6 @@ Create a variable that stores the total **number** of status in the array.`,
 
       codes: [
         {
-          imageGridBeforeCode: {
-            columns: 1,
-            rows: 1,
-            items: [
-              {
-                imageSrc: "/electric-status-board/CurioLabL4.gif",
-                label: "Status Board menu",
-              },
-            ],
-          },
 
           code: `__BLANK[26]__  __BLANK[27]__ = {
   __BLANK[28]__, 
@@ -1132,10 +1120,10 @@ Create a variable that stores the total **number** of status in the array.`,
   __BLANK[31]__
 };
 ^^
-//<< Number of items in the status list
+//<< Total number of items in the status list
 __BLANK[32]__ __BLANK[33]__ = __BLANK[34]__;
 
-//<< Counter for tracking which item of the status list you are on. Assign 0 for the counter.
+//<< Index variable for tracking which item of the status list you are on. Assign 0 for the index.
 __BLANK[35]__ __BLANK[36]__ = __BLANK[37]__;^^`,
             answerKey: buildAnswerKey({
               32: K.str({ oneOf: ["int"] }),
@@ -1173,7 +1161,7 @@ __BLANK[35]__ __BLANK[36]__ = __BLANK[37]__;^^`,
             38: "easy",
           },
 
-            descAfterCode: `These two variables let the menu scroll correctly. In our code we can check the value of counter:
+            descAfterCode: `These two variables let the menu scroll correctly. In our code we can check the value of the index variable to know which status we are currently on and we can **check our index against the total number of status** to know when to wrap around the menu:
 @ If it is past the last item → wrap back to the first  
 @ If it is before the first → wrap to the last.`,
             imageGridAfterCode: null,
@@ -1182,75 +1170,127 @@ __BLANK[35]__ __BLANK[36]__ = __BLANK[37]__;^^`,
           },
             {
             title: `Practice: Calling array item`,
-            code: `// Practice how you can use the array and the counter = 0. ^^
+            code: `// Practice how you can use the array and the index variable you created above. ^^
   String EXAMPLE_OPTION = __BLANK[STATUSMENU_WO_BRACKET]__ [__BLANK[36]__]; //call your status list array in the blank^^`, 
             answerKey: buildAnswerKey({
-              STATUSMENU_WO_BRACKET: K.same("statusList")}),
+              STATUSMENU_WO_BRACKET: K.same("statusList"),
+              OPTION: K.same("status1")}),
             descAfterCode: `What would the String EXAMPLE_OPTION read?   __BLANK[OPTION]__`,
             },
       ],
     },
         {
       id: 7,
-      title: "Step 3: Display Chosen Status",
+      title: "Step 7: Display Chosen Status",
       desc: "In order to display the status that we want we need to clear the screen then print the status chosen from the menu screen",
 
       codes: [
         {
-          code: `__EDITOR[WELCOME]__
+          code: `^^//<< === Functions ===^^
+__EDITOR[WELCOME]__
  ^^  
 void showStatusScreen() {
-  __BLANK[39]__; //clear display
-  __BLANK[40]__; //set text color to white 
-  __BLANK[41]__; //set text size to 1
-  __BLANK[42]__; //set cursor to (0,0)
-  __BLANK[43]__; //println a status string
-  __BLANK[44]__; //display 
-}^^`,
+  __BLANK[39]__; // clear display
+  __BLANK[40]__; // set text color to white on OLED
+  __BLANK[41]__; // set text size to 1 for status screen
+  __BLANK[42]__; // set cursor to (0,0) for status screen
+  display.println(__BLANK[45]__[__BLANK[46]__]); // display an item in the array of status called by the index variable
+  __BLANK[44]__; // display the status on the OLED
+  }^^`,
 
           answerKey: buildAnswerKey({
-            43: ({
-            "type": "pattern",
-            "parts": [
+            45: K.same("statusList"),
+            46: K.same("statusIndex"),
+            43: {
+            type: "pattern",
+            parts: [
               "display",
               ".",
               {
-                "p": "oneOf",
-                "values": [
+                p: "oneOf",
+                values: [
                   "println",
                   "print"
                 ]
               },
               "(",
               {
-                "p": "string"
+                p: "string"
               },
               ")"
             ],
-          } as const),
-          }),
-          39: K.str({ oneOf: ["display.clearDisplay()"] }),
-          40: ({
-            "type": "pattern",
-            "parts": [
+          } as const,
+          39: {
+            type: "pattern",
+            parts: [
+              "display",
+              ".",
+              "clearDisplay",
+              "(",
+              ")",
+            ],
+          } as const,
+          40: {
+            type: "pattern",
+            parts: [
               "display",
               ".",
               "setTextColor",
               "(",
               {
-                "p": "identifier"
+                p: "identifier"
               },
               ")"
             ],
-            "policy": {
-              "requireNoSpacesAround": [
+            policy: {
+              requireNoSpacesAround: [
                 "."
               ]
             },
-          } as const),
-          41: K.str({ oneOf: ["display.setTextSize(1)"] }),
-          42: K.str({ oneOf: ["display.setCursor(0,0)"] }),
-          44: K.str({ oneOf: ["display.display()"] }),
+          } as const,
+          41: {
+            type: "pattern",
+            parts: [
+              "display",
+              ".",
+              {
+                p: "sameAs",
+                target: "setTextSize",
+              },
+              "(",
+              "1",
+              ")",
+            ],
+            policy: {
+              requireNoSpacesAround: [
+                ".",
+              ],
+            },
+          } as const,
+          42: {
+            type: "pattern",
+            parts: [
+              "display",
+              ".",
+              "setCursor",
+              "(",
+              "0",
+              ",",
+              "0",
+              ")",
+            ],
+          } as const,
+          44: {
+            type: "pattern",
+            parts: [
+              "display",
+              ".",
+              "display",
+              "(",
+              ")",
+            ],
+          } as const,
+          }),
           blankExplanations: {
               39:
                 "Clear the OLED buffer at the start of the status screen so old menu text doesn’t remain.",
@@ -1301,7 +1341,8 @@ void showStatusScreen() {
           descBeforeCode: `Change the showStatusScreen to show the status the way you want it to. Rename the function as well.
 **Important:** Make sure to simulate your new function before moving to the next step.
 **EDIT:** Click on \`Edit\` button on the code box header, next to \`Copy to Editor\``,
-          code: `__EDITOR[WELCOME]__
+          code: `^^//<< === Functions ===^^
+__EDITOR[WELCOME]__
 ^^
 void showStatusScreen() {
 // ##EDIT:SHOWSTATUS_SCREEN:INDENT=1## 
@@ -1309,7 +1350,7 @@ void showStatusScreen() {
   __BLANK[40]__; //set text color to white 
   __BLANK[41]__; //set text size to 1
   __BLANK[42]__; //set cursor to (0,0)
-  __BLANK[43]__; //println a status string
+  display.println(__BLANK[45]__[__BLANK[46]__]); //display an item in the array of status called by the index variable 
   __BLANK[44]__; //display 
 // ##END:SHOWSTATUS_SCREEN##
 }^^
@@ -1324,51 +1365,62 @@ void showStatusScreen() {
 
     {
       id: 8,
-      title: "Step 7: Function for Chosen Status Display",
+      title: "Step 8: Your Code So Far",
       desc:
-        "Now we create a menu page, where pressing Next or Previous button allows the user to toggle around the status options",
+        "Your code should look like this so far, with your own customizations for the welcome message, status menu options, and status display function.",
 
       codes: [
         {
-          topicTitle: "Update Show Status Function",
-          descBeforeCode: `We already created a function to display the chosen status on the screen. But, we originally hardcoded the status text with something like "Studying" or "Working". Now, we will modify that function to use the array and the counter variable to display the correct status based on what the user selected from the menu.`,
-          code: `^^//<< Function to show chosen status on screen 
-void showStatusScreen() {
-  __BLANK[39]__;
-  __BLANK[40]__;
-  __BLANK[41]__;
-  __BLANK[42]__;
-  display.println(__BLANK[45]__[__BLANK[46]__]); // display your array of status indexed by the counter variable
-  __BLANK[44]__;
-  }^^`,
-  answerKey: buildAnswerKey({
-    45: K.same("statusList"),
-    46: K.same("statusIndex")
-  })
-        },
-        {
-          descBeforeCode:`Now modify your own function for showing status to also display using status menu array.`,
-          code: `^^//<< Status menu array
-__BLANK[26]__  __BLANK[27]__ = {
-  __BLANK[28]__, 
-  __BLANK[29]__,
-  __BLANK[30]__,
-  __BLANK[31]__
-};
-//<< Number of items in the status list
-__BLANK[32]__ __BLANK[33]__ = __BLANK[34]__;
+code:`^^#include __BLANK[WIRE]__
+#include __BLANK[GFX]__
+#include __BLANK[DRIVER]__
 
-//<< Counter for tracking 
-__BLANK[35]__ __BLANK[36]__ = __BLANK[37]__;
+#define WIDTH  __BLANK[1]__
+#define HEIGHT __BLANK[2]__
+#define RESET  -1
+Adafruit_SSD1306 display (WIDTH, __BLANK[3]__ , &Wire, RESET);
+
+#define PREV __BLANK[4]__
+#define NEXT __BLANK[5]__
+#define __BLANK[6]__  __BLANK[7]__   
+
+__BLANK[26]__ __BLANK[27]__[] = { 
+// ##EDIT:STATUSMENU:INDENT=1##
+  __BLANK[28]__, 
+  __BLANK[29]__, 
+  __BLANK[30]__, 
+  __BLANK[31]__, 
+// ##END:STATUSMENU##
+};
+__BLANK[32]__ __BLANK[33]__ = __BLANK[34]__;
+__BLANK[35]__ __BLANK[36]__ = __BLANK[37]__;^
+
+void setup() {
+  Wire.begin();
+  display.__BLANK[8]__(__BLANK[9]__, __BLANK[10]__);     
+  __BLANK[38]__; 
+
+  pinMode(PREV, INPUT_PULLUP);  
+  pinMode(__BLANK[11]__, __BLANK[12]__);  
+  __BLANK[13]__(__BLANK[14]__, __BLANK[15]__);
+}
 
 __EDITOR[WELCOME]__
 
-__EDITOR[SHOW_CHOSEN_STATUS]__]
-^^`,}
-      ],
-    },
-    ],
+void showStatusScreen() {
+// ##EDIT:SHOWSTATUS_SCREEN:INDENT=1## 
+  __BLANK[39]__; //clear display
+  __BLANK[40]__; //set text color to white 
+  __BLANK[41]__; //set text size to 1
+  __BLANK[42]__; //set cursor to (0,0)
+  display.println(__BLANK[45]__[__BLANK[46]__]); //display an item in the array of status called by the index variable 
+  __BLANK[44]__; //display 
+// ##END:SHOWSTATUS_SCREEN##^^
+`
+
+        }],
   },
+    ]},
 
   6: {
     phrase: "Loops: while loops and iterating through arrays",

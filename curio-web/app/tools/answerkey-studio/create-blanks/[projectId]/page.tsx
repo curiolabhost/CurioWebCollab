@@ -831,84 +831,85 @@ function emitSingleKeyExpr(opts: {
     rangeMaxRaw?: string;
     sameAsTarget?: string;
     requireQuoted?: boolean;
-
   };
 }) {
-  const { blankId, answer, bindKey, bindings, constraint } = opts;
+  const { answer, bindKey, bindings, constraint } = opts;
   const ans = (answer ?? "").trim();
   const bk = (bindKey ?? "").trim();
   const c = constraint || {};
   const cType = (c.constraintType || "expr_ref") as ConstraintType;
 
-  // bindKey always wins
-  if (bk) return `K.id().bind(${JSON.stringify(bk)})`;
+  // --- build the base key expr FIRST (no binding yet) ---
+  let baseExpr = "";
 
-  if (cType === "num_any") return `K.num()`;
+  if (cType === "num_any") baseExpr = `K.num()`;
 
-  if (cType === "num_range") {
+  else if (cType === "num_range") {
     const min = Number(c.rangeMinRaw);
     const max = Number(c.rangeMaxRaw);
     const parts: string[] = [];
     if (Number.isFinite(min)) parts.push(`min: ${min}`);
     if (Number.isFinite(max)) parts.push(`max: ${max}`);
-    return `K.num(${parts.length ? `{ ${parts.join(", ")} }` : ""})`;
+    baseExpr = `K.num(${parts.length ? `{ ${parts.join(", ")} }` : ""})`;
   }
 
-if (cType === "same_as") {
-  let target = String(c.sameAsTarget ?? "").trim(); // bind key
-
-  // If user typed quotes, strip ONE layer: "mainIndex" -> mainIndex, 'mainIndex' -> mainIndex
-  if (
-    (target.startsWith('"') && target.endsWith('"')) ||
-    (target.startsWith("'") && target.endsWith("'"))
-  ) {
-    target = target.slice(1, -1);
-  }
-
-  return `K.same(${JSON.stringify(target)})`;
-}
-
-
-
-  if (cType === "num_oneOf") {
+  else if (cType === "num_oneOf") {
     const nums = parseOneOfNums(c.allowedRaw || "");
-    return nums.length ? `K.num({ oneOf: ${JSON.stringify(nums)} })` : `K.num()`;
+    baseExpr = nums.length ? `K.num({ oneOf: ${JSON.stringify(nums)} })` : `K.num()`;
   }
 
-  if (cType === "str_oneOf") {
+  else if (cType === "str_oneOf") {
     const strs = parseOneOfStrs(c.allowedRaw || "");
     const rq = c.requireQuoted === true;
 
-    const opts: string[] = [];
-    if (strs.length) opts.push(`oneOf: ${JSON.stringify(strs)}`);
-    if (rq) opts.push(`requireQuoted: true`);
+    const optsParts: string[] = [];
+    if (strs.length) optsParts.push(`oneOf: ${JSON.stringify(strs)}`);
+    if (rq) optsParts.push(`requireQuoted: true`);
 
-    return `K.str(${opts.length ? `{ ${opts.join(", ")} }` : ""})`;
+    baseExpr = `K.str(${optsParts.length ? `{ ${optsParts.join(", ")} }` : ""})`;
   }
 
-
-  if (cType === "id_bound") {
-    // requires bindKey, but it's missing
-    return `K.id()`;
+  else if (cType === "same_as") {
+    let target = String(c.sameAsTarget ?? "").trim();
+    if (
+      (target.startsWith('"') && target.endsWith('"')) ||
+      (target.startsWith("'") && target.endsWith("'"))
+    ) {
+      target = target.slice(1, -1);
+    }
+    baseExpr = `K.same(${JSON.stringify(target)})`;
   }
 
-    // pattern presets
-  if (cType === "pat_array_empty") {
-    return `({ type: "pattern", parts: [{ p: "identifier" }, "[", "]"] } as const)`;
-  }
-  if (cType === "pat_array_index") {
-    return `({ type: "pattern", parts: [{ p: "identifier" }, "[", { p: "any", specs: [{ p: "identifier" }, { p: "number" }] }, "]"] } as const)`;
+  else if (cType === "id_bound") {
+    // if they chose id_bound, it's an identifier
+    baseExpr = `K.id()`;
   }
 
+  else if (cType === "pat_array_empty") {
+    baseExpr = `({ type: "pattern", parts: [{ p: "identifier" }, "[", "]"] } as const)`;
+  }
 
-  // expr_ref fallback
-  const hasStructure = /[\[\]\(\)\{\},.+\-*/=!<>:]/.test(ans);
+  else if (cType === "pat_array_index") {
+    baseExpr = `({ type: "pattern", parts: [{ p: "identifier" }, "[", { p: "any", specs: [{ p: "identifier" }, { p: "number" }] }, "]"] } as const)`;
+  }
 
-  if (looksNumber(ans) && !hasStructure) return `K.num()`;
-  if (looksQuoted(ans) && !hasStructure) return `K.str()`;
-  if (looksIdentifier(ans) && !hasStructure) return `K.id()`;
+  else {
+    // expr_ref fallback
+    const hasStructure = /[\[\]\(\)\{\},.+\-*/=!<>:]/.test(ans);
 
-  return `generateKeyFromReference(${JSON.stringify(ans)}, { bind: ${JSON.stringify(bindings)} })`;
+    if (looksNumber(ans) && !hasStructure) baseExpr = `K.num()`;
+    else if (looksQuoted(ans) && !hasStructure) baseExpr = `K.str()`;
+    else if (looksIdentifier(ans) && !hasStructure) baseExpr = `K.id()`;
+    else baseExpr = `generateKeyFromReference(${JSON.stringify(ans)}, { bind: ${JSON.stringify(bindings)} })`;
+  }
+
+  // --- now apply bindKey to ANY builder (id/num/str/same/call/etc) ---
+  // NOTE: patterns don’t go through KeyBuilder today, so we won’t bind those here.
+  if (bk && baseExpr.startsWith("K.")) {
+    baseExpr = `${baseExpr}.bind(${JSON.stringify(bk)})`;
+  }
+
+  return baseExpr;
 }
 
 
@@ -1811,66 +1812,69 @@ function onSave() {
 }
 
 
-    function buildAnswerSpecForBlank(meta: BlankMeta, bindings: Record<string, string>): AnswerSpec {
-    const ans = String(meta.answer ?? "").trim();
+function buildAnswerSpecForBlank(meta: BlankMeta, bindings: Record<string, string>): AnswerSpec {
+  const ans = String(meta.answer ?? "").trim();
+  const cType = (meta.constraintType || "expr_ref") as ConstraintType;
+  const explicitBind = String(meta.bindKey ?? "").trim();
 
+  // helper: apply bindAs to typed specs that support it
+  const bindInto = <T extends any>(spec: T): T => {
+    if (!explicitBind) return spec;
+    if (spec && typeof spec === "object") (spec as any).bindAs = explicitBind;
+    return spec;
+  };
 
-    const cType = (meta.constraintType || "expr_ref") as ConstraintType;
+  // Patterns
+  const pat = buildPatternSpec(cType);
+  if (pat) return pat; // (pattern binding not supported in your matcher today)
 
+  if (cType === "num_any") return bindInto({ type: "number" } as BlankTypedSpec);
 
-    // If you explicitly bound this blank, treat it as identifier (bound)
-    // regardless of other settings (you can remove this if you want strict behavior).
-    const explicitBind = String(meta.bindKey ?? "").trim();
+  if (cType === "num_range") {
+    const minRaw = String(meta.rangeMinRaw ?? "").trim();
+    const maxRaw = String(meta.rangeMaxRaw ?? "").trim();
+    const min = minRaw === "" ? undefined : Number(minRaw);
+    const max = maxRaw === "" ? undefined : Number(maxRaw);
+    return bindInto({
+      type: "range",
+      min: Number.isFinite(min as number) ? (min as number) : undefined,
+      max: Number.isFinite(max as number) ? (max as number) : undefined,
+    } as BlankTypedSpec);
+  }
 
-    const pat = buildPatternSpec(cType);
-    if (pat) return pat;
+  if (cType === "num_oneOf") {
+    const nums = parseOneOfNums(meta.allowedRaw || "");
+    return bindInto({ type: "number", oneOf: nums.length ? nums : undefined } as BlankTypedSpec);
+  }
 
+  if (cType === "str_oneOf") {
+    const strs = parseOneOfStrs(meta.allowedRaw || "");
+    const rq = meta.requireQuoted === true;
+    return bindInto({
+      type: "string",
+      oneOf: strs.length ? strs : undefined,
+      requireQuoted: rq || undefined,
+    } as BlankTypedSpec);
+  }
 
-    if (cType === "num_any") {
-        const spec: BlankTypedSpec = { type: "number" };
-        return spec;
-    }
+  if (cType === "same_as") {
+    // same_as ignores bindKey (not meaningful), keep as is
+    const target = String(meta.sameAsTarget ?? "").trim();
+    return { type: "sameAs", targets: [target] } as BlankTypedSpec;
+  }
 
-    if (cType === "num_range") {
-        const minRaw = String(meta.rangeMinRaw ?? "").trim();
-        const maxRaw = String(meta.rangeMaxRaw ?? "").trim();
+  if (cType === "id_bound") {
+    // THIS one is explicitly identifier
+    return bindInto({ type: "identifier" } as BlankTypedSpec);
+  }
 
-        const min = minRaw === "" ? undefined : Number(minRaw);
-        const max = maxRaw === "" ? undefined : Number(maxRaw);
+  // expr_ref fallback
+  // If you want bindKey to apply here too, just attach bindAs to the generated spec if it’s object-like.
+  const spec = generateKeyFromReference(ans, { bind: bindings }) as any;
+  if (explicitBind && spec && typeof spec === "object") spec.bindAs = explicitBind;
+  return spec;
+}
 
-        const spec: BlankTypedSpec = {
-        type: "range",
-        min: Number.isFinite(min as number) ? (min as number) : undefined,
-        max: Number.isFinite(max as number) ? (max as number) : undefined,
-        };
-        return spec;
-    }
-
-        if (cType === "num_oneOf") {
-        const nums = parseOneOfNums(meta.allowedRaw || "");
-        if (!nums.length) return { type: "number" };
-        const spec: BlankTypedSpec = { type: "number", oneOf: nums };
-        return spec;
-        }
-
-        if (cType === "str_oneOf") {
-        const strs = parseOneOfStrs(meta.allowedRaw || "");
-        if (!strs.length) return { type: "string" };
-        const spec: BlankTypedSpec = { type: "string", oneOf: strs };
-        return spec;
-        }
-
-
-    if (cType === "id_bound" || explicitBind) {
-        const bindKey = explicitBind || "boundVar";
-        const spec: BlankTypedSpec = { type: "identifier", bindAs: bindKey };
-        return spec;
-    }
-
-    // expr_ref fallback: use your reference-based generator
-    // (this supports expressions, function calls, etc.)
-    return generateKeyFromReference(ans, { bind: bindings });
-    }
 
     
 
