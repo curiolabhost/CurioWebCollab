@@ -77,7 +77,12 @@ void loop() { // This runs forever
         - Another \`delay(1000);\` keeps the LED off for a second.
 
 This continuous on/off cycle makes the LED blink once per second.`,
-        },
+        },{
+          topicTitle: "Void Loop vs Void Setup",
+          descBeforeCode: `**Void setup()** is where you put code that should run once at the start, like initializing pins or starting serial communication. This is where you "setup the settings" for your project.
+**Void loop()** is where you put code that should run repeatedly, like checking button states or updating a display. This is the "main program" that keeps your project running and responsive.`,
+
+        }
       ],
     },
     ],
@@ -96,9 +101,9 @@ This continuous on/off cycle makes the LED blink once per second.`,
 
       codes: [
         {
-          code: `^^#include __BLANK[WIRE]__
-#include __BLANK[GFX]__
-#include __BLANK[DRIVER]__^^
+          code: `^^#include __BLANK[WIRE]__ //I2C communication library
+#include __BLANK[GFX]__ //Adafruit graphics library for drawing functions
+#include __BLANK[DRIVER]__ //Adafruit driver for OLED display^^
 
 void setup(){
 }
@@ -117,6 +122,7 @@ Loads Adafruit’s graphics library. This provides the drawing tools you’ll us
 
 \`#include <Adafruit_SSD1306.h>\`  
 Loads the driver for the SSD1306 OLED controller. It knows how to send pixel-level commands so the display can show what you draw.
+@ **Note:** If you have a different OLED model, you may need a different driver library (e.g., SH1106, SSD1309, etc.). Make sure to include the correct one for your screen.
 
 **Together, these libraries allow the Arduino to communicate with the OLED and render text and graphics on the screen.**`,
         answerKey: buildAnswerKey({
@@ -130,7 +136,7 @@ Loads the driver for the SSD1306 OLED controller. It knows how to send pixel-lev
     {
       id: 2,
       title: "Step 2: Defining Screen",
-      desc: `Define the OLED dimensions and create the display object. This allows the libaray to know the correct dimensions of the screen and to send data to the correct pixels. Many modules are 128×64; slim ones are 128×32. So now, we have to define the width to be 128 and height to be 64 or 32. 
+      desc: `Define the OLED dimensions and create the display object. This allows the libaray to know the correct dimensions of the screen and to send data to the correct pixels. Many modules are 128×64; slim ones are 128×32. So now for the OLED screen in the Wokwi simulator, we have to define the width to be 128 and height to be 64. 
 
 **Fill in the blanks.**`,
       hint: "If your board has no RESET pin wired, keep RESET at -1.",
@@ -153,8 +159,8 @@ void loop(){
 }`,
 
             answerKey: buildAnswerKey({
-              2: K.num({ oneOf: [128] }),
-              1: K.num({ oneOf: [32,64] }),
+              1: K.num({ oneOf: [128] }),
+              2: K.num({ oneOf: [32,64] }),
               3: K.str({ oneOf: ["HEIGHT"] }),
             }),
                       
@@ -401,7 +407,7 @@ void showWelcome() {
 
 answerKey: buildAnswerKey({
   SHOWWELCOME: K.str({oneOf: ["showWelcome()"]}),
-  16: K.str({ oneOf: ["display.clearDisplay"] }),
+  16: K.str({ oneOf: ["display.clearDisplay()"] }),
   17: K.str({ oneOf: ["display.setTextSize(1)"] }),
   18: ({
   "type": "pattern",

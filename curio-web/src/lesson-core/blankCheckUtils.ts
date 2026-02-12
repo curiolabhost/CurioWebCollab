@@ -194,14 +194,68 @@ function tokenize(input: string): Token[] {
     }
 
     // numeric
-    if (/[0-9.]/.test(ch)) {
-      let j = i + 1;
-      // ✅ bounds check prevents infinite loop
-      while (j < src.length && /[0-9a-fA-FxXbBoOeE+_.-]/.test(src[j])) j++;
+// numeric
+// Start if digit OR "." followed by digit (e.g., ".5")
+if (/[0-9]/.test(ch) || (ch === "." && i + 1 < src.length && /[0-9]/.test(src[i + 1]))) {
+  let j = i + 1;
+
+  // Handle 0x / 0b / 0o prefixed literals (only these allow letters)
+  if (ch === "0" && i + 1 < src.length) {
+    const p = src[i + 1];
+
+    // hex
+    if (p === "x" || p === "X") {
+      j = i + 2;
+      while (j < src.length && /[0-9a-fA-F_]/.test(src[j])) j++;
       tokens.push({ kind: "num", text: src.slice(i, j) });
       i = j;
       continue;
     }
+
+    // binary
+    if (p === "b" || p === "B") {
+      j = i + 2;
+      while (j < src.length && /[01_]/.test(src[j])) j++;
+      tokens.push({ kind: "num", text: src.slice(i, j) });
+      i = j;
+      continue;
+    }
+
+    // octal
+    if (p === "o" || p === "O") {
+      j = i + 2;
+      while (j < src.length && /[0-7_]/.test(src[j])) j++;
+      tokens.push({ kind: "num", text: src.slice(i, j) });
+      i = j;
+      continue;
+    }
+  }
+
+  // Decimal / float / scientific (NO a-f letters here)
+  while (j < src.length) {
+    const cj = src[j];
+
+    if (/[0-9._]/.test(cj)) {
+      j++;
+      continue;
+    }
+
+    // exponent
+    if (cj === "e" || cj === "E") {
+      j++;
+      if (j < src.length && (src[j] === "+" || src[j] === "-")) j++;
+      while (j < src.length && /[0-9_]/.test(src[j])) j++;
+      continue;
+    }
+
+    break;
+  }
+
+  tokens.push({ kind: "num", text: src.slice(i, j) });
+  i = j;
+  continue;
+}
+
 
     // multi-char ops
     const two = src.slice(i, i + 2);
@@ -485,7 +539,7 @@ function defineOrEnforceBind(allValues: Record<string, any>, bindAs: any, incomi
 
         const key = String(s.bindAs ?? "").trim();
 if (key) {
-  allValues[key] = tokens[0].text; // ✅ LIVE overwrite
+  allValues[key] = tokens[0].text; // LIVE overwrite
 }
 return true;
       }

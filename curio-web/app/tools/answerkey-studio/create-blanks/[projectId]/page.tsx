@@ -47,6 +47,54 @@ function safeJsonParse<T>(raw: string | null): T | null {
     return null;
   }
 }
+function isValidTsIdentifier(k: string) {
+  return /^[A-Za-z_$][A-Za-z0-9_$]*$/.test(k);
+}
+
+function stripUiFields(x: any): any {
+  if (Array.isArray(x)) return x.map(stripUiFields);
+  if (x && typeof x === "object") {
+    const out: any = {};
+    for (const [k, v] of Object.entries(x)) {
+      if (k === "mode") continue; // strip UI-only fields
+      out[k] = stripUiFields(v);
+    }
+    return out;
+  }
+  return x;
+}
+
+function toTsLiteral(value: any, indent = 0): string {
+  const pad = (n: number) => "  ".repeat(n);
+
+  if (value === null) return "null";
+  if (value === undefined) return "undefined";
+
+  if (typeof value === "string") return JSON.stringify(value);
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+
+  if (Array.isArray(value)) {
+    if (value.length === 0) return "[]";
+    return `[\n${value
+      .map((v) => `${pad(indent + 1)}${toTsLiteral(v, indent + 1)},`)
+      .join("\n")}\n${pad(indent)}]`;
+  }
+
+  if (typeof value === "object") {
+    const entries = Object.entries(value);
+    if (entries.length === 0) return "{}";
+
+    return `{\n${entries
+      .map(([k, v]) => {
+        const key = isValidTsIdentifier(k) ? k : JSON.stringify(k);
+        return `${pad(indent + 1)}${key}: ${toTsLiteral(v, indent + 1)},`;
+      })
+      .join("\n")}\n${pad(indent)}}`;
+  }
+
+  return "undefined";
+}
+
 
 function lsGet(key: string, projectId: string) {
   if (typeof window === "undefined") return "";
@@ -698,16 +746,15 @@ function buildPatternSpecFromDraft() {
   const parts = rowsToPatternParts(patternRowsDraft);
   const ops = parseCsvOps(patternNoSpaceOpsDraft);
 
-  const spec: any = {
-    type: "pattern",
-    parts,
-    policy: ops.length ? { requireNoSpacesAround: ops } : undefined,
-    mode: patternModeDraft, //
-  };
+const spec: any = {
+  type: "pattern",
+  parts,
+  policy: ops.length ? { requireNoSpacesAround: ops } : undefined,
+};
 
-  // remove undefined fields so JSON is clean
-  if (!spec.policy) delete spec.policy;
-  if (!spec.mode) delete spec.mode;
+// remove undefined fields so JSON is clean
+if (!spec.policy) delete spec.policy;
+
 
   return spec;
 }
@@ -890,7 +937,9 @@ function onGenerateAnswerKey() {
       alert("Pattern JSON is missing/invalid. Click 'Save pattern' in the Pattern builder first.");
       return;
     }
-    expr = `(${JSON.stringify(parsed, null, 2)} as const)`;
+    const cleaned = stripUiFields(parsed);
+    expr = `${toTsLiteral(cleaned)} as const`;
+
   } else {
     expr = emitSingleKeyExpr({
       blankId: id,
@@ -930,7 +979,7 @@ function onGenerateAnswerKey() {
         ...prev.metaByUid,
         [uid]: {
           ...m,
-          generatedKeyExpr: expr, // ✅ store it
+          generatedKeyExpr: expr, // store it
           updatedAt: Date.now(),
         },
       },
@@ -1043,10 +1092,8 @@ function scheduleCommitSelectedBlank(next: {
 }
 
 function commitPatternToSelectedBlank(nextRows?: PatternRow[], nextMode?: "exact" | "contains", nextOps?: string) {
-  const spec = {
-    ...buildPatternSpecFromDraft(),
-    ...(typeof nextMode !== "undefined" ? { mode: nextMode } : {}),
-  };
+  const spec = buildPatternSpecFromDraft();
+
 
   const json = JSON.stringify(spec, null, 2);
 

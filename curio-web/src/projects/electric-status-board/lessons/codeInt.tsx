@@ -56,7 +56,7 @@ void loop(){
 }`,
             answerKey: buildAnswerKey({
               1: K.str({ oneOf: ["<Adafruit_GFX.h>"] }),
-              2: K.str({ oneOf: ["<Adafruit_SSD1306.h>"] }),
+              2: K.str({ oneOf: ["<Adafruit_SSD1306.h>","<Adafruit_SH1106.h>","<Adafruit_SSD1309.h>","<Adafruit_SSD1327.h>","<Adafruit_SSD1351.h>","<Adafruit_SSD1331.h>","<Adafruit_SSD1305.h>","<U8g2lib.h>"]  }),
               3: K.str({ oneOf: ["<RTClib.h>"] }),
             }),
             4: K.id(),
@@ -86,20 +86,32 @@ Loads Adafruit’s graphics library. This provides drawing tools like printing t
 
 \`#include <Adafruit_SSD1306.h>\`  
 Loads the driver for the SSD1306 OLED controller so the display can render what you draw.
+@ **Note:** If you have a different OLED model, you may need a different driver library (e.g., SH1106, SSD1309, etc.). Make sure to include the correct one for your screen.
 
 \`#include <RTClib.h>\`  
 This is for a real-time clock module. The exact header depends on which clock module you are using.
 
-**Together, these libraries allow the Arduino to communicate with the OLED and render text/graphics (and optionally read time from a clock module).**
-
-\`(device type) (object)\`
+**Together, these libraries allow the Arduino to communicate with the OLED and render text/graphics (and optionally read time from a clock module).**`,
+          },{
+            topicTitle: "Clock Object",
+            descBeforeCode: 
+`\`(device type) (object)\`
 The last line in the code box above creates an object that lets your code talk to a real-time clock chip. For example, if you are using DS3231 clock module and you want to name its object as "rtc" then it would be:
 \`RTC_DS3231 rtc\`. 
 The object name does not need to be "rtc", it is just a variable name so you can call it anything you want like "clock", "myRTC", or "banana". 
-The clock device types vary and you need make sure you are writing the correct type in this line. Types include: "RTC_DS1307", "RTC_PCD8523", etc. 
-
+**The clock device types vary and you need make sure you are writing the correct type in this line. Types include: "RTC_DS1307", "RTC_PCD8523", etc. Look at the table below.**
 `,
-            imageGridAfterCode: null,
+            imageGridAfterCode: {
+              columns: 1,
+              width: 850,
+              height: 660,
+              items: [
+                {
+                  imageSrc: "/electric-status-board/rtcObjects.png",
+                  label: "Common RTC Module Types",
+                }
+              ]
+            } ,
             descAfterImage: null,
             hint: "Wire handles I²C. GFX draws. SSD1306 drives the OLED. Clock libs depend on the RTC module.",
           },
@@ -112,20 +124,20 @@ The clock device types vary and you need make sure you are writing the correct t
         codes: [
           {
             topicTitle: "Define the OLED dimensions",
-            descBeforeCode: `Define the OLED dimensions and create the display object. This allows the libaray to know the correct dimensions of the screen and to send data to the correct pixels. Many modules are 128×64; slim ones are 128×32. So now, we have to define the width to be 128 and height to be 64 or 32. 
+            descBeforeCode: `Define the OLED dimensions and create the display object. This allows the libaray to know the correct dimensions of the screen and to send data to the correct pixels. Many modules are 128×64; slim ones are 128×32. So now for the OLED screen in the Wokwi simulator, we have to define the width to be 128 and height to be 64. 
 
 **Fill in the blanks.**`,
             imageGridBeforeCode: null,
             descBetweenBeforeAndCode: null,
             code: `##include <Wire.h>
-#include __BLANK[1]__
+#include __BLANK[1]__ 
 #include __BLANK[2]__
 #include __BLANK[3]__
 ^^
-#define __BLANK[6]__  __BLANK[7]__ // Define width pixels
-#define __BLANK[8]__ __BLANK[9]__ // Define height pixels
+#define __BLANK[6]__  __BLANK[7]__ // define width pixels (constant name followed by value)
+#define __BLANK[8]__ __BLANK[9]__ // define height pixels
 #define RESET  -1
-Adafruit_SSD1306 display(__BLANK[10]__, __BLANK[11]__, &Wire, RESET);^^
+Adafruit_SSD1306 display(__BLANK[10]__, __BLANK[11]__, &Wire, RESET);// call the display object's width and height in this order^^ 
 
 void setup(){
 }
@@ -173,24 +185,13 @@ void loop(){
           {
             topicTitle: "Define button pins",
             descBeforeCode:
-              "Next, we create names for the three buttons so the code knows which Arduino pins they are connected to, and so the program is easier to read and understand than if we used raw pin numbers. For this project, we need one button to move the cursor to the next option, one button to move to the previous option, and one button to select the highlighted option. If you want more practice working with buttons, review Lesson 1. \n**Fill in the blanks using the pin numbers from your circuit design.**",
-            imageGridBeforeCode: {
-              columns: 1,
-              width: 600,
-              height: 400,
-              items: [
-                {
-                  imageSrc: "/electric-status-board/circuit/final_wiring.png",
-                  label: "Example Circuit Image Reference",
-                },
-              ],
-            },
+              "Next, we create names for the three buttons so the code knows which Arduino pins they are connected to, and so the program is easier to read and understand than if we used raw pin numbers. For this project, we need one button to move the cursor to the **next** option, one button to move to the **previous** option, and one button to **select** the option. If you want more practice working with buttons, review Lesson 1. \n**Fill in the blanks using the pin numbers from your circuit design.**",
             descBetweenBeforeAndCode: null,
             code: `##include <Wire.h>
 #include __BLANK[1]__
 #include __BLANK[2]__
 #include __BLANK[3]__
-^^
+
 #define __BLANK[6]__  __BLANK[7]__ 
 #define __BLANK[8]__ __BLANK[9]__ 
 #define RESET  -1
@@ -228,10 +229,21 @@ void loop(){
               15: "easy",
               16: "easy",
             },
+
+             imageGridAfterCode: {
+              columns: 1,
+              width: 600,
+              height: 480,
+              items: [
+                {
+                  imageSrc: "/electric-status-board/circuit/final_wiring.png",
+                  label: "Example Circuit Image Reference",
+                },
+              ],
+            },
             descAfterCode: `Use the digital pin numbers from **your circuit design** (the pins you actually wired for PREV, NEXT, and SELECT).
 
-Example: If your PREV button is connected to digital pin 3, then PREV would be 3. Fill the rest based on your wiring.`,
-            imageGridAfterCode: null,
+Example: If your PREV button is connected to digital pin 3 like in the circuit image above, then PREV would be 3. Fill the rest based on your wiring.`,
             descAfterImage: null,
             hint: "Later, we'll set these pins to INPUT_PULLUP, which means the button will read LOW when pressed and HIGH when released.",
           },
@@ -272,26 +284,30 @@ void setup() {
   __BLANK[19]__;^^      // SELECT button
 }`,
             answerKey: buildAnswerKey({
-              17: {
-                type: "pattern",
-                parts: [
-                  "display",
-                  ".",
-                  "begin",
-                  "(",
-                  {
-                    p: "identifier",
-                  },
-                  ",",
-                  {
-                    p: "identifier",
-                  },
-                  ")",
-                ],
-                policy: {
-                  requireNoSpacesAround: ["."],
+
+            17: {
+              type: "pattern",
+              parts: [
+                "display",
+                ".",
+                "begin",
+                "(",
+                "SSD1306_SWITCHCAPVCC",
+                ",",
+                {
+                  p: "oneOf",
+                  values: [
+                    "0x3C"
+                  ]
                 },
-              } as const,
+                ")"
+              ],
+              policy: {
+                requireNoSpacesAround: [
+                  "."
+                ]
+              },
+            } as const,
               18: {
                 type: "pattern",
                 parts: [
@@ -343,15 +359,15 @@ Starts the I²C communication bus so the Arduino can talk to devices like the OL
 
 \`display.begin(A, B);\`  
 Initializes the OLED and prepares it for drawing.  
-- **A**: usually **SSD1306_SWITCHCAPVCC**, which tells the display how to power its internal circuits.  
-- **B**: the OLED’s I²C address, most commonly **0x3C**.
+@ **A**: usually **SSD1306_SWITCHCAPVCC**, which tells the display how to power its internal circuits.  
+@ **B**: the OLED’s I²C address, most commonly **0x3C**.
 
 \`pinMode(A,B);\`  
 Configures the button pins as inputs with internal pull-up resistors.  
-- **A**: the button pin (e.g., \`PREV\`)  
-- **B**: \`INPUT_PULLUP\`, meaning:  
-  - Button not pressed → reads **HIGH**  
-  - Button pressed → reads **LOW**
+@ **A**: the button pin (e.g., \`PREV\`)  
+@ **B**: \`INPUT_PULLUP\`, meaning:  
+      - Button not pressed → reads **HIGH**  
+      - Button pressed → reads **LOW**
 `,
             imageGridAfterCode: null,
             descAfterImage: null,
@@ -436,19 +452,19 @@ void loop(){
 }
 
 void showWelcome() {
-  __BLANK[29]__ //clear display  
-  __BLANK[20]__ //set text size to 1
-  __BLANK[21]__ //set display color to white
+  __BLANK[29]__; //clear display  
+  __BLANK[20]__; //set text size to 1
+  __BLANK[21]__; //set display color to white
 
-  __BLANK[22]__ //set cursor to (0,0)
-  __BLANK[23]__ //print "Welcome to"
+  __BLANK[22]__; //set cursor to (0,0)
+  __BLANK[23]__; //print "Welcome to"
 
-  __BLANK[24]__ //set text size to 2
-  __BLANK[25]__ //set cursor (0,16)
-  __BLANK[26]__ //print "Timer"
+  __BLANK[24]__; //set text size to 2
+  __BLANK[25]__; //set cursor (0,16)
+  __BLANK[26]__; //print "Timer"
 
-  __BLANK[27]__ //send display to the screen
-  __BLANK[28]__ //short delay
+  __BLANK[27]__; //send display to the screen
+  __BLANK[28]__; //short delay
 }
 ^^`,
             answerKey: buildAnswerKey({
@@ -459,15 +475,14 @@ void showWelcome() {
                   "display",
                   ".",
                   {
-                    p: "sameAs",
-                    target: "setTextColor",
+                    p: "oneOf",
+                    values: ["setTextColor"],
                   },
                   "(",
                   {
                     p: "identifier",
                   },
                   ")",
-                  ";",
                 ],
                 policy: {
                   requireNoSpacesAround: ["."],
@@ -479,13 +494,12 @@ void showWelcome() {
                   "display",
                   ".",
                   {
-                    p: "sameAs",
-                    target: "setTextSize",
+                    p: "oneOf",
+                    values: ["setTextSize"],
                   },
                   "(",
                   "1",
                   ")",
-                  ";",
                 ],
                 policy: {
                   requireNoSpacesAround: ["."],
@@ -497,15 +511,14 @@ void showWelcome() {
                   "display",
                   ".",
                   {
-                    p: "sameAs",
-                    target: "setCursor",
+                    p: "oneOf",
+                    values: ["setCursor"],
                   },
                   "(",
                   "0",
                   ",",
                   "0",
                   ")",
-                  ";",
                 ],
                 policy: {
                   requireNoSpacesAround: ["."],
@@ -523,7 +536,6 @@ void showWelcome() {
                   "(",
                   '"Welcome to"',
                   ")",
-                  ";",
                 ],
                 policy: {
                   requireNoSpacesAround: ["."],
@@ -541,7 +553,6 @@ void showWelcome() {
                   "(",
                   "2",
                   ")",
-                  ";",
                 ],
                 policy: {
                   requireNoSpacesAround: ["."],
@@ -561,7 +572,6 @@ void showWelcome() {
                   ",",
                   "16",
                   ")",
-                  ";",
                 ],
                 policy: {
                   requireNoSpacesAround: ["."],
@@ -577,11 +587,8 @@ void showWelcome() {
                     values: ["println", "print"],
                   },
                   "(",
-                  '"',
-                  "Timer",
-                  '"',
+                  "\"Timer\"",
                   ")",
-                  ";",
                 ],
                 policy: {
                   requireNoSpacesAround: ["."],
@@ -589,18 +596,25 @@ void showWelcome() {
               } as const,
               27: {
                 type: "pattern",
-                parts: ["display", ".", "display()", ";"],
+                parts: ["display", ".", "display", "(", ")",],
                 policy: {
                   requireNoSpacesAround: ["."],
                 },
               } as const,
               28: {
                 type: "pattern",
-                parts: ["delay", "(", "2500", ")", ";"],
+                parts: [
+                  "delay",
+                  "(",
+                  {
+                    p: "number",
+                  },
+                  ")",
+                ],
               } as const,
               29: {
                 type: "pattern",
-                parts: ["display", ".", "clearDisplay", "()", ";"],
+                parts: ["display", ".", "clearDisplay", "(",")" ],
               } as const,
             }),
             blankExplanations: {
@@ -704,7 +718,10 @@ void showWelcome() {
 __EDITOR[WELCOME]__
 
 ^^`,
-            descAfterCode:`What is your new Welcome Function called? __BLANK[WELCOMENAME]__`
+            descAfterCode:`What is your new Welcome Function called?   __BLANK[WELCOMENAME]__`,
+            answerKey: buildAnswerKey({
+              WELCOMENAME: K.id().bind("WELCOMENAME"),
+            }),
           },
         ],
       },
