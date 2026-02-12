@@ -684,7 +684,12 @@ answerKey: buildAnswerKey({
   ],
 } as const),
 }),
-      }]
+      },{
+        topicTitle: "Try Simulation",
+        descBeforeCode:`Paste the code into simaulator and run it to check if your modified welcome message displays as intended.`,
+
+      }
+    ]
     },
 
     {
