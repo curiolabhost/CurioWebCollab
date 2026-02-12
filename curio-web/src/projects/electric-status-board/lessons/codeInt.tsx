@@ -838,60 +838,58 @@ Variables let the Arduino remember things like button states, menu positions, or
         ],
       },
 
-      {
-        id: 2,
-        title: "Step 2: Practice with Variables",
-        optional: true,
+    {
+      id: 2,
+      optional:true,
+      title: "Step 2: Practice with Variables",
+      desc: "Fill in the blanks to practice different variable types.",
+
+      codes: [
+        {
+          descBeforeCode: `**Naming Variables**:
+Here you will fill in the blanks to define variables in a correct syntax. Try to use the real information so it feels personal!`,
+          title: "Practice: Basic Variables",
+          code: `^^__BLANK[NAMETYPE]__ name = "__BLANK[NAME1]__";
+int year = __BLANK[YEAR]__;
+String month = "__BLANK[MONTH]__";
+bool ready = __BLANK[READY]__;  
+float temperature = __BLANK[TEMP]__;
+__BLANK[DATETYPE]__ date = "12/25/2025";
+__BLANK[BUTTONTYPE]__ buttonState = false;
+int __BLANK[NAME2]__ = 365^^;`,
         answerKey: {
-          NAMETYPE: ["String"],
-          NAME1: {
-            type: "string",
-            regex: "^[A-Za-z][A-Za-z0-9]*$", // any word starting with a letter
-          },
+          NAMETYPE: ["String", "char"],
+          NAME1: { type: "string", regex: "^[^\\n\\r]+$" }, // allow anything non-empty inside quotes
           YEAR: { type: "range", min: 1900, max: 2100 },
-          MONTH: [
-            "January",
-            "February",
-            "March",
-            "April",
-            "May",
-            "June",
-            "July",
-            "August",
-            "September",
-            "October",
-            "November",
-            "December",
-          ],
+          MONTH: { type: "string", regex: "^[A-Za-z]+$" },
           READY: ["true", "false"],
-          TEMP: { type: "range", min: -50, max: 150 },
+          TEMP: { type: "range" },
           DATETYPE: ["String"],
           BUTTONTYPE: ["bool"],
-          NAME2: {
-            type: "string",
-            regex: "^[A-Za-z_][A-Za-z0-9_]*$", // valid C identifier (variable name)
-          },
-          COUNTER: ["3"],
-          LEVEL: ["4"],
+          NAME2: { type: "identifier" },
         },
+
         blankExplanations: {
           NAMETYPE:
-            "Pick a type that can store text in Arduino (something that works with quotes).",
+            "This blank is the variable TYPE. If you want text in quotes, use String. If you want one character, use char.",
           NAME1:
-            "Enter a name as text inside quotes (make it personal if you want).",
-          YEAR: "Enter a year as a number (no quotes).",
-          MONTH: "Enter a month as text inside quotes.",
-          READY: "This must be true or false (no quotes).",
-          TEMP: "Enter a temperature number (decimals are allowed).",
+            "A name inside quotes. Example: Emily. (You can type any word here; it’s just practice.)",
+          YEAR:
+            "A year number (no quotes). Example: 2026.",
+          MONTH:
+            "A month written as a word inside quotes. Example: January.",
+          READY:
+            "A boolean value. Only true or false (no quotes).",
+          TEMP:
+            "A number that can be decimal. Example: 72.5.",
           DATETYPE:
-            'Use a type that can store text like a date formatted as "12/25/2025".',
+            "Because you’re storing the date in quotes (\"12/25/2025\"), the type must be String.",
           BUTTONTYPE:
-            "Use the type meant for true/false values (button pressed or not).",
+            "buttonState stores true/false, so the type should be bool.",
           NAME2:
-            "Pick a valid variable name for the value 365 (no spaces, no symbols).",
-          COUNTER: "Start at 0 and count how many times you add 1.",
-          LEVEL: "Start at 1, then apply +1 and +2 in order.",
+            "A valid variable name for the last line. Example: daysInYear. Must start with a letter/underscore and contain no spaces.",
         },
+
         blankDifficulties: {
           NAMETYPE: "easy",
           NAME1: "easy",
@@ -902,128 +900,187 @@ Variables let the Arduino remember things like button states, menu positions, or
           DATETYPE: "easy",
           BUTTONTYPE: "easy",
           NAME2: "easy",
-          COUNTER: "easy",
-          LEVEL: "easy",
         },
-        codes: [
-          {
-            topicTitle: "Practice Pack: Basic Variables + Counter + Level",
-            descBeforeCode: `**Naming Variables**:
-Here you will fill in the blanks to define variables in a correct syntax. Try to use the real information so it feels personal!`,
-            imageGridBeforeCode: null,
-            descBetweenBeforeAndCode: `**Understanding changes in Variables:**`,
-            code: `^^__BLANK[NAMETYPE]__ name = "__BLANK[NAME1]__";
-int year = __BLANK[YEAR]__;
-String month = "__BLANK[MONTH]__";
-bool ready = __BLANK[READY]__;  
-float temperature = __BLANK[TEMP]__;
-__BLANK[DATETYPE]__ date = "12/25/2025";
-__BLANK[BUTTONTYPE]__ buttonState = false;
-int __BLANK[NAME2]__ = 365^^;
 
-^^// Practice: Counter^^
-int counter = 0;
-
-counter = counter + 1;
-counter = counter + 1;
-counter = counter + 1;
-
-^^// Practice: Level^^
-int level = 1;
-
-level = level + 1;
-level = level + 2;`,
-            descAfterCode: `String uses double quotation \`" "\`.
+          descAfterCode: `String uses double quotation \`"" ""\`.
 Char uses single quotation \`' '\`.
 Integer does not need anything surrounding the numbers. 
-Boolean only allows true or false. 
+Boolean only allows true or false. `,
+        },
+        {
+          descBeforeCode: `**Understanding changes in Variables:**`,
+          title: "Practice: Counter",
+          code: `^^int counter = 0;
 
-What does the counter now read?    __BLANK[COUNTER]__
-
-What does the level now read?    __BLANK[LEVEL]__`,
-            imageGridAfterCode: null,
-            descAfterImage: null,
-            hint: null,
+counter = counter + 1;
+counter = counter + 1;
+counter = counter + 1;^^`,
+          descAfterCode: `What does the counter now read?    __BLANK[COUNTER]__`,
+          answerKey: {
+            COUNTER: ["3"],
           },
-        ],
-      },
-
-      {
-        id: 3,
-        title: "Step 3: What Is a List (Array)?",
-        optional: true,
-        answerKey: {
-          ARRAYTYPE: ["String"],
-          ARRAYNAME: { type: "regex", regex: "^[A-Za-z_]\\w*\\[\\]$" },
-          ARRAY: {
-            type: "regex",
-            regex:
-              '^\\{\\s*".+"\\s*,\\s*".+"\\s*,\\s*".+"\\s*,\\s*".+"\\s*\\}$',
+          blankExplanations: {
+            COUNTER:
+              "Counter starts at 0 and you add 1 three times (0→1→2→3). Final value is 3.",
           },
-          VARRAYTYPE: ["String"],
-          VARRAYNAME: { type: "identifier" },
-          CALL: { type: "regex", regex: "^[A-Za-z_]\\w*\\[\\d+\\]$" },
+          blankDifficulties: {
+            COUNTER: "easy",
+          },},
+        {
+          title: "Practice: Level",
+          code: `^^int level = 1;
+
+level = level + 1;
+level = level + 2;^^`,
+          answerKey: {
+            LEVEL: ["4"],
+          },
+          blankExplanations: {
+            LEVEL:
+              "Level starts at 1, then +1 makes 2, then +2 makes 4. Final value is 4.",
+          },
+          blankDifficulties: {
+            LEVEL: "easy",
+          },
+          descAfterCode: `What does the level now read?    __BLANK[LEVEL]__`,
         },
-        blankExplanations: {
-          ARRAYTYPE: "Use a type that can store words (colors) as text.",
-          ARRAYNAME:
-            "Give your array a name and include [] to show it’s a list.",
-          ARRAY:
-            "Fill in a curly-brace list with 4 quoted colors separated by commas.",
-          VARRAYTYPE:
-            "Use a text type for the variable that stores a chosen color.",
-          VARRAYNAME:
-            "Pick a variable name for the chosen color (valid identifier).",
-          CALL: "Access one item by index like colors[0], colors[1], etc.",
-        },
-        blankDifficulties: {
-          ARRAYTYPE: "easy",
-          ARRAYNAME: "easy",
-          ARRAY: "medium",
-          VARRAYTYPE: "easy",
-          VARRAYNAME: "easy",
-          CALL: "easy",
-        },
-        codes: [
-          {
-            topicTitle: "Practice: Arrays",
-            descBeforeCode:
-              "A list (array) stores many values under one variable name. This is perfect for storing multiple menu options.",
-            imageGridBeforeCode: {
-              columns: 1,
-              items: [
-                {
-                  imageSrc: "/electric-status-board/images/array.png",
-                  label: "Array visual",
-                },
-              ],
-            },
-            descBetweenBeforeAndCode: null,
-            code: `// List of four numbers^^
+      ],
+    },
+
+    {
+      id: 3,
+      optional:true,
+      title: "Step 3: What Is a List (Array)?",
+      desc:
+        "A list (array) stores many values under one variable name. This is perfect for storing multiple menu options.",
+      hint: "Arrays are 0-indexed: the first item is at index 0.",
+
+      codes: [
+        {
+          // imageGrid
+          imageGridBeforeCode: {
+            columns: 1,
+            rows: 1,
+            items: [{ imageSrc: "/electric-status-board/array.png", label: "Array example" }],
+          },},{
+          topicTitle: "Practice 1: Arrays",
+          descBetweenBeforeAndCode: `Here we practice creating arrays of strings and accessing items by index. Fill the blanks below to complete the examples.`,
+
+          title: `Practice: Arrays`,
+          code: `//<< List of four numbers^^
 int numbers[] = {1, 2, 3, 4};
 int select = numbers [1];^^
 
-// List of five chars. ^^
+//<< List of five chars. ^^
 char favLetters[] = {'A', 'D', 'F', 'H', 'K', 'M'};
 char best = favLetters[3];^^
 
-// Create an array of String of four differet colors. ^^
-__BLANK[ARRAYTYPE]__  __BLANK[ARRAYNAME]__ = __BLANK[ARRAY]__;^^
+//<< Create an array of String of four different colors. ^^
+__BLANK[ARRAYTYPE]__  __BLANK[ARRAYNAME]__ = __BLANK[ARRAY]__;
 
-// Assign a variable named favoriteColor that calls your favorite color within the array. ^^
+//<< Assign a variable named favoriteColor that calls your favorite color within the array. 
+//<< Use your array variable to call using an index. 
 __BLANK[VARRAYTYPE]__  __BLANK[VARRAYNAME]__ = __BLANK[CALL]__;^^`,
-            descAfterCode: `Arrays group related data together:
+          answerKey: {
+            ARRAYTYPE: ["String"],
+            ARRAYNAME: {
+              type: "string",
+              regex: "^[A-Za-z_][A-Za-z0-9_]*\\s*\\[\\s*\\]$",
+            },
+            ARRAY: { type: "string", regex: "^\\{.*\\}$" },
+            VARRAYTYPE: ["String"],
+            VARRAYNAME: { type: "identifier" },
+            CALL: {
+              type: "string",
+              regex: "^[A-Za-z_][A-Za-z0-9_]*\\s*\\[\\s*\\d+\\s*\\]$",
+            },
+          },
+
+          blankExplanations: {
+            ARRAYTYPE: "The data type for a text array is usually String.",
+            ARRAYNAME:
+              "Write a valid array name ending with [], like colors[] or favColors[].",
+            ARRAY:
+              "Write the array initializer in curly braces, like {\"Red\", \"Blue\", \"Green\", \"Yellow\"}.",
+            VARRAYTYPE:
+              "The variable that stores one color from the array should also be a String.",
+            VARRAYNAME: "Pick a variable name like favoriteColor.",
+            CALL:
+              "Call one element from your array using an index, like colors[2].",
+          },
+
+          descAfterCode: `Arrays group related data together:
   - \`numbers[0]\` gives the **first** item → \`1\`  
   - \`numbers[1]\` gives the second item → \`2\`  
   - \`numbers[3]\` gives the last item → \`4\`
 
 Arrays are extremely useful when you want your code to handle lots of similar values without writing dozens of separate variables.`,
-            imageGridAfterCode: null,
-            descAfterImage: null,
-            hint: "Arrays are 0-indexed: the first item is at index 0.",
+        },{
+          descAfterCode: `**Problems:** 
+What does the integer variable \`select\` read after the code runs?    __BLANK[SELECTPRACTICE]__
+What does the char variable \`best\` read after the code runs?    __BLANK[BEST]__`,
+          answerKey: {
+            SELECTPRACTICE: ["2"],
+            BEST: ["H"],
           },
-        ],
-      },
+        },
+        {
+          topicTitle: "Practice 2: Array Index",
+          title: `More Practice:`,
+          code: `^^String days[] = {"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"};
+
+//Fill in the blanks:
+days[3] =  __BLANK[DAY]__
+days[1] =  __BLANK[DAY2]__
+days[__BLANK[DAY3]__] = "Monday"
+days[__BLANK[DAY4]__] = "Sunday"^^`,
+
+          answerKey: {
+            DAY: ["\"Thursday\""],
+            DAY2: ["\"Tuesday\""],
+            DAY3: ["0"],
+            DAY4: ["6"],
+          },
+          blankExplanations: {
+            DAY: "day at the 3rd index in list",
+            DAY2: "day at the 1st index in list",
+            DAY3: "index of Monday in list",
+            DAY4: "index of Sunday in list",
+          },
+        },
+        {
+          topicTitle: "Practice 3: Using Varaibles for Arrays",
+          title: `More Practice:`,
+          code: `^^int index = 3;
+String menu[] = {"pasta", "pizza", "salad", "soup", "sandwich"};
+String todaySpecial = menu[index];^^`,
+          descAfterCode: `What does the variable \`todaySpecial\` read after the code runs?    __BLANK[TODAYSPECIAL]__`,
+          answerKey: {
+            TODAYSPECIAL: ["soup","\"soup\""],
+          },
+        },{
+        title: `More Practice:`,
+        code:
+`^^__BLANK[FOOD1]__ __BLANK[FOOD2]__ = __BLANK[FOOD3]__; // create an index variable and assign it as 1
+
+__BLANK[FOOD4]__ __BLANK[FOOD5]__ = {"charger", "headphones", "laptop", "mouse", "keyboard"};
+String __BLANK[FOOD6]__ = __BLANK[FOOD8]__[__BLANK[FOOD7]__]; // create a variable to store the item indexed by the index variable you created right above
+^^`,
+        descAfterCode: `What does the variable  __BLANK[FOOD6]__ read after the code runs?    __BLANK[FOOD6ANSWER]__`,
+        answerKey: buildAnswerKey({
+          FOOD1: ["int"],
+          FOOD2: K.id().bind("deviceIndex"),
+          FOOD3: ["1"],
+          FOOD4: ["const char*", "String"],
+          FOOD5: { type: "pattern", parts: [{ p: "identifier", bindAs: "deviceList" }, "[", "]"] } as const,
+          FOOD6: { type: "pattern", parts: [{ p: "identifier", bindAs: "selectedDevice" }] } as const,
+          FOOD7: K.same("deviceIndex"),
+          FOOD8: K.same("deviceList"),
+          FOOD6ANSWER: ['"headphones"',"headphones"],
+        }),
+      }
+      ],
+    },
 
       {
         id: 4,
@@ -1071,7 +1128,7 @@ Arrays are extremely useful when you want your code to handle lots of similar va
           {
             topicTitle: "Create your main options array",
             descBeforeCode: `Instead of making many separate variables for each options, we store them all in a single array so the menu can move through them easily.
-Before we can display a menu, we need to **store the menu options** somewhere. In this project, we keep the top-level menu labels (\`Clock\`, \`Timer\` or \`Pomodoro\`) inside a **string array**. 
+Before we can display a menu, we need to **store the menu options** somewhere. In this project, we keep the top-level menu labels (\`Clock\`, \`Timer\` or \`Pomodoro\`) inside a \`const char*\` array. We are not using \`String\` here because we want to keep it memory-efficient. String type arrays take up a lot of memory and can cause instability on microcontrollers with limited RAM.  
 
 \`Clock\` : for displaying time 
 \`Timer\` : for starting a timer and Pomodoro
@@ -1080,17 +1137,10 @@ Before we can display a menu, we need to **store the menu options** somewhere. I
             descBetweenBeforeAndCode: null,
             code: `^^
 //<< List of main menu options
-__BLANK[33]__  __BLANK[34]__ = { //define array name
+__BLANK[33]__  __BLANK[34]__[] = { //define array name
   __BLANK[36]__, //menu option 1 ("Clock" or "Timer" etc.)
   __BLANK[35]__, //menu option 2
 };^^
-
-void setup(){
- ...
-}
-
-void loop(){
-}
 `,
             answerKey: buildAnswerKey({
               33: K.str({ oneOf: ["String", "const char*"] }),
@@ -1101,12 +1151,10 @@ void loop(){
                     p: "identifier",
                     bindAs: "mainMenu",
                   },
-                  "[",
-                  "]",
                 ],
               } as const,
-              35: K.str(),
-              36: K.str(),
+              35: K.str({ requireQuoted: true }),
+              36: K.str({ requireQuoted: true }).bind("mainMenuOption1"),
             }),
 
             blankExplanations: {
@@ -1132,7 +1180,8 @@ void loop(){
           },
           {
             topicTitle: "Using the Main Menu Array",
-            descBeforeCode: `We will need to create an index variable for the main menu array that will increment/decrement depending on the button presses (NEXT and PREVIOUS).
+            descBeforeCode: `Arrays don’t automatically know how many items they contain, so we store the total count in a variable.
+Create a variable that stores the total **number** of main menu options in the array.
 `,
             imageGridBeforeCode: null,
             descBetweenBeforeAndCode: null,
@@ -1144,14 +1193,10 @@ __BLANK[33]__ __BLANK[34]__ = {
 
 __BLANK[37]__ __BLANK[38]__ = __BLANK[39]__;   //total number of items in the main menu array
 __BLANK[40]__ __BLANK[41]__ = __BLANK[42]__; //counter index for the main menu array. Assign 0.
-^^
-
-void setup(){
- ...
-}
-
-void loop(){
-}`,
+^^`,
+            descAfterCode:`These two variables let the menu scroll correctly. In our code we can check the value of the index variable to know which menu option we are currently on and we can **check our index against the total number of menu options** to know when to wrap around the menu:
+@ If it is past the last item → wrap back to the first  
+@ If it is before the first → wrap to the last.`,
             answerKey: buildAnswerKey({
               37: K.str({ oneOf: ["int"] }),
               38: K.id().bind("totalMain"),
@@ -1186,8 +1231,9 @@ void loop(){
             code: `//<< Practice how you can use the array using the index counter variable you just made. ^^
   String practice = __BLANK[MMENUNAME1]__ [__BLANK[MINDEX1]__];^^`,
             answerKey: buildAnswerKey({
-              MENUNAME1: K.same("mainMenu"),
+              MMENUNAME1: K.same("mainMenu"),
               MINDEX1: K.same("mainIndex"),
+              MENULIST2: K.same("mainMenuOption1"),
             }),
 
             descAfterCode: `What would the String \`practice\` read?   __BLANK[MENULIST2]__`,
