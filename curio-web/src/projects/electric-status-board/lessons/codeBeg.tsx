@@ -910,7 +910,8 @@ blankExplanations: {
             columns: 1,
             rows: 1,
             items: [{ imageSrc: "/electric-status-board/array.png", label: "Array example" }],
-          },
+          },},{
+          topicTitle: "Practice 1: Arrays",
           descBetweenBeforeAndCode: `Here we practice creating arrays of strings and accessing items by index. Fill the blanks below to complete the examples.`,
 
           title: `Practice: Arrays`,
@@ -928,7 +929,6 @@ __BLANK[ARRAYTYPE]__  __BLANK[ARRAYNAME]__ = __BLANK[ARRAY]__;
 //<< Assign a variable named favoriteColor that calls your favorite color within the array. 
 //<< Use your array variable to call using an index. 
 __BLANK[VARRAYTYPE]__  __BLANK[VARRAYNAME]__ = __BLANK[CALL]__;^^`,
-
           answerKey: {
             ARRAYTYPE: ["String"],
             ARRAYNAME: {
@@ -963,8 +963,17 @@ __BLANK[VARRAYTYPE]__  __BLANK[VARRAYNAME]__ = __BLANK[CALL]__;^^`,
   - \`numbers[3]\` gives the last item → \`4\`
 
 Arrays are extremely useful when you want your code to handle lots of similar values without writing dozens of separate variables.`,
+        },{
+          descAfterCode: `**Problems:** 
+What does the integer variable \`select\` read after the code runs?    __BLANK[SELECTPRACTICE]__
+What does the char variable \`best\` read after the code runs?    __BLANK[BEST]__`,
+          answerKey: {
+            SELECTPRACTICE: ["2"],
+            BEST: ["H"],
+          },
         },
         {
+          topicTitle: "Practice 2: Array Index",
           title: `More Practice:`,
           code: `^^String days[] = {"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"};
 
@@ -987,6 +996,37 @@ days[__BLANK[DAY4]__] = "Sunday"^^`,
             DAY4: "index of Sunday in list",
           },
         },
+        {
+          topicTitle: "Practice 3: Using Varaibles for Arrays",
+          title: `More Practice:`,
+          code: `^^int index = 3;
+String menu[] = {"pasta", "pizza", "salad", "soup", "sandwich"};
+String todaySpecial = menu[index];^^`,
+          descAfterCode: `What does the variable \`todaySpecial\` read after the code runs?    __BLANK[TODAYSPECIAL]__`,
+          answerKey: {
+            TODAYSPECIAL: ["soup","\"soup\""],
+          },
+        },{
+        title: `More Practice:`,
+        code:
+`^^__BLANK[FOOD1]__ __BLANK[FOOD2]__ = __BLANK[FOOD3]__; // create an index variable and assign it as 1
+
+__BLANK[FOOD4]__ __BLANK[FOOD5]__ = {"charger", "headphones", "laptop", "mouse", "keyboard"};
+String __BLANK[FOOD6]__ = __BLANK[FOOD8]__[__BLANK[FOOD7]__]; // create a variable to store the item indexed by the index variable you created right above
+^^`,
+        descAfterCode: `What does the variable  __BLANK[FOOD6]__ read after the code runs?    __BLANK[FOOD6ANSWER]__`,
+        answerKey: buildAnswerKey({
+          FOOD1: ["int"],
+          FOOD2: K.id().bind("deviceIndex"),
+          FOOD3: ["1"],
+          FOOD4: ["const char*", "String"],
+          FOOD5: { type: "pattern", parts: [{ p: "identifier", bindAs: "deviceList" }, "[", "]"] } as const,
+          FOOD6: { type: "pattern", parts: [{ p: "identifier", bindAs: "selectedDevice" }] } as const,
+          FOOD7: K.same("deviceIndex"),
+          FOOD8: K.same("deviceList"),
+          FOOD6ANSWER: ['"headphones"',"headphones"],
+        }),
+      }
       ],
     },
 
