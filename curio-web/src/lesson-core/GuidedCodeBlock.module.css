@@ -174,7 +174,7 @@
   /* One Dark syntax (from your extractor) */
   --code-string: rgb(152, 195, 121);
   --code-func: rgb(96, 169, 229);
-  --code-comment: rgb(125, 135, 153);
+  --code-comment: #82a8abff;
   --code-number: rgb(229, 192, 123);
   --code-error: rgb(224, 108, 117);
   --code-operator: rgb(209, 154, 102);

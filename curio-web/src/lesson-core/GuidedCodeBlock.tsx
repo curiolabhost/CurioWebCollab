@@ -30,6 +30,8 @@ function editorPersistKey(globalKey: string, editorId: string) {
 
 const guidedHighlighter = tagHighlighter([
   { tag: t.comment, class: styles.syntaxComment },
+{ tag: t.lineComment, class: styles.syntaxComment },
+{ tag: t.blockComment, class: styles.syntaxComment },
 
   { tag: t.string, class: styles.syntaxString },
   { tag: t.number, class: styles.syntaxNumber },
@@ -331,7 +333,7 @@ function splitComment(lineTokens: TemplateTok[]) {
         // "//<<" means: keep this comment inline (do NOT split)
         if (after.startsWith("//<<")) {
           const normalized = s.replace("//<<", "//");
-          codeTokens.push({ ...tok, content: normalized });
+          codeTokens.push({ ...tok, content: normalized, highlight: true });
           continue;
         }
 
@@ -368,15 +370,56 @@ function estimateTemplateTokenWidthPx(tok: TemplateTok, valueLen: number) {
   return 0;
 }
 
-// Convert a snippet of C++ code into <span> runs styled by oneDarkHighlightStyle.
-// This avoids embedding a CodeMirror editor inline.
-function renderOneDarkHighlighted(text: string, keyPrefix: string) {
+type HiRange = { from: number; to: number; cls: string };
+
+/**
+ * Compute highlight ranges for a given text. Results can be cached by caller.
+ */
+function computeHighlightRanges(text: string): HiRange[] {
   const tree = cpp().language.parser.parse(text);
 
-  const ranges: Array<{ from: number; to: number; cls: string }> = [];
+  const ranges: HiRange[] = [];
   highlightTree(tree, guidedHighlighter, (from, to, cls) => {
     if (from < to && cls) ranges.push({ from, to, cls });
   });
+
+  ranges.sort((a, b) => a.from - b.from || a.to - b.to);
+  return ranges;
+}
+
+/**
+ * Cache wrapper: returns previously computed ranges when text matches.
+ * Optional: simple max-size eviction to prevent unbounded growth.
+ */
+function getHighlightRangesCached(
+  cache: Map<string, HiRange[]>,
+  text: string,
+  maxEntries = 800
+): HiRange[] {
+  const hit = cache.get(text);
+  if (hit) return hit;
+
+  const ranges = computeHighlightRanges(text);
+  cache.set(text, ranges);
+
+  // basic eviction (FIFO-ish): delete oldest inserted
+  if (cache.size > maxEntries) {
+    const firstKey = cache.keys().next().value as string | undefined;
+    if (firstKey) cache.delete(firstKey);
+  }
+
+  return ranges;
+}
+
+
+// Convert a snippet of C++ code into <span> runs styled by oneDarkHighlightStyle.
+// This avoids embedding a CodeMirror editor inline.
+function renderOneDarkHighlightedCached(
+  text: string,
+  keyPrefix: string,
+  cache: Map<string, HiRange[]>
+) {
+  const ranges = getHighlightRangesCached(cache, text);
 
   if (!ranges.length) {
     return (
@@ -385,8 +428,6 @@ function renderOneDarkHighlighted(text: string, keyPrefix: string) {
       </span>
     );
   }
-
-  ranges.sort((a, b) => a.from - b.from || a.to - b.to);
 
   const out: React.ReactNode[] = [];
   let pos = 0;
@@ -400,14 +441,13 @@ function renderOneDarkHighlighted(text: string, keyPrefix: string) {
       const end = r ? Math.min(r.from, text.length) : text.length;
       const plain = text.slice(pos, end);
 
-      // split plain into identifier runs vs non-identifier runs
+      // keep your identifier styling behavior (same idea as your old code)
       let j = 0;
       while (j < plain.length) {
         const start = j;
         const ch = plain[j];
 
         if (isIdentChar(ch) && /[A-Za-z_]/.test(ch)) {
-          // identifier run must start with letter/_ (not number)
           j++;
           while (j < plain.length && isIdentChar(plain[j])) j++;
 
@@ -417,10 +457,9 @@ function renderOneDarkHighlighted(text: string, keyPrefix: string) {
               className={styles.syntaxVar}
             >
               {plain.slice(start, j)}
-            </span>,
+            </span>
           );
         } else {
-          // non-identifier run
           j++;
           while (
             j < plain.length &&
@@ -435,7 +474,7 @@ function renderOneDarkHighlighted(text: string, keyPrefix: string) {
               className={styles.codeNormal}
             >
               {plain.slice(start, j)}
-            </span>,
+            </span>
           );
         }
       }
@@ -448,13 +487,14 @@ function renderOneDarkHighlighted(text: string, keyPrefix: string) {
     out.push(
       <span key={`${keyPrefix}-h-${pos}`} className={r.cls}>
         {text.slice(pos, end)}
-      </span>,
+      </span>
     );
     pos = end;
   }
 
   return out;
 }
+
 
 export default function GuidedCodeBlock({
   step,
@@ -543,6 +583,9 @@ export default function GuidedCodeBlock({
   );
   const draftRef = React.useRef(draftValues);
   draftRef.current = draftValues;
+
+  const hiCacheRef = React.useRef<Map<string, HiRange[]>>(new Map());
+
 
   // On navigation/restore: sync draft to latest GLOBAL values (do not keep old step-local merges)
   React.useEffect(() => {
@@ -687,25 +730,28 @@ export default function GuidedCodeBlock({
   }, [editRegions]);
 
   // Estimate a fixed code-column width so comments line up
-  const codeColPx = React.useMemo(() => {
-    let maxCodePx = 0;
-    for (const { codeTokens } of templateLineSplits) {
-      let lineW = 0;
-      for (const t of codeTokens) {
-        if (t.type === "text") {
-          lineW += estimateTemplateTokenWidthPx(t, 0);
-        } else if (t.type === "blank") {
-          const v = String((draftValues || {})[t.name] ?? "");
-          lineW += estimateTemplateTokenWidthPx(t, v.length);
-        } else {
-          lineW += estimateTemplateTokenWidthPx(t as any, 0);
-        }
-      }
-      if (lineW > maxCodePx) maxCodePx = lineW;
-    }
+const DEFAULT_BLANK_CHARS = 10;
 
-    return maxCodePx + 12;
-  }, [templateLineSplits, draftValues]);
+const codeColPx = React.useMemo(() => {
+  let maxCodePx = 0;
+
+  for (const { codeTokens } of templateLineSplits) {
+    let lineW = 0;
+    for (const tok of codeTokens) {
+      if (tok.type === "text") {
+        lineW += estimateTemplateTokenWidthPx(tok, 0);
+      } else if (tok.type === "blank") {
+        lineW += estimateTemplateTokenWidthPx(tok, DEFAULT_BLANK_CHARS);
+      } else {
+        lineW += 0;
+      }
+    }
+    if (lineW > maxCodePx) maxCodePx = lineW;
+  }
+
+  return maxCodePx + 12;
+}, [templateLineSplits]);
+
 
   /* ==========================================================
      RENDER CODE FROM TEMPLATE (NO re-tokenize per keystroke)
@@ -779,9 +825,10 @@ const renderCodeFromTemplate = () => {
                 >
                   {ln.trim().length === 0
                     ? " "
-                    : renderOneDarkHighlighted(
+                    : renderOneDarkHighlightedCached(
                         ln,
-                        `saved-${regionId}-${lineIdx}-${j}`
+                        `saved-${regionId}-${lineIdx}-${j}`,
+                        hiCacheRef.current
                       )}
                 </span>
               </div>
@@ -859,9 +906,10 @@ const renderCodeFromTemplate = () => {
                         key={`t-${lineIdx}-${idx}`}
                         className={styles.hiWrap}
                       >
-                        {renderOneDarkHighlighted(
+                        {renderOneDarkHighlightedCached(
                           textContent,
-                          `hi-${lineIdx}-${idx}`
+                          `hi-${lineIdx}-${idx}`,
+                          hiCacheRef.current
                         )}
                       </span>
                     );
