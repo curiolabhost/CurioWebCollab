@@ -1415,7 +1415,8 @@ void showStatusScreen() {
   __BLANK[42]__; //set cursor to (0,0)
   display.println(__BLANK[45]__[__BLANK[46]__]); //display an item in the array of status called by the index variable 
   __BLANK[44]__; //display 
-// ##END:SHOWSTATUS_SCREEN##^^
+// ##END:SHOWSTATUS_SCREEN##
+}^^
 `
 
         }],

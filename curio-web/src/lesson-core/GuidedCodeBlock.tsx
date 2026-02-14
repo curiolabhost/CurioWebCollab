@@ -1193,88 +1193,126 @@ const renderCodeFromTemplate = () => {
     }
   };
 
+  function buildCopyText(raw: string, values: Record<string, any>) {
+  let textToCopy = String(raw || "");
+
+  // 0) Replace edit regions with saved versions (and remove markers)
+  {
+    const lines = textToCopy.replace(/\r\n/g, "\n").split("\n");
+    const regions = parseEditRegionsFromLines(lines);
+
+    const savedById: Record<string, string> = {};
+    for (const r of regions) {
+      const editKey = editPersistKey(editScopeKey, r.id);
+      const v = values[editKey];
+      if (typeof v === "string" && v.trim().length) {
+        savedById[r.id] = v;
+      }
+    }
+
+    const outLines: string[] = [];
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+
+      // skip marker lines
+      if (/^\s*\/\/\s*##EDIT:[A-Z0-9_]+(?::[A-Z]+=\d+)*##\s*$/.test(line)) continue;
+      if (/^\s*\/\/\s*##END:[A-Z0-9_]+##\s*$/.test(line)) continue;
+
+      // if we are at the start of a region and have saved code,
+      // emit saved code and skip the scaffold region lines
+      const regionHere = regions.find((r) => r.startLine === i);
+      if (regionHere && savedById[regionHere.id]) {
+        outLines.push(savedById[regionHere.id]);
+        i = regionHere.endLine; // skip scaffold lines
+        continue;
+      }
+
+      outLines.push(line);
+    }
+
+    textToCopy = outLines.join("\n");
+  }
+
+  // 1) Replace blanks
+  for (const [name, value] of Object.entries(values || {})) {
+    const placeholder = `__BLANK[${name}]__`;
+    const replacement =
+      value && String(value).trim().length > 0 ? String(value) : "_____";
+    textToCopy = textToCopy.split(placeholder).join(replacement);
+  }
+
+  // Any remaining blanks -> _____
+  textToCopy = textToCopy.replace(/__BLANK\[[A-Z0-9_]+\]__/g, "_____");
+
+  // 2) Replace editor blocks: __EDITOR[id]__ -> the saved editor text
+  textToCopy = textToCopy.replace(
+    /__EDITOR\[([^\]]+)\]__/g,
+    (_match: string, idRaw: string) => {
+      const id = String(idRaw || "").trim();
+      const editorKey = editorPersistKey(editScopeKey, id);
+      const v = values[editorKey];
+      return v == null ? "" : String(v);
+    }
+  );
+
+  // Any remaining editor markers -> remove
+  textToCopy = textToCopy.replace(/__EDITOR\[[^\]]+\]__/g, "");
+
+  // 3) Strip highlight markers
+  textToCopy = textToCopy.replace(/\^\^/g, "");
+
+  return textToCopy;
+}
+
 
 const copyCode = async (raw: string) => {
   try {
-    let textToCopy = String(raw || "");
-
     // Merge global + latest draft so we don't miss either
     const values: Record<string, any> = {
       ...(mergedBlanks || {}),
       ...(draftRef.current || {}),
     };
 
-    // 0) Replace edit regions with saved versions (and remove markers)
-    {
-      const lines = textToCopy.replace(/\r\n/g, "\n").split("\n");
-      const regions = parseEditRegionsFromLines(lines);
-
-      const savedById: Record<string, string> = {};
-      for (const r of regions) {
-        const editKey = editPersistKey(editScopeKey, r.id);
-        const v = values[editKey];
-        if (typeof v === "string" && v.trim().length) {
-          savedById[r.id] = v;
-        }
-      }
-
-      const outLines: string[] = [];
-
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-
-        // skip marker lines
-        if (/^\s*\/\/\s*##EDIT:[A-Z0-9_]+(?::[A-Z]+=\d+)*##\s*$/.test(line)) continue;
-        if (/^\s*\/\/\s*##END:[A-Z0-9_]+##\s*$/.test(line)) continue;
-
-        // if we are at the start of a region and have saved code,
-        // emit saved code and skip the scaffold region lines
-        const regionHere = regions.find((r) => r.startLine === i);
-        if (regionHere && savedById[regionHere.id]) {
-          outLines.push(savedById[regionHere.id]);
-          i = regionHere.endLine; // skip scaffold lines
-          continue;
-        }
-
-        outLines.push(line);
-      }
-
-      textToCopy = outLines.join("\n");
-    }
-
-    // 1) Replace blanks
-    for (const [name, value] of Object.entries(values || {})) {
-      const placeholder = `__BLANK[${name}]__`;
-      const replacement =
-        value && String(value).trim().length > 0 ? String(value) : "_____";
-      textToCopy = textToCopy.split(placeholder).join(replacement);
-    }
-
-    // Any remaining blanks -> _____
-    textToCopy = textToCopy.replace(/__BLANK\[[A-Z0-9_]+\]__/g, "_____");
-
-    // 2) Replace editor blocks: __EDITOR[id]__ -> the saved editor text
-    textToCopy = textToCopy.replace(
-      /__EDITOR\[([^\]]+)\]__/g,
-      (_match: string, idRaw: string) => {
-        const id = String(idRaw || "").trim();
-        const editorKey = editorPersistKey(editScopeKey, id);
-        const v = values[editorKey];
-        return v == null ? "" : String(v);
-      }
-    );
-
-    // Any remaining editor markers -> remove
-    textToCopy = textToCopy.replace(/__EDITOR\[[^\]]+\]__/g, "");
-
-    // 3) Strip highlight markers
-    textToCopy = textToCopy.replace(/\^\^/g, "");
-
+    const textToCopy = buildCopyText(raw, values);
     await navigator.clipboard.writeText(textToCopy);
   } catch {
     // ignore
   }
 };
+
+const handleCopy = React.useCallback(
+  (e: React.ClipboardEvent) => {
+    try {
+      const sel = window.getSelection();
+      const selectedText = sel ? sel.toString() : "";
+
+      // If user is copying a small snippet, don't override.
+      // Tune this threshold if you want.
+      const MIN_OVERRIDE_CHARS = 60;
+
+      if (!selectedText || selectedText.trim().length < MIN_OVERRIDE_CHARS) {
+        return; // allow normal browser copy of the selection
+      }
+
+      // Otherwise override with the clean “copy to editor” version
+      e.preventDefault();
+
+      const values: Record<string, any> = {
+        ...(mergedBlanks || {}),
+        ...(draftRef.current || {}),
+      };
+
+      const textToCopy = buildCopyText(code, values);
+      e.clipboardData.setData("text/plain", textToCopy);
+    } catch {
+      // if anything goes wrong, fall back to default copy behavior
+      return;
+    }
+  },
+  [code, mergedBlanks]
+);
+
 
   // counts attempts ONLY when wrong (per blank)
   const checkBlanks = () => {
@@ -1395,10 +1433,14 @@ const copyCode = async (raw: string) => {
 
         {horizontalScroll ? (
           <div className={styles.hScroll}>
-            <div className={styles.codeBox}>{renderCodeFromTemplate()}</div>
+            <div className={styles.codeBox} onCopy={handleCopy}>
+              {renderCodeFromTemplate()}
+            </div>
           </div>
         ) : (
-          <div className={styles.codeBox}>{renderCodeFromTemplate()}</div>
+          <div className={styles.codeBox} onCopy={handleCopy}>
+            {renderCodeFromTemplate()}
+          </div>
         )}
 
         {activeEditId && (

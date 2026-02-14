@@ -5,3 +5,53 @@
 .errorGlyph {
   background: rgba(239, 68, 68, 0.9) !important;
 }
+/* Make CodeMirror fill and paint full height background */
+.cmWrap {
+  height: 100%;
+  background: #282c34; /* One Dark background */
+  overflow: hidden; /* prevent editor layers from painting outside bounds */
+}
+.cmWrap :global(.cm-editor) {
+  height: 100% !important;
+  background: #282c34 !important;
+}
+
+.cmWrap :global(.cm-scroller) {
+  height: 100% !important;
+  background: #282c34 !important;
+}
+
+.cmWrap :global(.cm-scroller) {
+  height: 100% !important;
+  overflow-y: auto !important;  /* ✅ restore vertical scroll */
+  overflow-x: auto !important;  /* keep horizontal scroll too */
+}
+
+.cmWrap :global(.cm-content) {
+  min-height: 100% !important;
+}
+
+/* Dark scrollbar (Chrome / Edge / Safari) */
+.cmWrap :global(.cm-scroller::-webkit-scrollbar) {
+  width: 10px;
+}
+
+.cmWrap :global(.cm-scroller::-webkit-scrollbar-track) {
+  background: #0b1220; /* dark track */
+}
+
+.cmWrap :global(.cm-scroller::-webkit-scrollbar-thumb) {
+  background: #334155; /* slate thumb */
+  border-radius: 999px;
+  border: 2px solid #0b1220; /* gives padding effect */
+}
+
+.cmWrap :global(.cm-scroller::-webkit-scrollbar-thumb:hover) {
+  background: #475569;
+}
+
+/* Firefox */
+.cmWrap :global(.cm-scroller) {
+  scrollbar-width: thin;
+  scrollbar-color: #334155 #0b1220;
+}

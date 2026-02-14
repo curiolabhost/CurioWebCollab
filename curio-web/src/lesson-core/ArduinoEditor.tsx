@@ -2,7 +2,13 @@
 
 import * as React from "react";
 import dynamic from "next/dynamic";
-const Editor = dynamic(() => import("@monaco-editor/react"), { ssr: false });
+import CodeMirror from "@uiw/react-codemirror";
+import { cpp } from "@codemirror/lang-cpp";
+import { oneDark } from "@codemirror/theme-one-dark";
+import { lintGutter, linter, Diagnostic } from "@codemirror/lint";
+import { autocompletion, CompletionContext } from "@codemirror/autocomplete";
+import { EditorView } from "@codemirror/view";
+
 
 import styles from "./ArduinoEditor.module.css";
 
@@ -34,6 +40,20 @@ const ARDUINO_FUNCS = [
   "setup",
   "loop",
 ];
+
+function arduinoCompletionSource(ctx: CompletionContext) {
+  const word = ctx.matchBefore(/[A-Za-z_][A-Za-z0-9_.]*/);
+  if (!word || (word.from === word.to && !ctx.explicit)) return null;
+
+  return {
+    from: word.from,
+    options: ARDUINO_FUNCS.map((label) => ({
+      label,
+      type: "function" as const,
+    })),
+  };
+}
+
 
 type CoachItem = {
   tag: "OK" | "WARN" | "TIP" | "NEXT" | "IDEA";
@@ -71,6 +91,26 @@ type VerifyError = {
   column?: number;
   message: string;
 };
+
+function verifyErrorsToDiagnostics(view: EditorView, errors: VerifyError[]): Diagnostic[] {
+  const doc = view.state.doc;
+
+  return (errors || []).map((e) => {
+    const line = doc.line(Math.max(1, e.line));
+    const col = Math.max(1, e.column || 1);
+
+    const from = Math.min(line.to, line.from + (col - 1));
+    const to = Math.min(line.to, from + 1);
+
+    return {
+      from,
+      to,
+      severity: "error",
+      message: e.message,
+    };
+  });
+}
+
 
 type HelpMode = "popup" | "popup-more" | "popup-lesson" | "arduino-verify" |"project-coach";
 
@@ -116,7 +156,6 @@ async function saveArduinoState(projectSlug: string, lessonSlug: string, code: s
   if (!res.ok) return null;
   return (await res.json()) as { ok: boolean; arduino?: { code?: string } | null };
 }
-
 
 
 // Text formatting
@@ -173,9 +212,12 @@ export default function ArduinoEditor({
   const dragStartYRef = React.useRef(0);
   const dragStartHeightRef = React.useRef(0);
 
-  const editorRef = React.useRef<any>(null);
-  const monacoRef = React.useRef<any>(null);
   const rafRef = React.useRef<number | null>(null);
+
+  const cmViewRef = React.useRef<EditorView | null>(null);
+  const diagnosticsRef = React.useRef<Diagnostic[]>([]);
+  const [cmDiagnostics, setCmDiagnostics] = React.useState<Diagnostic[]>([]);
+
 
   const serverSaveTimerRef = React.useRef<number | null>(null);
 
@@ -195,6 +237,51 @@ export default function ArduinoEditor({
   /* ============================================================
      Load editor content
   ============================================================ */
+
+  const verifyLinter = React.useMemo(
+  () =>
+    linter(() => {
+      return diagnosticsRef.current;
+    }),
+  []
+);
+
+const clickToExplainErrors = React.useMemo(() => {
+  return EditorView.domEventHandlers({
+    mousedown: (event, view) => {
+      const pos = view.posAtCoords({ x: event.clientX, y: event.clientY });
+      if (pos == null) return;
+
+      const hit = diagnosticsRef.current.find((d) => pos >= d.from && pos <= d.to);
+      if (!hit) return;
+
+      const line = view.state.doc.lineAt(pos).number;
+      const code = view.state.doc.toString();
+      const snippet = getCodeContext(code, line, 4);
+
+      const id = makeId();
+      const errorKey = `${line}:${hit.message}`;
+
+      setPopovers((prev) => [
+        ...prev,
+        {
+          id,
+          errorKey,
+          top: event.clientY - 10,
+          left: event.clientX + 10,
+          content: "Loading diagnosis...",
+          mode: "popup",
+          busy: true,
+          ctx: { code, snippet, message: hit.message, line },
+        },
+      ]);
+
+      sendErrorToAI("popup", snippet, hit.message, line, "popover", id);
+    },
+  });
+}, []);
+
+
   React.useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -492,125 +579,6 @@ function coachTagBg(tag: CoachTag) {
       .join("\n");
   }
 
-  const beforeMount = (monaco: any) => {
-    monaco.editor.defineTheme("arduino-dark", {
-      base: "vs-dark",
-      inherit: true,
-      rules: [
-        { token: "comment", foreground: "#82a8abff" },
-        { token: "keyword.control", foreground: "#a1cd75ff" },
-        { token: "keyword", foreground: "#a1cd75ff" },
-        { token: "keyword.arduino", foreground: "#ce9261ff", fontStyle: "bold" },
-        { token: "type", foreground: "#4EC9B0" },
-        { token: "number", foreground: "#B5CEA8" },
-        { token: "string", foreground: "#CE9178" },
-        { token: "string.escape", foreground: "#D7BA7D" },
-        { token: "constant", foreground: "#DCDCAA" },
-        { token: "preprocessor", foreground: "#9CDCFE" },
-        { token: "function", foreground: "#ce9261ff" },
-      ],
-      colors: {
-        "editor.background": "#0f172a",
-        "editorLineNumber.foreground": "#6b7280",
-        "editorCursor.foreground": "#ffffff",
-        "editor.lineHighlightBackground": "#111827",
-        "editor.selectionBackground": "#264F78",
-        "editorIndentGuides": "#1f2933",
-        "editorError.foreground": "#ff5555",
-        "editorError.background": "#8d0000ff",
-        "editorGutter.background": "#0f172a",
-      },
-    });
-
-    monaco.languages.setMonarchTokensProvider("cpp", {
-      keywords: ["for", "while", "do", "switch", "case", "break", "continue", "if", "else", "return"],
-      arduinoKeywords: [
-        "setup",
-        "loop",
-        "pinMode",
-        "digitalWrite",
-        "digitalRead",
-        "analogWrite",
-        "analogRead",
-        "delay",
-        "millis",
-        "micros",
-        "Serial",
-        "Serial.begin",
-        "Serial.print",
-        "Serial.println",
-      ],
-      arduinoConstants: ["HIGH", "LOW", "INPUT", "OUTPUT", "INPUT_PULLUP"],
-      typeKeywords: [
-        "void",
-        "int",
-        "long",
-        "float",
-        "double",
-        "char",
-        "bool",
-        "boolean",
-        "unsigned",
-        "short",
-        "byte",
-        "word",
-        "String",
-        "static",
-        "const",
-      ],
-      tokenizer: {
-        root: [
-          [/^\s*#\s*\w+/, "preprocessor"],
-          [/\b(pinMode|digitalWrite|digitalRead|analogWrite|analogRead|delay|millis|micros)\b(?=\s*\()/, "function"],
-          [
-            /[a-zA-Z_]\w*(?:\.[a-zA-Z_]\w*)*/,
-            {
-              cases: {
-                "@arduinoKeywords": "keyword.arduino",
-                "@arduinoConstants": "constant",
-                "@typeKeywords": "type",
-                "@keywords": "keyword",
-                "@default": "identifier",
-              },
-            },
-          ],
-          { include: "@whitespace" },
-          [/[{}()\[\]]/, "@brackets"],
-          [/0b[01]+/, "number"],
-          [/0x[\da-fA-F]+/, "number"],
-          [/\d+(\.\d+)?([eE][\-+]?\d+)?/, "number"],
-          [/"/, "string", "@string"],
-          [/'[^\\']'/, "string"],
-        ],
-        whitespace: [
-          [/[ \t\r\n]+/, "white"],
-          [/\/\/.*$/, "comment"],
-          [/\/\*/, "comment", "@comment"],
-        ],
-        comment: [
-          [/[^\/*]+/, "comment"],
-          [/\*\//, "comment", "@pop"],
-          [/[\/*]/, "comment"],
-        ],
-        string: [
-          [/[^\\"]+/, "string"],
-          [/\\./, "string.escape"],
-          [/"/, "string", "@pop"],
-        ],
-      },
-    });
-
-    monaco.languages.registerCompletionItemProvider("cpp", {
-      provideCompletionItems: () => ({
-        suggestions: ARDUINO_FUNCS.map((label) => ({
-          label,
-          kind: monaco.languages.CompletionItemKind.Function,
-          insertText: label,
-        })),
-      }),
-    });
-  };
-
   const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:4000";
 
 
@@ -890,106 +858,6 @@ if (target === "bottom") {
 
   };
 
-  const onMount = (editor: any, monaco: any) => {
-    editorRef.current = editor;
-    monacoRef.current = monaco;
-    monaco.editor.setTheme("arduino-dark");
-    setStatus("Ready.");
-
-    editor.onMouseDown((e: any) => {
-      if (!e?.target?.position) return;
-
-      const pos = e.target.position;
-      const line = pos.lineNumber;
-
-      const model = editor.getModel();
-      const markers = monaco.editor.getModelMarkers({ resource: model.uri, owner: "verify" }) || [];
-      const marker = markers.find((m: any) => line >= m.startLineNumber && line <= m.endLineNumber);
-      if (!marker) return;
-      const errorKey = `${marker.startLineNumber}:${marker.startColumn || 1}:${marker.message || ""}`;
-
-
-      const full = editor.getValue() as string;
-      const snippet = getCodeContext(full, marker.startLineNumber, 4);
-
-      // Position near the error token INSIDE the editor (close to code)
-      const anchorPos = { lineNumber: marker.startLineNumber, column: marker.startColumn || 1 };
-      const scrolled = editor.getScrolledVisiblePosition(anchorPos);
-
-      const POPOVER_W = 320;
-      const POPOVER_H = 220;
-      const OFFSET_X = 250;
-      const OFFSET_Y = 20;
-
-      let left = (scrolled?.left ?? 20) + OFFSET_X;
-      let top = (scrolled?.top ?? 20) + OFFSET_Y;
-
-      const editorDom = editor.getDomNode();
-      if (editorDom) {
-        const rect = editorDom.getBoundingClientRect();
-        const maxLeft = rect.width - POPOVER_W - 10;
-        const maxTop = rect.height - POPOVER_H - 10;
-
-        if (left > maxLeft) left = Math.max(10, left - POPOVER_W - OFFSET_X);
-        if (top > maxTop) top = Math.max(10, top - POPOVER_H - OFFSET_Y);
-      }
-
-const existing = popoversRef.current.find((p) => p.errorKey === errorKey);
-
-if (existing) {
-  // Refresh existing popover instead of creating a new one
-  if (existing.busy) return;
-  setPopovers((prev) =>
-    prev.map((p) =>
-      p.id === existing.id
-        ? {
-            ...p,
-            top,
-            left,
-            mode: "popup",
-            busy: true,
-            content: "Loading diagnosis...",
-            ctx: {
-              code: full,
-              snippet,
-              message: marker.message,
-              line: marker.startLineNumber,
-            },
-          }
-        : p
-    )
-  );
-
-  sendErrorToAI("popup", snippet, marker.message, marker.startLineNumber, "popover", existing.id);
-  return;
-}
-
-// Otherwise create a brand new popover
-    const id = makeId();
-
-    setPopovers((prev) => [
-      ...prev,
-      {
-        id,
-        errorKey, 
-        top,
-        left,
-        content: "Loading diagnosis...",
-        mode: "popup",
-        busy: true,
-        ctx: {
-          code: full,
-          snippet,
-          message: marker.message,
-          line: marker.startLineNumber,
-        },
-      },
-    ]);
-
-    sendErrorToAI("popup", snippet, marker.message, marker.startLineNumber, "popover", id);
-
-    });
-  };
 
   // Resizable bottom bar handlers
   function handleDragStart(e: React.MouseEvent<HTMLDivElement>) {
@@ -1051,9 +919,9 @@ if (existing) {
       }
 
       // clear any previous error markers
-      if (editorRef.current && monacoRef.current) {
-        monacoRef.current.editor.setModelMarkers(editorRef.current.getModel(), "verify", []);
-      }
+        diagnosticsRef.current = [];
+        cmViewRef.current?.dispatch({ changes: [] });
+
 
       // close popovers + clear outputs (optional UX)
       setCompilerOutput("");
@@ -1119,9 +987,8 @@ if (existing) {
 };
 
 
-  const handleVerify = async () => {
-    if (!editorRef.current || !monacoRef.current) return;
-
+const handleVerify = async () => {
+  if (!cmViewRef.current) return;
     setStatus("Verifying sketch...");
     setCompilerOutput("");
     setCoachJson(null);
@@ -1161,42 +1028,28 @@ if (existing) {
       if (data.ok) {
         setStatus("Done verifying.");
         if (data.notices?.length) setCompilerOutput(data.notices.join("\n\n"));
-        monacoRef.current.editor.setModelMarkers(editorRef.current.getModel(), "verify", []);
+        diagnosticsRef.current = [];
+        cmViewRef.current.dispatch({ changes: [] }); // refresh linter
         return;
+
       }
 
       const errors: VerifyError[] = data.errors || [];
       setLastErrors(errors);
 
-      monacoRef.current.editor.setModelMarkers(
-        editorRef.current.getModel(),
-        "verify",
-        errors.map((err) => ({
-          startLineNumber: err.line,
-          startColumn: err.column || 1,
-          endLineNumber: err.line,
-          endColumn: (err.column || 1) + 1,
-          message: err.message,
-          severity: monacoRef.current.MarkerSeverity.Error,
-        }))
-      );
+      const diags = verifyErrorsToDiagnostics(cmViewRef.current, errors);
+      diagnosticsRef.current = diags;
 
-      editorRef.current.deltaDecorations(
-        [],
-        errors.map((err) => ({
-          range: new monacoRef.current.Range(err.line, 1, err.line, 1000),
-          options: {
-            isWholeLine: true,
-            className: styles.errorLineHighlight,
-            glyphMarginClassName: styles.errorGlyph,
-          },
-        }))
-      );
+      // refresh linter display
+      cmViewRef.current.dispatch({ changes: [] });
 
-      const outputText = errors.map((err) => `Sketch.ino:${err.line}:${err.column || 1}: error: ${err.message}`).join("\n");
+      const outputText = errors
+        .map((err) => `Sketch.ino:${err.line}:${err.column || 1}: error: ${err.message}`)
+        .join("\n");
 
       setCompilerOutput(outputText);
       setStatus(`Found ${errors.length} error(s).`);
+
     } catch (err) {
       console.error(err);
       setStatus("Verification failed (server error).");
@@ -1224,30 +1077,6 @@ if (existing) {
       setIsExplaining(false);
     }
   };
-
-  const handleReset = () => {
-    setValue(DEFAULT_SKETCH);
-    setCompilerOutput("");
-    setCoachJson(null);
-    setCoachRaw("");
-    setAiHelpMap({});
-    setLastErrors([]);
-    setPopovers([]);
-
-    if (!isFileMode && storageKey) {
-      try {
-        if (typeof window !== "undefined") window.localStorage.setItem(storageKey, DEFAULT_SKETCH);
-      } catch (e) {
-        console.error(e);
-      }
-    }
-
-    setStatus("Sketch reset to default.");
-    if (editorRef.current && monacoRef.current) {
-      monacoRef.current.editor.setModelMarkers(editorRef.current.getModel(), "verify", []);
-    }
-  };
-
   // ---------------- Expand ----------------
   const handleExpand = () => {
     if (typeof window === "undefined") return;
@@ -1602,31 +1431,42 @@ if (existing) {
 
       {/* Editor + footer */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
-        <div style={{ flex: 1, minHeight: 0 }}>
-          <Editor
-            height="100%"
-            width="100%"
-            defaultLanguage="cpp"
+        <div
+          style={{
+            flex: 1,
+            minHeight: 0,
+            overflow: "hidden",     // IMPORTANT: prevents editor layer from painting over footer
+            position: "relative",   // helps stacking behave
+            zIndex: 1,
+            background: "#282c34" 
+          }}
+        >
+        <div className={styles.cmWrap}>
+          <CodeMirror
             value={value}
-            onChange={onChange}
-            beforeMount={beforeMount}
-            onMount={onMount}
-            options={{
-              fontSize: 14,
-              fontFamily:
-                "'Fira Code', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
-              minimap: { enabled: false },
-              automaticLayout: true,
-              wordWrap: "off",
-              tabSize: 2,
-              insertSpaces: true,
-              smoothScrolling: true,
-              scrollBeyondLastLine: false,
-              bracketPairColorization: { enabled: true },
-              glyphMargin: true,
-              lineNumbers: "on",
+            height="100%"
+            theme={oneDark}
+            style={{ height: "100%" }}
+            extensions={[
+              cpp(),
+              lintGutter(),
+              verifyLinter,
+              clickToExplainErrors,
+              autocompletion({ override: [arduinoCompletionSource] }),
+            ]}
+            basicSetup={{
+              lineNumbers: true,
+              highlightActiveLine: true,
+              autocompletion: true,
+              foldGutter: false,
             }}
+            onCreateEditor={(view) => {
+              cmViewRef.current = view;
+              setStatus("Ready.");
+            }}
+            onChange={(v) => onChange(v)}
           />
+          </div>
         </div>
 
         {/* Drag handle */}
@@ -1638,6 +1478,8 @@ if (existing) {
             background: "#020617",
             borderTop: "1px solid #1f2937",
             borderBottom: "1px solid #1f2937",
+            position: "relative",
+            zIndex: 50,
           }}
         >
           <div
@@ -1659,8 +1501,10 @@ if (existing) {
             //maxHeight: "60vh",
             borderTop: "1px solid #1f2937",
             background: "#020617",
+            position: "relative",
             fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
             fontSize: 11,
+            zIndex: 50, 
             color: "#9ca3af",
             display: "flex",
             flexDirection: "column",
