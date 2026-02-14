@@ -334,6 +334,14 @@ function coerceViewMode(raw: string | null): ViewMode {
   return "lesson";
 }
 
+function sharedLevelKeyFromLessonSlug(lessonSlug: string) {
+  // code-beg / circuit-beg -> beg
+  // code-int / circuit-int -> int
+  const m = String(lessonSlug || "").match(/^(code|circuit)-(.+)$/);
+  return m?.[2] || lessonSlug || "beg";
+}
+
+
 /* ============================================================
    Main
 ============================================================ */
@@ -554,6 +562,15 @@ async function apiLoadDoneSet() {
      Coding | Circuits toggle
   ============================================================ */
 
+  const sharedUiPrefix = React.useMemo(() => {
+  const ptr = parseCurioPtr(storagePrefix);
+  const project = ptr?.slug || "project";
+  const level = sharedLevelKeyFromLessonSlug(ptr?.lessonSlug || "");
+  // stable across code<->circuit, and across lesson navigation within the same level
+  return `curio:${project}:level:${level}`;
+}, [storagePrefix]);
+
+
   type LessonType = "coding" | "circuits";
   const LESSON_TYPE_KEY = `${storagePrefix}:lessonType`;
 
@@ -617,7 +634,11 @@ async function apiLoadDoneSet() {
 
   // one scope + one split key (no Pluto)
   const notesScopeKey = React.useMemo(() => trackPrefix, [trackPrefix]);
-  const notesSplitKey = React.useMemo(() => `${trackPrefix}:split:notes`, [trackPrefix]);
+  const notesSplitKey = React.useMemo(
+  () => `${sharedUiPrefix}:split:notes`,
+  [sharedUiPrefix]
+);
+
 
 /* ============================================================
    Notes (My Notes) visibility + persistence (driven by header)
@@ -761,7 +782,7 @@ React.useEffect(() => {
       localBlanksPrefixKey: localBlanksPrefixKey || d.localBlanksPrefixKey,
       navKey: d.navKey,
       sidebarKey: d.sidebarKey,
-      splitKey: d.splitKey,
+      splitKey: `${sharedUiPrefix}:split:lesson-editor`,
       viewModeKey: `${trackPrefix}:viewMode`,
     };
   }, [trackPrefix, doneSetKey, overallProgressKey, globalBlanksKey, localBlanksPrefixKey]);
@@ -783,13 +804,26 @@ React.useEffect(() => {
   }, [storagePrefix]);
 
   const EDITOR_KEYS = React.useMemo(() => {
-    const prefix = trackPrefix || "lesson";
+    // Share editor state between Coding/Circuits for the same project+level
+    const ptr = parseCurioPtr(storagePrefix);
+
+    const project = ptr?.slug || "project";
+    const lessonSlugHere = ptr?.lessonSlug || "";
+
+    // Extract level from code-beg / circuit-beg / code-int / circuit-int / etc.
+    const m = lessonSlugHere.match(/^(code|circuit)-(.+)$/);
+    const level = m?.[2] || "beg";
+
+    // Stable prefix for BOTH tracks
+    const prefix = `curio:${project}:level:${level}`;
+
     return {
       arduinoSketchKey: `${prefix}:editor:arduino:sketch`,
       wokwiUrlKey: `${prefix}:editor:wokwi:url`,
       wokwiDiagramKey: `${prefix}:editor:wokwi:diagram`,
     };
-  }, [trackPrefix]);
+  }, [storagePrefix]);
+
 
   const lessonsList = React.useMemo(() => lessonNumbers(activeLessonSteps), [activeLessonSteps]);
 

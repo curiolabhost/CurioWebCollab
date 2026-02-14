@@ -1,3 +1,4 @@
+
 // app/api/arduino-state/route.ts
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
@@ -18,6 +19,19 @@ function getKey(req: Request) {
   return { projectSlug, lessonSlug };
 }
 
+/**
+ * We want Arduino editor state shared between Coding/Circuits for the SAME level.
+ * Examples:
+ *  - code-beg + circuit-beg   => editor-beg
+ *  - code-int + circuit-int   => editor-int
+ *  - code-adv + circuit-adv   => editor-adv
+ */
+function toSharedLessonSlug(lessonSlug: string) {
+  const m = String(lessonSlug || "").match(/^(code|circuit)-(.+)$/);
+  const level = m?.[2] || lessonSlug || "";
+  return level ? `editor-${level}` : "";
+}
+
 export async function GET(req: Request) {
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
@@ -27,18 +41,22 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: false, error: "missing projectSlug/lessonSlug" }, { status: 400 });
   }
 
+  const sharedLessonSlug = toSharedLessonSlug(lessonSlug);
+  if (!sharedLessonSlug) {
+    return NextResponse.json({ ok: false, error: "invalid lessonSlug" }, { status: 400 });
+  }
+
   const row = await db.lessonState.findUnique({
-    where: { userId_projectSlug_lessonSlug: { userId, projectSlug, lessonSlug } },
+    where: {
+      userId_projectSlug_lessonSlug: { userId, projectSlug, lessonSlug: sharedLessonSlug },
+    },
     select: { blanks: true, updatedAt: true },
   });
 
   const blanks = (row?.blanks as any) ?? {};
   const arduino: ArduinoState | null = blanks?.arduino ?? null;
 
-  return NextResponse.json(
-    { ok: true, arduino },
-    { headers: { "Cache-Control": "no-store" } }
-  );
+  return NextResponse.json({ ok: true, arduino }, { headers: { "Cache-Control": "no-store" } });
 }
 
 export async function POST(req: Request) {
@@ -55,13 +73,20 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: "missing projectSlug/lessonSlug" }, { status: 400 });
     }
 
+    const sharedLessonSlug = toSharedLessonSlug(lessonSlug);
+    if (!sharedLessonSlug) {
+      return NextResponse.json({ ok: false, error: "invalid lessonSlug" }, { status: 400 });
+    }
+
     // (optional) small guard so we don't store insane sizes
     if (code.length > 200_000) {
       return NextResponse.json({ ok: false, error: "code too large" }, { status: 413 });
     }
 
     const existing = await db.lessonState.findUnique({
-      where: { userId_projectSlug_lessonSlug: { userId, projectSlug, lessonSlug } },
+      where: {
+        userId_projectSlug_lessonSlug: { userId, projectSlug, lessonSlug: sharedLessonSlug },
+      },
       select: { blanks: true },
     });
 
@@ -76,8 +101,10 @@ export async function POST(req: Request) {
     };
 
     const row = await db.lessonState.upsert({
-      where: { userId_projectSlug_lessonSlug: { userId, projectSlug, lessonSlug } },
-      create: { userId, projectSlug, lessonSlug, blanks: nextBlanks },
+      where: {
+        userId_projectSlug_lessonSlug: { userId, projectSlug, lessonSlug: sharedLessonSlug },
+      },
+      create: { userId, projectSlug, lessonSlug: sharedLessonSlug, blanks: nextBlanks },
       update: { blanks: nextBlanks },
       select: { blanks: true, updatedAt: true },
     });
@@ -94,3 +121,4 @@ export async function POST(req: Request) {
     );
   }
 }
+

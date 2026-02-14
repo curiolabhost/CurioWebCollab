@@ -1,7 +1,8 @@
+
 "use client";
 
 import * as React from "react";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, X } from "lucide-react";
 
 export type LessonSidebarProps = {
   className?: string;
@@ -136,6 +137,24 @@ export const LessonSidebar: React.FC<LessonSidebarProps> = (props) => {
       <div className="p-5">
         {/* top row */}
         <div className="flex items-center justify-between mb-4">
+          {/* LEFT: circular hide button */}
+          <button
+            type="button"
+            onClick={onHide}
+            aria-label="Hide sidebar"
+            title="Hide"
+            className={[
+              "inline-flex items-center justify-center",
+              "h-9 w-9 rounded-full",
+              "border border-gray-200 bg-white",
+              "text-gray-600 hover:bg-gray-100 hover:text-gray-900",
+              "transition-colors shadow-sm",
+            ].join(" ")}
+          >
+            <X className="w-4 h-4" />
+          </button>
+
+          {/* RIGHT: track buttons */}
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -173,14 +192,6 @@ export const LessonSidebar: React.FC<LessonSidebarProps> = (props) => {
               Coding
             </button>
           </div>
-
-          <button
-            type="button"
-            onClick={onHide}
-            className="text-xs text-gray-500 hover:text-gray-700"
-          >
-            Hide
-          </button>
         </div>
 
         {/* NORMAL lessons */}
@@ -381,3 +392,4 @@ export const LessonSidebar: React.FC<LessonSidebarProps> = (props) => {
     </div>
   );
 };
+
