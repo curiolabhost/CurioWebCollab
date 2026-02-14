@@ -24,6 +24,9 @@ void loop() {
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:4000";
 
+console.log("NEXT_PUBLIC_API_BASE =", process.env.NEXT_PUBLIC_API_BASE);
+console.log("API_BASE being used =", API_BASE);
+
 
 const ARDUINO_FUNCS = [
   "pinMode",
@@ -578,9 +581,6 @@ function coachTagBg(tag: CoachTag) {
       })
       .join("\n");
   }
-
-  const API_BASE = process.env.NEXT_PUBLIC_API_BASE ?? "http://localhost:4000";
-
 
   async function streamHelpSSE(payload: any, onToken: (t: string) => void) {
     const res = await fetch(`${API_BASE}/ai/help`, {
