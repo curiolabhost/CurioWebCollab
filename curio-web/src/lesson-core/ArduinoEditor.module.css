@@ -3,7 +3,7 @@
   background: rgba(239, 68, 68, 0.12) !important;
 }
 .errorGlyph {
-  background: rgba(239, 68, 68, 0.9) !important;
+  background: rgba(157, 50, 50, 0.9) !important;
 }
 /* Make CodeMirror fill and paint full height background */
 .cmWrap {
@@ -55,3 +55,35 @@
   scrollbar-width: thin;
   scrollbar-color: #334155 #0b1220;
 }
+
+.cmErrorLine {
+  background: rgba(239, 119, 119, 0.12);
+}
+
+/* wavy underline on the token only */
+.cmErrorUnderline {
+  text-decoration-line: underline;
+  text-decoration-style: wavy;
+  text-decoration-color: rgba(239, 68, 68, 0.95);
+}
+
+.cmWrap :global(.cm-lint-marker) {
+  background-image: none !important;
+  mask-image: none !important;
+  -webkit-mask-image: none !important;
+}
+
+
+
+
+.cmWrap :global(.cm-lint-marker-error) {
+  width: 5px;
+  height: 18px;
+  border-radius: 999px;
+  background: #b33535 !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+
+

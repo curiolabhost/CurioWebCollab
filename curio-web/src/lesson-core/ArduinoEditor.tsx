@@ -5,9 +5,10 @@ import dynamic from "next/dynamic";
 import CodeMirror from "@uiw/react-codemirror";
 import { cpp } from "@codemirror/lang-cpp";
 import { oneDark } from "@codemirror/theme-one-dark";
-import { lintGutter, linter, Diagnostic } from "@codemirror/lint";
+import { lintGutter, linter, Diagnostic, forceLinting, setDiagnostics } from "@codemirror/lint";
 import { autocompletion, CompletionContext } from "@codemirror/autocomplete";
-import { EditorView } from "@codemirror/view";
+import { EditorView, Decoration, DecorationSet } from "@codemirror/view";
+import { StateEffect, StateField } from "@codemirror/state";
 
 
 import styles from "./ArduinoEditor.module.css";
@@ -57,6 +58,41 @@ function arduinoCompletionSource(ctx: CompletionContext) {
   };
 }
 
+const setErrorLinesEffect = StateEffect.define<number[]>();
+
+const errorLineDecosField = StateField.define<DecorationSet>({
+  create() {
+    return Decoration.none;
+  },
+  update(decos, tr) {
+    // keep decorations aligned with edits
+    if (tr.docChanged) decos = decos.map(tr.changes);
+
+    for (const e of tr.effects) {
+      if (e.is(setErrorLinesEffect)) {
+        const lines = e.value || [];
+        if (!lines.length) return Decoration.none;
+
+        const uniqSorted = Array.from(new Set<number>(lines))
+          .filter((n: number) => Number.isFinite(n) && n >= 1 && n <= tr.state.doc.lines)
+          .sort((a: number, b: number) => a - b);
+
+        const ranges = uniqSorted.map((ln: number) => {
+          const line = tr.state.doc.line(ln);
+          return Decoration.line({ class: styles.cmErrorLine }).range(line.from);
+        });
+
+        return Decoration.set(ranges, true);
+      }
+    }
+
+    return decos;
+  },
+  provide: (f) => EditorView.decorations.from(f),
+});
+
+const errorLineHighlighter = [errorLineDecosField];
+
 
 type CoachItem = {
   tag: "OK" | "WARN" | "TIP" | "NEXT" | "IDEA";
@@ -95,15 +131,62 @@ type VerifyError = {
   message: string;
 };
 
+function isIdentChar(ch: string) {
+  return /[A-Za-z0-9_]/.test(ch);
+}
+
 function verifyErrorsToDiagnostics(view: EditorView, errors: VerifyError[]): Diagnostic[] {
   const doc = view.state.doc;
 
   return (errors || []).map((e) => {
-    const line = doc.line(Math.max(1, e.line));
+    const ln = Math.max(1, Math.min(e.line || 1, doc.lines));
+    const line = doc.line(ln);
+    const text = line.text;
+
+    // Arduino columns are 1-based, but sometimes unreliable -> clamp hard
     const col = Math.max(1, e.column || 1);
 
-    const from = Math.min(line.to, line.from + (col - 1));
-    const to = Math.min(line.to, from + 1);
+    // Convert to index in line.text
+    let idx = col - 1;
+
+    // clamp into [0, text.length] (allow == length for "end of line" errors)
+    idx = Math.max(0, Math.min(idx, text.length));
+
+    // If idx points to whitespace, nudge left, then right (helps with "expected ';'" etc)
+    let probe = idx;
+    while (probe > 0 && probe < text.length && /\s/.test(text[probe])) probe--;
+    if (probe === idx) {
+      while (probe < text.length && /\s/.test(text[probe])) probe++;
+    }
+    idx = Math.min(probe, Math.max(0, text.length - 1));
+
+    // Decide range within the line
+    let start = idx;
+    let end = idx + 1;
+
+    if (text.length > 0 && isIdentChar(text[idx])) {
+      while (start > 0 && isIdentChar(text[start - 1])) start--;
+      end = idx;
+      while (end < text.length && isIdentChar(text[end])) end++;
+    } else {
+      // punctuation/unknown — underline 1 char if possible
+      start = Math.max(0, Math.min(idx, Math.max(0, text.length - 1)));
+      end = Math.min(text.length, start + 1);
+    }
+
+    // Convert to doc positions and clamp to doc bounds
+    let from = line.from + start;
+    let to = line.from + end;
+
+    const docLen = doc.length;
+    from = Math.max(0, Math.min(from, docLen));
+    to = Math.max(0, Math.min(to, docLen));
+
+    // Guarantee a non-empty range (needed for gutter markers)
+    if (to <= from) {
+      from = Math.max(line.from, Math.min(line.to - 1, docLen - 1));
+      to = Math.min(from + 1, line.to, docLen);
+    }
 
     return {
       from,
@@ -113,6 +196,7 @@ function verifyErrorsToDiagnostics(view: EditorView, errors: VerifyError[]): Dia
     };
   });
 }
+
 
 
 type HelpMode = "popup" | "popup-more" | "popup-lesson" | "arduino-verify" |"project-coach";
@@ -989,73 +1073,105 @@ if (target === "bottom") {
 
 const handleVerify = async () => {
   if (!cmViewRef.current) return;
-    setStatus("Verifying sketch...");
-    setCompilerOutput("");
-    setCoachJson(null);
-    setCoachRaw("");
 
-    setLastErrors([]);
-    setAiHelpMap({});
+  const view = cmViewRef.current;
+
+  setStatus("Verifying sketch...");
+  setCompilerOutput("");
+  setCoachJson(null);
+  setCoachRaw("");
+
+  setLastErrors([]);
+  setAiHelpMap({});
+
+  // ✅ clear previous UI at the start
+  view.dispatch({ effects: setErrorLinesEffect.of([]) });
+  view.dispatch(setDiagnostics(view.state, [])); // ✅ clears underline + gutter markers immediately
+  diagnosticsRef.current = [];
+
+  try {
+    const res = await fetch(`${API_BASE}/verify-arduino`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code: value }),
+    });
+
+    const text = await res.text();
+    let data: any = null;
 
     try {
-      const res = await fetch(`${API_BASE}/verify-arduino`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ code: value }),
-      });
-
-      let data: any = null;
-      const text = await res.text();
-
-      try {
-        data = text ? JSON.parse(text) : null;
-      } catch {
-        data = null;
-      }
-
-      if (!res.ok) {
-        setStatus(`Verification failed (${res.status}).`);
-        setCompilerOutput(text || "Server returned an empty response.");
-        return;
-      }
-
-      if (!data) {
-        setStatus("Verification failed (invalid response).");
-        setCompilerOutput(text || "Server returned an empty response.");
-        return;
-      }
-
-      if (data.ok) {
-        setStatus("Done verifying.");
-        if (data.notices?.length) setCompilerOutput(data.notices.join("\n\n"));
-        diagnosticsRef.current = [];
-        cmViewRef.current.dispatch({ changes: [] }); // refresh linter
-        return;
-
-      }
-
-      const errors: VerifyError[] = data.errors || [];
-      setLastErrors(errors);
-
-      const diags = verifyErrorsToDiagnostics(cmViewRef.current, errors);
-      diagnosticsRef.current = diags;
-
-      // refresh linter display
-      cmViewRef.current.dispatch({ changes: [] });
-
-      const outputText = errors
-        .map((err) => `Sketch.ino:${err.line}:${err.column || 1}: error: ${err.message}`)
-        .join("\n");
-
-      setCompilerOutput(outputText);
-      setStatus(`Found ${errors.length} error(s).`);
-
-    } catch (err) {
-      console.error(err);
-      setStatus("Verification failed (server error).");
-      setCompilerOutput("Server error.");
+      data = text ? JSON.parse(text) : null;
+    } catch {
+      data = null;
     }
-  };
+
+    if (!res.ok) {
+      setStatus(`Verification failed (${res.status}).`);
+      setCompilerOutput(text || "Server returned an empty response.");
+
+      // ✅ keep everything cleared on failure
+      view.dispatch({ effects: setErrorLinesEffect.of([]) });
+      view.dispatch(setDiagnostics(view.state, []));
+      diagnosticsRef.current = [];
+      return;
+    }
+
+    if (!data) {
+      setStatus("Verification failed (invalid response).");
+      setCompilerOutput(text || "Server returned an empty response.");
+
+      // ✅ keep everything cleared on invalid response
+      view.dispatch({ effects: setErrorLinesEffect.of([]) });
+      view.dispatch(setDiagnostics(view.state, []));
+      diagnosticsRef.current = [];
+      return;
+    }
+
+    if (data.ok) {
+      setStatus("Done verifying.");
+      if (data.notices?.length) setCompilerOutput(data.notices.join("\n\n"));
+
+      // ✅ clear lint + line highlights on success
+      view.dispatch(setDiagnostics(view.state, []));
+      diagnosticsRef.current = [];
+      view.dispatch({ effects: setErrorLinesEffect.of([]) });
+      return;
+    }
+
+    const errors: VerifyError[] = data.errors || [];
+    setLastErrors(errors);
+
+    // Build CM diagnostics (underline ranges)
+    const diags = verifyErrorsToDiagnostics(view, errors);
+    diagnosticsRef.current = diags;
+
+    // ✅ push diagnostics directly into CM lint state -> underline + gutter marker
+    view.dispatch(setDiagnostics(view.state, diags));
+
+    // ✅ your full-line highlights
+    view.dispatch({
+      effects: setErrorLinesEffect.of(errors.map((e) => e.line)),
+    });
+
+    const outputText = errors
+      .map((err) => `Sketch.ino:${err.line}:${err.column || 1}: error: ${err.message}`)
+      .join("\n");
+
+    setCompilerOutput(outputText);
+    setStatus(`Found ${errors.length} error(s).`);
+  } catch (err) {
+    console.error(err);
+    setStatus("Verification failed (server error).");
+    setCompilerOutput("Server error.");
+
+    // ✅ clear everything on exception
+    view.dispatch({ effects: setErrorLinesEffect.of([]) });
+    view.dispatch(setDiagnostics(view.state, []));
+    diagnosticsRef.current = [];
+  }
+};
+
+
 
   const explainErrorsWithAI = async () => {
     const code = value || "";
@@ -1449,9 +1565,10 @@ const handleVerify = async () => {
             style={{ height: "100%" }}
             extensions={[
               cpp(),
-              lintGutter(),
               verifyLinter,
+              lintGutter(),
               clickToExplainErrors,
+              errorLineHighlighter,
               autocompletion({ override: [arduinoCompletionSource] }),
             ]}
             basicSetup={{
@@ -1739,4 +1856,3 @@ const handleVerify = async () => {
     </div>
   );
 }
-
