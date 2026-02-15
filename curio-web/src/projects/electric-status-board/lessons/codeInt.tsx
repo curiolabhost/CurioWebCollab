@@ -6,8 +6,8 @@ import * as React from "react";
 import CodeLessonBase from "@/src/lesson-core/CodeLessonBase";
 import ESBProjectMindMapLesson from "./ProjectMindMapLesson";
 import InputPullupCircuitInteractive from "./InputPullupCircuitInteractive";
-import { buildAnswerKey, K } from "@/src/lesson-core/blankKeyBuilder";
-import { generateKeyFromReference } from "@/src/lesson-core/blankKeyGenerator";
+import { buildAnswerKey, K } from "@/src/lesson-core/BlankChecks/blankKeyBuilder";
+import { generateKeyFromReference } from "@/src/lesson-core/BlankChecks/blankKeyGenerator";
 
 export const LESSON_STEPS_INTERMEDIATE: Record<
   number,

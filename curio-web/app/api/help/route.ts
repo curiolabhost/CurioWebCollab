@@ -1,6 +1,12 @@
-// accept this change!
+//Fixing for using Open AI (final)
+
+import OpenAI from "openai";
 
 export const runtime = "nodejs";
+
+function sseEvent(event: string, data: any) {
+  return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+}
 
 function buildPopupInstructions() {
   return [
@@ -49,6 +55,7 @@ function buildPopupLessonInstructions() {
   return [
     "You help debug Arduino/C++ compile errors.",
     "This is the INLINE popup 'Open full help' button.",
+    "Use Markdown, but keep it short (no code blocks).",
     "",
     "Output format:",
     "- 3–5 sentences.",
@@ -69,38 +76,61 @@ function buildVerifyInstructions(sentences: number, verbosity: string) {
     "If describing a fix, keep it high-level; avoid writing exact corrected code unless explicitly asked.",
     `Target length: about ${sentences} sentences. Verbosity: ${verbosity}.`,
     "Avoid filler. Do not mention internal policies.",
+
+    "Format your response in Markdown:",
+"- Use short headings if helpful (e.g., 'What happened', 'How to fix').",
+"- Use bullet points for multiple errors.",
+"- Use inline code for tokens/identifiers (like `pinMode`).",
+"Do NOT use fenced code blocks unless you are showing a tiny snippet.",
   ].join("\n");
 }
 
 function buildProjectCoachInstructions(sentences: number, verbosity: string) {
   return [
     "You are an Arduino/C++ project coach.",
-    "Return ONLY valid JSON. No markdown. No extra text.",
-    "The response MUST be valid json.",
+    "You MUST output NDJSON (JSON Lines): one JSON object per line.",
+    "NO markdown. NO backticks. NO extra text. NO surrounding array/object.",
     "",
-    "JSON schema (must match exactly):",
-    "{",
-    '  "summary": string,',
-    '  "hasErrors": boolean,',
-    '  "sections": [',
-    '    { "title": string, "items": [',
-    '      { "tag": "WARN"|"TIP"|"NEXT"|"IDEA", "line": number|null, "text": string, "why": string, "recommendation": string, "code": string|null }',
-    "    ] }",
-    "  ]",
-    "}",
+    "CRITICAL FORMAT RULES:",
+    "- Each JSON object must be on ONE physical line.",
+    "- Do NOT include real newline characters inside any string values.",
+    "  If you need line breaks inside a string, write '\\\\n' (escaped).",
+    "- Every line must be valid JSON by itself.",
     "",
-    "Rules:",
-    `- Target ${sentences} to ${sentences + 6} items total. Verbosity: ${verbosity}.`,
-    "- If compiler errors are provided, set hasErrors=true and include an 'Errors' section first.",
-    "- If no errors:",
-    "  - If the code is too minimal to infer intent, include ONLY an 'Ideas' section with 1 item explaining there isn't enough yet.",
-    "  - Otherwise include sections like 'Improvements', 'Next steps', 'Ideas'.",
-    "- NEVER include [OK] items. Do not use the OK tag at all.",
-    "- 'line' should be the error line number if relevant, else null.",
-    "- 'code' is optional and must be a SHORT snippet (max ~6 lines) or null.",
-    "- Never output code fences. Never output markdown.",
+    "Allowed line shapes ONLY:",
+    `{"type":"summary","summary":string,"hasErrors":boolean}`,
+    `{"type":"section","title":string}`,
+    `{"type":"item","tag":"WARN"|"TIP"|"NEXT"|"IDEA","line":number|null,"text":string,"why":string,"recommendation":string,"code":string|null}`,
+    `{"type":"done"}`,
+    "",
+    "ORDER REQUIREMENTS:",
+    "1) First line MUST be summary.",
+    "2) Then emit sections in this order when applicable:",
+    "   - 'Errors' (only if compiler errors exist)",
+    "   - 'Fix now' (highest impact actions)",
+    "   - 'Improve' (readability/structure)",
+    "   - 'Next steps' (optional)",
+    "3) After each section line, emit its item lines.",
+    "4) Final line MUST be {\"type\":\"done\"} and then stop.",
+    "",
+    "CONTENT RULES FOR EACH ITEM:",
+    "- tag meanings:",
+    "  WARN = must fix / likely breaks compile or behavior",
+    "  TIP  = helpful improvement",
+    "  NEXT = suggested next action",
+    "  IDEA = optional enhancement",
+    "- line: use a number ONLY if clearly supported by the compiler error list; otherwise null.",
+    "- text: one short statement of the issue/opportunity (<= 90 chars).",
+    "- why: 1 short sentence explaining impact/cause (<= 140 chars). Do NOT start with 'Why' or 'Because'.",
+    "- recommendation: 1 short action sentence (<= 140 chars). Start with a verb.",
+    "- code: either null OR a tiny snippet <= 6 lines. If included, it must be plain text (not fenced).",
+    "",
+    `TARGET: ${sentences} to ${sentences + 6} total items. Verbosity: ${verbosity}.`,
+    "Be specific. Avoid filler. Never invent libraries or hardware the user didn’t mention.",
   ].join("\n");
 }
+
+
 
 function buildBlankHelpInstructions(hintStyle: string, hintLevel: number) {
   return [
@@ -131,10 +161,21 @@ function buildBlankHelpInstructions(hintStyle: string, hintLevel: number) {
 export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
 
-  const base =
-    process.env.TOOL_SERVER_BASE_URL ||
-    process.env.OLLAMA_BASE_URL || // backward compat if you used this before
-    "http://3.150.166.11:4000";
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    return new Response(sseEvent("error", { error: "Missing OPENAI_API_KEY on server." }) + sseEvent("done", { ok: false }), {
+      status: 500,
+      headers: {
+        "Content-Type": "text/event-stream; charset=utf-8",
+        "Cache-Control": "no-cache, no-transform",
+        Connection: "keep-alive",
+        "X-Accel-Buffering": "no",
+      },
+    });
+  }
+
+  const client = new OpenAI({ apiKey });
+  const model = process.env.OPENAI_MODEL || "gpt-4o-mini";
 
   const {
     mode = "arduino-verify",
@@ -143,12 +184,10 @@ export async function POST(req: Request) {
     sentences = 3,
     verbosity = "brief",
 
-    // blank-help extras
     blank = null,
     hintStyle = "gentle_nudge",
     hintLevel = 1,
 
-    // optional lesson context
     lessonId = null,
     title = null,
     description = null,
@@ -165,21 +204,11 @@ export async function POST(req: Request) {
         : modeNorm === "popup-lesson"
           ? buildPopupLessonInstructions()
           : modeNorm === "project-coach"
-            ? buildProjectCoachInstructions(
-                Number(sentences) || 8,
-                String(verbosity || "brief"),
-              )
+            ? buildProjectCoachInstructions(Number(sentences) || 8, String(verbosity || "brief"))
             : modeNorm === "blank-help"
-              ? buildBlankHelpInstructions(
-                  String(hintStyle || "gentle_nudge"),
-                  Number(hintLevel) || 1,
-                )
-              : buildVerifyInstructions(
-                  Number(sentences) || 3,
-                  String(verbosity || "brief"),
-                );
+              ? buildBlankHelpInstructions(String(hintStyle || "gentle_nudge"), Number(hintLevel) || 1)
+              : buildVerifyInstructions(Number(sentences) || 3, String(verbosity || "brief"));
 
-  // Build the "userText" your tool server will feed to Ollama/OpenAI
   let userText =
     `Mode: ${modeNorm}\n\n` +
     `Compiler errors (if any):\n${JSON.stringify(errors, null, 2)}\n\n` +
@@ -211,98 +240,84 @@ export async function POST(req: Request) {
   }
 
   const max_output_tokens =
-    modeNorm === "popup"
-      ? 80
-      : modeNorm === "popup-more"
-        ? 220
-        : modeNorm === "popup-lesson"
-          ? 520
-          : modeNorm === "blank-help"
-            ? 450
-            : modeNorm === "project-coach"
-              ? 1100
-              : 450;
+    modeNorm === "popup" ? 80
+    : modeNorm === "popup-more" ? 220
+    : modeNorm === "popup-lesson" ? 520
+    : modeNorm === "blank-help" ? 450
+    : modeNorm === "project-coach" ? 1100
+    : 450;
 
   const temperature =
-    modeNorm === "popup"
-      ? 0.2
-      : modeNorm === "popup-more"
-        ? 0.3
-        : modeNorm === "popup-lesson"
-          ? 0.4
-          : modeNorm === "blank-help"
-            ? 0.35
-            : 0.4;
+    modeNorm === "popup" ? 0.2
+    : modeNorm === "popup-more" ? 0.3
+    : modeNorm === "popup-lesson" ? 0.4
+    : modeNorm === "blank-help" ? 0.35
+    : 0.4;
 
-  const upstreamBody = {
-    ...body,
-    mode: modeNorm,
-    instructions,
-    userText,
-    temperature,
-    max_output_tokens,
-  };
+  const encoder = new TextEncoder();
 
-  const controller = new AbortController();
-  const t = setTimeout(() => controller.abort(), 30000);
+  const stream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      try {
+        const createArgs: any = {
+          model,
+          instructions,
+          stream: true,
+          temperature,
+          max_output_tokens,
+          input: [
+            {
+              role: "user",
+              content: [{ type: "input_text", text: userText }],
+            },
+          ],
+        };
 
-  try {
-    const upstream = await fetch(`${base}/ai/help`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(upstreamBody),
-      signal: controller.signal,
-    });
+        // Force a JSON object for project-coach
+        const openaiStream = await client.responses.create(createArgs);
 
-    if (!upstream.ok) {
-      const text = await upstream.text().catch(() => "");
-      return Response.json(
-        {
-          ok: false,
-          error: `AI server error (${upstream.status}): ${text}`.slice(0, 500),
-        },
-        { status: 502 },
-      );
-    }
-
-    if (!upstream.body) {
-      return Response.json(
-        { ok: false, error: "No response body from AI server" },
-        { status: 502 },
-      );
-    }
-
-    // Stream SSE back to frontend
-    const stream = new ReadableStream({
-      async start(controller2) {
-        const reader = upstream.body!.getReader();
-        try {
-          while (true) {
-            const { value, done } = await reader.read();
-            if (done) break;
-            controller2.enqueue(value);
+        for await (const event of openaiStream as any) {
+          if (event?.type === "response.output_text.delta") {
+            const delta = event.delta ?? "";
+            if (delta) controller.enqueue(encoder.encode(sseEvent("token", { token: delta })));
+            continue;
           }
-        } finally {
-          controller2.close();
-          reader.releaseLock();
-        }
-      },
-    });
 
-    return new Response(stream, {
-      headers: {
-        "Content-Type": "text/event-stream; charset=utf-8",
-        "Cache-Control": "no-cache, no-transform",
-        Connection: "keep-alive",
-      },
-    });
-  } catch (err: any) {
-    console.error("❌ AI proxy error:", err);
-    return Response.json(
-      { ok: false, error: "AI server not reachable" },
-      { status: 502 },
-    );
-  } finally {
-    clearTimeout(t);
-  }
+          if (event?.type === "response.output_text.done") {
+            // IMPORTANT:
+            // Don't emit the final text again, because we've already streamed deltas.
+            continue;
+          }
+
+          if (event?.type === "response.completed") {
+            controller.enqueue(encoder.encode(sseEvent("done", { ok: true })));
+            break;
+          }
+
+          if (event?.type === "response.failed" || event?.type === "error") {
+            const msg = event?.error?.message || event?.message || "AI request failed.";
+            controller.enqueue(encoder.encode(sseEvent("error", { error: msg })));
+            controller.enqueue(encoder.encode(sseEvent("done", { ok: false })));
+            break;
+          }
+        }
+
+        controller.close();
+      } catch (err: any) {
+        const msg = err?.message || "AI request crashed.";
+        controller.enqueue(encoder.encode(sseEvent("error", { error: msg })));
+        controller.enqueue(encoder.encode(sseEvent("done", { ok: false })));
+        controller.close();
+      }
+    },
+  });
+
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "text/event-stream; charset=utf-8",
+      "Cache-Control": "no-cache, no-transform",
+      Connection: "keep-alive",
+      "X-Accel-Buffering": "no",
+    },
+  });
 }

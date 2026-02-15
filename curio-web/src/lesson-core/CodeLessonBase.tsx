@@ -4,11 +4,11 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronDown, ChevronRight, Check, HelpCircle } from "lucide-react";
 
-import { type AnswerSpec, evalAnswerSpec } from "./blankCheckUtils";
+import { type AnswerSpec, evalAnswerSpec } from "./BlankChecks/blankCheckUtils";
 import SplitView from "./SplitView";
-import ArduinoEditor from "./ArduinoEditor";
+import ArduinoEditor from "./ArduinoEditor/ArduinoEditor";
 import CircuitEditor from "./CircuitEditor";
-import GuidedCodeBlock from "./GuidedCodeBlock";
+import GuidedCodeBlock from "./GuidedCodeBlock/GuidedCodeBlock";
 import styles from "./CodeLessonBase.module.css";
 import RightNote from "./RightNote";
 import {LessonSidebar} from "./LessonSidebar";

@@ -137,18 +137,15 @@ export async function POST(req: Request) {
 
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
-    return new Response(
-      sseEvent("error", { error: "Missing API KEY on server." }),
-      {
-        status: 500,
-        headers: {
-          "Content-Type": "text/event-stream; charset=utf-8",
-          "Cache-Control": "no-cache, no-transform",
-          Connection: "keep-alive",
-          "X-Accel-Buffering": "no",
-        },
+    return new Response(sseEvent("error", { error: "Missing OPENAI_API_KEY on server." }) + sseEvent("done", { ok: false }), {
+      status: 500,
+      headers: {
+        "Content-Type": "text/event-stream; charset=utf-8",
+        "Cache-Control": "no-cache, no-transform",
+        Connection: "keep-alive",
+        "X-Accel-Buffering": "no",
       },
-    );
+    });
   }
 
   const client = new OpenAI({ apiKey });
@@ -161,7 +158,6 @@ export async function POST(req: Request) {
     sentences = 3,
     verbosity = "brief",
 
-    // blank-help extras
     blank = null,
     hintStyle = "gentle_nudge",
     hintLevel = 1,
@@ -182,21 +178,11 @@ export async function POST(req: Request) {
         : modeNorm === "popup-lesson"
           ? buildPopupLessonInstructions()
           : modeNorm === "project-coach"
-            ? buildProjectCoachInstructions(
-                Number(sentences) || 8,
-                String(verbosity || "brief"),
-              )
+            ? buildProjectCoachInstructions(Number(sentences) || 8, String(verbosity || "brief"))
             : modeNorm === "blank-help"
-              ? buildBlankHelpInstructions(
-                  String(hintStyle || "gentle_nudge"),
-                  Number(hintLevel) || 1,
-                )
-              : buildVerifyInstructions(
-                  Number(sentences) || 3,
-                  String(verbosity || "brief"),
-                );
+              ? buildBlankHelpInstructions(String(hintStyle || "gentle_nudge"), Number(hintLevel) || 1)
+              : buildVerifyInstructions(Number(sentences) || 3, String(verbosity || "brief"));
 
-  // Build user text (include the word "json" explicitly when we request json_object format)
   let userText =
     `Mode: ${modeNorm}\n\n` +
     `Compiler errors (if any):\n${JSON.stringify(errors, null, 2)}\n\n` +
@@ -227,40 +213,22 @@ export async function POST(req: Request) {
       `Code:\n${code}`;
   }
 
-  console.log(
-    "[AI HELP] mode =",
-    modeNorm,
-    "sentences =",
-    sentences,
-    "verbosity =",
-    verbosity,
-  );
-
-  const encoder = new TextEncoder();
-
   const max_output_tokens =
-    modeNorm === "popup"
-      ? 80
-      : modeNorm === "popup-more"
-        ? 220
-        : modeNorm === "popup-lesson"
-          ? 520
-          : modeNorm === "blank-help"
-            ? 450
-            : modeNorm === "project-coach"
-              ? 1100
-              : 450;
+    modeNorm === "popup" ? 80
+    : modeNorm === "popup-more" ? 220
+    : modeNorm === "popup-lesson" ? 520
+    : modeNorm === "blank-help" ? 450
+    : modeNorm === "project-coach" ? 1100
+    : 450;
 
   const temperature =
-    modeNorm === "popup"
-      ? 0.2
-      : modeNorm === "popup-more"
-        ? 0.3
-        : modeNorm === "popup-lesson"
-          ? 0.4
-          : modeNorm === "blank-help"
-            ? 0.35
-            : 0.4;
+    modeNorm === "popup" ? 0.2
+    : modeNorm === "popup-more" ? 0.3
+    : modeNorm === "popup-lesson" ? 0.4
+    : modeNorm === "blank-help" ? 0.35
+    : 0.4;
+
+  const encoder = new TextEncoder();
 
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
@@ -268,13 +236,18 @@ export async function POST(req: Request) {
         const createArgs: any = {
           model,
           instructions,
-          input: [{ role: "user", content: userText }],
           stream: true,
           temperature,
           max_output_tokens,
+          input: [
+            {
+              role: "user",
+              content: [{ type: "input_text", text: userText }],
+            },
+          ],
         };
 
-        // If project-coach, force JSON object output via Responses API
+        // Force a JSON object for project-coach
         if (modeNorm === "project-coach") {
           createArgs.text = { format: { type: "json_object" } };
         }
@@ -282,25 +255,28 @@ export async function POST(req: Request) {
         const openaiStream = await client.responses.create(createArgs);
 
         for await (const event of openaiStream as any) {
-          if (event.type === "response.output_text.delta") {
+          if (event?.type === "response.output_text.delta") {
             const delta = event.delta ?? "";
-            if (delta)
-              controller.enqueue(
-                encoder.encode(sseEvent("token", { token: delta })),
-              );
+            if (delta) controller.enqueue(encoder.encode(sseEvent("token", { token: delta })));
+            continue;
           }
 
-          if (event.type === "response.completed") {
+          if (event?.type === "response.output_text.done") {
+            const text = event.text ?? "";
+            if (text) controller.enqueue(encoder.encode(sseEvent("token", { token: text })));
+            continue;
+          }
+
+          if (event?.type === "response.completed") {
             controller.enqueue(encoder.encode(sseEvent("done", { ok: true })));
+            break;
           }
 
-          if (event.type === "response.failed" || event.type === "error") {
-            const msg =
-              event?.error?.message || event?.message || "AI request failed.";
-            controller.enqueue(
-              encoder.encode(sseEvent("error", { error: msg })),
-            );
+          if (event?.type === "response.failed" || event?.type === "error") {
+            const msg = event?.error?.message || event?.message || "AI request failed.";
+            controller.enqueue(encoder.encode(sseEvent("error", { error: msg })));
             controller.enqueue(encoder.encode(sseEvent("done", { ok: false })));
+            break;
           }
         }
 

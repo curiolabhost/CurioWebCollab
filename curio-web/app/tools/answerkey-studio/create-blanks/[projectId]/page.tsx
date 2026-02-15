@@ -3,16 +3,16 @@
 import * as React from "react";
 import Link from "next/link";
 import { inferBlankValues } from "@/src/lesson-core/authoring/blankAnswerInfer";
-import { generateKeyFromReference } from "@/src/lesson-core/blankKeyGenerator";
+import { generateKeyFromReference } from "@/src/lesson-core/BlankChecks/blankKeyGenerator";
 import {
   type AnswerSpec,
   type BlankRule,
   type BlankTypedSpec,
   evalAnswerSpec,
-} from "@/src/lesson-core/blankCheckUtils";
+} from "@/src/lesson-core/BlankChecks/blankCheckUtils";
 import { useParams } from "next/navigation";
 
-import { K } from "@/src/lesson-core/blankKeyBuilder";
+import { K } from "@/src/lesson-core/BlankChecks/blankKeyBuilder";
 
 
 const LS_PROJECT_CODE = "curio:answerkey:studio:projectCode:v1";

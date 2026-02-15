@@ -73,9 +73,6 @@
   -webkit-mask-image: none !important;
 }
 
-
-
-
 .cmWrap :global(.cm-lint-marker-error) {
   width: 5px;
   height: 18px;
@@ -84,6 +81,33 @@
   border: none !important;
   box-shadow: none !important;
 }
+
+/* Dark scrollbar for the bottom AI/output panel */
+.footerScroll {
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: #334155 #020617; /* thumb track */
+}
+
+/* Chrome / Edge / Safari */
+.footerScroll::-webkit-scrollbar {
+  width: 10px;
+}
+
+.footerScroll::-webkit-scrollbar-track {
+  background: #020617;
+  border-left: 1px solid #1f2937;
+}
+
+.footerScroll::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 999px;
+  border: 2px solid #020617; /* makes it look inset */
+}
+
+.footerScroll::-webkit-scrollbar-thumb:hover {
+  background: #475569;
+}
+
 
 
 

@@ -16,7 +16,7 @@ import {
   evalAnswerSpec,
   BlankRule,
   BlankTypedSpec,
-} from "./blankCheckUtils";
+} from "../BlankChecks/blankCheckUtils";
 
 function isIdentChar(ch: string) {
   return /[A-Za-z0-9_]/.test(ch);

@@ -8,8 +8,8 @@ import ESBProjectMindMapLessonBeg from "./ProjectMindMapLessonBeg";
 import { TouchpadIcon } from "lucide-react";
 import TotalCountArrayInteractive from "./counterVariableBeg";
 import InputPullupCircuitInteractive from "./InputPullupCircuitInteractive";
-import { buildAnswerKey, K } from "@/src/lesson-core/blankKeyBuilder";
-import { generateKeyFromReference } from "@/src/lesson-core/blankKeyGenerator";
+import { buildAnswerKey, K } from "@/src/lesson-core/BlankChecks/blankKeyBuilder";
+import { generateKeyFromReference } from "@/src/lesson-core/BlankChecks/blankKeyGenerator";
 
 
 

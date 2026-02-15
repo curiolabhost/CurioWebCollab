@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useSearchParams } from "next/navigation";
-import ArduinoEditor from "@/src/lesson-core/ArduinoEditor";
+import ArduinoEditor from "@/src/lesson-core/ArduinoEditor/ArduinoEditor";
 
 export default function ArduinoEditorClient() {
   const sp = useSearchParams();
