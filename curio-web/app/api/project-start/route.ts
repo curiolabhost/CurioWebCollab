@@ -1,11 +1,16 @@
 import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
+import { requireDbUser } from "@/lib/requireDbUser";
+
+function isUnauthError(e: any) {
+  const msg = String(e?.message ?? e ?? "").toLowerCase();
+  return msg.includes("unauth");
+}
 
 export async function POST(req: Request) {
   try {
-    const { userId } = await auth();
-    if (!userId) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    const { dbUserId } = await requireDbUser();
+    const userId = dbUserId;
 
     const body = await req.json().catch(() => ({}));
     const projectSlug = String(body?.projectSlug || "");
@@ -13,13 +18,6 @@ export async function POST(req: Request) {
     if (!projectSlug) {
       return NextResponse.json({ error: "Missing projectSlug" }, { status: 400 });
     }
-
-    // Ensure parent exists
-    await prisma.user.upsert({
-      where: { id: userId },
-      update: {},
-      create: { id: userId, role: "STUDENT" },
-    });
 
     // One row per (user, project). If already exists, don't overwrite startedAt.
     const saved = await prisma.projectStart.upsert({
@@ -31,10 +29,17 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       ok: true,
-      saved: { projectSlug: saved.projectSlug, startedAt: saved.startedAt.toISOString() },
+      saved: {
+        projectSlug: saved.projectSlug,
+        startedAt: saved.startedAt.toISOString(),
+      },
     });
-  } catch (e) {
-    console.error(e);
+  } catch (e: any) {
+    if (isUnauthError(e)) {
+      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    }
+
+    console.error("POST /api/project-start error:", e);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

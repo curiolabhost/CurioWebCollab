@@ -14,6 +14,7 @@ export type ArduinoEditorTopBarProps = {
 
   // Enable/disable server buttons
   canServer: boolean;
+  readOnly?: boolean;
 
   // Actions
   onVerify: () => void;
@@ -72,6 +73,7 @@ export default function ArduinoEditorTopBar(props: ArduinoEditorTopBarProps) {
     isExplaining,
     isSaving,
     canServer,
+    readOnly = false,
     hasFileHandle,
     onVerify,
     onCheckCode,
@@ -132,7 +134,8 @@ export default function ArduinoEditorTopBar(props: ArduinoEditorTopBarProps) {
           Check Code
         </button>
 
-        {/* Files dropdown */}
+        {/* Files dropdown - hidden when read-only (admin view) */}
+        {!readOnly && (
         <div style={{ position: "relative" }}>
           <button
             ref={filesBtnRef}
@@ -191,6 +194,7 @@ export default function ArduinoEditorTopBar(props: ArduinoEditorTopBarProps) {
             </div>
           ) : null}
         </div>
+        )}
 
         <button type="button" onClick={onExpand} style={toolbarButtonStyle}>
           Expand

@@ -12,19 +12,8 @@ import GuidedCodeBlock from "./GuidedCodeBlock/GuidedCodeBlock";
 import styles from "./CodeLessonBase.module.css";
 import RightNote from "./RightNote";
 import {LessonSidebar} from "./LessonSidebar";
-
-/**
- * Hook to notify admin sidebar of current location.
- * Safe in both student and admin views.
- */
-function useAdminTracking(lessonNumber: number, stepIndex: number, codeBlockIndex?: number) {
-  React.useEffect(() => {
-    const adminSetLocation = (window as any).__adminSetLessonLocation;
-    if (typeof adminSetLocation === "function") {
-      adminSetLocation(lessonNumber, stepIndex, codeBlockIndex ?? 0);
-    }
-  }, [lessonNumber, stepIndex, codeBlockIndex]);
-}
+import type {AdminLessonLocation, AdminReadOnlyState} from "./types/adminReadOnlyState";
+import { useAdminView } from "@/app/contexts/AdminViewContext";
 
 /* ============================================================
    Storage helpers
@@ -166,6 +155,7 @@ function renderWithInlineCode(
     onClickExplanation?: (name: string) => void;
     activeInlineHint?: { name: string; text: string } | null;
     onCloseInlineHint?: () => void;
+    readOnly?: boolean;
   }
 ) {
   if (!text) return null;
@@ -222,15 +212,20 @@ function renderWithInlineCode(
                   <input
                     key={`blank-${lineIdx}-${idx}`}
                     value={v}
-                    onChange={(e) => opts.onChangeBlank(name, e.target.value)}
-                    onBlur={() => opts.onBlurBlank?.(name)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        opts.onBlurBlank?.(name);
-                        opts.onCheckBlank?.(name);
-                      }
-                    }}
+                    readOnly={opts.readOnly}
+                    onChange={opts.readOnly ? undefined : (e) => opts.onChangeBlank(name, e.target.value)}
+                    onBlur={opts.readOnly ? undefined : () => opts.onBlurBlank?.(name)}
+                    onKeyDown={
+                      opts.readOnly
+                        ? undefined
+                        : (e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              opts.onBlurBlank?.(name);
+                              opts.onCheckBlank?.(name);
+                            }
+                          }
+                    }
                     className={[
                       styles.inlineBlankInput,
                       status === true ? styles.inlineBlankCorrect : "",
@@ -473,6 +468,12 @@ export default function CodeLessonBase({
   rightRail,
 }: any) {
   const router = useRouter();
+  const adminView = useAdminView();
+  const adminViewState = adminView?.adminViewState ?? null;
+  const setViewingLocation = adminView?.setViewingLocation;
+  const adminViewMode = adminView?.adminViewMode ?? "lesson";
+  const setAdminViewMode = adminView?.setAdminViewMode;
+  const isAdminView = !!adminViewState;
 
   async function apiSetActiveLesson(projectSlug: string, lessonSlug: string) {
   await fetch("/api/active-lesson", {
@@ -655,68 +656,16 @@ function readNotesVisible(): boolean {
   return true; // default: show notes
 }
 
-// check if were in admin view
-const isAdminView = typeof window !== 'undefined' && window.location.pathname.includes('/admin/');
-
 const [notesVisible, setNotesVisible] = React.useState<boolean>(true);
 const showNotes = notesVisible && !isAdminView; // hide notes in admin view
 const [notesLoaded, setNotesLoaded] = React.useState(false);
 
-// Get student progress data in admin view
-const [studentCompletedSteps, setStudentCompletedSteps] = React.useState<Set<string>>(new Set());
-
-React.useEffect(() => {
-  //console.log("🔴 Student progress useEffect running");
-  //console.log("   isAdminView:", isAdminView);
-  
-  if (!isAdminView) {
-    //console.log("   ⏭️  Not admin view, skipping");
-    return;
-  }
-  
-  if (typeof window === 'undefined') {
-    //console.log("   ⏭️  Window undefined, skipping");
-    return;
-  }
-  
-  // Add retry mechanism for timing issues
-  let attempts = 0;
-  const maxAttempts = 20; // Try for 2 seconds (20 * 100ms)
-  
-  const checkForProgress = () => {
-    attempts++;
-    //console.log(`   🔍 Attempt ${attempts}/${maxAttempts} to get student progress`);
-    
-    const getStudentProgress = (window as any).__getStudentProgress;
-    //console.log("   Function available?", typeof getStudentProgress === 'function');
-
-    if (typeof getStudentProgress === 'function') {
-      const progress = getStudentProgress();
-      //console.log("   ✅ Got progress data:", progress);
-      //console.log("   Is array?", Array.isArray(progress));
-      //console.log("   Length:", progress?.length);
-      
-      if (progress && Array.isArray(progress)) {
-        //console.log("   ✅ Setting studentCompletedSteps with", progress.length, "steps");
-        setStudentCompletedSteps(new Set(progress));
-      } else {
-        //console.log("   ⚠️  Progress data invalid (not array or empty)");
-      }
-    } else {
-      // Function not available yet, retry
-      if (attempts < maxAttempts) {
-        //console.log("   ⏳ Function not available yet, retrying in 100ms...");
-        setTimeout(checkForProgress, 100);
-      } else {
-        //console.error("   ❌ Could not get student progress after", maxAttempts, "attempts");
-        //console.error("   Check that ProjectViewWrapper is setting window.__getStudentProgress");
-      }
-    }
-  };
-  
-  // Start checking
-  checkForProgress();
-}, [isAdminView]);
+// In admin view: use student's doneStepKeys from AdminViewContext (deterministic, no window globals)
+const studentCompletedSteps = React.useMemo(() => {
+  if (!isAdminView || !adminViewState?.doneStepKeys) return new Set<string>();
+  const keys = adminViewState.doneStepKeys;
+  return new Set(Array.isArray(keys) ? keys : []);
+}, [isAdminView, adminViewState?.doneStepKeys]);
 
 React.useEffect(() => {
   const update = () => {
@@ -789,6 +738,7 @@ React.useEffect(() => {
 
   // Tell dashboard which lesson is "currently active" (keep base storagePrefix)
   React.useEffect(() => {
+    if (isAdminView) return; // do not update active lesson / project start in admin view
     const ptr = parseCurioPtr(storagePrefix);
     if (!ptr) return;
 
@@ -798,10 +748,8 @@ React.useEffect(() => {
     } catch {}
 
     void apiSetActiveLesson(ptr.slug, ptr.lessonSlug);
-     void apiEnsureProjectStart(ptr.slug);
-
-
-  }, [storagePrefix]);
+    void apiEnsureProjectStart(ptr.slug);
+  }, [storagePrefix, isAdminView]);
 
   const EDITOR_KEYS = React.useMemo(() => {
     // Share editor state between Coding/Circuits for the same project+level
@@ -858,7 +806,13 @@ React.useEffect(() => {
   const [lesson, setLesson] = React.useState<number>(firstNormalLesson);
   const [stepIndex, setStepIndex] = React.useState<number>(0);
 
-  useAdminTracking(lesson, stepIndex + 1, 0); // for admin sidebar tracking (uses base 1 indexing for steps)
+  const ptr = React.useMemo(() => parseCurioPtr(storagePrefix), [storagePrefix]);
+
+  // Notify admin sidebar of current location (deterministic, no window globals)
+  React.useEffect(() => {
+    if (!isAdminView || !setViewingLocation || !ptr?.lessonSlug) return;
+    setViewingLocation(ptr.lessonSlug, stepIndex, 0);
+  }, [isAdminView, setViewingLocation, ptr?.lessonSlug, stepIndex]);
 
   // When inline-tracks toggle changes, reset navigation inside the page
   React.useEffect(() => {
@@ -870,25 +824,39 @@ React.useEffect(() => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [supportsInlineTracks, lessonType]);
 
-  // after mount, load persisted nav (client only)
+  // after mount, load persisted nav (student) or use admin state (admin view)
   React.useEffect(() => {
+    if (isAdminView && adminViewState) {
+      const lessonIdx = adminViewState.lessonIndex;
+      const stepIdx = adminViewState.stepIndex;
+      if (lessonIdx != null && Number.isFinite(lessonIdx) && lessonsList.includes(lessonIdx as number)) {
+        setLesson(lessonIdx as number);
+      }
+      if (stepIdx != null && Number.isFinite(stepIdx) && stepIdx >= 0) {
+        setStepIndex(stepIdx);
+      }
+      return;
+    }
     const v = storageGetJson<{ lesson: number; stepIndex: number }>(KEYS.navKey);
     if (v && Number.isFinite(v.lesson) && Number.isFinite(v.stepIndex)) {
       setLesson(v.lesson);
       setStepIndex(v.stepIndex);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [KEYS.navKey]);
+  }, [KEYS.navKey, isAdminView, adminViewState?.lessonIndex, adminViewState?.stepIndex]);
 
   React.useEffect(() => {
+    if (isAdminView) return; // do not persist nav in admin view
     storageSetJson(KEYS.navKey, { lesson, stepIndex });
-  }, [KEYS.navKey, lesson, stepIndex]);
+  }, [KEYS.navKey, lesson, stepIndex, isAdminView]);
 
   // Done set
   const [doneSet, setDoneSet] = React.useState<Set<string>>(() => new Set());
   const [doneSetLoaded, setDoneSetLoaded] = React.useState(false);
   // Use student progress in admin view, regular progress in student view
   const effectiveDoneSet = isAdminView ? studentCompletedSteps : doneSet;
+  // In admin view, we have data from API payload immediately — no async load
+  const effectiveDoneSetLoaded = isAdminView ? true : doneSetLoaded;
 
 
   const doneNormalCount = React.useMemo(() => {
@@ -979,15 +947,18 @@ React.useEffect(() => {
 }, [KEYS.sidebarKey, sidebarExpanded, sidebarLoaded]);
 
 
-  // View mode (scoped by trackPrefix)
+  // View mode (scoped by trackPrefix). In admin view, use context; otherwise localStorage.
   const readViewMode = React.useCallback((): ViewMode => {
     return coerceViewMode(storageGetString(KEYS.viewModeKey));
   }, [KEYS.viewModeKey]);
 
-  const [viewMode, setViewMode] = React.useState<ViewMode>(() => readViewMode());
+  const [viewModeLocal, setViewModeLocal] = React.useState<ViewMode>(() => readViewMode());
+  const viewMode = isAdminView ? adminViewMode : viewModeLocal;
+  const setViewMode = isAdminView ? (setAdminViewMode ?? (() => {})) : setViewModeLocal;
 
   React.useEffect(() => {
-    const update = () => setViewMode(readViewMode());
+    if (isAdminView) return;
+    const update = () => setViewModeLocal(readViewMode());
 
     const onStorage = (e: StorageEvent) => {
       if (e.key === KEYS.viewModeKey) update();
@@ -1002,7 +973,7 @@ React.useEffect(() => {
       window.removeEventListener("storage", onStorage);
       window.removeEventListener(VIEW_MODE_EVENT, update as any);
     };
-  }, [KEYS.viewModeKey, readViewMode]);
+  }, [KEYS.viewModeKey, readViewMode, isAdminView]);
 
   // If persisted nav points into an advanced lesson before unlock, snap to first normal lesson
   React.useEffect(() => {
@@ -1344,7 +1315,6 @@ const unmarkDone = async () => {
   const pendingPatchRef = React.useRef<Record<string, any>>({});
   const flushTimerRef = React.useRef<any>(null);
 
-  const ptr = React.useMemo(() => parseCurioPtr(storagePrefix), [storagePrefix]);
   const projectSlug = ptr?.slug || "";
   const lessonSlug = ptr?.lessonSlug || "";
 
@@ -1399,36 +1369,50 @@ const unmarkDone = async () => {
     }, 400);
   }, [flushGlobalNow]);
 
-  // Keep the SAME signature GuidedCodeBlock expects
+  // Keep the SAME signature GuidedCodeBlock expects. No-op in admin view (read-only).
   const setGlobalBlanks: React.Dispatch<React.SetStateAction<Record<string, any>>> =
-    React.useCallback((updater) => {
-      setGlobalBlanksState((prev) => {
-        const next =
-          typeof updater === "function" ? (updater as any)(prev) : (updater || {});
+    React.useCallback(
+      (updater) => {
+        if (isAdminView) return; // read-only: do not overwrite student's blanks
+        setGlobalBlanksState((prev) => {
+          const next =
+            typeof updater === "function" ? (updater as any)(prev) : (updater || {});
 
-        const patch: Record<string, any> = {};
+          const patch: Record<string, any> = {};
 
-        // additions/changes
-        for (const [k, v] of Object.entries(next || {})) {
-          if ((prev || {})[k] !== v) patch[k] = v;
-        }
+          // additions/changes
+          for (const [k, v] of Object.entries(next || {})) {
+            if ((prev || {})[k] !== v) patch[k] = v;
+          }
 
-        // deletions (needed for "Revert")
-        for (const k of Object.keys(prev || {})) {
-          if (!(k in (next || {}))) patch[k] = null; // server should treat null as delete
-        }
+          // deletions (needed for "Revert")
+          for (const k of Object.keys(prev || {})) {
+            if (!(k in (next || {}))) patch[k] = null; // server should treat null as delete
+          }
 
-        if (Object.keys(patch).length) {
-          pendingPatchRef.current = { ...(pendingPatchRef.current || {}), ...patch };
-          scheduleFlush();
-        }
+          if (Object.keys(patch).length) {
+            pendingPatchRef.current = { ...(pendingPatchRef.current || {}), ...patch };
+            scheduleFlush();
+          }
 
-        return next;
-      });
-    }, [scheduleFlush]);
+          return next;
+        });
+      },
+      [scheduleFlush, isAdminView]
+    );
 
-  // Load from server when opening lesson
+  // Load from server when opening lesson (skip in admin view - use props from API)
   React.useEffect(() => {
+    if (isAdminView && adminViewState?.blanks != null) {
+      const blanks =
+        adminViewState.blanks && typeof adminViewState.blanks === "object"
+          ? (adminViewState.blanks as Record<string, any>)
+          : {};
+      setGlobalBlanksState(blanks);
+      setGlobalLoaded(true);
+      return;
+    }
+
     let alive = true;
 
     (async () => {
@@ -1461,7 +1445,7 @@ const unmarkDone = async () => {
       alive = false;
       void flushGlobalNow();
     };
-  }, [projectSlug, lessonSlug, KEYS.globalBlanksKey, flushGlobalNow]);
+  }, [projectSlug, lessonSlug, KEYS.globalBlanksKey, flushGlobalNow, isAdminView, adminViewState?.blanks]);
 
   // Flush pending patches on unmount/tab close (extra safety)
   React.useEffect(() => {
@@ -1688,6 +1672,7 @@ const inlineRafRef = React.useRef<number | null>(null);
             ? { name: activeBlankHint.name, text: activeBlankHint.text }
             : null,
         onCloseInlineHint: () => setActiveBlankHint(null),
+        readOnly: isAdminView,
       });
     },
       [
@@ -1698,6 +1683,7 @@ const inlineRafRef = React.useRef<number | null>(null);
         checkInlineBlank,
         openInlineExplanation,
         activeBlankHint,
+        isAdminView,
       ]
 
   );
@@ -1903,12 +1889,12 @@ const inlineRafRef = React.useRef<number | null>(null);
             <div className="flex-1 max-w-xs">
               <div className="text-sm text-gray-400 mb-2">Overall</div>
               <div className="text-gray-700 mb-2">
-                {doneSetLoaded ? `${overallProgress}% complete` : "Loading progress..."}
+                {effectiveDoneSetLoaded ? `${overallProgress}% complete` : "Loading progress..."}
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
                 <div
                   className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${doneSetLoaded ? clamp(overallProgress, 0, 100) : 0}%` }}
+                  style={{ width: `${effectiveDoneSetLoaded ? clamp(overallProgress, 0, 100) : 0}%` }}
                 />
               </div>
             </div>
@@ -1916,12 +1902,12 @@ const inlineRafRef = React.useRef<number | null>(null);
             <div className="flex-1 max-w-xs">
               <div className="text-sm text-gray-400 mb-2">This lesson</div>
               <div className="text-gray-700 mb-2">
-                {doneSetLoaded ? `${lessonProgress}% of steps` : "Loading progress..."}
+                {effectiveDoneSetLoaded ? `${lessonProgress}% of steps` : "Loading progress..."}
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2">
                 <div
                   className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${doneSetLoaded ? clamp(lessonProgress, 0, 100) : 0}%` }}
+                  style={{ width: `${effectiveDoneSetLoaded ? clamp(lessonProgress, 0, 100) : 0}%` }}
                 />
               </div>
             </div>
@@ -2180,15 +2166,17 @@ const inlineRafRef = React.useRef<number | null>(null);
           defaultWokwiUrl=""
           projectSlug={projectSlug}
           lessonSlug={lessonSlug}
+          initialCircuitState={isAdminView ? adminViewState?.circuitState ?? null : undefined}
+          readOnly={isAdminView}
         />
       ) : (
-        <ArduinoEditor 
-          storageKey={EDITOR_KEYS.arduinoSketchKey} 
+        <ArduinoEditor
+          storageKey={EDITOR_KEYS.arduinoSketchKey}
           projectSlug={projectSlug}
           lessonSlug={lessonSlug}
-                  
-          
-          />
+          initialArduinoCode={isAdminView ? adminViewState?.arduinoCode ?? null : undefined}
+          readOnly={isAdminView}
+        />
 
       )}
     </div>
@@ -2207,6 +2195,7 @@ const inlineRafRef = React.useRef<number | null>(null);
           minLeftPx={520}
           minRightPx={420}
           handleWidth={12}
+          invisibleHandle={isAdminView}
           left={lessonUi}
           right={editorPane}
         />

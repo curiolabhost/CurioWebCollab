@@ -1,11 +1,13 @@
+// This route allows the frontend to save and retrieve the user's currently active lesson. It's used to restore their place when they return to the app.
+// app/api/active-lesson/route.ts
 import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
+import { requireDbUser } from "@/lib/requireDbUser";
 
 export async function POST(req: Request) {
   try {
-    const { userId } = await auth();
-    if (!userId) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    const { dbUserId } = await requireDbUser();
+    const userId = dbUserId;
 
     const body = await req.json().catch(() => ({}));
     const projectSlug = String(body?.projectSlug || "");
@@ -15,13 +17,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Missing projectSlug/lessonSlug" }, { status: 400 });
     }
 
-    // Ensure parent exists
-    await prisma.user.upsert({
-      where: { id: userId },
-      update: {},
-      create: { id: userId, role: "STUDENT" },
-    });
-
     // One row per user
     const saved = await prisma.activeLesson.upsert({
       where: { userId },
@@ -30,7 +25,12 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ ok: true, saved });
-  } catch (e) {
+  } catch (e: any) {
+    // If requireDbUser throws "Unauthenticated", treat as 401
+    if (String(e?.message ?? "").toLowerCase().includes("unauth")) {
+      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    }
+
     console.error(e);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
@@ -38,8 +38,8 @@ export async function POST(req: Request) {
 
 export async function GET() {
   try {
-    const { userId } = await auth();
-    if (!userId) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    const { dbUserId } = await requireDbUser();
+    const userId = dbUserId;
 
     const row = await prisma.activeLesson.findUnique({
       where: { userId },
@@ -48,11 +48,13 @@ export async function GET() {
 
     return NextResponse.json({
       ok: true,
-      active: row
-        ? { ...row, updatedAt: row.updatedAt.toISOString() }
-        : null,
+      active: row ? { ...row, updatedAt: row.updatedAt.toISOString() } : null,
     });
-  } catch (e) {
+  } catch (e: any) {
+    if (String(e?.message ?? "").toLowerCase().includes("unauth")) {
+      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    }
+
     console.error(e);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }

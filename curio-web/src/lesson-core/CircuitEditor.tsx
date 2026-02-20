@@ -19,6 +19,10 @@ type CircuitEditorProps = {
   projectSlug?: string;
   lessonSlug?: string;
 
+  /** When provided (e.g. admin view), use this instead of fetching from API */
+  initialCircuitState?: { wokwiUrl: string | null; diagramJson: any } | null;
+  /** When true, display only; no save to server or localStorage */
+  readOnly?: boolean;
 };
 
 async function fetchCircuitState(projectSlug: string, lessonSlug: string) {
@@ -60,7 +64,8 @@ export default function CircuitEditor({
   showExit = false,
   projectSlug,
   lessonSlug,
-
+  initialCircuitState,
+  readOnly = false,
   onExit,
 }: CircuitEditorProps) {
   const hasWindow = typeof window !== "undefined";
@@ -82,6 +87,21 @@ export default function CircuitEditor({
   React.useEffect(() => {
     if (!storage) return;
 
+    // Admin view: use provided initial state, skip fetch
+    if (initialCircuitState != null) {
+      const urlToUse = initialCircuitState.wokwiUrl ?? defaultWokwiUrl ?? "";
+      const diag =
+        initialCircuitState.diagramJson != null
+          ? JSON.stringify(initialCircuitState.diagramJson, null, 2)
+          : "";
+      setWokwiUrl(urlToUse);
+      setWokwiUrlDraft(urlToUse);
+      setSavedDiagram(diag);
+      setDiagramDraft(diag);
+      setStatus(readOnly ? "Admin view (read-only)" : "Loaded from admin state.");
+      return;
+    }
+
     const canServer = !!(projectSlug && lessonSlug);
 
     (async () => {
@@ -91,7 +111,6 @@ export default function CircuitEditor({
           const serverUrl = r?.ok ? (r.circuit?.wokwiUrl ?? "") : "";
           const serverDiag = r?.ok && r.circuit?.diagramJson ? JSON.stringify(r.circuit.diagramJson, null, 2) : "";
 
-          // If server has anything, use it (and sync local backup)
           if (serverUrl || serverDiag) {
             const urlToUse = serverUrl || defaultWokwiUrl || "";
             setWokwiUrl(urlToUse);
@@ -99,17 +118,18 @@ export default function CircuitEditor({
             setSavedDiagram(serverDiag);
             setDiagramDraft(serverDiag);
 
-            try {
-              storage.setItem(wokwiUrlKey, urlToUse);
-              storage.setItem(diagramKey, serverDiag);
-            } catch {}
+            if (!readOnly) {
+              try {
+                storage.setItem(wokwiUrlKey, urlToUse);
+                storage.setItem(diagramKey, serverDiag);
+              } catch {}
+            }
 
             setStatus("Loaded from server.");
             return;
           }
         }
 
-        // Fallback: local storage
         const savedUrl = storage.getItem(wokwiUrlKey) || "";
         const urlToUse = savedUrl || defaultWokwiUrl || "";
         setWokwiUrl(urlToUse);
@@ -124,7 +144,7 @@ export default function CircuitEditor({
         setStatus("Load failed.");
       }
     })();
-  }, [storage, wokwiUrlKey, diagramKey, defaultWokwiUrl, projectSlug, lessonSlug]);
+  }, [storage, wokwiUrlKey, diagramKey, defaultWokwiUrl, projectSlug, lessonSlug, initialCircuitState, readOnly]);
 
   const isLikelyWokwiUrl = (u: string) => {
     if (!u) return false;
@@ -137,6 +157,7 @@ export default function CircuitEditor({
   };
 
   const saveWokwiUrl = async () => {
+    if (readOnly) return;
     const next = (wokwiUrlDraft || "").trim();
     if (!next) return alert("Paste a Wokwi share link first.");
     if (!isLikelyWokwiUrl(next)) {
@@ -187,6 +208,7 @@ export default function CircuitEditor({
   };
 
   const saveDiagramJson = async () => {
+    if (readOnly) return;
     const raw = (diagramDraft || "").trim();
     if (!raw) return alert("Paste diagram.json content first.");
 
@@ -232,6 +254,7 @@ export default function CircuitEditor({
   };
 
   const clearSavedDiagram = () => {
+    if (readOnly) return;
     if (!confirm("Clear saved diagram.json backup from Curio?")) return;
     storage?.removeItem(diagramKey);
     setSavedDiagram("");

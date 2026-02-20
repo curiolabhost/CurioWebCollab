@@ -28,6 +28,9 @@ type SplitViewProps = {
   // Divider
   handleWidth?: number;
 
+  /** When true, handle is invisible (transparent, no bar) but still draggable */
+  invisibleHandle?: boolean;
+
   // Disable resizing
   locked?: boolean;
 
@@ -74,6 +77,7 @@ export default function SplitView({
   maxLeftRatio = 0.85,
 
   handleWidth = 12,
+  invisibleHandle = false,
 
   locked = false,
   fixedRightPx = null,
@@ -501,7 +505,9 @@ export default function SplitView({
           }}
           style={{
             width: handleWidth,
-            background: "rgba(0,0,0,0.08)",
+            background: invisibleHandle ? "transparent" : "rgba(0,0,0,0.08)",
+            border: "none",
+            boxShadow: "none",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -512,15 +518,17 @@ export default function SplitView({
           }}
           aria-hidden={locked || fixedRightPx != null}
         >
-          <div
-            style={{
-              width: 2,
-              height: 30,
-              borderRadius: 2,
-              background: "rgba(0,0,0,0.32)",
-              pointerEvents: "none",
-            }}
-          />
+          {!invisibleHandle && (
+            <div
+              style={{
+                width: 2,
+                height: 30,
+                borderRadius: 2,
+                background: "rgba(0,0,0,0.32)",
+                pointerEvents: "none",
+              }}
+            />
+          )}
         </div>
       ) : (
         // In overlay mode, make the handle float and keep moving with the user's drag (virtual leftWidth)
@@ -540,7 +548,9 @@ export default function SplitView({
             bottom: 0,
             left: leftWidth, // virtual divider position
             width: handleWidth,
-            background: "rgba(0,0,0,0.08)",
+            background: invisibleHandle ? "transparent" : "rgba(0,0,0,0.08)",
+            border: "none",
+            boxShadow: "none",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -550,15 +560,17 @@ export default function SplitView({
           }}
           aria-hidden={locked || fixedRightPx != null}
         >
-          <div
-            style={{
-              width: 2,
-              height: 30,
-              borderRadius: 2,
-              background: "rgba(0,0,0,0.32)",
-              pointerEvents: "none",
-            }}
-          />
+          {!invisibleHandle && (
+            <div
+              style={{
+                width: 2,
+                height: 30,
+                borderRadius: 2,
+                background: "rgba(0,0,0,0.32)",
+                pointerEvents: "none",
+              }}
+            />
+          )}
         </div>
       )}
 

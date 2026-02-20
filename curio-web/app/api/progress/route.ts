@@ -1,15 +1,17 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@clerk/nextjs/server";
+import { ensureDbUser } from "@/lib/authz";
 
 type ProgressStatus = "done" | "todo";
 
 export async function POST(req: Request) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
+    const dbUser = await ensureDbUser();
+    if (!dbUser) {
       return NextResponse.json({ error: "Not signed in" }, { status: 401 });
     }
+    const userId = dbUser.id;
 
     const body = await req.json();
     const { projectSlug, lessonSlug, stepKey, status } = body || {};
@@ -24,13 +26,6 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid status" }, { status: 400 });
     }
     const normalizedStatus = rawStatus as ProgressStatus;
-
-    // Ensure the foreign-key parent exists (User row keyed by Clerk userId)
-    await prisma.user.upsert({
-      where: { id: userId },
-      update: {},
-      create: { id: userId, role: "STUDENT" },
-    });
 
     const saved = await prisma.lessonProgress.upsert({
       where: {

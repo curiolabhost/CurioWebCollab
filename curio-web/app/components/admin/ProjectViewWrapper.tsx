@@ -1,90 +1,97 @@
 // app/components/admin/ProjectViewWrapper.tsx
+// Wraps the project view in the admin interface. Provides a split view with the lesson content on the left and the AdminStudentSidebar on the right.
+// Admin state flows from AdminViewProvider (payload.view) → CodeLessonBase reads via useAdminView().
+// No window globals. Deterministic props/context flow.
 "use client";
 
-import React, { useEffect } from "react";
-import { useStudentResponses } from "@/app/contexts/StudentResponseContext";
+import React, { useEffect, useMemo } from "react";
+import { useAdminView } from "@/app/contexts/AdminViewContext";
 import { AdminStudentSidebar } from "./AdminStudentSidebar";
 import SplitView from "@/src/lesson-core/SplitView";
+
+type StudentShape = { id: string; name: string; email?: string | null; avatar?: string | null };
+type ProjectShape = { slug: string; title: string };
 
 type ProjectViewWrapperProps = {
   children: React.ReactNode;
   isAdminView?: boolean;
-  onLessonChange?: (lessonId: number, stepId: number, codeBlockIndex?: number) => void;
+  student?: StudentShape;
+  project?: ProjectShape;
+
+  // ✅ add this
+  onLessonChange?: (lessonSlug: string, stepIndex: number, codeBlockIndex?: number) => void;
 };
 
-/**
- * Wrapper component that conditionally displays the admin sidebar
- * next to the project content based on user role.
- * 
- * Also provides student progress data to the lesson component when in admin view.
- */
-export function ProjectViewWrapper({ 
-  children, 
+export function ProjectViewWrapper({
+  children,
   isAdminView = false,
-  onLessonChange 
+  student,
+  project,
+  onLessonChange,
 }: ProjectViewWrapperProps) {
-  const { setCurrentLocation, studentData } = useStudentResponses();
+  const { viewingLocation, adminViewState } = useAdminView() ?? {};
 
-  // Expose a function that lesson components can call to update location
+  const adminLocation = useMemo(
+    () =>
+      viewingLocation
+        ? {
+            lessonSlug: viewingLocation.lessonSlug,
+            stepIndex: viewingLocation.stepIndex,
+            codeBlockIndex: viewingLocation.codeBlockIndex,
+          }
+        : {
+            lessonSlug: adminViewState?.currentLessonSlug ?? "code-beginner",
+            stepIndex: adminViewState?.stepIndex ?? 0,
+            codeBlockIndex: undefined as number | undefined,
+          },
+    [viewingLocation, adminViewState]
+  );
+
+  // ✅ fire callback when location changes (and only when the actual fields change)
   useEffect(() => {
-    if (onLessonChange) {
-      // Make the setCurrentLocation function available globally for lesson components to call
-      (window as any).__adminSetLessonLocation = setCurrentLocation;
-    }
-    return () => {
-      if ((window as any).__adminSetLessonLocation) {
-        delete (window as any).__adminSetLessonLocation;
-      }
-    };
-  }, [setCurrentLocation, onLessonChange]);
+    if (!isAdminView) return;
+    onLessonChange?.(adminLocation.lessonSlug, adminLocation.stepIndex, adminLocation.codeBlockIndex);
+  }, [isAdminView, onLessonChange, adminLocation.lessonSlug, adminLocation.stepIndex, adminLocation.codeBlockIndex]);
 
-  // Provide student progress data to lesson component in admin view
-  useEffect(() => {
-    if (isAdminView && studentData) {
-      // Make student progress available to CodeLessonBase
-      (window as any).__getStudentProgress = () => {
-        return studentData.completedSteps || [];
-      };
-      
-      {/*} console.log("Admin view: Providing student progress data", {
-        studentId: studentData.studentId,
-        completedSteps: studentData.completedSteps?.length || 0,
-        steps: studentData.completedSteps
-      });*/}
-    }
-    
-    return () => {
-      if ((window as any).__getStudentProgress) {
-        delete (window as any).__getStudentProgress;
-      }
-    };
-  }, [isAdminView, studentData]);
+  const adminReadOnlyState = useMemo(
+    () =>
+      adminViewState
+        ? {
+            doneStepKeys: adminViewState.doneStepKeys ?? [],
+            lessonBlanks: adminViewState.blanks ?? null,
+          }
+        : { doneStepKeys: [] as string[], lessonBlanks: null as unknown },
+    [adminViewState]
+  );
 
-  if (!isAdminView) {
-    // Student view - no sidebar
+  if (!isAdminView) return <>{children}</>;
+
+  // If you want the sidebar, student + project must exist.
+  if (!student || !project) {
     return <>{children}</>;
   }
 
-  // Admin view - show content with RESIZABLE sidebar using SplitView
   return (
     <SplitView
-      left={
-        <div className="h-full min-h-0 min-w-0 overflow-hidden">
-          {children}
-        </div>
-      }
+      left={<div className="h-full min-h-0 min-w-0 overflow-hidden">{children}</div>}
       right={
         <div className="h-full min-h-0 min-w-0 overflow-hidden">
-          <AdminStudentSidebar />
+          <AdminStudentSidebar
+            student={student}
+            project={project}
+            adminLocation={adminLocation}
+            adminReadOnlyState={adminReadOnlyState}
+            responses={[]}
+          />
         </div>
       }
-      initialLeftRatio={0.65}        // Start with 65% for lesson, 35% for sidebar
-      minLeftRatio={0.4}              // Allow shrinking to 40% lesson width
-      maxLeftRatio={0.85}             // Allow expanding to 85% lesson width
-      minLeftPx={400}                 // Minimum 400px for lesson content
-      minRightPx={300}                // Minimum 300px for sidebar
-      handleWidth={12}                // Drag handle width
-      persistKey="admin-sidebar-split" // Save position in localStorage
+      initialLeftRatio={0.65}
+      minLeftRatio={0.4}
+      maxLeftRatio={0.99}
+      minLeftPx={400}
+      minRightPx={0}
+      handleWidth={12}
+      persistKey="admin-sidebar-split"
     />
   );
 }

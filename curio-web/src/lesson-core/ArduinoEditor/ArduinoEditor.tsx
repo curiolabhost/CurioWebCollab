@@ -136,6 +136,11 @@ type ArduinoEditorProps = {
   // Backend identity (required for server persistence)
   projectSlug?: string;
   lessonSlug?: string;
+
+  /** When provided (e.g. admin view), use this instead of fetching from API */
+  initialArduinoCode?: string | null;
+  /** When true, display only; no save to server or localStorage */
+  readOnly?: boolean;
 };
 
 async function fetchArduinoState(projectSlug: string, lessonSlug: string) {
@@ -165,6 +170,8 @@ export default function ArduinoEditor({
   fileToken,
   projectSlug,
   lessonSlug,
+  initialArduinoCode,
+  readOnly = false,
 }: ArduinoEditorProps) {
   const isFileMode = !!fileToken;
 
@@ -488,6 +495,15 @@ export default function ArduinoEditor({
       return;
     }
 
+    // Admin view: use provided initial code, skip fetch
+    if (initialArduinoCode != null) {
+      setValue(typeof initialArduinoCode === "string" ? initialArduinoCode : DEFAULT_SKETCH);
+      setStatus(readOnly ? "Admin view (read-only)" : "Loaded from admin state.");
+      setFileHandle(null);
+      setFileName("ElectricBoard.ino");
+      return;
+    }
+
     if (storageKey) {
       const canServer = !!(projectSlug && lessonSlug && !fileToken);
 
@@ -500,9 +516,11 @@ export default function ArduinoEditor({
             if (typeof serverCode === "string" && serverCode.length > 0) {
               setValue(serverCode);
               setStatus("Loaded from server.");
-              try {
-                window.localStorage.setItem(storageKey, serverCode);
-              } catch {}
+              if (!readOnly) {
+                try {
+                  window.localStorage.setItem(storageKey, serverCode);
+                } catch {}
+              }
             } else {
               const saved = window.localStorage.getItem(storageKey);
               setValue(saved ?? DEFAULT_SKETCH);
@@ -533,7 +551,7 @@ export default function ArduinoEditor({
     setStatus("Ready.");
     setFileHandle(null);
     setFileName("ElectricBoard.ino");
-  }, [storageKey, fileToken, projectSlug, lessonSlug]);
+  }, [storageKey, fileToken, projectSlug, lessonSlug, initialArduinoCode, readOnly]);
 
   /* ============================================================
      Sync across tabs (LESSON MODE ONLY)
@@ -585,6 +603,7 @@ export default function ArduinoEditor({
   }, [filesMenuOpen]);
 
   const onChange = (v: string | undefined) => {
+    if (readOnly) return;
     const text = v ?? "";
     setValue(text);
     setStatus("Editing...");
@@ -655,6 +674,7 @@ export default function ArduinoEditor({
   const hasFooterContent = !!compilerOutput || !!coachJson || !!coachRaw || !!coachLive;
 
   const reloadFromServer = async () => {
+    if (readOnly) return;
     if (isFileMode) {
       setStatus("Reload not available in File mode.");
       return;
@@ -702,6 +722,7 @@ export default function ArduinoEditor({
   };
 
   const saveNowToServer = async () => {
+    if (readOnly) return;
     if (isFileMode) {
       setStatus("Save to server not available in File mode.");
       return;
@@ -1082,7 +1103,8 @@ export default function ArduinoEditor({
         hasFileHandle={!!fileHandle}
         isExplaining={isExplaining}
         isSaving={isSaving}
-        canServer={!!projectSlug && !!lessonSlug && !isFileMode}
+        readOnly={readOnly}
+        canServer={!readOnly && !!projectSlug && !!lessonSlug && !isFileMode}
         onVerify={handleVerify}
         onCheckCode={explainErrorsWithAI}
         onExpand={handleExpand}
@@ -1116,6 +1138,7 @@ export default function ArduinoEditor({
               value={value}
               height="100%"
               theme={oneDark}
+              readOnly={readOnly}
               style={{ height: "100%" }}
               extensions={[
                 cpp(),

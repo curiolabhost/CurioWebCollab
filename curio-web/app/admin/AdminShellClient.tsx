@@ -1,33 +1,21 @@
-// app/admin/AdminShellClient.tsx
 "use client";
 
 import * as React from "react";
 import Link from "next/link";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
+import { useClerk } from "@clerk/nextjs";
 import { Users, LayoutGrid, BarChart3, Settings, LogOut, BookOpen } from "lucide-react";
 
 export default function AdminShellClient({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const { signOut } = useClerk();
   const [mounted, setMounted] = React.useState(false);
 
   React.useEffect(() => {
     setMounted(true);
-
-    const currentUser = localStorage.getItem("currentUser");
-    if (!currentUser) {
-      router.push("/account-setup/login");
-      return;
-    }
-
-    try {
-      JSON.parse(currentUser);
-      // if (!user.isAdmin) router.push("/dashboard");
-    } catch {
-      router.push("/account-setup/login");
-    }
-  }, [router]);
+  }, []);
 
   if (!mounted) return null;
 
@@ -60,9 +48,8 @@ export default function AdminShellClient({ children }: { children: React.ReactNo
     return pathname === hrefPath;
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("currentUser");
-    router.push("/account-setup/login");
+  const handleLogout = async () => {
+    await signOut({ redirectUrl: "/sign-in" });
   };
 
   return (

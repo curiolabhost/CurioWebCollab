@@ -1,3 +1,6 @@
+// account-setup/page.tsx
+// This is the landing page for the account setup flow. It checks if the user is signed in and redirects to the dashboard if they are. If not, it shows a welcome page with a button to navigate to the login page.
+
 "use client";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";

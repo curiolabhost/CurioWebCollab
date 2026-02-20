@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { Code2, CircuitBoard, BookOpen } from "lucide-react";
+import { useAdminView } from "@/app/contexts/AdminViewContext";
 
 type ViewMode = "lesson" | "code" | "circuit";
 
@@ -48,21 +49,29 @@ export default function LessonHeaderControls({
   viewModeKey,
   notesVisibleKey,
 }: LessonHeaderControlsProps) {
+  const adminView = useAdminView();
+  const isAdminView = !!adminView?.adminViewState;
+
   const [active, setActive] = React.useState<ViewMode>("lesson");
   const [notesVisible, setNotesVisible] = React.useState<boolean>(true);
 
-  React.useEffect(() => {
-    setActive(safeReadViewMode(viewModeKey));
-    setNotesVisible(safeReadNotesVisible(notesVisibleKey, true));
-  }, [viewModeKey, notesVisibleKey]);
+  const viewMode = isAdminView ? (adminView!.adminViewMode ?? "lesson") : active;
+  const setViewMode = isAdminView ? (adminView!.setAdminViewMode ?? (() => {})) : setActive;
 
   React.useEffect(() => {
+    if (isAdminView) return;
+    setActive(safeReadViewMode(viewModeKey));
+    setNotesVisible(safeReadNotesVisible(notesVisibleKey, true));
+  }, [viewModeKey, notesVisibleKey, isAdminView]);
+
+  React.useEffect(() => {
+    if (isAdminView) return;
     const onNotes = () => {
       setNotesVisible(safeReadNotesVisible(notesVisibleKey, true));
     };
     window.addEventListener(NOTES_VISIBLE_EVENT, onNotes);
     return () => window.removeEventListener(NOTES_VISIBLE_EVENT, onNotes);
-  }, [notesVisibleKey]);
+  }, [notesVisibleKey, isAdminView]);
 
   const baseBtn: React.CSSProperties = {
     display: "inline-flex",
@@ -86,44 +95,49 @@ export default function LessonHeaderControls({
     color: "#3730a3",
   };
 
+  const handleViewMode = (mode: ViewMode) => {
+    if (isAdminView) {
+      setViewMode(mode);
+    } else {
+      safeSetViewMode(viewModeKey, mode);
+      setActive(mode);
+    }
+  };
+
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
       {/* Lesson */}
       <button
         type="button"
-        onClick={() => {
-          safeSetViewMode(viewModeKey, "lesson");
-          setActive("lesson");
-        }}
-        style={{ ...baseBtn, ...(active === "lesson" ? activeBtn : {}) }}
+        onClick={() => handleViewMode("lesson")}
+        style={{ ...baseBtn, ...(viewMode === "lesson" ? activeBtn : {}) }}
         title="Lesson"
       >
         <BookOpen size={16} />
         Lesson
       </button>
 
-      {/* Notes toggle */}
-      <button
-        type="button"
-        onClick={() => {
-          const next = !notesVisible;
-          safeSetNotesVisible(notesVisibleKey, next);
-          setNotesVisible(next);
-        }}
-        style={baseBtn}
-        title={notesVisible ? "Hide Notes" : "Show Notes"}
-      >
-        {notesVisible ? "Hide Notes" : "Show Notes"}
-      </button>
+      {/* Notes toggle - hidden in admin view (notes are read-only hidden in CodeLessonBase) */}
+      {!isAdminView && (
+        <button
+          type="button"
+          onClick={() => {
+            const next = !notesVisible;
+            safeSetNotesVisible(notesVisibleKey, next);
+            setNotesVisible(next);
+          }}
+          style={baseBtn}
+          title={notesVisible ? "Hide Notes" : "Show Notes"}
+        >
+          {notesVisible ? "Hide Notes" : "Show Notes"}
+        </button>
+      )}
 
       {/* Code */}
       <button
         type="button"
-        onClick={() => {
-          safeSetViewMode(viewModeKey, "code");
-          setActive("code");
-        }}
-        style={{ ...baseBtn, ...(active === "code" ? activeBtn : {}) }}
+        onClick={() => handleViewMode("code")}
+        style={{ ...baseBtn, ...(viewMode === "code" ? activeBtn : {}) }}
         title="Code Editor"
       >
         <Code2 size={16} />
@@ -133,11 +147,8 @@ export default function LessonHeaderControls({
       {/* Circuit */}
       <button
         type="button"
-        onClick={() => {
-          safeSetViewMode(viewModeKey, "circuit");
-          setActive("circuit");
-        }}
-        style={{ ...baseBtn, ...(active === "circuit" ? activeBtn : {}) }}
+        onClick={() => handleViewMode("circuit")}
+        style={{ ...baseBtn, ...(viewMode === "circuit" ? activeBtn : {}) }}
         title="Circuit Editor"
       >
         <CircuitBoard size={16} />

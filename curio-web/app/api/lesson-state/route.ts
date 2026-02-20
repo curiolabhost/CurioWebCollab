@@ -1,23 +1,23 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { auth } from "@clerk/nextjs/server";
+import { requireDbUser } from "@/lib/requireDbUser";
+
+function isUnauthError(e: any) {
+  const msg = String(e?.message ?? e ?? "").toLowerCase();
+  return msg.includes("unauth");
+}
 
 export async function GET(req: Request) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Not signed in" }, { status: 401 });
-    }
+    const { dbUserId } = await requireDbUser();
+    const userId = dbUserId;
 
     const url = new URL(req.url);
     const projectSlug = url.searchParams.get("projectSlug");
     const lessonSlug = url.searchParams.get("lessonSlug");
 
     if (!projectSlug || !lessonSlug) {
-      return NextResponse.json(
-        { error: "Missing projectSlug/lessonSlug" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Missing projectSlug/lessonSlug" }, { status: 400 });
     }
 
     const row = await prisma.lessonState.findUnique({
@@ -27,11 +27,13 @@ export async function GET(req: Request) {
       select: { blanks: true },
     });
 
-    const blanks =
-      row?.blanks && typeof row.blanks === "object" ? (row.blanks as any) : {};
+    const blanks = row?.blanks && typeof row.blanks === "object" ? (row.blanks as any) : {};
 
     return NextResponse.json({ ok: true, userId, blanks });
   } catch (e: any) {
+    if (isUnauthError(e)) {
+      return NextResponse.json({ error: "Not signed in" }, { status: 401 });
+    }
     console.error(e);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
@@ -39,36 +41,23 @@ export async function GET(req: Request) {
 
 export async function PATCH(req: Request) {
   try {
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Not signed in" }, { status: 401 });
-    }
+    const { dbUserId } = await requireDbUser();
+    const userId = dbUserId;
 
     const url = new URL(req.url);
     const projectSlug = url.searchParams.get("projectSlug");
     const lessonSlug = url.searchParams.get("lessonSlug");
 
     if (!projectSlug || !lessonSlug) {
-      return NextResponse.json(
-        { error: "Missing projectSlug/lessonSlug" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Missing projectSlug/lessonSlug" }, { status: 400 });
     }
 
     const body = await req.json().catch(() => ({}));
-    const patch =
-      body?.patch && typeof body.patch === "object" ? (body.patch as any) : null;
+    const patch = body?.patch && typeof body.patch === "object" ? (body.patch as any) : null;
 
     if (!patch) {
       return NextResponse.json({ error: "Missing patch" }, { status: 400 });
     }
-
-    // Ensure the foreign-key parent exists (User row keyed by Clerk userId)
-    await prisma.user.upsert({
-      where: { id: userId },
-      update: {},
-      create: { id: userId, role: "STUDENT" },
-    });
 
     // Load existing
     const existing = await prisma.lessonState.findUnique({
@@ -100,6 +89,9 @@ export async function PATCH(req: Request) {
 
     return NextResponse.json({ ok: true, userId, blanks: saved.blanks });
   } catch (e: any) {
+    if (isUnauthError(e)) {
+      return NextResponse.json({ error: "Not signed in" }, { status: 401 });
+    }
     console.error(e);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }

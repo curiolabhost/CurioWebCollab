@@ -1,8 +1,7 @@
-
 // app/api/arduino-state/route.ts
 import { NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
 import { prisma as db } from "@/lib/prisma";
+import { requireDbUser } from "@/lib/requireDbUser";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -32,37 +31,53 @@ function toSharedLessonSlug(lessonSlug: string) {
   return level ? `editor-${level}` : "";
 }
 
+function isUnauthError(e: any) {
+  const msg = String(e?.message ?? e ?? "").toLowerCase();
+  return msg.includes("unauth");
+}
+
 export async function GET(req: Request) {
-  const { userId } = await auth();
-  if (!userId) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+  try {
+    const { dbUserId } = await requireDbUser();
+    const userId = dbUserId;
 
-  const { projectSlug, lessonSlug } = getKey(req);
-  if (!projectSlug || !lessonSlug) {
-    return NextResponse.json({ ok: false, error: "missing projectSlug/lessonSlug" }, { status: 400 });
+    const { projectSlug, lessonSlug } = getKey(req);
+    if (!projectSlug || !lessonSlug) {
+      return NextResponse.json({ ok: false, error: "missing projectSlug/lessonSlug" }, { status: 400 });
+    }
+
+    const sharedLessonSlug = toSharedLessonSlug(lessonSlug);
+    if (!sharedLessonSlug) {
+      return NextResponse.json({ ok: false, error: "invalid lessonSlug" }, { status: 400 });
+    }
+
+    const row = await db.lessonState.findUnique({
+      where: {
+        userId_projectSlug_lessonSlug: { userId, projectSlug, lessonSlug: sharedLessonSlug },
+      },
+      select: { blanks: true, updatedAt: true },
+    });
+
+    const blanks = (row?.blanks as any) ?? {};
+    const arduino: ArduinoState | null = blanks?.arduino ?? null;
+
+    return NextResponse.json({ ok: true, arduino }, { headers: { "Cache-Control": "no-store" } });
+  } catch (e: any) {
+    if (isUnauthError(e)) {
+      return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+    }
+    console.error("GET /api/arduino-state error:", e);
+    return NextResponse.json(
+      { ok: false, error: "Internal Server Error" },
+      { status: 500, headers: { "Cache-Control": "no-store" } }
+    );
   }
-
-  const sharedLessonSlug = toSharedLessonSlug(lessonSlug);
-  if (!sharedLessonSlug) {
-    return NextResponse.json({ ok: false, error: "invalid lessonSlug" }, { status: 400 });
-  }
-
-  const row = await db.lessonState.findUnique({
-    where: {
-      userId_projectSlug_lessonSlug: { userId, projectSlug, lessonSlug: sharedLessonSlug },
-    },
-    select: { blanks: true, updatedAt: true },
-  });
-
-  const blanks = (row?.blanks as any) ?? {};
-  const arduino: ArduinoState | null = blanks?.arduino ?? null;
-
-  return NextResponse.json({ ok: true, arduino }, { headers: { "Cache-Control": "no-store" } });
 }
 
 export async function POST(req: Request) {
   try {
-    const { userId } = await auth();
-    if (!userId) return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+    const { dbUserId } = await requireDbUser();
+    const userId = dbUserId;
 
     const body = await req.json().catch(() => null);
     const projectSlug = String(body?.projectSlug || "");
@@ -114,6 +129,9 @@ export async function POST(req: Request) {
       { headers: { "Cache-Control": "no-store" } }
     );
   } catch (e: any) {
+    if (isUnauthError(e)) {
+      return NextResponse.json({ ok: false, error: "unauthorized" }, { status: 401 });
+    }
     console.error("POST /api/arduino-state error:", e);
     return NextResponse.json(
       { ok: false, error: String(e?.message ?? e) },
@@ -121,4 +139,3 @@ export async function POST(req: Request) {
     );
   }
 }
-
