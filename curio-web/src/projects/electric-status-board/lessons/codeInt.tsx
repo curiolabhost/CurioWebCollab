@@ -1247,248 +1247,250 @@ __BLANK[40]__ __BLANK[41]__ = __BLANK[42]__; //counter index for the main menu a
   // LESSON 5
   // =========================================================
 
-  5: {
-    phrase: "Looping Main Menu options",
-    advanced: false,
-    steps: [
-      {
-        id: 1,
-        title: "Step 1: What is a Loop?",
-        optional: true,
-        codes: [
-          {
-            topicTitle: "Why loops matter",
-            descBeforeCode:
-              "We have an array of items. Now we want to print ALL of them without writing many repeated lines of code.",
-            imageGridBeforeCode: null,
-            descBetweenBeforeAndCode: null,
-            code: `^^
+5: {
+  phrase: "Looping Main Menu Options",
+  advanced: false,
+  steps: [
+    {
+      id: 1,
+      title: "Step 1: What Is a Loop?",
+      optional: true,
+      codes: [
+        {
+          topicTitle: "Why loops matter",
+          descBeforeCode:
+            "We have an array of items. Now we want to print all of them without writing repeated lines of code.",
+          imageGridBeforeCode: null,
+          descBetweenBeforeAndCode: null,
+          code: `^^
 display.println(options[0]); // Without a loop (not flexible)
 display.println(options[1]); // Better idea: use a loop to repeat the same pattern for each item.
 display.println(options[2]);
 display.println(options[3]);
 ^^`,
-            answerKey: {},
-            blankExplanations: {},
-            blankDifficulties: {},
-            descAfterCode: `Without a loop, you have to write a separate line for every item in the array. If you add or remove items, you must rewrite the code.
+          answerKey: {},
+          blankExplanations: {},
+          blankDifficulties: {},
+          descAfterCode: `Without a loop, you must write a separate line for every item in the array. If you add or remove items, you have to rewrite the code.
 
-Loops fix this problem by repeating the same code for each index in the array. In the next steps, we will use a **while loop** to walk through the list of options automatically.`,
-            imageGridAfterCode: null,
-            descAfterImage: null,
-            hint: "Imagine you had 10 or 20 items. You wouldn’t want to copy-paste the same line 20 times.",
-          },
-        ],
-      },
+Loops solve this by repeating the same code for each index in the array. In the next steps, we’ll use a **while loop** to walk through the list of options automatically.`,
+          imageGridAfterCode: null,
+          descAfterImage: null,
+          hint: "Imagine you had 10 or 20 items. You wouldn’t want to copy-paste the same line 20 times.",
+        },
+      ],
+    },
 
-      {
-        id: 2,
-        title: "Step 2: Basic While Loop",
-        optional: true,
-        codes: [
-          {
-            topicTitle: "Warm-up: The while-loop pattern",
-            descBeforeCode:
-              "A while loop repeats a block of code as long as its condition is true. Study this pattern: start value → condition → update.",
-            imageGridBeforeCode: null,
-            descBetweenBeforeAndCode: null,
-            code: `^^// Warm-up example: prints 0,1,2,3 then stops^^
+    {
+      id: 2,
+      title: "Step 2: Basic While Loop",
+      optional: true,
+      codes: [
+        {
+          topicTitle: "Warm-up: The while-loop pattern",
+          descBeforeCode:
+            "A while loop repeats a block of code as long as its condition is true. Study this pattern: start value → condition → update.",
+          imageGridBeforeCode: null,
+          descBetweenBeforeAndCode: null,
+          code: `^^// Warm-up example: prints 0, 1, 2, 3 then stops^^
 ^^int i = 0;                      ^^// 1) start value^^
 while (i < 4) {                 ^^// 2) condition^^
   Serial.println(i);
   i = i + 1;                    ^^// 3) update (moves i forward)^^
 }^^`,
-            answerKey: {
-              ANSWER_I: ["4"],
-            },
-            blankExplanations: {
-              ANSWER_I:
-                "After the loop stops, i has just reached the first value that makes the condition false.",
-            },
-            blankDifficulties: {
-              ANSWER_I: "easy",
-            },
-            descAfterCode: `The loop stops when \`i < 4\` becomes false.
-
-What does the \`i\` read after while loop ends?    __BLANK[ANSWER_I]__`,
-            imageGridAfterCode: null,
-            descAfterImage: null,
-            hint: "If the update line is missing, the loop may never end.",
+          answerKey: {
+            ANSWER_I: ["4"],
           },
+          blankExplanations: {
+            ANSWER_I:
+              "When the loop stops, i has reached the first value that makes the condition false.",
+          },
+          blankDifficulties: {
+            ANSWER_I: "easy",
+          },
+          descAfterCode: `The loop stops when \`i < 4\` becomes false.
 
-          {
-            topicTitle: "Loop Practices",
-            title: `Loop Practice 1`,
-            descBeforeCode: `**Practice 1: Print Even Numbers**
-Start at 2 and keep printing even numbers by adding the same step each time until 10.`,
-            imageGridBeforeCode: null,
-            descBetweenBeforeAndCode: null,
-            code: `^^int num = 2;
-while (num < __BLANK[P1_LIMIT]__) {
+What does \`i\` equal after the while loop ends?  __BLANK[ANSWER_I]__`,
+          imageGridAfterCode: null,
+          descAfterImage: null,
+          hint: "If the update line is missing, the loop may never end.",
+        },
+
+        {
+          topicTitle: "Loop Practice",
+          title: `Loop Practice 1`,
+          descBeforeCode: `**Practice 1: Print Even Numbers**
+Start at 2 and keep printing even numbers by adding the same step each time until you reach 10.`,
+          imageGridBeforeCode: null,
+          descBetweenBeforeAndCode: null,
+          code: `^^int num = 2;
+while (num <= __BLANK[P1_LIMIT]__) {
   Serial.println(__BLANK[P1_PRINT]__);
   num = num + __BLANK[P1_STEP]__;
 }^^`,
-            answerKey: {
-              P1_LIMIT: ["10"],
-              P1_PRINT: ["num"],
-              P1_STEP: ["2"],
-            },
-            blankExplanations: {
-              P1_LIMIT:
-                "Pick a number that makes the loop stop after a few prints. The loop should stop when num reaches the limit.",
-              P1_PRINT:
-                "Print the variable that changes each loop iteration (not a fixed number).",
-              P1_STEP:
-                "Even numbers increase by a constant step. Choose the amount num should increase each time.",
-            },
-            blankDifficulties: {
-              P1_LIMIT: "easy",
-              P1_PRINT: "easy",
-              P1_STEP: "easy",
-            },
-            descAfterCode:
-              "If your step is 2, the output should be even numbers: 2, 4, 6, ... until the condition becomes false.",
-            imageGridAfterCode: null,
-            descAfterImage: null,
-            hint: "Even numbers go up by 2 each time.",
+          answerKey: {
+            P1_LIMIT: ["10"],
+            P1_PRINT: ["num"],
+            P1_STEP: ["2"],
           },
+          blankExplanations: {
+            P1_LIMIT:
+              "Set the stopping number so the loop includes 10 before it ends.",
+            P1_PRINT:
+              "Print the variable that changes each loop iteration (not a fixed number).",
+            P1_STEP:
+              "Even numbers increase by a constant step. Choose how much num should increase each time.",
+          },
+          blankDifficulties: {
+            P1_LIMIT: "easy",
+            P1_PRINT: "easy",
+            P1_STEP: "easy",
+          },
+          descAfterCode:
+            "With a step of 2, the output should be: 2, 4, 6, 8, 10.",
+          imageGridAfterCode: null,
+          descAfterImage: null,
+          hint: "Even numbers go up by 2 each time.",
+        },
 
-          {
-            descBeforeCode: `**Loop Practice 2: Print Multiples of Three**
-Pick a starting value for x, then update x by 3 each loop.`,
-            imageGridBeforeCode: null,
-            descBetweenBeforeAndCode: null,
-            title: `Loop Practice 2`,
-            code: `^^int x = __BLANK[P2_START]__;
+        {
+          descBeforeCode: `**Loop Practice 2: Print Multiples of Three**
+Pick a starting value for x, then increase x by 3 each loop.`,
+          imageGridBeforeCode: null,
+          descBetweenBeforeAndCode: null,
+          title: `Loop Practice 2`,
+          code: `^^int x = __BLANK[P2_START]__;
 while (__BLANK[P2_CONDVAR]__ < __BLANK[P2_LIMIT]__) {
   Serial.println(__BLANK[P2_PRINT]__);
   __BLANK[P2_UPDATE]__;
 }^^`,
-            answerKey: {
-              P2_START: { type: "range", min: 0, max: 30 },
-              P2_CONDVAR: ["x"],
-              P2_LIMIT: { type: "range", min: 10, max: 100 },
-              P2_PRINT: ["x"],
-              P2_UPDATE: ["x=x+3", "x+=3"],
-            },
-            blankExplanations: {
-              P2_START:
-                "Choose a starting number for x. It should make sense for counting by 3.",
-              P2_CONDVAR:
-                "Use the same variable you’re updating inside the loop for the condition check.",
-              P2_LIMIT: "Pick a stopping limit so the loop eventually ends.",
-              P2_PRINT: "Print the changing variable for each loop iteration.",
-              P2_UPDATE:
-                "Update x so it moves forward by 3 each time (otherwise the loop may never end).",
-            },
-            blankDifficulties: {
-              P2_START: "easy",
-              P2_CONDVAR: "easy",
-              P2_LIMIT: "easy",
-              P2_PRINT: "easy",
-              P2_UPDATE: "medium",
-            },
-            descAfterCode:
-              "As long as x increases by 3 each time, the loop will eventually reach the limit and stop.",
-            imageGridAfterCode: null,
-            descAfterImage: null,
-            hint: "Make sure the update changes x by 3 (no space needed).",
+          answerKey: {
+            P2_START: { type: "range", min: 0, max: 30 },
+            P2_CONDVAR: ["x"],
+            P2_LIMIT: { type: "range", min: 10, max: 100 },
+            P2_PRINT: ["x"],
+            P2_UPDATE: ["x=x+3", "x+=3"],
           },
+          blankExplanations: {
+            P2_START:
+              "Choose a starting number for x. Starting with a multiple of 3 makes the pattern clearer.",
+            P2_CONDVAR:
+              "Use the same variable you update inside the loop for the condition check.",
+            P2_LIMIT: "Pick a stopping limit so the loop eventually ends.",
+            P2_PRINT: "Print the changing variable each loop iteration.",
+            P2_UPDATE:
+              "Update x so it moves forward by 3 each time (otherwise the loop may never end).",
+          },
+          blankDifficulties: {
+            P2_START: "easy",
+            P2_CONDVAR: "easy",
+            P2_LIMIT: "easy",
+            P2_PRINT: "easy",
+            P2_UPDATE: "medium",
+          },
+          descAfterCode:
+            "As long as x increases by 3 each time, the loop will eventually reach the limit and stop.",
+          imageGridAfterCode: null,
+          descAfterImage: null,
+          hint: "Make sure the update changes x by 3 (no space needed).",
+        },
 
-          {
-            descBeforeCode: `**Loop Practice 3: Stop when a Number Reaches a Limit**
+        {
+          descBeforeCode: `**Loop Practice 3: Stop When a Number Reaches a Limit**
 Create a counter variable, print it, and increase it by 1 each loop until it reaches your limit.`,
-            imageGridBeforeCode: null,
-            descBetweenBeforeAndCode: null,
-            title: `Loop Practice 3`,
-            code: `^^int __BLANK[P3_VAR]__ = 5;
+          imageGridBeforeCode: null,
+          descBetweenBeforeAndCode: null,
+          title: `Loop Practice 3`,
+          code: `^^int __BLANK[P3_VAR]__ = 5;
 while (__BLANK[P3_CONDVAR]__ < __BLANK[P3_LIMIT]__) {
   Serial.println(__BLANK[P3_PRINT]__);
   __BLANK[P3_VAR]__ = __BLANK[P3_NEXT]__ + __BLANK[P3_NUM]__;
 }^^`,
-            answerKey: {
-              P3_VAR: { type: "identifier" },
-              P3_CONDVAR: { type: "sameAs", target: "P3_VAR" },
-              P3_LIMIT: { type: "range", min: 6, max: 200 },
-              P3_PRINT: { type: "sameAs", target: "P3_VAR" },
-              P3_NEXT: { type: "sameAs", target: "P3_VAR" },
-              P3_NUM: ["1"],
-            },
-            blankExplanations: {
-              P3_VAR:
-                "Choose a variable name for your counter (any valid identifier).",
-              P3_CONDVAR:
-                "Use the same variable name you created for the counter in the while condition.",
-              P3_LIMIT:
-                "Pick a limit bigger than the start value so the loop can run at least once.",
-              P3_PRINT:
-                "Print the counter variable each time so you can see it change.",
-              P3_NEXT:
-                "Update the counter to the next value by adding 1 to it.",
-            },
-            blankDifficulties: {
-              P3_VAR: "easy",
-              P3_CONDVAR: "easy",
-              P3_LIMIT: "easy",
-              P3_PRINT: "easy",
-              P3_NEXT: "easy",
-            },
-            descAfterCode:
-              "This is the same pattern: start value → condition → update. The update must move the counter forward.",
-            imageGridAfterCode: null,
-            descAfterImage: null,
-            hint: "Your update should increase the counter by exactly 1 (no space needed).",
+          answerKey: {
+            P3_VAR: { type: "identifier" },
+            P3_CONDVAR: { type: "sameAs", target: "P3_VAR" },
+            P3_LIMIT: { type: "range", min: 6, max: 200 },
+            P3_PRINT: { type: "sameAs", target: "P3_VAR" },
+            P3_NEXT: { type: "sameAs", target: "P3_VAR" },
+            P3_NUM: ["1"],
           },
+          blankExplanations: {
+            P3_VAR:
+              "Choose a variable name for your counter (any valid identifier).",
+            P3_CONDVAR:
+              "Use the same counter variable in the while condition.",
+            P3_LIMIT:
+              "Pick a limit bigger than the start value so the loop runs at least once.",
+            P3_PRINT:
+              "Print the counter variable each time so you can see it change.",
+            P3_NEXT:
+              "Update the counter to the next value by adding 1 to it.",
+            P3_NUM: "Add 1 each loop so the counter increases by exactly one.",
+          },
+          blankDifficulties: {
+            P3_VAR: "easy",
+            P3_CONDVAR: "easy",
+            P3_LIMIT: "easy",
+            P3_PRINT: "easy",
+            P3_NEXT: "easy",
+            P3_NUM: "easy",
+          },
+          descAfterCode:
+            "This is the same pattern: start value → condition → update. The update must move the counter forward.",
+          imageGridAfterCode: null,
+          descAfterImage: null,
+          hint: "Your update should increase the counter by exactly 1 (no space needed).",
+        },
 
-          {
-            descBeforeCode: `**Loop Practice 4: Loop Until Button Press (concept)**
+        {
+          descBeforeCode: `**Loop Practice 4: Loop Until Button Press (concept)**
 This is concept practice: loop while a true/false flag is false. In a real project, the flag would change when you read a button.`,
-            imageGridBeforeCode: null,
-            descBetweenBeforeAndCode: null,
-            title: `Loop Practice 4`,
-            code: `^^__BLANK[P4_TYPE]__ __BLANK[P4_FLAG]__ = __BLANK[P4_VALUE]__;
+          imageGridBeforeCode: null,
+          descBetweenBeforeAndCode: null,
+          title: `Loop Practice 4`,
+          code: `^^__BLANK[P4_TYPE]__ __BLANK[P4_FLAG]__ = __BLANK[P4_VALUE]__;
 while (__BLANK[P4_FLAG]__ == false) {
   Serial.println(__BLANK[P4_PRINT]__);
   // In a real project, you'd update the flag based on a button read.
 }^^`,
-            answerKey: {
-              P4_TYPE: ["bool"],
-              P4_VALUE: ["true", "false"],
-              P4_FLAG: { type: "identifier" },
-              P4_PRINT: {
-                type: "string",
-                regex: '^".*"$',
-              },
+          answerKey: {
+            P4_TYPE: ["bool"],
+            P4_VALUE: ["false"],
+            P4_FLAG: { type: "identifier" },
+            P4_PRINT: {
+              type: "string",
+              regex: '^".*"$',
             },
-            blankExplanations: {
-              P4_TYPE: "Choose the correct type for a true/false variable.",
-              P4_FLAG:
-                "Pick a variable name to represent whether you’re ready or not.",
-              P4_VALUE:
-                "Choose the starting true/false value for the variable.",
-              P4_PRINT:
-                "Print a short message string while waiting in the loop (any message is fine).",
-            },
-            blankDifficulties: {
-              P4_TYPE: "easy",
-              P4_FLAG: "easy",
-              P4_VALUE: "easy",
-              P4_PRINT: "easy",
-            },
-            descAfterCode:
-              "If the flag never changes inside the loop, this would run forever. In real code, you’d update the flag by reading a button.",
-            imageGridAfterCode: null,
-            descAfterImage: null,
-            hint: "True/false variables use the type bool.",
           },
+          blankExplanations: {
+            P4_TYPE: "Use the correct type for a true/false variable.",
+            P4_FLAG:
+              "Pick a variable name to represent whether you’re ready or not.",
+            P4_VALUE:
+              "Start as false so the loop runs while you’re “waiting.”",
+            P4_PRINT:
+              "Print a short message string while waiting in the loop (any message is fine).",
+          },
+          blankDifficulties: {
+            P4_TYPE: "easy",
+            P4_FLAG: "easy",
+            P4_VALUE: "easy",
+            P4_PRINT: "easy",
+          },
+          descAfterCode:
+            "If the flag never changes inside the loop, this will run forever. In real code, you’d update the flag by reading a button.",
+          imageGridAfterCode: null,
+          descAfterImage: null,
+          hint: "True/false variables use the type bool.",
+        },
 
-          {
-            descBeforeCode: `**Loop Practice 5: Loop through Array 1 (search)**
+        {
+          descBeforeCode: `**Loop Practice 5: Loop Through an Array (search)**
 Walk through an array and stop early when you find the target value.`,
-            imageGridBeforeCode: null,
-            descBetweenBeforeAndCode: null,
-            title: `Loop Practice 5`,
-            code: `^^int nums[] = {2, 4, 7, 9, 11, 14};
+          imageGridBeforeCode: null,
+          descBetweenBeforeAndCode: null,
+          title: `Loop Practice 5`,
+          code: `^^int nums[] = {2, 4, 7, 9, 11, 14};
 int total = __BLANK[P5_TOTAL]__;     ^^// total number of items in the array^^
 int desiredNum = __BLANK[P5_TARGET]__;
 
@@ -1501,37 +1503,39 @@ while (j < total) {
   }
   j = j + 1;                         ^^// increment to the next index^^
 }^^`,
-            answerKey: {
-              P5_TOTAL: ["6"],
-              P5_TARGET: { type: "range", min: 0, max: 100 },
-              P5_IFCOMPARE: ["desiredNum"],
-            },
-            blankExplanations: {
-              P5_TOTAL:
-                "This is how many items are in the nums array. Count them.",
-              P5_TARGET: "Pick a number you want to search for in the array.",
-              P5_IFCOMPARE:
-                "Compare nums[j] to the variable holding the target value.",
-            },
-            blankDifficulties: {
-              P5_TOTAL: "easy",
-              P5_TARGET: "easy",
-              P5_IFCOMPARE: "easy",
-            },
-            descAfterCode:
-              "The keyword break stops the loop immediately once the target is found.",
-            imageGridAfterCode: null,
-            descAfterImage: null,
-            hint: "If you don’t break, the loop keeps checking the rest of the array.",
+          // More flexible (Step-4 style): allow either literal 6 or a sizeof() expression.
+          answerKey: {
+            P5_TOTAL: { type: "oneOf", values: ["6", "sizeof(nums)/sizeof(nums[0])", "sizeof(nums) / sizeof(nums[0])"] },
+            P5_TARGET: { type: "oneOf", values: ["2", "4", "7", "9", "11", "14"] },
+            P5_IFCOMPARE: ["desiredNum"],
           },
+          blankExplanations: {
+            P5_TOTAL:
+              "This is how many items are in the nums array. You can count them (6) or compute it using sizeof(nums)/sizeof(nums[0]).",
+            P5_TARGET:
+              "Choose a number that exists in the array so the loop can find it.",
+            P5_IFCOMPARE:
+              "Compare nums[j] to the variable holding the target value.",
+          },
+          blankDifficulties: {
+            P5_TOTAL: "easy",
+            P5_TARGET: "easy",
+            P5_IFCOMPARE: "easy",
+          },
+          descAfterCode:
+            "The keyword break stops the loop immediately once the target is found.",
+          imageGridAfterCode: null,
+          descAfterImage: null,
+          hint: "If you don’t break, the loop keeps checking the rest of the array.",
+        },
 
-          {
-            descBeforeCode: `**Loop Practice 6: Loop through Array 2 (search)**
-Same idea, but you choose your own array name, target variable name, and indexing variable.`,
-            imageGridBeforeCode: null,
-            descBetweenBeforeAndCode: null,
-            title: `Loop Practice 6`,
-            code: `^^int __BLANK[P6_ARRNAME]__[] = {4, 3, 2, 10, 1, 6};
+        {
+          descBeforeCode: `**Loop Practice 6: Loop Through an Array (custom names)**
+Same idea, but you choose your own array name, target variable name, and index variable.`,
+          imageGridBeforeCode: null,
+          descBetweenBeforeAndCode: null,
+          title: `Loop Practice 6`,
+          code: `^^int __BLANK[P6_ARRNAME]__[] = {4, 3, 2, 10, 1, 6};
 int total2 = __BLANK[P6_TOTAL]__;    ^^// total number of items in the array^^
 int __BLANK[P6_DESNAME]__ = __BLANK[P6_DESVAL]__;   ^^// desired number^^
 
@@ -1544,249 +1548,257 @@ while (__BLANK[P6_IDXVAR]__ < total2) {
   }
   __BLANK[P6_INCLEFT]__ = __BLANK[P6_INCRIGHT]__ + 1;  ^^// increment index^^
 }^^`,
-            answerKey: {
-              P6_ARRNAME: { type: "identifier" },
-              P6_TOTAL: ["6"],
-              P6_DESNAME: { type: "identifier" },
-              P6_DESVAL: { type: "range", min: 0, max: 20 },
-              P6_IDXVAR: { type: "identifier" },
-              P6_STARTIDX: ["0"],
-              P6_READ: { type: "expression" }, // array[index]
-              P6_COMPARE: { type: "sameAs", target: "P6_DESNAME" },
-              P6_PRINT: { type: "sameAs", target: "P6_DESNAME" },
-              P6_INCLEFT: { type: "sameAs", target: "P6_IDXVAR" },
-              P6_INCRIGHT: { type: "sameAs", target: "P6_IDXVAR" },
-            },
-            blankExplanations: {
-              P6_ARRNAME: "Pick a valid array name for the list of numbers.",
-              P6_TOTAL:
-                "This is the number of items in your array. Count how many values you put in it.",
-              P6_DESNAME:
-                "Pick a variable name for the number you want to find.",
-              P6_DESVAL:
-                "Pick a number that exists in your array so the condition can become true.",
-              P6_IDXVAR:
-                "This is your index variable that moves through the array.",
-              P6_STARTIDX: "Start at the first index of the array.",
-              P6_READ:
-                "Access the current array element using the index variable (array[index]).",
-              P6_COMPARE:
-                "Compare the current array value to your target variable.",
-              P6_PRINT: "Print the target variable once it is found.",
-              P6_INCLEFT:
-                "Update the same index variable you’re using in the while condition.",
-              P6_INCRIGHT:
-                "Increment the index variable so it moves to the next index.",
-            },
-            blankDifficulties: {
-              P6_ARRNAME: "easy",
-              P6_TOTAL: "easy",
-              P6_DESNAME: "easy",
-              P6_DESVAL: "easy",
-              P6_IDXVAR: "easy",
-              P6_STARTIDX: "easy",
-              P6_READ: "medium",
-              P6_COMPARE: "easy",
-              P6_PRINT: "easy",
-              P6_INCLEFT: "easy",
-              P6_INCRIGHT: "easy",
-            },
-            descAfterCode:
-              "If your target number exists in the array, the loop will eventually find it and stop.",
-            imageGridAfterCode: null,
-            descAfterImage: null,
-            hint: "Make sure P6_READ uses your array name and your index variable.",
+          // Improved with bind + sameAs (Step-4 style)
+          answerKey: buildAnswerKey({
+            P6_ARRNAME: K.id().bind("arr6"),
+            // total can be literal 6 OR sizeof(arr)/sizeof(arr[0]) using the bound array name
+            P6_TOTAL: {
+              type: "oneOf",
+              values: [
+                "6",
+                `sizeof(${K.same("arr6")})/sizeof(${K.same("arr6")}[0])`,
+                `sizeof(${K.same("arr6")}) / sizeof(${K.same("arr6")}[0])`,
+              ],
+            } as const,
+            P6_DESNAME: K.id().bind("target6"),
+            // allow only values that exist in the array (prevents “no output” confusion)
+            P6_DESVAL: K.num({ oneOf: [4, 3, 2, 10, 1, 6] }),
+            P6_IDXVAR: K.id().bind("idx6"),
+            P6_STARTIDX: K.num({ oneOf: [0] }),
+
+            // Must read from the bound array using the bound index: arr6[idx6]
+            P6_READ: {
+              type: "pattern",
+              parts: [
+                { p: "sameAs", target: "arr6" },
+                "[",
+                { p: "sameAs", target: "idx6" },
+                "]",
+              ],
+            } as const,
+
+            // Must compare to the bound target variable name
+            P6_COMPARE: K.same("target6"),
+            P6_PRINT: K.same("target6"),
+
+            // Increment must update the same index variable (allow common forms)
+            P6_INCLEFT: K.same("idx6"),
+            P6_INCRIGHT: {
+              type: "oneOf",
+              values: [K.same("idx6"), `${K.same("idx6")}+0`],
+            } as const,
+          }),
+          blankExplanations: {
+            P6_ARRNAME: "Pick a valid array name for the list of numbers.",
+            P6_TOTAL:
+              "This is the number of items in your array. You can count them (6) or compute it using sizeof(array)/sizeof(array[0]).",
+            P6_DESNAME:
+              "Pick a variable name for the number you want to find.",
+            P6_DESVAL:
+              "Choose a number that exists in the array so the condition can become true.",
+            P6_IDXVAR:
+              "This is your index variable that moves through the array.",
+            P6_STARTIDX: "Start at the first index of the array (0).",
+            P6_READ:
+              "Access the current array element using your array name and your index variable (array[index]).",
+            P6_COMPARE:
+              "Compare the current array value to your target variable.",
+            P6_PRINT: "Print the target variable once it is found.",
+            P6_INCLEFT:
+              "Update the same index variable you’re using in the while condition.",
+            P6_INCRIGHT:
+              "Increment the index variable so it moves to the next index.",
           },
-        ],
-      },
+          blankDifficulties: {
+            P6_ARRNAME: "easy",
+            P6_TOTAL: "easy",
+            P6_DESNAME: "easy",
+            P6_DESVAL: "easy",
+            P6_IDXVAR: "easy",
+            P6_STARTIDX: "easy",
+            P6_READ: "medium",
+            P6_COMPARE: "easy",
+            P6_PRINT: "easy",
+            P6_INCLEFT: "easy",
+            P6_INCRIGHT: "easy",
+          },
+          descAfterCode:
+            "If your target number exists in the array, the loop will eventually find it and stop.",
+          imageGridAfterCode: null,
+          descAfterImage: null,
+          hint: "Make sure P6_READ uses your array name and your index variable.",
+        },
+      ],
+    },
 
-      {
-        id: 3,
-        title: "Step 3: Show the Main Menu",
-        codes: [
-          {
-            topicTitle: "Print the menu + highlight the selected option",
-            descBeforeCode: `**Here is the idea:**
-When you press a navigation button (Next or Previous), the value of __BLANK[MINDEX]__ is increased or decreased to change which menu option is selected (0 → 1 → 2).
+    {
+      id: 3,
+      title: "Step 3: Show the Main Menu",
+      codes: [
+        {
+          topicTitle: "Print the menu + highlight the selected option",
+          descBeforeCode: `**Here is the idea:**
+When you press a navigation button (Next or Previous), the value of __BLANK[MINDEX]__ increases or decreases to change which menu option is selected (0 → 1 → 2).
 For example, if the Next button is pressed once, __BLANK[MINDEX]__ becomes 1.
-As the program loops through the menu array, it checks each option’s index. When the loop index equals __BLANK[MINDEX]__, that option is marked as selected and highlighted on the screen. In this example, the selected item is shown with an arrow \`>\`, but you can use any symbol or indicator you prefer.
 
-This new function draws the **Main Menu screen** on the OLED.
-**Here is what your new function would need to do step-by-step:**
-@ Clears the screen and sets up text styling
-@ Prints a title ("Main Menu:") and a divider line
-@ Uses a while loop to print every menu item in the main menu array __BLANK[MMENUNAME]__.
-@ Adds a highlight indicator (like ">") next to the selected item (when i == __BLANK[MINDEX]__)
-@ All other menu items print normally (with spaces so everything stays aligned)
-@ Other indicators you can use instead of \`">\` include: \`*\`, \`→\`, \`#\`, and any others. 
-    
+As the program loops through the menu array, it checks each option’s index. When the loop index equals __BLANK[MINDEX]__, that option is marked as selected and highlighted on the screen. In this example, the selected item is shown with an arrow \`>\`, but you can use any symbol you prefer.
+
+This function draws the **Main Menu screen** on the OLED.
+
+**This function should:**
+@ Clear the screen and set up text styling
+@ Print a title ("Main Menu:") and a divider line
+@ Use a while loop to print every menu item in the array __BLANK[MMENUNAME]__
+@ Add a highlight indicator (like ">") next to the selected item (when i == __BLANK[MINDEX]__)
+@ Print other menu items normally (with spacing so everything stays aligned)
+
 You will fill in a few key blanks to make the loop and highlighting work.`,
-            descBetweenBeforeAndCode: null,
+          descBetweenBeforeAndCode: null,
 
-            code: `^^
+          code: `^^
 //<< ---------------- TOP-LEVEL MENU ----------------
 void __BLANK[43]__() {                 // Function that draws the main menu on the OLED screen
 // ##EDIT:SHOWMAINMENU:INDENT=1##
-  __BLANK[44]__                       // Clears the display so previous screens are erased
-  __BLANK[45]__                       // Sets the size of the text shown on the screen
-  __BLANK[46]__                       // Sets the color of the text for the OLED display
-  __BLANK[47]__                       // Moves the cursor to the top-left corner of the screen
+  __BLANK[44]__;                       // Clear the display so previous screens are erased
+  __BLANK[45]__;                       // Set the size of the text to be 1
+  __BLANK[46]__;                       // Set the color of the text for the OLED display to be white
+  __BLANK[47]__;                       // Move the cursor to the top-left corner of the screen (0,0) to start printing the menu from there
 
-  display.println("Main Menu:");       // Prints the menu title
-  display.println("----------");       // Prints a divider line under the title
+  display.println("Main Menu:");       // Print the menu title
+  display.println("----------");       // Print a divider line under the title
 
-  int i = __BLANK[48]__;               // Initializes the menu index starting at the first item
+  int i = __BLANK[48]__;               // Start at the first menu item index
 
-  while (__BLANK[49]__) {              // Loops through all menu items
-    if (__BLANK[50]__) {               // Checks if this menu item is currently selected
-      display.print("> ");             // Shows an arrow next to the selected item
+  while (__BLANK[49]__) {              // Loop through all menu items
+    if (__BLANK[50]__) {               // Check if this menu item is currently selected
+      display.print("> ");             // Show an arrow next to the selected item
     }
     else {
-      display.print("  ");             // Keeps spacing aligned for unselected items
+      display.print("  ");             // Keep spacing aligned for unselected items
     }
 
-    __BLANK[51]__;                     // Prints the current menu item text
-    __BLANK[52]__;                     // Moves to the next menu item
+    __BLANK[51]__;                     // Print the current menu item text
+    __BLANK[52]__;                     // Move to the next menu item
   }
 }
 //##END:SHOWMAINMENU##
 ^^`,
-            imageGridBeforeCode: {
-              columns: 1,
-              rows: 1,
-              width: 500,
-              height: 420,
-              items: [
-                {
-                  imageSrc: "/electric-status-board/mainMenuButton.gif",
-                  label: "Main menu loop",
-                },
-              ],
-            },
-            answerKey: buildAnswerKey({
-              43: K.id().bind("showMainMenu"),
-              44: {
-                type: "pattern",
-                parts: ["display", ".", "clearDisplay", "(", ")"],
-              } as const,
-              45: {
-                type: "pattern",
-                parts: ["display", ".", "setTextSize", "(", "1", ")"],
-              } as const,
-              46: {
-                type: "pattern",
-                parts: [
-                  "display",
-                  ".",
-                  "setTextColor",
-                  "(",
-                  {
-                    p: "string",
-                  },
-                  ")",
-                ],
-
-              } as const,
-              47: {
-                type: "pattern",
-                parts: ["display", ".", "setCursor", "(", "0", ",", "0", ")"],
-              } as const,
-              48: K.num({ oneOf: [0] }),
-              51: {
-                type: "pattern",
-                parts: [
-                  "display",
-                  ".",
-                  {
-                    p: "oneOf",
-                    values: ["println", "print"],
-                  },
-                  "(",
-                  {
-                    p: "sameAs",
-                    target: "mainMenu",
-                  },
-                  "[",
-                  "i",
-                  "]",
-                  ")",
-                ],
-              } as const,
-              49: {
-                type: "pattern",
-                parts: [
-                  "i",
-                  "<",
-                  {
-                    p: "sameAs",
-                    target: "totalMain",
-                  },
-                ],
-              } as const,
-              50: {
-                type: "pattern",
-                parts: [
-                  "i",
-                  "==",
-                  {
-                    p: "sameAs",
-                    target: "mainIndex",
-                  },
-                ],
-              } as const,
-              52: {
-                type: "pattern",
-                parts: [
-                  "i",
-                  {
-                    p: "oneOf",
-                    values: ["++", "="],
-                  },
-                  "i",
-                  "+",
-                  "1",
-                ],
-              } as const,
-            }),
-
-              blankExplanations: {
-                43: "Name the function that draws the main menu on the OLED screen.",
-                44: "Clear the OLED display so previous content is removed.",
-                45: "Set the size of the text before printing anything.",
-                46: "Set the color used for text on the OLED display.",
-                47: "Position the cursor where the menu text should start printing.",
-                48: "Initialize the counter so the menu starts from the first item.",
-                49: "Write a condition that keeps the loop running while menu items remain.",
-                50: "Check whether the current menu item is the selected one.",
-                51: "Print the menu label corresponding to the current index.",
-                52: "Move to the next menu item so the loop continues correctly.",
+          imageGridBeforeCode: {
+            columns: 1,
+            rows: 1,
+            width: 500,
+            height: 420,
+            items: [
+              {
+                imageSrc: "/electric-status-board/mainMenuButton.gif",
+                label: "Main menu loop",
               },
-
-            blankDifficulties: {
-                43: "easy",
-                44: "easy",
-                45: "easy",
-                46: "easy",
-                47: "easy",
-                48: "easy",
-                49: "easy",
-                50: "easy",
-                51: "easy",
-                52: "easy",
-            },
+            ],
           },
-          {
-            topicTitle:
-              "Checkpoint: Test your code so far on Simulator (Welcome → Main Menu)",
-            descBeforeCode: `Now that you’ve built the Welcome screen function and the Main Menu function, you can test everything so far in the simulator.
+
+          // Make Step 3 more “Step-4 style”: bind the menu/index names here too,
+          // so this step doesn’t rely on binds from Lesson 4.
+          answerKey: buildAnswerKey({
+            43: K.id().bind("showMainMenu"),
+
+            44: {
+              type: "pattern",
+              parts: ["display", ".", "clearDisplay", "(", ")"],
+            } as const,
+
+            45: {
+              type: "pattern",
+              parts: ["display", ".", "setTextSize", "(", "1", ")"],
+            } as const,
+
+            46: {
+              type: "pattern",
+              parts: [
+                "display",
+                ".",
+                "setTextColor",
+                "(",
+                { p: "oneOf", values: ["SSD1306_WHITE", "WHITE"] },
+                ")",
+              ],
+            } as const,
+
+            47: {
+              type: "pattern",
+              parts: ["display", ".", "setCursor", "(", "0", ",", "0", ")"],
+            } as const,
+
+            48: K.num({ oneOf: [0] }),
+
+            // These depend on Lesson 4 variable names, so accept either:
+            // (A) the bound Lesson 4 names (if present), OR
+            // (B) common literal forms (so correct answers aren't rejected).
+            49: {
+              type: "pattern", parts: ["i", "<", { p: "sameAs", target: "totalMain" }] } as const,
+
+            50: 
+                { type: "pattern", parts: ["i", "==", { p: "sameAs", target: "mainIndex" }] } as const,
+
+            51: {
+                  type: "pattern",
+                  parts: [
+                    "display",
+                    ".",
+                    { p: "oneOf", values: ["println", "print"] },
+                    "(",
+                    { p: "sameAs", target: "mainMenu" },
+                    "[",
+                    "i",
+                    "]",
+                    ")",
+                  ],
+                } as const,
+
+            52: {
+              type: "oneOf",
+              values: ["i++", "i = i + 1", "i += 1"],
+            } as const,
+          }),
+
+          blankExplanations: {
+            43: "Name the function that draws the main menu on the OLED screen.",
+            44: "Clear the OLED display so previous content is removed.",
+            45: "Set the text size before printing anything.",
+            46: "Set the color used for text on the OLED display.",
+            47: "Position the cursor where the menu text should start printing.",
+            48: "Initialize the counter so the menu starts from the first item (index 0).",
+            49: "Keep looping while there are still menu items left to print.",
+            50: "Check whether the current menu item is the selected one.",
+            51: "Print the menu label for the current index.",
+            52: "Increment i so the loop moves to the next menu item.",
+          },
+
+          blankDifficulties: {
+            43: "easy",
+            44: "easy",
+            45: "easy",
+            46: "easy",
+            47: "easy",
+            48: "easy",
+            49: "easy",
+            50: "easy",
+            51: "easy",
+            52: "easy",
+          },
+        },
+
+        {
+          topicTitle: "Checkpoint: Test your code on the Simulator (Welcome → Main Menu)",
+          descBeforeCode: `Now that you’ve built the Welcome screen function and the Main Menu function, you can test everything so far in the simulator.
+
 **What should happen:**
-@ Welcome screen shows once at startup
+@ The Welcome screen shows once at startup
 @ Then the Main Menu displays
 @ No button navigation yet (we add that next)`,
-            imageGridBeforeCode: null,
-            descBetweenBeforeAndCode: null,
-            title: "Codes Put Together",
-            code: `^^
+          imageGridBeforeCode: null,
+          descBetweenBeforeAndCode: null,
+          title: "Codes Put Together",
+          code: `^^
 #include <Wire.h>
 #include __BLANK[1]__
 #include __BLANK[2]__
@@ -1828,15 +1840,15 @@ void setup() {
   //<< 1) Call Welcome Function once
   __BLANK[WELCOMENAME]__();
 
-  //<< 2) A short delay before the main menu so you can see the welcome function
+  //<< 2) Short delay before the main menu so you can see the welcome screen
   delay(__BLANK[DELAY_MS]__);
 
-  //<< 3) Then call the main menu Function 
+  //<< 3) Then draw the main menu
   __BLANK[43]__();
 }
 
 void loop() {
-  //<< No navigation yet — we add button logic next lesson/step.
+  //<< No navigation yet — we add button logic next.
 }
 
 //<< ------------------------------
@@ -1873,24 +1885,22 @@ void __BLANK[43]__() {
 }
 // ##END:SHOWMAINMENU##
 ^^`,
-            answerKey: {
-              DELAY_MS: {
-                type: "range",
-                min: 300,
-                max: 10000,
-              },
+          answerKey: {
+            DELAY_MS: {
+              type: "range",
+              min: 300,
+              max: 10000,
             },
-
-            blankExplanations: {
-              DELAY_MS:
-                "Choose how long (in milliseconds) the welcome screen stays visible before switching to the main menu. If the value is very small (i.e.10-200 ms), it may disappear too quickly for you to see.",
-              MAINMENUNAME:
-                "This function is one you made that draws the main menu screen. Check the functions you made so far.",
-            },
-            descAfterCode: `**If your simulator shows a blank screen:**
+          },
+          blankExplanations: {
+            DELAY_MS:
+              "Choose how long (in milliseconds) the welcome screen stays visible before switching to the main menu. If the value is too small (like 10–200 ms), it may disappear too quickly to see.",
+            43: "This function draws the main menu screen. Use the same function name you defined above.",
+          },
+          descAfterCode: `**If your simulator shows a blank screen:**
 @ Double-check your OLED I²C address (many are \`0x3C\`, some are \`0x3D\`)
 @ If your display is 128×32, change \`SCREEN_HEIGHT\` from 64 to 32
-@ Make sure you called \`display.display()\` after drawing
+@ Make sure you call \`display.display()\` after drawing
 
 **What you just proved:**
 You successfully built:
@@ -1898,12 +1908,11 @@ You successfully built:
 @ setup() initialization
 @ a welcome screen function
 @ a main menu drawing function`,
-          },
-        ],
-      },
-    ],
-  },
-
+        },
+      ],
+    },
+  ],
+},
   // =========================================================
   // LESSON 6
   // =========================================================
@@ -2115,58 +2124,61 @@ Next lesson, you’ll connect buttons to:
   },
 
   7: {
-    phrase: "Using buttons for Menu",
-    advanced: false,
-    steps: [
-      {
-        id: 1,
-        optional: true,
-        title: "Step 1: How Buttons Work & INPUT_PULLUP",
-        desc: `Buttons are simple switches. When you press a button, it closes the circuit so current can flow. When you release it, the circuit opens again, and current stops.
-On the Arduino, we use buttons as **digital inputs** that read either \`HIGH\` or \`LOW\`. However, if a pin is not connected to anything, it can "float" and randomly jump between \`HIGH\` and \`LOW\`. This is why we use **pull-up** (or pull-down) resistors.`,
-        codes: [
-          {
-            topicTitle: "How Input Pullup works",
-            descBetweenBeforeAndCode: `**With** \`INPUT_PULLUP\`**:**
+  phrase: "Using Buttons for Menu",
+  advanced: false,
+  steps: [
+    {
+      id: 1,
+      optional: true,
+      title: "Step 1: How Buttons Work & INPUT_PULLUP",
+      desc: `Buttons are simple switches. When you press a button, it closes the circuit so current can flow. When you release it, the circuit opens again, and current stops.
+
+On the Arduino, we use buttons as **digital inputs** that read either \`HIGH\` or \`LOW\`. However, if a pin is not connected to anything, it can "float" and randomly jump between \`HIGH\` and \`LOW\`. That’s why we use **pull-up** (or pull-down) resistors.`,
+      codes: [
+        {
+          topicTitle: "How INPUT_PULLUP works",
+          descBetweenBeforeAndCode: `**With \`INPUT_PULLUP\`:**
 @ The Arduino turns on an internal resistor that pulls the pin up to \`HIGH\` when the button is not pressed.
-@ The button is wired so that one side connects to the digital pin and the other side connects to GND. When the button is not pressed, the circuit is open, so the pin is not connected to ground. Because of the internal pull-up resistor, the pin stays at HIGH.
+@ The button is wired so that one side connects to the digital pin and the other side connects to GND. When the button is not pressed, the circuit is open, so the pin is not connected to ground. Because of the internal pull-up resistor, the pin stays \`HIGH\`.
 @ When the button is pressed, the switch closes and directly connects the pin to GND. This pulls the pin \`LOW\`, overpowering the weak internal pull-up resistor.
 
 So the logic becomes:
 @ **Not pressed → \`digitalRead(pin)\` is** __BLANK[INPUTHIGHLOW1]__
 @ **Pressed → \`digitalRead(pin)\` is** __BLANK[INPUTHIGHLOW]__
-We'll use this pattern for all the buttons in the FocusBoard project.`,
 
-            customComponent: InputPullupCircuitInteractive,
+We’ll use this pattern for all the buttons in the FocusBoard project.`,
+          customComponent: InputPullupCircuitInteractive,
+          hint: "Remember: with INPUT_PULLUP, a pressed button reads LOW, and a released button reads HIGH.",
 
-            hint: "Remember: with INPUT_PULLUP, a pressed button reads LOW, and a released button reads HIGH.",
-            answerKey: {
-              INPUTHIGHLOW1: ["HIGH"],
-              INPUTHIGHLOW: ["LOW"],
-            },
-            blankExplanations: {
-              INPUTHIGHLOW1:
-                "Fill in whether the pin reads HIGH or LOW when the button is not pressed using INPUT_PULLUP logic.",
-              INPUTHIGHLOW:
-                "Fill in whether the pin reads HIGH or LOW when the button is pressed using INPUT_PULLUP logic.",
-            },
-            blankDifficulties: {
-              INPUTHIGHLOW1: "easy",
-              INPUTHIGHLOW: "easy",
-            },
+          // Flexible even though these are simple:
+          answerKey: buildAnswerKey({
+            INPUTHIGHLOW1: K.str({ oneOf: ["HIGH"] }),
+            INPUTHIGHLOW: K.str({ oneOf: ["LOW"] }),
+          }),
+
+          blankExplanations: {
+            INPUTHIGHLOW1:
+              "With INPUT_PULLUP, the pin reads HIGH when the button is not pressed.",
+            INPUTHIGHLOW:
+              "With INPUT_PULLUP, the pin reads LOW when the button is pressed.",
           },
-        ],
-      },
+          blankDifficulties: {
+            INPUTHIGHLOW1: "easy",
+            INPUTHIGHLOW: "easy",
+          },
+        },
+      ],
+    },
 
-      {
-        id: 2,
-        optional: true,
-        title: "Step 2: Basic Button Code",
-        desc: "Here is a minimal example that reads a single button wired from pin 2 to GND, using `INPUT_PULLUP`.",
-        hint: "Notice that we print 'pressed' when the state is LOW, not HIGH.",
-        codes: [
-          {
-            code: `^^#define BUTTON 2^^                          // button is connected to digital pin 2
+    {
+      id: 2,
+      optional: true,
+      title: "Step 2: Basic Button Code",
+      desc: "Here is a minimal example that reads a single button wired from pin 2 to GND, using `INPUT_PULLUP`.",
+      hint: "Notice that we print 'pressed' when the state is LOW, not HIGH.",
+      codes: [
+        {
+          code: `^^#define BUTTON 2^^                          // button is connected to digital pin 2
 
 ^^void setup() {^^
 ^^  pinMode(BUTTON, INPUT_PULLUP);^^           // button is defined as an INPUT with internal pull-up
@@ -2184,29 +2196,29 @@ We'll use this pattern for all the buttons in the FocusBoard project.`,
 
 ^^  delay(100);^^                              // slow down the prints a bit
 ^^}^^`,
-            descAfterCode: `Here's what is happening:
+          descAfterCode: `Here's what is happening:
 
 - \`pinMode(BUTTON, INPUT_PULLUP);\` enables the internal pull-up resistor and expects the button to be wired to GND.
 - \`digitalRead(BUTTON)\` returns:
   - \`LOW\` when the button is **pressed** (connected to GND),
   - \`HIGH\` when the button is **not pressed**.
-- The \`if\` statement checks for \`LOW\` to detect the press and prints out the correct message.`,
-          },
-        ],
-      },
+- The \`if\` statement checks for \`LOW\` to detect the press and prints the correct message.`,
+        },
+      ],
+    },
 
-      {
-        id: 3,
-        optional: true,
-        title: "Step 3: Button Practice Exercises",
-        desc: "Now try a few different ways of using buttons so you’re ready for the menu page logic in the FocusBoard project.",
-        hint: "All of these still use INPUT_PULLUP and treat LOW as 'pressed'.",
-        codes: [
-          {
-            title: "Practice 1: Count Button Presses",
-            descBeforeCode:
-              "Each time you press the button, increase a counter by 1 and print it to the Serial Monitor.",
-            code: `^^#define BUTTON 2^^
+    {
+      id: 3,
+      optional: true,
+      title: "Step 3: Button Practice Exercises",
+      desc: "Now try a few different ways of using buttons so you’re ready for the menu logic in the FocusBoard project.",
+      hint: "All of these use INPUT_PULLUP and treat LOW as 'pressed'.",
+      codes: [
+        {
+          title: "Practice 1: Count Button Presses",
+          descBeforeCode:
+            "Each time you press the button, increase a counter by 1 and print it to the Serial Monitor.",
+          code: `^^#define BUTTON 2^^
 ^^int counter = 0;^^
 
 ^^void setup() {^^
@@ -2221,40 +2233,44 @@ We'll use this pattern for all the buttons in the FocusBoard project.`,
 ^^    delay(250);^^                            // small pause so one press doesn’t count many times
 ^^  }^^
 ^^}^^`,
-            answerKey: {
-              BUTTON1: ["INPUT_PULLUP"],
-              BUTTON2: ["LOW"],
-              BUTTON3: ["1"],
-            },
-            blankExplanations: {
-              BUTTON1:
-                "Choose the pin mode that enables the internal pull-up resistor for a button wired to GND.",
-              BUTTON2:
-                "With INPUT_PULLUP, choose the value that indicates the button is pressed.",
-              BUTTON3:
-                "Choose how much the counter should increase by for each press.",
-            },
-            blankDifficulties: {
-              BUTTON1: "easy",
-              BUTTON2: "easy",
-              BUTTON3: "easy",
-            },
-            descAfterCode:
-              "Try pressing the button multiple times and watch the numbers go up. This is similar to how we move through menu items with each press.",
-          },
 
-          {
-            title: "Practice 2: Toggle an LED On/Off",
-            descBeforeCode:
-              "Use the button to turn an LED on and off, switching state each time you press.",
-            code: `^^__BLANK[BUTTON4]__ BUTTON 2^^
+          // Flexible: allow correct equivalents like `1` vs `+1` is not relevant here, so keep simple.
+          answerKey: buildAnswerKey({
+            BUTTON1: K.str({ oneOf: ["INPUT_PULLUP"] }),
+            BUTTON2: K.str({ oneOf: ["LOW"] }),
+            BUTTON3: K.num({ oneOf: [1] }),
+          }),
+
+          blankExplanations: {
+            BUTTON1:
+              "Enable the internal pull-up resistor for a button wired to GND.",
+            BUTTON2:
+              "With INPUT_PULLUP, LOW means the button is pressed.",
+            BUTTON3:
+              "Increase the counter by 1 each time the button is pressed.",
+          },
+          blankDifficulties: {
+            BUTTON1: "easy",
+            BUTTON2: "easy",
+            BUTTON3: "easy",
+          },
+          descAfterCode:
+            "Press the button multiple times and watch the numbers go up. This is similar to how we move through menu items with each press.",
+        },
+
+        {
+          title: "Practice 2: Toggle an LED On/Off",
+          descBeforeCode:
+            "Use the button to turn an LED on and off, switching state each time you press.",
+          // IMPORTANT: keep Arduino-style `#define BUTTON 2` (no '=')
+          code: `^^__BLANK[BUTTON4]__ BUTTON 2^^
 ^^#define LED 13^^
 
 ^^bool ledState = false;^^
 
 ^^void setup() {^^
 ^^  pinMode(__BLANK[BUTTON5]__, __BLANK[BUTTON6]__);^^   // pin mode for button
-^^  pinMode(LED, OUTPUT);^^                              // pin mode for LED which is an output
+^^  pinMode(LED, OUTPUT);^^                              // pin mode for LED (output)
 ^^}^^
 
 ^^void loop() {^^
@@ -2264,40 +2280,54 @@ We'll use this pattern for all the buttons in the FocusBoard project.`,
 ^^    delay(250);^^                                      // simple debounce
 ^^  }^^
 ^^}^^`,
-            answerKey: {
-              BUTTON4: ["#define"],
-              BUTTON5: ["BUTTON"],
-              BUTTON6: ["INPUT_PULLUP"],
-              BUTTON7: ["digitalRead(BUTTON)"],
-              BUTTON8: ["LOW"],
-            },
-            blankExplanations: {
-              BUTTON4:
-                "Write the preprocessor keyword used to define constants like pin labels.",
-              BUTTON5: "Use the constant name you defined for the button pin.",
-              BUTTON6:
-                "Choose the button pin mode that uses the internal pull-up resistor.",
-              BUTTON7:
-                "Read the button pin so you can compare it to pressed/not-pressed.",
-              BUTTON8:
-                "With INPUT_PULLUP, choose the value that indicates a press.",
-            },
-            blankDifficulties: {
-              BUTTON4: "easy",
-              BUTTON5: "easy",
-              BUTTON6: "easy",
-              BUTTON7: "easy",
-              BUTTON8: "easy",
-            },
-            descAfterCode:
-              "First press turns the LED **on**, second press turns it **off**, and so on. This idea of flipping a state is exactly how we’ll switch screens or modes later.",
-          },
 
-          {
-            title: "Practice 3: Cycle Through Options in an Array",
-            descBeforeCode:
-              "This practice is similar to your menu page. Each press moves to the next item in the list and wraps around when it reaches the end.",
-            code: `^^#define BUTTON 2^^
+          // Flexible: accept spacing variants + common equivalent reads
+          answerKey: buildAnswerKey({
+            BUTTON4: K.str({ oneOf: ["#define"] }),
+
+            BUTTON5: K.str({ oneOf: ["BUTTON"] }),
+            BUTTON6: K.str({ oneOf: ["INPUT_PULLUP"] }),
+
+            BUTTON7: {
+              type: "pattern",
+              parts: [
+                "digitalRead",
+                "(",
+                "BUTTON",
+                ")",
+              ],
+            } as const,
+
+            BUTTON8: K.str({ oneOf: ["LOW"] }),
+          }),
+
+          blankExplanations: {
+            BUTTON4:
+              "Use the preprocessor keyword that defines a constant like a pin label.",
+            BUTTON5: "Use the constant name you defined for the button pin.",
+            BUTTON6:
+              "Enable the internal pull-up resistor for the button input.",
+            BUTTON7:
+              "Read the button pin so you can compare it to pressed/not pressed.",
+            BUTTON8:
+              "With INPUT_PULLUP, LOW indicates a press.",
+          },
+          blankDifficulties: {
+            BUTTON4: "easy",
+            BUTTON5: "easy",
+            BUTTON6: "easy",
+            BUTTON7: "easy",
+            BUTTON8: "easy",
+          },
+          descAfterCode:
+            "First press turns the LED **on**, second press turns it **off**, and so on. Flipping a state like this is exactly how we’ll switch screens or modes later.",
+        },
+
+        {
+          title: "Practice 3: Cycle Through Options in an Array",
+          descBeforeCode:
+            "This practice is similar to your menu page. Each press moves to the next item in the list and wraps around when it reaches the end.",
+          code: `^^#define BUTTON 2^^
 
 ^^String options[] = {"Red", "Blue", "Green", "Yellow"};^^
 ^^int totalOptions = 4;^^
@@ -2321,36 +2351,47 @@ We'll use this pattern for all the buttons in the FocusBoard project.`,
 ^^    delay(250);^^
 ^^  }^^
 ^^}^^`,
-            answerKey: {
-              BUTTON9: ["BUTTON"],
-              BUTTON10: ["INPUT_PULLUP"],
-              BUTTON12: ["digitalRead(BUTTON)"],
-              BUTTON13: ["LOW"],
-            },
-            blankExplanations: {
-              BUTTON9: "Use the constant name you defined for the button pin.",
-              BUTTON10:
-                "Choose the button pin mode that uses the internal pull-up resistor.",
-              BUTTON12: "Read the button pin so you can check if it’s pressed.",
-              BUTTON13:
-                "With INPUT_PULLUP, choose the value that means pressed.",
-            },
-            blankDifficulties: {
-              BUTTON9: "easy",
-              BUTTON10: "easy",
-              BUTTON11: "easy",
-              BUTTON12: "easy",
-              BUTTON13: "easy",
-            },
-            descAfterCode:
-              "This is very close to how the focusBoard scrolls through different options. The variable `index` is like a menu cursor that moves and wraps around.",
-          },
 
-          {
-            title: "Practice 4: Only React to a Long Press",
-            descBeforeCode:
-              "Make your code respond only if the button is held down for about 2 seconds, not just tapped.",
-            code: `^^__BLANK[BUTTON14]__  __BLANK[BUTTON15]__  __BLANK[BUTTON16]__^^   // define button pin number
+        answerKey: buildAnswerKey({
+          BUTTON9: K.str({ oneOf: ["BUTTON"] }),
+          BUTTON10: K.str({ oneOf: ["INPUT_PULLUP"] }),
+
+          BUTTON12: {
+            type: "pattern",
+            parts: [
+              "digitalRead",
+              "(",
+              "BUTTON",
+              ")",
+            ],
+          } as const,
+
+          BUTTON13: K.str({ oneOf: ["LOW"] }),
+        }),
+
+          blankExplanations: {
+            BUTTON9: "Use the constant name you defined for the button pin.",
+            BUTTON10:
+              "Enable the internal pull-up resistor for the button input.",
+            BUTTON12: "Read the button pin so you can check if it’s pressed.",
+            BUTTON13:
+              "With INPUT_PULLUP, LOW means pressed.",
+          },
+          blankDifficulties: {
+            BUTTON9: "easy",
+            BUTTON10: "easy",
+            BUTTON12: "easy",
+            BUTTON13: "easy",
+          },
+          descAfterCode:
+            "This is very close to how FocusBoard scrolls through menu options. The variable `index` is like a menu cursor that moves and wraps around.",
+        },
+
+        {
+          title: "Practice 4: Only React to a Long Press",
+          descBeforeCode:
+            "Make your code respond only if the button is held down for about 2 seconds, not just tapped.",
+          code: `^^__BLANK[BUTTON14]__  __BLANK[BUTTON15]__  __BLANK[BUTTON16]__^^   // define button pin number
 
 ^^void setup() {^^
 ^^  pinMode(BUTTON, INPUT_PULLUP);^^
@@ -2367,503 +2408,463 @@ We'll use this pattern for all the buttons in the FocusBoard project.`,
 ^^    }^^
 ^^  }^^
 ^^}^^`,
-            answerKey: {
-              BUTTON14: ["#define"],
-              BUTTON15: ["BUTTON"],
-              BUTTON16: { type: "range", min: 0, max: 13 },
-              BUTTON17: ["LOW"],
-              BUTTON18: ["LOW"],
-            },
-            blankExplanations: {
-              BUTTON14:
-                "Write the preprocessor keyword used to define constants.",
-              BUTTON15: "Use the same constant name for the button pin.",
-              BUTTON16:
-                "Choose a valid digital pin number for the button connection.",
-              BUTTON17:
-                "With INPUT_PULLUP, choose the value that indicates the button is currently pressed.",
-              BUTTON18:
-                "If still pressed after waiting, this should match the pressed value again.",
-            },
-            blankDifficulties: {
-              BUTTON14: "easy",
-              BUTTON15: "easy",
-              BUTTON16: "easy",
-              BUTTON17: "easy",
-              BUTTON18: "easy",
-            },
-            descAfterCode:
-              "This pattern is useful for features like a 'long-press to reset' or special settings mode, where you don’t want a quick tap to trigger the action.",
+
+          answerKey: buildAnswerKey({
+            BUTTON14: K.str({ oneOf: ["#define"] }),
+            BUTTON15: K.str({ oneOf: ["BUTTON"] }),
+
+            // keep flexible, but avoid 0/1 to reduce Serial confusion
+            BUTTON16: K.num({ min: 2, max: 13 }),
+
+            BUTTON17: K.str({ oneOf: ["LOW"] }),
+            BUTTON18: K.str({ oneOf: ["LOW"] }),
+          }),
+
+          blankExplanations: {
+            BUTTON14:
+              "Use the preprocessor keyword that defines a constant.",
+            BUTTON15: "Use the constant name for the button pin.",
+            BUTTON16:
+              "Choose a valid digital pin number for the button (2–13).",
+            BUTTON17:
+              "With INPUT_PULLUP, LOW indicates the button is currently pressed.",
+            BUTTON18:
+              "If the button is still pressed after waiting, it should read LOW again.",
           },
-        ],
-      },
+          blankDifficulties: {
+            BUTTON14: "easy",
+            BUTTON15: "easy",
+            BUTTON16: "easy",
+            BUTTON17: "easy",
+            BUTTON18: "easy",
+          },
+          descAfterCode:
+            "This pattern is useful for features like a 'long-press to reset' or a special settings mode, where you don’t want a quick tap to trigger the action.",
+        },
+      ],
+    },
 
-      {
-        id: 4,
-        title: "Step 4: Create a Helper Function for Button",
-        desc: "Real buttons can be noisy. When you press them, they may rapidly flicker between HIGH and LOW for a few milliseconds. This is called 'bouncing'. A **debounce helper function** makes sure we only react to a clean, stable press.",
-        hint: "The helper checks the pin, waits a bit, and checks again to confirm the press. Make sure variable names match in this example.",
-        codes: [
-          {
-            title: "Practice Code: Debouncing Function",
-            code: `^^#define button 4
+{
+  id: 4,
+  title: "Step 4: Create a Helper Function for Buttons",
+  desc:
+    "Real buttons can be noisy. When you press them, they may rapidly flicker between HIGH and LOW for a few milliseconds. This is called **bouncing**. A **debounce helper function** helps ensure we only react to a clean, stable press.",
+  hint:
+    "The helper checks the pin, waits briefly, and checks again to confirm the press. Make sure your variable names match throughout the example.",
+  codes: [
+    {
+      title: "Practice Code: Debounce Helper Function",
+      code: `^^#define button 4
 
-//<< Example of how this function can be used in the void loop() 
+//<< Example of how this function can be used in void loop()
 void loop() {
-  if (__BLANK[53]__(__BLANK[BUTTONPINEX]__) == __BLANK[TRUEFALSE1]__) { //if the button helper function is (true/false)
+  if (__BLANK[53]__(__BLANK[BUTTONPINEX]__) == __BLANK[TRUEFALSE1]__) { // if helper returns true/false
     Serial.println("Clean press detected!");
     delay(200);
   }
 }
 
 //<< Button Helper Function
-bool __BLANK[53]__(int myPin) { //boolean function because it returns true or false. Not a void type. 
-  if (__BLANK[54]__(myPin) == __BLANK[55]__) { //if high or low
-    __BLANK[56]__; //create a short delay
-    if (__BLANK[57]__) {//if hight or low
-      return __BLANK[58]__; //if the button is still pressed after a delay, return (true/false)
+bool __BLANK[53]__(int myPin) { // boolean function because it returns true or false (not void)
+  if (__BLANK[54]__(myPin) == __BLANK[55]__) { // pressed state (HIGH/LOW)
+    __BLANK[56]__; // short delay to filter bounce
+    if (__BLANK[57]__) { // check again after the delay
+      return __BLANK[58]__; // stable press
     }
-    return __BLANK[59]__; //if not, return (true/false)
+    return __BLANK[59]__; // not stable
   }
-}^^
+  return false; // not pressed
+}^^`,
 
-`,
-            answerKey: buildAnswerKey({
-              53: K.id().bind("isPressed"),
-              54: K.str({ oneOf: ["digitalRead"] }),
-              55: K.str({ oneOf: ["LOW"] }),
-              56: ({
-              "type": "pattern",
-              "parts": [
-                "delay",
-                "(",
-                {
-                  "p": "number"
-                },
-                ")"
-              ],
-            } as const),
-              57: ({
-              "type": "pattern",
-              "parts": [
-                "if",
-                "(",
-                "digitalRead",
-                "(",
-                "myPin",
-                ")",
-                "==",
-                "LOW",
-                ")"
-              ],
-            } as const),
-              58: K.str({ oneOf: ["true"] }),
-              59: K.str({ oneOf: ["false"] }),
-            }),
+      // Flexible answerKey (spaces allowed via pattern)
+      answerKey: buildAnswerKey({
+        53: K.id().bind("isPressed"),
 
-            blankExplanations: {
-              53: "Use the name of your button helper function that checks if a button press is real (debounced) and returns true/false.",
-              BUTTONPINEX: "Use the pin variable/constant for the button you want to test (the one you wired to the Arduino).",
-              TRUEFALSE1: "Choose the boolean value that should trigger the message when a clean press is detected.",
+        // button pin used in the example call: allow either `button` or `BUTTON` (students might mirror casing)
+        BUTTONPINEX: {
+          type: "oneOf",
+          values: ["button", "BUTTON"],
+        } as const,
 
-              54: "Use the Arduino function that reads the current HIGH/LOW state of a digital pin.",
-              55: "Use the pin state that represents a pressed button when using INPUT_PULLUP wiring.",
-              56: "Add a short wait to debounce the button (a quick pause to filter out bounce).",
-              57: "Check the pin state again after the debounce delay to confirm the press is still happening.",
-              58: "Return the boolean value that means 'yes, this was a real button press'.",
-              59: "Return the boolean value that means 'no, it was not a stable press'.",
-            },
-            blankDifficulties: {
-              53: "intermediate",   // naming and using a custom helper function consistently
-              BUTTONPINEX: "easy",  // selecting the correct button pin variable
-              TRUEFALSE1: "easy",   // choosing the correct boolean value
+        // message should print when helper returns true
+        TRUEFALSE1: K.str({ oneOf: ["true"] }),
 
-              54: "easy",           // using a standard Arduino digital input function
-              55: "intermediate",   // understanding INPUT_PULLUP logic (pressed = LOW)
-              56: "easy",           // adding a simple debounce delay
-              57: "hard",           // writing a full conditional check with function + comparison
-              58: "easy",           // returning the correct boolean for a valid press
-              59: "easy",           // returning the opposite boolean when press is invalid
-            },
+        54: K.str({ oneOf: ["digitalRead"] }),
+        55: K.str({ oneOf: ["LOW"] }),
 
-            descAfterCode: `The helper reads the pin, waits briefly, and checks again. If the pin is still in the pressed state, it returns true. This reduces false triggers from button bounce.
-**Place this boolean function** __BLANK[53]__ **into your current code draft with the rest of your functions.**`,
-          },
-        ],
+        // blank already has a trailing semicolon in the code (`__BLANK[56]__;`)
+        56: {
+          type: "pattern",
+          parts: ["delay", "(", { p: "number" }, ")"],
+        } as const,
+
+        // IMPORTANT: the blank is the CONDITION ONLY (code is `if (__BLANK[57]__) {`)
+        57: {
+          type: "pattern",
+          parts: ["digitalRead", "(", "myPin", ")", "==", "LOW"],
+        } as const,
+
+        58: K.str({ oneOf: ["true"] }),
+        59: K.str({ oneOf: ["false"] }),
+      }),
+
+      blankExplanations: {
+        53: "Name your helper function that checks for a debounced press and returns true/false.",
+        BUTTONPINEX:
+          "Use the pin variable/constant for the button you want to test (the one you wired).",
+        TRUEFALSE1:
+          "Choose the boolean value that should trigger the message when a clean press is detected.",
+
+        54: "Use the Arduino function that reads the current HIGH/LOW state of a digital pin.",
+        55: "With INPUT_PULLUP wiring, a pressed button reads LOW.",
+        56: "Add a short wait to debounce the button (a quick pause to filter out bounce).",
+        57: "Check the pin state again after the delay to confirm the press is still happening.",
+        58: "Return true when the press is still detected after the delay.",
+        59: "Return false when the press does not remain stable after the delay.",
       },
-      {
-        id: 5,
-        title: "Step 5: Toggling around the MAIN menu (Prev / Next / Select)",
-        hint: "Wrap-around rule: if index < 0 → go to last item. If index > last item → go back to 0.",
 
-        codes: [
-          {
-            topicTitle: `Navigation Logic Overview`,
-            descBeforeCode: `Now we will add the **navigation logic** for your **Main Menu**.
+      blankDifficulties: {
+        53: "intermediate",
+        BUTTONPINEX: "easy",
+        TRUEFALSE1: "easy",
+        54: "easy",
+        55: "intermediate",
+        56: "easy",
+        57: "hard",
+        58: "easy",
+        59: "easy",
+      },
 
-You already have a function called __BLANK[SHOWMAIN_FN]__() that *draws* the menu screen using:
-- an index variable __BLANK[INDEX_USE]__ to decide which item is highlighted (the arrow)
-- a total variable __BLANK[TOTALMAIN_USE]__ for how many menu items exist
+      descAfterCode: `The helper reads the pin, waits briefly, and checks again. If the pin is still in the pressed state, it returns true. This reduces false triggers from button bounce.
+
+**Place this boolean function** __BLANK[53]__ **into your current code draft with the rest of your functions.**`,
+    },
+  ],
+},
+
+{
+  id: 5,
+  title: "Step 5: Toggling around the MAIN menu (Prev / Next / Select)",
+  hint: "Wrap-around rule: if index < 0 → go to last item. If index > last item → go back to 0.",
+  codes: [
+    {
+      topicTitle: `Navigation Logic Overview`,
+      descBeforeCode: `Now we will add the **navigation logic** for your **Main Menu**.
+
+You already have a function called __BLANK[43]__() that *draws* the menu screen using:
+- an index variable __BLANK[41]__ to decide which item is highlighted (the arrow)
+- a total variable __BLANK[38]__ for how many menu items exist
 
 So now our job is to:
-1) Change __BLANK[INDEX_USE]__ when PREV / NEXT is pressed  
-2) Wrap-around (so it loops from top to bottom and bottom to top)  
+1) Change __BLANK[41]__ when PREV / NEXT is pressed  
+2) Wrap around (so it loops from top to bottom and bottom to top)  
 3) Use SELECT to enter the page that is currently highlighted
 
 **Example (wrap-around idea):**
-- If __BLANK[INDEX_USE]__ is 0 and you press PREV, it should jump to the last menu item.
-- If __BLANK[INDEX_USE]__ is the last item and you press NEXT, it should jump back to 0.
+- If __BLANK[41]__ is 0 and you press PREV, it should jump to the last menu item.
+- If __BLANK[41]__ is the last item and you press NEXT, it should jump back to 0.
 
-Every time the index changes, we call __BLANK[SHOWMAIN_FN]__() again so the OLED redraws with the arrow on the new item.`,
-          },
+Every time the index changes, we call __BLANK[43]__() again so the OLED redraws with the arrow on the new item.`,
+    },
+
+    {
+      imageGridBeforeCode: {
+        columns: 1,
+        rows: 1,
+        width: 800,
+        height: 400,
+        items: [
           {
-            imageGridBeforeCode: {
-              columns: 1,
-              rows: 1,
-              width: 800,
-              height: 400,
-              items: [
-                {
-                  imageSrc: "/electric-status-board/buttonNEXPREVLogic.png",
-                  label: "Main menu loop concept",
-                },
-              ],
-            },
+            imageSrc: "/electric-status-board/buttonNEXPREVLogic.png",
+            label: "Main menu loop concept",
+          },
+        ],
+      },
 
-            topicTitle: `Using PREV button to toggle upward (Main Menu)`,
-            descBeforeCode: `When the PREV button is pressed, we move **up** in the Main Menu.
+      topicTitle: `Using PREV button to toggle upward (Main Menu)`,
+      descBeforeCode: `When the PREV button is pressed, we move **up** in the Main Menu.
 
 **Here’s what this code should do:**
 - Use your debouncing helper function __BLANK[53]__ to check PREV.
 - Decrease __BLANK[41]__ by 1.
 - If the index goes below 0, wrap it to the last menu item:
   last index = __BLANK[38]__ - 1
-- Call __BLANK[SHOWMAINMENU]__() to redraw the menu with the new highlight.
+- Call __BLANK[43]__() to redraw the menu with the new highlight.
 - Add a short delay so it doesn’t scroll too fast.`,
-            code: `^^
+      code: `^^
 if (isPressed(PREV)) {                 // Check if the PREV button was pressed
-  __BLANK[60]__;                       // Move the menu selection one position downward (decrease the main index counter by 1)
-  if (__BLANK[61]__) {                 // Check if the selection has gone past the first item (if the index counter is less than 0)
-    __BLANK[62]__;                     // Wrap the selection to the last menu item (move the counter to be the last)
+  __BLANK[60]__;                       // Move the menu selection one position upward
+  if (__BLANK[61]__) {                 // If the index goes out of range (below 0)
+    __BLANK[62]__;                     // Wrap to the last menu item
   }
-  __BLANK[63]__;                       // Add a short delay to prevent multiple rapid presses
+  __BLANK[63]__;                       // Short delay so it doesn’t scroll too fast
 }
 ^^`,
-            // Block 1 (PREV) — add to this code block object
-            blankDifficulties: {
-              60: "easy",          // simple index change (move selection backward)
-              61: "intermediate",  // reasoning about boundary conditions and out-of-range checks
-              62: "intermediate",  // wrapping logic using total menu size
-              63: "easy",          // adding a debounce delay after a button press
+
+      blankDifficulties: {
+        60: "easy",
+        61: "intermediate",
+        62: "intermediate",
+        63: "easy",
+      },
+
+      blankExplanations: {
+        60: "Decrease the menu index by exactly 1 (move to the previous item).",
+        61: "Detect when the index becomes negative so you can wrap around.",
+        62: "Set the index to the last valid menu position (totalMain - 1).",
+        63: "Add a short delay after handling the button press.",
+      },
+
+      // Flexible + correct (spaces allowed)
+      answerKey: buildAnswerKey({
+        60: {
+          type: "oneOf",
+          values: [
+            // mainIndex--
+            {
+              type: "pattern",
+              parts: [{ p: "sameAs", target: "mainIndex" }, "--"],
             },
-
-            blankExplanations: {
-              60: "Update the variable that tracks which main menu option is selected so it moves one step BACKWARD (toward the previous item). This line should change the index by exactly one position, not jump multiple steps.",
-
-              61: "Write a condition that detects when the menu index has moved past the beginning of the list. This should catch the 'out of range' case that happens right after moving backward, so you can wrap around instead of letting the index stay invalid.",
-
-              62: "Fix the out-of-range situation by setting the menu index to a valid value that points to the LAST menu item. This creates wrap-around behavior: when the user goes backward from the first item, they end up on the last item. How can you call the last item number using the variable that defines the number of total items?",
-
-              63: "Add a short pause after handling the button press so one press does not register multiple times due to button bounce or a long press. Keep it short so the menu still feels responsive.",
+            // mainIndex = mainIndex - 1
+            {
+              type: "pattern",
+              parts: [
+                { p: "sameAs", target: "mainIndex" },
+                "=",
+                { p: "sameAs", target: "mainIndex" },
+                "-",
+                "1",
+              ],
             },
+            // mainIndex -= 1
+            {
+              type: "pattern",
+              parts: [{ p: "sameAs", target: "mainIndex" }, "-=", "1"],
+            },
+          ],
+        } as const,
 
-            answerKey: buildAnswerKey({
-              60: ({
-              "type": "pattern",
-              "parts": [
-                {
-                  "p": "sameAs",
-                  "target": "mainIndex"
-                },
-                {
-                  "p": "oneOf",
-                  "values": [
-                    "--",
-                    "="
-                  ]
-                },
-                {
-                  "p": "sameAs",
-                  "target": "mainIndex"
-                },
-                "-",
-                "1"
-              ],
-            } as const),
-              61: ({
-              "type": "pattern",
-              "parts": [
-                {
-                  "p": "sameAs",
-                  "target": "mainIndex"
-                },
-                "<",
-                "0"
-              ],
-            } as const),
-              62: ({
-              "type": "pattern",
-              "parts": [
-                {
-                  "p": "sameAs",
-                  "target": "mainIndex"
-                },
-                {
-                  "p": "oneOf",
-                  "values": [
-                    "="
-                  ]
-                },
-                {
-                  "p": "sameAs",
-                  "target": "totalMain"
-                },
-                "-",
-                "1"
-              ],
-            } as const),
-            }),
-          },
+        61: {
+          type: "pattern",
+          parts: [{ p: "sameAs", target: "mainIndex" }, "<", "0"],
+        } as const,
 
-          {
-            topicTitle: `Using NEXT button to toggle downward (Main Menu)`,
-            descBeforeCode: `When the NEXT button is pressed, we move **down** in the Main Menu.
+        62: {
+          type: "pattern",
+          parts: [{ p: "sameAs", target: "mainIndex" }, "=", { p: "sameAs", target: "totalMain" }, "-", "1"],
+        } as const,
+
+        63: {
+          type: "pattern",
+          parts: ["delay", "(", { p: "number" }, ")"],
+        } as const,
+      }),
+    },
+
+    {
+      topicTitle: `Using NEXT button to toggle downward (Main Menu)`,
+      descBeforeCode: `When the NEXT button is pressed, we move **down** in the Main Menu.
 
 **Here’s what this code should do:**
 - Use your debouncing helper function __BLANK[53]__ to check NEXT.
 - Increase __BLANK[41]__ by 1.
 - If the index goes past the last item, wrap it back to 0.
-- Call __BLANK[SHOWMAINMENU]__() to redraw the menu.
+- Call __BLANK[43]__() to redraw the menu.
 - Add a short delay so it doesn’t scroll too fast.`,
-            code: `^^
+      code: `^^
 if (__BLANK[64]__) {                   // Check if the NEXT button was pressed
   __BLANK[65]__;                       // Move the menu selection one position forward
-  if (__BLANK[66]__) {                 // Check if the selection has gone past the last menu item
-    __BLANK[67]__;                     // Wrap the selection back to the first menu item
+  if (__BLANK[66]__) {                 // If the index goes out of range (past the last item)
+    __BLANK[67]__;                     // Wrap back to the first menu item
   }
-  __BLANK[68]__;                       // Add a short delay to prevent multiple rapid presses
+  __BLANK[68]__;                       // Short delay so it doesn’t scroll too fast
 }
-^^`, // Block 2 (NEXT) — add to this code block object
-            blankExplanations: {
-              64: "Write the condition that checks whether the NEXT button has been pressed using your button helper logic. This condition should only be true when a clean, intentional press is detected.",
+^^`,
 
-              65: "Update the variable that tracks the currently selected menu option so it moves one step FORWARD in the menu list. This should change the index by exactly one.",
+      blankExplanations: {
+        64: "Check whether NEXT was pressed using your helper function.",
+        65: "Increase the menu index by exactly 1 (move to the next item).",
+        66: "Detect when the index has moved past the last valid item.",
+        67: "Wrap back to the first item (index 0).",
+        68: "Add a short delay after handling the button press.",
+      },
 
-              66: "Write a condition that detects when the menu index has gone beyond the last valid menu item. This handles the case where the user presses NEXT while already on the final option.",
+      blankDifficulties: {
+        64: "easy",
+        65: "easy",
+        66: "intermediate",
+        67: "intermediate",
+        68: "easy",
+      },
 
-              67: "Correct the out-of-range index by resetting it to a valid value that points to the FIRST menu item. This creates wrap-around behavior from bottom to top.",
+      // Flexible + correct (spaces allowed)
+      answerKey: buildAnswerKey({
+        64: {
+          type: "pattern",
+          parts: ["isPressed", "(", "NEXT", ")"],
+        } as const,
 
-              68: "Add a short pause after processing the button press to prevent the action from triggering multiple times from a single press.",
+        65: {
+          type: "oneOf",
+          values: [
+            // mainIndex++
+            {
+              type: "pattern",
+              parts: [{ p: "sameAs", target: "mainIndex" }, "++"],
             },
-
-            blankDifficulties: {
-              64: "easy",          // reusing the button helper condition
-              65: "easy",          // simple forward index update
-              66: "intermediate",  // boundary reasoning at the top end of the menu
-              67: "intermediate",  // wrap-around logic using menu size
-              68: "easy",          // debounce delay
-            },
-            answerKey: buildAnswerKey({
-              64: generateKeyFromReference("isPressed(NEXT)", { bind: {"arr":"arrVar","scores":"arrVar","happy":"arrVar","i":"idxVar","idx":"idxVar","counter":"idxVar"} }),
-              65: ({
-              "type": "pattern",
-              "parts": [
-                {
-                  "p": "sameAs",
-                  "target": "mainIndex"
-                },
-                {
-                  "p": "oneOf",
-                  "values": [
-                    "++",
-                    "="
-                  ]
-                },
-                {
-                  "p": "sameAs",
-                  "target": "mainIndex"
-                },
-                "+",
-                "1"
-              ],
-            } as const),
-              66: ({
-              "type": "pattern",
-              "parts": [
-                {
-                  "p": "sameAs",
-                  "target": "mainIndex"
-                },
-                {
-                  "p": "oneOf",
-                  "values": [
-                    ">"
-                  ]
-                },
-                {
-                  "p": "sameAs",
-                  "target": "totalMain"
-                },
-                "-",
-                "1"
-              ],
-            } as const),
-              67: ({
-              "type": "pattern",
-              "parts": [
-                {
-                  "p": "sameAs",
-                  "target": "mainIndex"
-                },
+            // mainIndex = mainIndex + 1
+            {
+              type: "pattern",
+              parts: [
+                { p: "sameAs", target: "mainIndex" },
                 "=",
-                "0"
+                { p: "sameAs", target: "mainIndex" },
+                "+",
+                "1",
               ],
-            } as const),
-              68: ({
-              "type": "pattern",
-              "parts": [
-                "delay",
-                "(",
-                {
-                  "p": "number"
-                },
-                ")"
-              ],
-            } as const),
-            }),
-          },
+            },
+            // mainIndex += 1
+            {
+              type: "pattern",
+              parts: [{ p: "sameAs", target: "mainIndex" }, "+=", "1"],
+            },
+          ],
+        } as const,
 
-          {
-            topicTitle: `Using SELECT button to enter the highlighted page`,
-            descBeforeCode: `When the SELECT button is pressed, we want to **enter** the page that is currently highlighted in the Main Menu.
+        // Allow either `mainIndex > totalMain - 1` OR `mainIndex >= totalMain`
+        66: {
+          type: "oneOf",
+          values: [
+            {
+              type: "pattern",
+              parts: [{ p: "sameAs", target: "mainIndex" }, ">", { p: "sameAs", target: "totalMain" }, "-", "1"],
+            },
+            {
+              type: "pattern",
+              parts: [{ p: "sameAs", target: "mainIndex" }, ">=", { p: "sameAs", target: "totalMain" }],
+            },
+          ],
+        } as const,
+
+        67: {
+          type: "pattern",
+          parts: [{ p: "sameAs", target: "mainIndex" }, "=", "0"],
+        } as const,
+
+        68: {
+          type: "pattern",
+          parts: ["delay", "(", { p: "number" }, ")"],
+        } as const,
+      }),
+    },
+
+    {
+      topicTitle: `Using SELECT button to enter the highlighted page`,
+      descBeforeCode: `When the SELECT button is pressed, we want to **enter** the page that is currently highlighted in the Main Menu.
 
 **What this code should do:**
 - Use your debouncing helper function __BLANK[53]__ to check SELECT.
-- Look at __BLANK[41]__ to see which menu item is chosen.
-- Change a screen variable (example: \`screenMode\`) so the program knows which screen to show next.
+- Look at __BLANK[41]__ to see which menu item is selected.
+- Change your screen variable __BLANK[31]__ so the program knows which screen to show next.
 - Add a small delay so one press doesn’t count multiple times.`,
-            code: `^^
+      code: `^^
 if (__BLANK[69]__) {                  // Check if the SELECT button was pressed
   if (__BLANK[70]__) {                // Check which menu option is currently selected
-    screenMode = 1;                   // Switch to the Clock or Pomodoro screen
+    screenMode = 1;                   // Switch to the Clock screen (example)
   }
   else {
-    __BLANK[71]__;                    // Switch to the other screen
+    __BLANK[71]__;                    // Switch to the other screen (example: Pomodoro)
   }
-  __BLANK[72]__;                      // Add a short delay to prevent multiple selections
+  __BLANK[72]__;                      // Short delay to prevent multiple selections
 }
 ^^`,
-            //Block 3 (SELECT) — add to this code block object
-            blankDifficulties: {
-              69: "easy",          // reusing the button helper function
-              70: "intermediate",  // reasoning about menu state and branching logic
-              71: "easy",          // assigning a screen mode value
-              72: "easy",          // debounce delay
-            },
 
-            blankExplanations: {
-              69: "Write the condition that checks whether the SELECT button was pressed using your button helper function. This should only trigger once per clean press.",
-
-              70: "Write a condition that checks which menu option is currently highlighted. This determines which screen the program should switch to.",
-
-              71: "Assign the screen mode variable to the value that represents the Pomodoro screen.",
-
-              72: "Add a short pause after the selection so one press does not register multiple times.",
-            },
-            answerKey: buildAnswerKey({
-              69: ({
-              "type": "pattern",
-              "parts": [
-                "isPressed",
-                "(",
-                {
-                  "p": "sameAs",
-                  "target": "SELECT"
-                },
-                ")"
-              ],
-            } as const),
-              70: ({
-              "type": "pattern",
-              "parts": [
-                {
-                  "p": "sameAs",
-                  "target": "mainIndex"
-                },
-                "==",
-                "0"
-              ],
-            } as const),
-              71: ({
-              "type": "pattern",
-              "parts": [
-                {
-                  "p": "sameAs",
-                  "target": "screenMode"
-                },
-                "=",
-                {
-                  "p": "sameAs",
-                  "target": "2"
-                }
-              ],
-            } as const),
-              72: ({
-              "type": "pattern",
-              "parts": [
-                "delay",
-                "(",
-                {
-                  "p": "number"
-                },
-                ")"
-              ],
-            } as const),
-            }),
-          },
-        ],
+      blankDifficulties: {
+        69: "easy",
+        70: "intermediate",
+        71: "easy",
+        72: "easy",
       },
-      {
-        id: 6,
-        title:
-          "Step 6: Place the button toggle logic into the show main function",
-        desc: `Now that you have the three button logic blocks for (PREVIOUS / NEXT / SELECT), it's time to place them into your current code draft into the __BLANK[SHOWMAIN_FN]__ function. Placing the button navigation logic into the main menu function keeps your code organized and ensures that the menu responds correctly to user input every time the main menu screen is called.`,
-        codes: [
-          {
-            topicTitle: `Warning and Tips for Placement`,
-            descBeforeCode: `Make sure to place the button logic blocks **after** the the initial drawing, so the screen is drawn first before checking for button presses. 
+
+      blankExplanations: {
+        69: "Check whether SELECT was pressed using your helper function.",
+        70: "Check whether the currently selected menu index is the first item (index 0).",
+        71: "Set the screen mode to the value that represents the other screen.",
+        72: "Add a short delay after handling the button press.",
+      },
+
+      // Flexible + correct (spaces allowed)
+      answerKey: buildAnswerKey({
+        69: {
+          type: "pattern",
+          parts: ["isPressed", "(", "SELECT", ")"],
+        } as const,
+
+        70: {
+          type: "pattern",
+          parts: [{ p: "sameAs", target: "mainIndex" }, "==", "0"],
+        } as const,
+
+        71: {
+          type: "pattern",
+          parts: ["screenMode", "=", "2"],
+        } as const,
+
+        72: {
+          type: "pattern",
+          parts: ["delay", "(", { p: "number" }, ")"],
+        } as const,
+      }),
+    },
+  ],
+},
+
+{
+  id: 6,
+  title: "Step 6: Place the button toggle logic into the main menu function",
+desc: `Now that you have the three button logic blocks for (PREV / NEXT / SELECT), it's time to place them into your current code draft inside the __BLANK[43]__ function.
+
+Placing the button navigation logic into the main menu function keeps your code organized and ensures that the menu responds correctly to user input every time the main menu screen is shown.`,
+  codes: [
+    {
+      topicTitle: `Warnings and Tips for Placement`,
+      descBeforeCode: `Place the button logic blocks **after** the initial drawing code so the screen is drawn first.
 @ This way, the user sees the menu before interacting with it.
-Make sure to place the code blocks in the **correct order**: PREV first, then NEXT, then SELECT last. 
-@ This way, the user can navigate properly through the menu options.`,
-          },
-          {
-            topicTitle: `Run Void Loop() to test`,
-            descBeforeCode: `After placing the button logic into your main menu function, ensure that your \`void loop()\` is able to call the main menu function repeatedly at appropriate times.
-Just insert the following line into your currently empty main loop. Everything else remains the same.`,
-            code: `^^
+
+Place the logic blocks in this order: PREV first, then NEXT, then SELECT last.
+@ This keeps navigation behavior predictable.`,
+    },
+    {
+      topicTitle: `Run void loop() to test`,
+      descBeforeCode: `After placing the button logic into your main menu function, update your \`void loop()\` to call the main menu function repeatedly. Insert the following line into your currently empty loop:`,
+
+      code: `^^
 void loop() {
   __BLANK[SHOWMAINMENU1]__(); // Call the main menu function to display and interact with the menu
 }
 ^^`,
-            answerKey: {
-              SHOWMAINMENU1: { type: "sameAs", target: "SHOWMAINMENU" },
-            },
-            blankExplanations: {
-              SHOWMAINMENU1:
-                "This should be the SAME main menu function name you used earlier. This ensures your loop calls the main menu function to display and interact with the menu.",
-            },
-            blankDifficulties: {
-              SHOWMAINMENU1: "easy",
-            },
-          },
-          {
-            topicTitle: `Simulation with buttons`,
-            descBeforeCode: `After placing the button logic into your main menu function, test your code using the simulator.
-@ This allows you to verify that the menu navigation works as expected without needing physical hardware.
-@ Remember, all functions go to the bottom of your code draft, so ensure your main loop calls the main menu function appropriately to see the button interactions in action (see Lesson 6).`,
-          },
-        ],
+
+      // Make this flexible + consistent with your pattern approach
+      answerKey: buildAnswerKey({
+        SHOWMAINMENU1: K.same("showMainMenu"),
+      }),
+
+      blankExplanations: {
+        SHOWMAINMENU1:
+          "Use the same function name you created earlier for drawing the main menu (the one you bound as showMainMenu).",
       },
+      blankDifficulties: {
+        SHOWMAINMENU1: "easy",
+      },
+    },
+    {
+      topicTitle: `Simulation with buttons`,
+      descBeforeCode: `After placing the button logic into your main menu function, test your code using the simulator.
+@ This lets you confirm the menu navigation works without physical hardware.
+@ Remember: functions go at the bottom of your code draft, and your \`void loop()\` must call the main menu function to see button interactions.`,
+    },
+  ],
+},
     ],
   },
 
@@ -2881,10 +2882,12 @@ void loop() {
               "**Goal:** Write a helper function that prints the current RTC time as `HH:MM:SS` onto the OLED (with leading zeros).",
             imageGridBeforeCode: {
               columns: 1,
+              height:450,
+              width: 500,
               items: [
                 {
                   imageSrc:
-                    "/electric-status-board/images/clockHelperDiagram.png",
+                    "/electric-status-board/leadingZero.png",
                   label: "Time formatting idea: HH:MM:SS with leading zeros",
                 },
               ],
@@ -3140,15 +3143,6 @@ From that snapshot, the program then extracts individual pieces of time. Calling
             topicTitle: "Function to set the look of the clock",
             descBeforeCode:
               "**Goal:** Clear the OLED, show the label `Clock:`, then print the current time using your time function.",
-            imageGridBeforeCode: {
-              columns: 1,
-              items: [
-                {
-                  imageSrc: "/electric-status-board/images/clockScreenMock.png",
-                  label: "Example layout: label + big time",
-                },
-              ],
-            },
             descBetweenBeforeAndCode: `Now we make a full screen for the clock:
 - clear the display
 - set text color
