@@ -2593,7 +2593,7 @@ Every time the index changes, we call __BLANK[43]__() again so the OLED redraws 
 - Add a short delay so it doesn’t scroll too fast.`,
       code: `^^
 if (isPressed(PREV)) {                 // Check if the PREV button was pressed
-  __BLANK[60]__;                       // Move the menu selection one position upward
+  __BLANK[60]__;                       // Move the menu selection one position backward (upward visually)
   if (__BLANK[61]__) {                 // If the index goes out of range (below 0)
     __BLANK[62]__;                     // Wrap to the last menu item
   }
@@ -2617,32 +2617,14 @@ if (isPressed(PREV)) {                 // Check if the PREV button was pressed
 
       // Flexible + correct (spaces allowed)
       answerKey: buildAnswerKey({
-        60: {
-          type: "oneOf",
-          values: [
-            // mainIndex--
-            {
-              type: "pattern",
-              parts: [{ p: "sameAs", target: "mainIndex" }, "--"],
-            },
-            // mainIndex = mainIndex - 1
-            {
-              type: "pattern",
-              parts: [
-                { p: "sameAs", target: "mainIndex" },
-                "=",
-                { p: "sameAs", target: "mainIndex" },
-                "-",
-                "1",
-              ],
-            },
-            // mainIndex -= 1
-            {
-              type: "pattern",
-              parts: [{ p: "sameAs", target: "mainIndex" }, "-=", "1"],
-            },
-          ],
-        } as const,
+  60: {
+    type: "any_of",
+    options: [
+      { type: "pattern", parts: [{ p: "sameAs", target: "mainIndex" }, "--"] },
+      { type: "pattern", parts: [{ p: "sameAs", target: "mainIndex" }, "=", { p: "sameAs", target: "mainIndex" }, "-", "1"] },
+      { type: "pattern", parts: [{ p: "sameAs", target: "mainIndex" }, "-=", "1"] },
+    ],
+  } as const,
 
         61: {
           type: "pattern",
@@ -2705,8 +2687,8 @@ if (__BLANK[64]__) {                   // Check if the NEXT button was pressed
         } as const,
 
         65: {
-          type: "oneOf",
-          values: [
+          type: "any_of",
+          options: [
             // mainIndex++
             {
               type: "pattern",
@@ -2733,8 +2715,8 @@ if (__BLANK[64]__) {                   // Check if the NEXT button was pressed
 
         // Allow either `mainIndex > totalMain - 1` OR `mainIndex >= totalMain`
         66: {
-          type: "oneOf",
-          values: [
+          type: "any_of",
+          options: [
             {
               type: "pattern",
               parts: [{ p: "sameAs", target: "mainIndex" }, ">", { p: "sameAs", target: "totalMain" }, "-", "1"],
@@ -2868,567 +2850,343 @@ void loop() {
     ],
   },
 
-  8: {
-    phrase: "Clock screen: printing time",
-    advanced: false,
-    steps: [
-      {
-        id: 1,
-        title: "Step 1: Print the Time as HH:MM:SS",
-        codes: [
-          {
-            topicTitle: "Extracting and Printing Time",
-            descBeforeCode:
-              "**Goal:** Write a helper function that prints the current RTC time as `HH:MM:SS` onto the OLED (with leading zeros).",
-            imageGridBeforeCode: {
-              columns: 1,
-              height:450,
-              width: 500,
-              items: [
-                {
-                  imageSrc:
-                    "/electric-status-board/leadingZero.png",
-                  label: "Time formatting idea: HH:MM:SS with leading zeros",
-                },
-              ],
-            },
-            descBetweenBeforeAndCode: `This helper function does **not** clear the screen and it does **not** call \`display.display()\`. 
-It only prints the time **at the current cursor position**. That makes it reusable: you can call it from the status screen and the clock screen.
+8: {
+  phrase: "Clock screen: printing time",
+  advanced: false,
+  steps: [
+    {
+      id: 1,
+      title: "Step 1: Print the Time as HH:MM:SS",
+      codes: [
+        {
+          topicTitle: "Extracting and Printing Time",
+          descBeforeCode:
+            "**Goal:** Write a helper function that prints the current RTC time as `HH:MM:SS` onto the OLED (with leading zeros).",
+          imageGridBeforeCode: {
+            columns: 1,
+            height: 450,
+            width: 500,
+            items: [
+              {
+                imageSrc: "/electric-status-board/leadingZero.png",
+                label: "Time formatting idea: HH:MM:SS with leading zeros",
+              },
+            ],
+          },
+          descBetweenBeforeAndCode: `This helper function does **not** clear the screen and it does **not** call \`display.display()\`.
+It only prints the time **at the current cursor position**. That makes it reusable: you can call it from multiple screens.
 
 You will:
-1) Read current time from the RTC
-2) Print hours with a leading 0 if hour is less than 10
-3) Print minutes with a leading 0 if minutes is less than 10
-4) Print seconds with a leading 0 if needed seconds is less than 10`,
-            code: `
+1) Read the current time from the RTC
+2) Print hours with a leading 0 if the hour is less than 10
+3) Print minutes with a leading 0 if the minutes are less than 10
+4) Print seconds with a leading 0 if the seconds are less than 10`,
+          code: `
 ^^static void __BLANK[73]__() {                 // Function that prints the current time in HH:MM:SS format
 // ##EDIT:HMSTIME:INDENT=1##
   DateTime now = __BLANK[5]__.now();           // Get the current date and time from the RTC object
 
-  int hour = now.hour();                      // Extract the hour value from the current time
-  __BLANK[75]__ = __BLANK[74]__;               // Store the current "minute" value in a variable
-  __BLANK[77]__ = __BLANK[76]__;               // Store the current "second" value in a variable
+  int hour = now.hour();                       // Extract hour
+  __BLANK[75]__ = __BLANK[74]__;               // Store minute in a variable
+  __BLANK[77]__ = __BLANK[76]__;               // Store second in a variable
 
-  if (__BLANK[78]__) {                        // Check if the hour is a single digit (or less than 10)
-    __BLANK[79]__;                            // Print a leading zero so the time stays aligned
+  if (__BLANK[78]__) {                         // Hour is a single digit (< 10)
+    __BLANK[79]__;                             // Print leading zero
   }
-  display.print(__BLANK[80]__);               // Print the hour value
-  display.print(":");                         // Print the colon (":") separator between time units
+  display.print(__BLANK[80]__);                // Print hour
+  display.print(":");                          // Separator
 
-  if (__BLANK[81]__) {                        // Check if the minute is a single digit
-    __BLANK[82]__;                            // Print a leading zero for the minute
+  if (__BLANK[81]__) {                         // Minute is a single digit
+    __BLANK[82]__;                             // Print leading zero
   }
-  __BLANK[83]__;                              // Print the minute value
-  __BLANK[84]__;                              // Print the colon separator before seconds
+  __BLANK[83]__;                               // Print minute
+  __BLANK[84]__;                               // Separator before seconds
 
-  if (__BLANK[85]__) {                        // Check if the second is a single digit
-    __BLANK[86]__;                            // Print a leading zero for the second
+  if (__BLANK[85]__) {                         // Second is a single digit
+    __BLANK[86]__;                             // Print leading zero
   }
-  __BLANK[87]__;                              // Print the second value
+  __BLANK[87]__;                               // Print second
 }^^
 // ##END:HMSTIME##
 `,
+          answerKey: buildAnswerKey({
+            73: K.id().bind("printClockHHMMSS"),
 
-            answerKey: buildAnswerKey({
-              73: K.id().bind("printClockHHMMSS"),
-              74: ({
-              "type": "pattern",
-              "parts": [
-                "now",
-                ".",
-                "minute",
-                "(",
-                ")"
-              ],
-            } as const),
-              75: ({
-              "type": "pattern",
-              "parts": [
-                "int",
-                {
-                  "p": "identifier",
-                  "bindAs": "minute"
-                }
-              ],
-            } as const),
-              77: ({
-              "type": "pattern",
-              "parts": [
-                "int",
-                {
-                  "p": "identifier",
-                  "bindAs": "second"
-                }
-              ],
-            } as const),
-              76: ({
-              "type": "pattern",
-              "parts": [
-                "now",
-                ".",
-                "second",
-                "(",
-                ")"
-              ],
-            } as const),
-              78: ({
-              "type": "pattern",
-              "parts": [
-                "hour",
-                "<",
-                "10"
-              ],
-            } as const),
-              81: ({
-              "type": "pattern",
-              "parts": [
-                {
-                  "p": "sameAs",
-                  "target": "minute"
-                },
-                "<",
-                "10"
-              ],
-            } as const),
-              85: ({
-              "type": "pattern",
-              "parts": [
-                {
-                  "p": "sameAs",
-                  "target": "second"
-                },
-                "<",
-                "10"
-              ],
-            } as const),
-              79: ({
-              "type": "pattern",
-              "parts": [
-                "display",
-                ".",
-                "print",
-                "(",
-                "\"",
-                "0",
-                "\"",
-                ")"
-              ],
-            } as const),
-              80: K.str({ oneOf: ["hour"] }),
-              82: ({
-              "type": "pattern",
-              "parts": [
-                "display",
-                ".",
-                "print",
-                "(",
-                "\"",
-                "0",
-                "\"",
-                ")"
-              ],
-            } as const),
-              86: ({
-              "type": "pattern",
-              "parts": [
-                "display",
-                ".",
-                "print",
-                "(",
-                "\"",
-                "0",
-                "\"",
-                ")"
-              ],
-            } as const),
-              83: ({
-              "type": "pattern",
-              "parts": [
-                "display",
-                ".",
-                "print",
-                "(",
-                {
-                  "p": "sameAs",
-                  "target": "minute"
-                },
-                ")"
-              ],
-            } as const),
-              87: ({
-              "type": "pattern",
-              "parts": [
-                "display",
-                ".",
-                "print",
-                "(",
-                {
-                  "p": "sameAs",
-                  "target": "second"
-                },
-                ")"
-              ],
-            } as const),
-              84: ({
-              "type": "pattern",
-              "parts": [
-                "display",
-                ".",
-                "print",
-                "(",
-                {
-                  "p": "sameAs",
-                  "target": "\""
-                },
-                ":",
-                "\"",
-                ")"
-              ],
-            } as const),
-            }),
-            blankExplanations: {
-              73: "Name the function that prints the current time to the display in a specific format. This function does not return anything and is used only for output.",
-              74: "Access the method that retrieves the current minute value from the time object.",
-              75: "Declare or use a variable that will store the minute portion of the current time.",
-              76: "Access the method that retrieves the current second value from the time object.",
-              77: "Declare or use a variable that will store the second portion of the current time.",
-              78: "Write a condition that checks whether the hour value is a single digit so formatting stays consistent.",
-              79: "Print a leading character to keep the hour display aligned when the value is less than two digits.",
-              80: "Print the variable that holds the hour value.",
-              81: "Write a condition that checks whether the minute value is a single digit.",
-              82: "Print a leading character so minutes always appear as two digits.",
-              83: "Print the variable that holds the minute value.",
-              84: "Print the separator character that appears between minutes and seconds.",
-              85: "Write a condition that checks whether the second value is a single digit.",
-              86: "Print a leading character so seconds always appear as two digits.",
-              87: "Print the variable that holds the second value.",
-            },
-              blankDifficulties: {
-                73: "easy",
-                74: "easy",
-                75: "easy",
-                76: "easy",
-                77: "easy",
-                78: "intermediate",
-                79: "easy",
-                80: "easy",
-                81: "intermediate",
-                82: "easy",
-                83: "easy",
-                84: "easy",
-                85: "intermediate",
-                86: "easy",
-                87: "easy",
-              },
+            // minute + second extraction
+            74: ({ type: "pattern", parts: ["now", ".", "minute", "(", ")"] } as const),
+            76: ({ type: "pattern", parts: ["now", ".", "second", "(", ")"] } as const),
 
-            descAfterCode: `As an example, imagine the real-time clock currently reads **March 8, 2026 at 14:07:03 (2:07:03 PM)**. When the line __BLANK[5]__.now() runs, it does not return just one number. 
-Instead, it returns a \`DateTime\` object that contains the entire timestamp all at once: the year, month, day, hour, minute, and second. 
-This full snapshot of the current moment is stored in the variable \`now\`, allowing the program to work with a single, consistent time reading.
+            // minute/second variable declarations (allow any valid identifier)
+            75: ({ type: "pattern", parts: ["int", { p: "identifier", bindAs: "minute" }] } as const),
+            77: ({ type: "pattern", parts: ["int", { p: "identifier", bindAs: "second" }] } as const),
 
-From that snapshot, the program then extracts individual pieces of time. Calling \`now.hour()\` returns 14, \`now.minute()\` returns 7, and \`now.second()\` returns 3.
-`,
-            imageGridAfterCode: null,
-            descAfterImage: `When you’re done, this function should print something like \`09:07:03\` or \`14:25:56\` depending on the time.
-**Important:** This function only prints to the OLED's buffer at the current cursor location. It does not clear the screen and does not call \`display.display()\`.`,
-            hint: "Use display.print(...) not display.println(...) so the time stays on one line.",
+            // leading zero checks
+            78: ({ type: "pattern", parts: ["hour", "<", "10"] } as const),
+            81: ({ type: "pattern", parts: [{ p: "sameAs", target: "minute" }, "<", "10"] } as const),
+            85: ({ type: "pattern", parts: [{ p: "sameAs", target: "second" }, "<", "10"] } as const),
+
+            // leading zero prints (allow spaces via pattern; require full statement)
+            79: ({ type: "pattern", parts: ["display", ".", "print", "(", "\"0\"", ")",] } as const),
+            82: ({ type: "pattern", parts: ["display", ".", "print", "(", "\"0\"", ")", ] } as const),
+            86: ({ type: "pattern", parts: ["display", ".", "print", "(", "\"0\"", ")", ] } as const),
+
+            // print values
+            80: ({ type: "pattern", parts: ["hour"] } as const),
+            83: ({ type: "pattern", parts: ["display", ".", "print", "(", { p: "sameAs", target: "minute" }, ")",  ]} as const),
+            87: ({ type: "pattern", parts: ["display", ".", "print", "(", { p: "sameAs", target: "second" }, ")", ] } as const),
+
+            // FIXED: separator before seconds should be display.print(":");
+            84: ({ type: "pattern", parts: ["display", ".", "print", "(", "\":\"", ")", ] } as const),
+          }),
+
+          blankExplanations: {
+            73: "Name the helper function that prints the time in HH:MM:SS format.",
+            74: "Get the current minute from the DateTime object.",
+            75: "Create an int variable to store the minute value.",
+            76: "Get the current second from the DateTime object.",
+            77: "Create an int variable to store the second value.",
+            78: "Check if the hour is less than 10 (single digit).",
+            79: "Print a leading zero for the hour when needed.",
+            80: "Print the variable that holds the hour value.",
+            81: "Check if the minute is less than 10 (single digit).",
+            82: "Print a leading zero for the minute when needed.",
+            83: "Print the minute value.",
+            84: "Print the separator between minutes and seconds (a colon).",
+            85: "Check if the second is less than 10 (single digit).",
+            86: "Print a leading zero for the second when needed.",
+            87: "Print the second value.",
           },
-        ],
-      },
 
-      {
-        id: 2,
-        title: "Step 2: Design the Clock Screen",
-        codes: [
-          {
-            topicTitle: "Function to set the look of the clock",
-            descBeforeCode:
-              "**Goal:** Clear the OLED, show the label `Clock:`, then print the current time using your time function.",
-            descBetweenBeforeAndCode: `Now we make a full screen for the clock:
+          blankDifficulties: {
+            73: "easy",
+            74: "easy",
+            75: "easy",
+            76: "easy",
+            77: "easy",
+            78: "intermediate",
+            79: "easy",
+            80: "easy",
+            81: "intermediate",
+            82: "easy",
+            83: "easy",
+            84: "easy",
+            85: "intermediate",
+            86: "easy",
+            87: "easy",
+          },
+
+          // NOTE: __BLANK[5]__ is a non-question reference and is fine here for auto-rendering.
+          descAfterCode: `As an example, imagine the real-time clock currently reads **March 8, 2026 at 14:07:03 (2:07:03 PM)**. When the line __BLANK[5]__.now() runs, it does not return just one number.
+Instead, it returns a \`DateTime\` object that contains the full timestamp (year, month, day, hour, minute, second).
+This snapshot is stored in \`now\`, so all extracted values come from the same moment in time.
+
+From that snapshot:
+- \`now.hour()\` returns 14
+- \`now.minute()\` returns 7
+- \`now.second()\` returns 3`,
+          imageGridAfterCode: null,
+          descAfterImage: `When you’re done, this function should print something like \`09:07:03\` or \`14:25:56\`, depending on the current time.
+
+**Important:** This function only prints to the OLED buffer at the current cursor location. It does not clear the screen and it does not call \`display.display()\`.`,
+          hint: "Use display.print(...) (not println) so the time stays on one line.",
+        },
+      ],
+    },
+
+    {
+      id: 2,
+      title: "Step 2: Design the Clock Screen",
+      codes: [
+        {
+          topicTitle: "Function to set the look of the clock",
+          descBeforeCode:
+            "**Goal:** Clear the OLED, show the label `Clock:`, then print the current time using your helper function.",
+          descBetweenBeforeAndCode: `Now we make a full screen for the clock:
 - clear the display
 - set text color
 - set text sizes
 - call \`display.display()\` at the end`,
-            code: `^^
-void __BLANK[88]__() {                 // Function that draws the clock screen and handles navigation
+          code: `^^
+void __BLANK[88]__() {                 // Function that draws the clock screen
 // ##EDIT:SHOWTIME:INDENT=1##
   __BLANK[89]__;                       // Clear the OLED screen before drawing the clock
-  __BLANK[90]__;                       // Set the text color used for all clock text
+  __BLANK[90]__;                       // Set the text color used for all clock text to be white
 
-  __BLANK[91]__;                       // Set a small text size for the clock title
-  __BLANK[92]__;                       // Position the cursor at the top-left corner
-  display.println("Clock:");           // Print the clock screen title
+  __BLANK[91]__;                       // Small text size (1) for the title 
+  __BLANK[92]__;                       // Cursor at top-left at (0,0) for the title
+  display.println("Clock:");           // Title
 
-  __BLANK[93]__;                       // Increase the text size for displaying the time
-  __BLANK[94]__;                       // Move the cursor to where the time should appear
-  __BLANK[95]__;                       // Call the function that prints the current time (HH:MM:SS)
+  __BLANK[93]__;                       // Larger text size (2) for the time
+  __BLANK[94]__;                       // Cursor where the time should appear at (0,20)
+  __BLANK[95]__;                       // Print the current time (HH:MM:SS)
 
-  display.setTextSize(1);              // Switch back to small text for footer instructions
-  display.setCursor(0, 56);            // Position the cursor near the bottom of the screen
-  display.println("PREV: Menu");       // Show instruction for returning to the main menu
+  display.setTextSize(1);
+  display.setCursor(0, 56);
+  display.println("PREV: Menu");
 
-  __BLANK[96]__;                       // Push all drawn content to the OLED display
+  __BLANK[96]__;                       // Push content to the OLED
 }
 // ##END:SHOWTIME##
 ^^`,
+          answerKey: buildAnswerKey({
+            88: K.id().bind("showClockScreen"),
 
-            answerKey: buildAnswerKey({
-              88: K.id().bind("showClockScreen"),
-              89: ({
-              "type": "pattern",
-              "parts": [
-                "display",
-                ".",
-                "clearDisplay",
-                "(",
-                {
-                  "p": "sameAs",
-                  "target": ")"
-                }
-              ],
-            } as const),
-              90: ({
-              "type": "pattern",
-              "parts": [
-                "display",
-                ".",
-                "setTextColor",
-                "(",
-                {
-                  "p": "string"
-                },
-                ")"
-              ],
-            } as const),
-              91: ({
-              "type": "pattern",
-              "parts": [
-                "display",
-                ".",
-                "setTextSize",
-                "(",
-                "1",
-                ")"
-              ],
-            } as const),
-              92: ({
-              "type": "pattern",
-              "parts": [
-                "display",
-                ".",
-                "setCursor",
-                "(",
-                "0",
-                ",",
-                "0",
-                ")"
-              ],
-            } as const),
-              93: ({
-              "type": "pattern",
-              "parts": [
-                "display",
-                ".",
-                "setTextSize",
-                "(",
-                "2",
-                ")"
-              ],
-            } as const),
-              94: ({
-              "type": "pattern",
-              "parts": [
-                "display",
-                ".",
-                "setCursor",
-                "(",
-                "0",
-                ",",
-                "20",
-                ")"
-              ],
-            } as const),
-              95: K.same("printClockHHMMSS"),
-              96: ({
-              "type": "pattern",
-              "parts": [
-                "display",
-                ".",
-                "display",
-                "(",
-                ")"
-              ],
-            } as const),
-            }),
+            // FIXED: clearDisplay() statement (with semicolon)
+            89: ({ type: "pattern", parts: ["display", ".", "clearDisplay", "(", ")"] } as const),
 
-            blankExplanations: {
-              88: "Name the function responsible for drawing the clock screen and handling its button interactions.",
-              89: "Clear the OLED display so the previous screen does not remain visible.",
-              90: "Set the color that will be used for all text drawn on the clock screen.",
-              91: "Set a smaller text size for the clock screen title.",
-              92: "Move the cursor to the top-left position before printing the title text.",
-              93: "Change the text size to a larger value so the time is easy to read.",
-              94: "Position the cursor at the location where the time should be displayed.",
-              95: "Call the helper function that prints the current time in HH:MM:SS format.",
-              96: "Send everything that was drawn in memory to the OLED so it becomes visible on the screen.",
-            },
+            // FIXED: setTextColor should be a constant, not a "string"
+            90: ({
+              type: "pattern",
+              parts: ["display", ".", "setTextColor", "(", { p: "oneOf", values: ["SSD1306_WHITE", "WHITE"] }, ")"],
+            } as const),
 
-            blankDifficulties: {
-              88: "easy",
-              89: "easy",
-              90: "easy",
-              91: "easy",
-              92: "easy",
-              93: "easy",
-              94: "easy",
-              95: "intermediate",
-              96: "easy",
-            },
+            91: ({ type: "pattern", parts: ["display", ".", "setTextSize", "(", "1", ")", ] } as const),
+            92: ({ type: "pattern", parts: ["display", ".", "setCursor", "(", "0", ",", "0", ")",] } as const),
 
+            93: ({ type: "pattern", parts: ["display", ".", "setTextSize", "(", "2", ")", ] } as const),
+            94: ({ type: "pattern", parts: ["display", ".", "setCursor", "(", "0", ",", "20", ")",] } as const),
 
-            descAfterCode: `After you fill this in, calling \`__BLANK[88]__\` should display:
-1) A label that says "Clock:" or anything you want. 
+            // calls the function from step 1
+            95: ({ type: "pattern", parts: [{ p: "sameAs", target: "printClockHHMMSS" }, "(", ")", ] } as const),
+
+            // FIXED: display.display(); statement (with semicolon)
+            96: ({ type: "pattern", parts: ["display", ".", "display", "(", ")",] } as const),
+          }),
+
+          blankExplanations: {
+            88: "Name the function responsible for drawing the clock screen.",
+            89: "Clear the OLED display so the previous screen does not remain visible.",
+            90: "Set the color used for all text on the OLED.",
+            91: "Set a smaller text size for the title.",
+            92: "Move the cursor to the top-left before printing the title.",
+            93: "Set a larger text size to make the time easy to read.",
+            94: "Move the cursor to where the time should be printed.",
+            95: "Call the helper function that prints HH:MM:SS.",
+            96: "Send what you drew in memory to the OLED so it becomes visible.",
+          },
+
+          blankDifficulties: {
+            88: "easy",
+            89: "easy",
+            90: "easy",
+            91: "easy",
+            92: "easy",
+            93: "easy",
+            94: "easy",
+            95: "intermediate",
+            96: "easy",
+          },
+
+          // NOTE: __BLANK[88]__ is a non-question reference (auto-render is intended)
+          descAfterCode: `After you fill this in, calling __BLANK[88]__() should display:
+1) A title label ("Clock:")
 2) A large time in HH:MM:SS
-3) A small hint at the bottom that instructs what button to press to go back to Main Menu. 
+3) A small hint at the bottom to return to the Main Menu
 
 This is a complete screen function because it clears the display and calls \`display.display()\` at the end.`,
-            imageGridAfterCode: null,
-            descAfterImage: null,
-            hint: "Remember: your helper function prints time at the cursor, so setCursor(...) before calling it.",
-          },
-        ],
-      },
+          imageGridAfterCode: null,
+          descAfterImage: null,
+          hint: "Your helper prints time at the current cursor, so setCursor(...) before calling it.",
+        },
+      ],
+    },
 
-      {
-        id: 3,
-        title:
-          "Step 3: Make the clock screen show when selected from the Main Menu",
-        codes: [
-          {
-            topicTitle: "Linking Clock Screen to Main Menu",
-            descBeforeCode: `**Goal:** Update your main loop or screen management logic so that when the user selects the Clock option from the Main Menu, it calls your clock screen function.
-We will use an if statement format like: \`if (screen_mode) == X\`, then show the clock screen.`,
-            code: `^^
+    {
+      id: 3,
+      title: "Step 3: Make the clock screen show when selected from the Main Menu",
+      codes: [
+        {
+          topicTitle: "Linking Clock Screen to Main Menu",
+          descBeforeCode: `**Goal:** Update your screen management logic so that when the user selects the Clock option from the Main Menu, the program calls your clock screen function.
+
+We will use a structure like:
+- if __BLANK[31]__ is 0 → show the main menu
+- if __BLANK[31]__ is 1 → show the clock screen`,
+          code: `^^
 void loop() {
-  if (__BLANK[97]__ == __BLANK[98]__) {     // Check if the program is currently in the main menu screen state. The screen mode variable equals what value?
-    __BLANK[99]__;                          // Call the function that draws and handles the main menu
+  if (__BLANK[97]__ == __BLANK[98]__) {      // Main menu state
+    __BLANK[99]__;                           // Draw/handle main menu
   }
-  else if (__BLANK[100]__) {                // Check if the program is in the clock screen state
-    __BLANK[102]__();                      // Draw and update the clock screen
+  else if (__BLANK[100]__) {                 // Clock screen state
+    __BLANK[102]__();                        // Draw/handle clock screen
   }
-  else if (__BLANK[101]__) {                // Check if the program is in the Pomodoro selection screen state               
-  //<< Draw and handle the Pomodoro selection screen (coming soon)
+  else if (__BLANK[101]__) {                 // Pomodoro selection state (coming soon)
+    //<< Draw and handle the Pomodoro selection screen (coming soon)
   }
 }^^`,
-            answerKey: buildAnswerKey({
-              97: K.same("screenMode"),
-              98: K.num({ oneOf: [0] }),
-              99: ({
-              "type": "pattern",
-              "parts": [
-                {
-                  "p": "sameAs",
-                  "target": "showMainMenu"
-                },
-                "(",
-                ")"
-              ],
-              "policy": {
-                "requireNoSpacesAround": [
-                  "."
-                ]
-              },
-            } as const),
-              100: ({
-              "type": "pattern",
-              "parts": [
-                {
-                  "p": "sameAs",
-                  "target": "screenMode"
-                },
-                "==",
-                "1"
-              ],
-              "policy": {
-                "requireNoSpacesAround": [
-                  "."
-                ]
-              },
-            } as const),
-              101: ({
-              "type": "pattern",
-              "parts": [
-                {
-                  "p": "sameAs",
-                  "target": "screenMode"
-                },
-                "==",
-                "2"
-              ],
-              "policy": {
-                "requireNoSpacesAround": [
-                  "."
-                ]
-              },
-            } as const),
-              102: K.same("showClockScreen"),
-            }),
-            blankExplanations: {
-              97: "Use the variable that tracks which screen or mode the program is currently in.",
-              98: "Use the value that represents the main menu screen state.",
-              99: "Call the function that draws and handles the main menu when this state is active.",
-              100: "Write a condition that checks whether the program is in the clock screen state.",
-              101: "Write a condition that checks whether the program is in the Pomodoro selection screen state.",
-            },
-            blankDifficulties: {
-              97: "easy",
-              98: "easy",
-              99: "easy",
-              100: "intermediate",
-              101: "intermediate",
-            },
-            descAfterCode: `After adding this code, when the user selects the Clock option from the Main Menu, your program should call the clock screen function you created earlier. This will display the current time in HH:MM:SS format on the OLED.
-Recall that in the Main Menu Function, when the user presses SELECT on the Clock option, you have set a screen mode variable to the corresponding screen type number for the Clock screen. So, after the screen mode is changed, the main loop will check this "if statement" and call your clock screen function accordingly.`,
+          answerKey: buildAnswerKey({
+            97: K.same("screenMode"),
+            98: K.num({ oneOf: [0] }),
+
+            // More flexible + requires full call statement
+            99: ({ type: "pattern", parts: [{ p: "sameAs", target: "showMainMenu" }, "(", ")"] } as const),
+
+            // FIX: allow spaces; no weird "policy"
+            100: ({ type: "pattern", parts: [{ p: "sameAs", target: "screenMode" }, "==", "1"] } as const),
+            101: ({ type: "pattern", parts: [{ p: "sameAs", target: "screenMode" }, "==", "2"] } as const),
+
+            102: K.same("showClockScreen"),
+          }),
+          blankExplanations: {
+            97: "Use the variable that tracks which screen the program should show.",
+            98: "Use the value that represents the Main Menu screen state (usually 0).",
+            99: "Call the function that draws/handles the Main Menu.",
+            100: "Check whether the program is in the Clock screen state.",
+            101: "Check whether the program is in the Pomodoro selection screen state.",
+            102: "Call the function that draws/handles the Clock screen.",
           },
-        ],
-      },
-      {
-        id: 4,
-        title: "Step 4: Test the Clock Screen in the Simulator",
-        codes: [
-          {
-            topicTitle: "Testing the Clock Screen",
-            descBeforeCode: `After implementing the clock screen and linking it to the Main Menu, it's time to test your code using the simulator.
-**What to Test:**
-1) Run the simulator and navigate to the Main Menu.
-2) Use the PREV and NEXT buttons to highlight the Clock option.
-3) Press the SELECT button to enter the Clock screen.
-4) Verify that the current time is displayed correctly in HH:MM:SS format.
-5) Check that the hint at the bottom instructs how to return to the Main Menu.
-`,
-            imageGridBeforeCode: {
-              columns: 1,
-              height: 430,
-              width: 500,
-              items: [
-                {
-                  imageSrc: "/electric-status-board/maintoClock2.gif",
-                  label:
-                    "Simulator showing Main Menu with Clock option highlighted",
-                },
-              ],
-            },
+          blankDifficulties: {
+            97: "easy",
+            98: "easy",
+            99: "easy",
+            100: "intermediate",
+            101: "intermediate",
+            102: "easy",
           },
-          {
-            topicTitle: `Tips`,
-            descBeforeCode: `Recall how to structure your Arduino codes (see Lesson 6). Make sure your \`void loop()\` calls the main menu function and then the clock screen function as needed based on the screen mode variable. 
-@ Add the new clock helper functions __BLANK[88]__() and __BLANK[73]__() at the bottom of your code draft with the rest of the helper functions. 
-@ Place the constants, variables, and definitions at the top of the code draft, before setup(). 
-@ The rest of the code should remain the same from Lesson 6.`,
+          descAfterCode: `After adding this logic, when the user selects Clock in the Main Menu, your program should update __BLANK[97]__ to the Clock screen value (1). Then the \`loop()\` will call your clock screen function and display the time.`,
+        },
+      ],
+    },
+
+    {
+      id: 4,
+      title: "Step 4: Test the Clock Screen in the Simulator",
+      codes: [
+        {
+          topicTitle: "Testing the Clock Screen",
+          descBeforeCode: `After implementing the clock screen and linking it to the Main Menu, test your code using the simulator.
+
+**What to test:**
+1) Run the simulator and reach the Main Menu
+2) Use PREV/NEXT to highlight Clock
+3) Press SELECT to enter the Clock screen
+4) Verify the time prints in HH:MM:SS format
+5) Verify the footer shows how to return to the Main Menu`,
+          imageGridBeforeCode: {
+            columns: 1,
+            height: 430,
+            width: 500,
+            items: [
+              {
+                imageSrc: "/electric-status-board/maintoClock2.gif",
+                label: "Simulator showing Main Menu with Clock option highlighted",
+              },
+            ],
           },
-        ],
-      },
-    ],
-  },
+        },
+        {
+          topicTitle: `Tips`,
+          // NOTE: non-question references to function names → numeric blanks are correct here
+          descBeforeCode: `Recall how to structure your Arduino code. Make sure your \`void loop()\` routes between screens based on __BLANK[97]__.
+
+@ Add the new clock functions __BLANK[88]__() and __BLANK[73]__() at the bottom of your code draft with your other functions.
+@ Keep constants/variables at the top (before setup()).
+@ The rest of your code can stay the same.`,
+        },
+      ],
+    },
+  ],
+},
 
   9: {
     phrase: "Pomodoro screen: printing timer",
