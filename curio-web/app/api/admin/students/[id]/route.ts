@@ -1,12 +1,10 @@
 // app/api/admin/students/[id]/route.ts
+// GET: student details + all projects with progress (for projects with any progress, show level-specific steps done + total)
+
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/authz";
-import { fetchClerkIdentity } from "@/lib/clerkBackfill";
-import {
-  getTotalStepsForLevel,
-  levelFromLessonSlug,
-} from "@/src/lesson-core/projectStepRegistry";
+import { levelFromLessonSlug, getTotalsForProjectLevel } from "@/src/lesson-core/projectStepRegistry";
 
 /** Normalize DB lessonSlug to canonical form (code-beg, circuit-beg, etc.). */
 function toCanonicalLessonSlug(lessonSlug: string): string {
@@ -47,7 +45,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
   const { id } = await ctx.params;
   const userId = id;
 
-let user = await prisma.user.findUnique({
+const user = await prisma.user.findUnique({
   where: { id: userId },
   select: {
     id: true,
@@ -66,36 +64,6 @@ let user = await prisma.user.findUnique({
 
   if (!user || user.role !== "STUDENT") {
     return NextResponse.json({ error: "not_found" }, { status: 404 });
-  }
-
-  // Backfill missing name/email from Clerk (so deep-links show identity even if DB row was created blank).
-  const needsBackfill =
-    !String(user.email ?? "").trim() ||
-    (!String(user.firstName ?? "").trim() && !String(user.lastName ?? "").trim());
-
-  if (needsBackfill) {
-    const identity = await fetchClerkIdentity(userId);
-    if (identity && (identity.email || identity.firstName || identity.lastName)) {
-      try {
-        await prisma.user.update({
-          where: { id: userId },
-          data: {
-            email: identity.email ?? undefined,
-            firstName: identity.firstName,
-            lastName: identity.lastName,
-          },
-        });
-
-        user = {
-          ...user,
-          email: identity.email ?? user.email,
-          firstName: identity.firstName,
-          lastName: identity.lastName,
-        };
-      } catch {
-        // best-effort; keep DB values
-      }
-    }
   }
 
   // Projects list = distinct projectSlugs the student has started
@@ -154,7 +122,7 @@ let user = await prisma.user.findUnique({
     const circuitDone = doneByLessonLookup.get(`${slug}|${circuitsSlug}`) ?? 0;
     const levelStepsDone = codeDone + circuitDone;
     // Use level total (matches dashboard: code-beg + circuit-beg for beginner = 41 steps)
-    const totalSteps = getTotalStepsForLevel(slug, level);
+    const totalSteps = getTotalsForProjectLevel(slug, level as any).total;
 
     const stepsDone = levelStepsDone;
 

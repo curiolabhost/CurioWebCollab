@@ -5,7 +5,7 @@ import { NextResponse } from "next/server";
 import { clerkClient } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/authz";
-import { getTotalStepsForLevel, levelFromLessonSlug } from "@/src/lesson-core/projectStepRegistry";
+import { levelFromLessonSlug, getTotalsForProjectLevel } from "@/src/lesson-core/projectStepRegistry";
 
 /** Normalize DB lessonSlug to canonical form (code-beg, circuit-beg, etc.) for lookup. */
 function toCanonicalLessonSlug(lessonSlug: string): string {
@@ -182,8 +182,13 @@ export async function GET() {
 
     const stepsDone = codeDone + circuitDone;
 
-    // Use level total (matches dashboard: code-beg + circuit-beg for beginner = 41 steps)
-    const totalStepsFinal = currentProjectSlug ? getTotalStepsForLevel(currentProjectSlug, level) : 0;
+    // Use getTotalsForProjectLevel (countCountedStepsInLessonStepsExcludingAdvanced) to match dashboard.
+    const totals = currentProjectSlug ? getTotalsForProjectLevel(currentProjectSlug, level) : { total: 0 };
+    const totalStepsFinal = totals.total;
+
+    if (process.env.NODE_ENV === "development" && currentProjectSlug) {
+      console.log(`[admin/students] ${u.id} ${currentProjectSlug} level=${level}: stepsDone=${stepsDone} totalSteps=${totalStepsFinal}`);
+    }
 
     const grade = u.profile?.grade ?? null;
     const school = u.profile?.school ?? null;
