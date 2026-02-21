@@ -225,3 +225,20 @@ model AccountClaim {
 
   @@index([email])
 }
+
+model Project {
+  slug        String   @id
+  title       String
+  description String
+  category    String?
+  hours       String?
+  image       String?
+  available   Boolean  @default(false)
+  sortOrder   Int      @default(0)
+
+  // Optional extras (add now or later)
+  difficulties Json?   // store ["Beginner","Intermediate"] etc as JSON array
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
