@@ -1,19 +1,14 @@
 // app/api/admin/invites/route.ts
 // GET: list existing invites + associated metadata (creator, used or not, etc)
-// POST: create new invite (generate token, store hash, send email)
+// POST: create new invite (ROTATE existing active invite if one exists, then create a new one)
 
 import { NextResponse } from "next/server";
-import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/authz";
 import { Resend } from "resend";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-
-function sha256(s: string) {
-  return crypto.createHash("sha256").update(s).digest("hex");
-}
 
 function renderTemplate(template: string, vars: Record<string, string>) {
   return template.replace(/\{\{\s*(\w+)\s*\}\}/g, (_, key) => vars[key] ?? "");
@@ -44,6 +39,7 @@ export async function GET() {
       createdAt: true,
       expiresAt: true,
       usedAt: true,
+      revokedAt: true, 
       createdByUserId: true,
       createdByUser: {
         select: { id: true, email: true, firstName: true, lastName: true },
@@ -68,6 +64,7 @@ export async function GET() {
     createdAt: inv.createdAt,
     expiresAt: inv.expiresAt,
     usedAt: inv.usedAt,
+    revokedAt: inv.revokedAt, 
     createdBy: inv.createdByUser
       ? {
           id: inv.createdByUser.id,
@@ -79,10 +76,7 @@ export async function GET() {
       : null,
   }));
 
-  return NextResponse.json(
-    { ok: true, admins, invites },
-    { headers: { "Cache-Control": "no-store" } }
-  );
+  return NextResponse.json({ ok: true, admins, invites }, { headers: { "Cache-Control": "no-store" } });
 }
 
 export async function POST(req: Request) {
@@ -101,39 +95,49 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "Invalid email" }, { status: 400 });
   }
 
-  // OPTIONAL: prevent spamming multiple pending invites to same email
-  // (keeps things cleaner in your table)
-  const existingPending = await prisma.adminInvite.findFirst({
+  // if there's an active invite, revoke it so we can recreate a new link immediately
+  const existingActive = await prisma.adminInvite.findFirst({
     where: {
       email,
       usedAt: null,
+      revokedAt: null,
       expiresAt: { gt: new Date() },
     },
     select: { id: true },
+    orderBy: { createdAt: "desc" },
   });
 
-  if (existingPending) {
-    return NextResponse.json(
-      { ok: false, error: "An active invite already exists for this email." },
-      { status: 409 }
-    );
+  let replacesInviteId: string | null = null;
+
+  if (existingActive) {
+    replacesInviteId = existingActive.id;
+    await prisma.adminInvite.update({
+      where: { id: existingActive.id },
+      data: {
+        revokedAt: new Date(),
+        revokedByUserId: gate.dbUser!.id,
+      },
+    });
   }
 
-  const token = crypto.randomBytes(32).toString("hex");
-  const tokenHash = sha256(token);
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
-  await prisma.adminInvite.create({
+  // New invite row (ID becomes the token in the URL)
+  const newInvite = await prisma.adminInvite.create({
     data: {
       email,
-      tokenHash,
       expiresAt,
       createdByUserId: gate.dbUser!.id,
+      replacesInviteId,
     },
+    select: { id: true, expiresAt: true },
   });
 
-  const origin = new URL(req.url).origin;
-  const inviteUrl = `${origin}/accept-admin-invite?token=${token}`;
+  const origin =
+    (process.env.NEXT_PUBLIC_APP_URL || "").replace(/\/$/, "") || new URL(req.url).origin;
+
+  // token is the invite ID 
+  const inviteUrl = `${origin}/accept-admin-invite?token=${encodeURIComponent(newInvite.id)}`;
 
   const apiKey = process.env.RESEND_API_KEY;
   const from = process.env.EMAIL_FROM;
@@ -152,14 +156,14 @@ export async function POST(req: Request) {
     "",
     `Accept invite: ${inviteUrl}`,
     "",
-    `This link expires on: ${expiresAt.toISOString()}`,
+    `This link expires on: ${newInvite.expiresAt.toISOString()}`,
   ].join("\n");
 
   const text =
     message.length > 0
       ? renderTemplate(message, {
           inviteUrl,
-          expiresAt: expiresAt.toISOString(),
+          expiresAt: newInvite.expiresAt.toISOString(),
           email,
         })
       : fallbackText;
@@ -172,14 +176,15 @@ export async function POST(req: Request) {
   });
 
   if (error) {
+    // invite exists; email failed. still return the link so admin can copy it.
     return NextResponse.json(
-      { ok: false, error: "Invite created, but email failed to send.", inviteUrl },
+      { ok: false, error: "Invite created, but email failed to send.", inviteUrl, expiresAt: newInvite.expiresAt },
       { status: 502 }
     );
   }
 
   return NextResponse.json(
-    { ok: true, sent: true, inviteUrl, expiresAt },
+    { ok: true, sent: true, inviteUrl, expiresAt: newInvite.expiresAt },
     { headers: { "Cache-Control": "no-store" } }
   );
 }

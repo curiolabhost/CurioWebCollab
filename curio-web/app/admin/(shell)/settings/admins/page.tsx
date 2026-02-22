@@ -20,11 +20,15 @@ type InviteCreator = {
 };
 
 type InviteRow = {
-  id: string;
-  email: string;
+  id: string;                 // DB row id
+  email: string | null;
+  type: "EMAIL" | "CODE";
+  token: string | null;       // for EMAIL invites
+  code: string | null;        // for CODE invites
   createdAt: string;
   expiresAt: string;
   usedAt: string | null;
+  revokedAt: string | null;
   createdBy: InviteCreator | null;
 };
 
@@ -38,9 +42,17 @@ function fmtDate(s: string) {
 
 function statusForInvite(inv: InviteRow) {
   if (inv.usedAt) return { label: "Accepted", color: "#0f766e", icon: "✅" };
+  if (inv.revokedAt) return { label: "Revoked", color: "#6b7280", icon: "🚫" };
   const exp = new Date(inv.expiresAt).getTime();
   if (Date.now() > exp) return { label: "Expired", color: "#b45309", icon: "⏳" };
   return { label: "Pending", color: "#1d4ed8", icon: "📩" };
+}
+
+function inviteLinkFor(inviteId: string) {
+  const base =
+    (process.env.NEXT_PUBLIC_APP_URL || "").replace(/\/$/, "") ||
+    (typeof window !== "undefined" ? window.location.origin : "");
+  return `${base}/accept-admin-invite?token=${encodeURIComponent(inviteId)}`;
 }
 
 async function copyToClipboard(text: string) {
@@ -76,6 +88,10 @@ export default function AdminsPage() {
   const [invites, setInvites] = React.useState<InviteRow[]>([]);
   const [loading, setLoading] = React.useState(false);
   const [copyMsg, setCopyMsg] = React.useState("");
+
+  const [adminCode, setAdminCode] = React.useState("");
+  const [adminCodeExpiresAt, setAdminCodeExpiresAt] = React.useState("");
+  const [codeMsg, setCodeMsg] = React.useState("");
 
   async function loadData() {
     setLoading(true);
@@ -123,6 +139,25 @@ export default function AdminsPage() {
     setEmail("");
     await loadData();
   }
+
+  async function generateAdminCode() {
+  setErr("");
+  setCodeMsg("");
+  setAdminCode("");
+  setAdminCodeExpiresAt("");
+
+  const res = await fetch("/api/admin/admin-codes", { method: "POST" });
+  const json = await res.json().catch(() => null);
+
+  if (!res.ok || !json?.ok) {
+    setErr(json?.error ?? "Failed to generate admin code.");
+    return;
+  }
+
+  setAdminCode(String(json.code || ""));
+  setAdminCodeExpiresAt(String(json.expiresAt || ""));
+  setCodeMsg("Admin code generated.");
+}
 
   const card: React.CSSProperties = {
     border: "1px solid #e5e7eb",
@@ -172,8 +207,7 @@ export default function AdminsPage() {
       <div style={{ ...card, marginTop: 14 }}>
         <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 10, flexWrap: "wrap" }}>
           <div style={{ fontWeight: 700, color: "#354790" }}>Invite Email Draft</div>
-          <div style={{ fontSize: 12, color: "#6b7280" }}>
-          </div>
+          <div style={{ fontSize: 12, color: "#6b7280" }}></div>
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 10 }}>
@@ -274,6 +308,65 @@ export default function AdminsPage() {
         )}
       </div>
 
+      {/* Generate Admin Code (backup option) */}
+<div style={{ ...card, marginTop: 14 }}>
+  <div style={{ fontWeight: 700, color: "#354790", marginBottom: 10 }}>Backup Option: Admin Code</div>
+
+  <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 10 }}>
+    Generate a single-use code (expires in 7 days). A signed-in student can enter it to become an admin.
+  </div>
+
+  <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+    <button
+      onClick={generateAdminCode}
+      style={{
+        padding: "6px 14px",
+        borderRadius: 10,
+        border: "1px solid #355291",
+        background: "#4a69ad",
+        color: "white",
+      }}
+    >
+      Generate code
+    </button>
+
+    {codeMsg ? <span style={{ color: "#047857", fontSize: 13 }}>{codeMsg}</span> : null}
+  </div>
+
+  {adminCode ? (
+    <div style={{ marginTop: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+        <div style={{ fontSize: 13, color: "#6b7280" }}>
+          Code (expires {adminCodeExpiresAt ? fmtDate(adminCodeExpiresAt) : "in 7 days"}):
+        </div>
+
+        <button
+          onClick={async () => {
+            const ok = await copyToClipboard(adminCode);
+            setCopyMsg(ok ? "Copied!" : "Copy failed");
+            setTimeout(() => setCopyMsg(""), 1200);
+          }}
+          style={{
+            padding: "8px 10px",
+            borderRadius: 10,
+            border: "1px solid #e5e7eb",
+            background: "white",
+            fontSize: 13,
+          }}
+        >
+          Copy
+        </button>
+      </div>
+
+      {!!copyMsg && <div style={{ fontSize: 12, color: "#6b7280", marginTop: 6 }}>{copyMsg}</div>}
+
+      <code style={{ display: "block", padding: 12, borderRadius: 10, border: "1px solid #e5e7eb", marginTop: 8 }}>
+        {adminCode}
+      </code>
+    </div>
+  ) : null}
+</div>
+
       {/* Admins table */}
       <div style={{ ...card, marginTop: 14 }}>
         <div style={{ fontWeight: 700, marginBottom: 10 }}>Admins</div>
@@ -310,7 +403,7 @@ export default function AdminsPage() {
       <div style={{ ...card, marginTop: 14 }}>
         <div style={{ fontWeight: 700, marginBottom: 10 }}>Invites</div>
         <div style={{ overflowX: "auto" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 980 }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1100 }}>
             <thead>
               <tr>
                 <th style={th}>Invitee Email</th>
@@ -319,49 +412,135 @@ export default function AdminsPage() {
                 <th style={th}>Expires</th>
                 <th style={th}>Accepted</th>
                 <th style={th}>Created By</th>
+                <th style={th}>Invite Link</th>
+                <th style={th}>Admin Code</th>
               </tr>
             </thead>
             <tbody>
               {invites.map((inv) => {
                 const st = statusForInvite(inv);
                 const creator = inv.createdBy;
-                const creatorLabel =
-                  creator?.fullName
-                    ? `${creator.fullName}${creator.email ? ` (${creator.email})` : ""}`
-                    : creator?.email ?? null;
+                const creatorLabel = creator?.fullName
+                  ? `${creator.fullName}${creator.email ? ` (${creator.email})` : ""}`
+                  : creator?.email ?? null;
 
-                return (
-                  <tr key={inv.id}>
-                    <td style={td}>{inv.email}</td>
-                    <td style={td}>
-                      <span
-                        style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: 8,
-                          padding: "4px 10px",
-                          borderRadius: 999,
-                          border: "1px solid #e5e7eb",
-                          color: st.color,
-                          fontWeight: 700,
-                          fontSize: 12,
-                        }}
-                      >
-                        <span aria-hidden>{st.icon}</span>
-                        {st.label}
-                      </span>
-                    </td>
-                    <td style={td}>{fmtDate(inv.createdAt)}</td>
-                    <td style={td}>{fmtDate(inv.expiresAt)}</td>
-                    <td style={td}>{inv.usedAt ? fmtDate(inv.usedAt) : <span style={{ color: "#6b7280" }}>—</span>}</td>
-                    <td style={td}>{creatorLabel ?? <span style={{ color: "#6b7280" }}>—</span>}</td>
-                  </tr>
-                );
+                const canUseLink = inv.type === "EMAIL" && !!inv.token && !inv.usedAt && !inv.revokedAt;
+                const url = inv.token ? inviteLinkFor(inv.token) : "";
+
+              return (
+                <tr key={inv.id}>
+                  <td style={td}>{inv.email ?? <span style={{ color: "#6b7280" }}>—</span>}</td>
+
+                  <td style={td}>
+                    <span
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 8,
+                        padding: "4px 10px",
+                        borderRadius: 999,
+                        border: "1px solid #e5e7eb",
+                        color: st.color,
+                        fontWeight: 700,
+                        fontSize: 12,
+                      }}
+                    >
+                      <span aria-hidden>{st.icon}</span>
+                      {st.label}
+                    </span>
+                  </td>
+
+                  <td style={td}>{fmtDate(inv.createdAt)}</td>
+                  <td style={td}>{fmtDate(inv.expiresAt)}</td>
+                  <td style={td}>{inv.usedAt ? fmtDate(inv.usedAt) : <span style={{ color: "#6b7280" }}>—</span>}</td>
+                  <td style={td}>{creatorLabel ?? <span style={{ color: "#6b7280" }}>—</span>}</td>
+
+                  {/* Invite Link (EMAIL invites only) */}
+                  <td style={td}>
+                    {inv.type === "EMAIL" && inv.token && !inv.usedAt && !inv.revokedAt ? (
+                      (() => {
+                        const url = inviteLinkFor(inv.token);
+                        return (
+                          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                            <a
+                              href={url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{ color: "#2563eb", fontSize: 13, textDecoration: "underline" }}
+                            >
+                              Open
+                            </a>
+
+                            <button
+                              onClick={async () => {
+                                const ok = await copyToClipboard(url);
+                                setCopyMsg(ok ? "Copied!" : "Copy failed");
+                                setTimeout(() => setCopyMsg(""), 1200);
+                              }}
+                              style={{
+                                padding: "6px 10px",
+                                borderRadius: 10,
+                                border: "1px solid #e5e7eb",
+                                background: "white",
+                                fontSize: 13,
+                                cursor: "pointer",
+                              }}
+                            >
+                              Copy
+                            </button>
+                          </div>
+                        );
+                      })()
+                    ) : (
+                      <span style={{ color: "#6b7280" }}>—</span>
+                    )}
+                  </td>
+
+                  {/* Admin Code (CODE invites only) */}
+                  <td style={td}>
+                    {inv.type === "CODE" && inv.code ? (
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <code
+                          style={{
+                            padding: "4px 8px",
+                            borderRadius: 6,
+                            border: "1px solid #e5e7eb",
+                            background: "#f9fafb",
+                            fontSize: 12,
+                          }}
+                        >
+                          {inv.code}
+                        </code>
+
+                        <button
+                          onClick={async () => {
+                            const ok = await copyToClipboard(inv.code!);
+                            setCopyMsg(ok ? "Copied!" : "Copy failed");
+                            setTimeout(() => setCopyMsg(""), 1200);
+                          }}
+                          style={{
+                            padding: "6px 10px",
+                            borderRadius: 8,
+                            border: "1px solid #e5e7eb",
+                            background: "white",
+                            fontSize: 12,
+                            cursor: "pointer",
+                          }}
+                        >
+                          Copy
+                        </button>
+                      </div>
+                    ) : (
+                      <span style={{ color: "#6b7280" }}>—</span>
+                    )}
+                  </td>
+                </tr>
+              );
               })}
 
               {invites.length === 0 && (
                 <tr>
-                  <td style={td} colSpan={6}>
+                  <td style={td} colSpan={8}>
                     <span style={{ color: "#6b7280" }}>No invites found.</span>
                   </td>
                 </tr>
@@ -369,6 +548,8 @@ export default function AdminsPage() {
             </tbody>
           </table>
         </div>
+
+        {!!copyMsg && <div style={{ fontSize: 12, color: "#6b7280", marginTop: 10 }}>{copyMsg}</div>}
       </div>
     </div>
   );

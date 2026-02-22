@@ -36,6 +36,7 @@ model User {
   profile         UserProfile?
 
   adminInvitesCreated AdminInvite[] @relation("AdminInviteCreatedBy")
+  adminInvitesRevoked AdminInvite[] @relation("AdminInviteRevokedBy")
 }
 
 model LessonProgress {
@@ -196,20 +197,34 @@ model NotebookState {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-model AdminInvite {
-  id String @id @default(cuid())
+enum AdminInviteType {
+  EMAIL
+  CODE
+}
 
-  email     String
-  tokenHash String    @unique
+model AdminInvite {
+  id String @id @default(cuid()) 
+
+  email     String?
+  type      AdminInviteType @default(EMAIL)
+
   expiresAt DateTime
   usedAt    DateTime?
 
   createdAt DateTime @default(now())
 
+  // created by
   createdByUserId String?
   createdByUser   User?   @relation("AdminInviteCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
 
+  revokedAt       DateTime?
+  revokedByUserId String?
+  revokedByUser   User?   @relation("AdminInviteRevokedBy", fields: [revokedByUserId], references: [id], onDelete: SetNull)
+
+  replacesInviteId String?
+
   @@index([email])
+  @@index([revokedAt])
 }
 
 model AccountClaim {

@@ -1,20 +1,16 @@
 // Accept Admin Invite
 // app/api/admin/accept-invite/route.ts
-// Verifies invite token, checks signed-in user's emails match invite email,
+// Verifies invite token (NOW: token = AdminInvite.id),
+// checks signed-in user's emails match invite email,
 // promotes user to ADMIN, stores email + first/last name, marks invite used.
 
 export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
-import crypto from "crypto";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 
-function sha256(s: string) {
-  return crypto.createHash("sha256").update(s).digest("hex");
-}
-
-function normalizeEmail(s: string) {
+function normalizeEmail(s: string | null) {
   return String(s || "").trim().toLowerCase();
 }
 
@@ -42,13 +38,13 @@ export async function POST(req: Request) {
     );
   }
 
-  const tokenHash = sha256(token);
-
+  // token is the AdminInvite.id now (no hashing)
   const result = await prisma.$transaction(async (tx) => {
-    const invite = await tx.adminInvite.findUnique({ where: { tokenHash } });
+    const invite = await tx.adminInvite.findUnique({ where: { id: token } });
 
     if (!invite) return { ok: false as const, status: 404, error: "Invite not found" };
     if (invite.usedAt) return { ok: false as const, status: 409, error: "Invite already used" };
+    if (invite.revokedAt) return { ok: false as const, status: 410, error: "Invite was revoked" };
     if (invite.expiresAt.getTime() < Date.now())
       return { ok: false as const, status: 410, error: "Invite expired" };
 
