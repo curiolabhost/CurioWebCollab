@@ -146,7 +146,7 @@ export default function AdminsPage() {
   setAdminCode("");
   setAdminCodeExpiresAt("");
 
-  const res = await fetch("/api/admin/admin-codes", { method: "POST" });
+  const res = await fetch("/api/admin/invites/create-code", { method: "POST" });
   const json = await res.json().catch(() => null);
 
   if (!res.ok || !json?.ok) {
@@ -270,7 +270,7 @@ export default function AdminsPage() {
               color: "white",
             }}
           >
-            Send invite
+            Create invite
           </button>
         </div>
 

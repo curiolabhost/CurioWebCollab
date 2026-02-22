@@ -225,6 +225,12 @@ export function DashboardHome() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
 
+  // --- Admin Code Modal ---
+  const [showAdminCodeModal, setShowAdminCodeModal] = useState(false);
+  const [adminCode, setAdminCode] = useState("");
+  const [adminCodeStatus, setAdminCodeStatus] = useState<"idle" | "submitting" | "error">("idle");
+  const [adminCodeError, setAdminCodeError] = useState("");
+
   // schedule (still local — not part of the 5 core truth items)
   const [schedule, setSchedule] = useState<ProjectSchedule>({ daysPerWeek: 3, hoursPerDay: 2 });
   const [tempSchedule, setTempSchedule] = useState<ProjectSchedule>({ daysPerWeek: 3, hoursPerDay: 2 });
@@ -567,6 +573,47 @@ const handleSaveSchedule = async () => {
   setShowScheduleModal(false);
 };
 
+  async function redeemAdminCode() {
+    const code = adminCode.trim();
+    if (!code) {
+      setAdminCodeStatus("error");
+      setAdminCodeError("Please enter a code.");
+      return;
+    }
+
+    setAdminCodeStatus("submitting");
+    setAdminCodeError("");
+
+    const res = await fetch("/api/admin/redeem-code", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code }),
+    }).catch(() => null);
+
+    const json = res ? await res.json().catch(() => null) : null;
+
+    if (!res || !res.ok || !json?.ok) {
+      setAdminCodeStatus("error");
+      setAdminCodeError(json?.error ?? "Invalid or expired code.");
+      return;
+    }
+
+    // success: close modal and go to admin
+    setShowAdminCodeModal(false);
+    setAdminCode("");
+    setAdminCodeStatus("idle");
+    setAdminCodeError("");
+    router.push("/admin");
+  }
+
+  function openAdminCodeModal() {
+    setProfileMenuOpen(false);
+    setAdminCode("");
+    setAdminCodeStatus("idle");
+    setAdminCodeError("");
+    setShowAdminCodeModal(true);
+  }
+
   const handleLogout = async () => {
     setProfileMenuOpen(false);
     await signOut({ redirectUrl: "/sign-in" });
@@ -713,7 +760,7 @@ const handleSaveSchedule = async () => {
                       <span>Settings</span>
                     </button>
                     <button
-                      onClick={() => router.push("/admin")}
+                      onClick={openAdminCodeModal}
                       className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 text-gray-700 rounded-lg transition-colors"
                     >
                       <ShieldCheck className="w-5 h-5" />
@@ -1112,6 +1159,80 @@ const handleSaveSchedule = async () => {
               <button onClick={handleSaveSchedule} className="px-4 py-2 rounded-lg bg-sky-700 text-white hover:bg-sky-800">
                 Save
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Admin Code Modal */}
+      {showAdminCodeModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4"
+          onClick={() => setShowAdminCodeModal(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl bg-white shadow-xl border border-gray-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+              <div>
+                <div className="text-lg font-semibold text-gray-900">Enter Admin Code</div>
+                <div className="text-sm text-gray-600">Paste the 7-day code you received.</div>
+              </div>
+
+              <button
+                onClick={() => setShowAdminCodeModal(false)}
+                className="p-2 rounded-lg hover:bg-gray-100"
+                aria-label="Close"
+              >
+                <X className="w-5 h-5 text-gray-600" />
+              </button>
+            </div>
+
+            <div className="px-6 py-5">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Admin code</label>
+              <input
+                value={adminCode}
+                onChange={(e) => setAdminCode(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    redeemAdminCode();
+                  }
+                }}
+                placeholder="e.g. clx123abc..."
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-600"
+                autoFocus
+              />
+
+              {adminCodeStatus === "error" && adminCodeError ? (
+                <div className="mt-3 text-sm text-red-600">{adminCodeError}</div>
+              ) : null}
+
+              <div className="mt-5 flex items-center justify-end gap-3">
+                <button
+                  onClick={() => setShowAdminCodeModal(false)}
+                  className="px-4 py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50"
+                  disabled={adminCodeStatus === "submitting"}
+                >
+                  Cancel
+                </button>
+
+                <button
+                  onClick={redeemAdminCode}
+                  disabled={adminCodeStatus === "submitting"}
+                  className={[
+                    "px-4 py-2 rounded-lg text-white",
+                    adminCodeStatus === "submitting" ? "bg-sky-400" : "bg-sky-700 hover:bg-sky-800",
+                  ].join(" ")}
+                >
+                  {adminCodeStatus === "submitting" ? "Checking..." : "Submit"}
+                </button>
+              </div>
+
+              <div className="mt-3 text-xs text-gray-500">
+                If the code is valid, your account will be upgraded to admin immediately.
+              </div>
             </div>
           </div>
         </div>

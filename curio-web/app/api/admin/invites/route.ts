@@ -32,22 +32,46 @@ export async function GET() {
     orderBy: { createdAt: "desc" },
   });
 
-  const invitesRaw = await prisma.adminInvite.findMany({
-    select: {
-      id: true,
-      email: true,
-      createdAt: true,
-      expiresAt: true,
-      usedAt: true,
-      revokedAt: true, 
-      createdByUserId: true,
-      createdByUser: {
-        select: { id: true, email: true, firstName: true, lastName: true },
-      },
+const invitesRaw = await prisma.adminInvite.findMany({
+  select: {
+    id: true,
+    type: true,          // ✅ add this
+    email: true,
+    createdAt: true,
+    expiresAt: true,
+    usedAt: true,
+    revokedAt: true,
+    createdByUserId: true,
+    createdByUser: {
+      select: { id: true, email: true, firstName: true, lastName: true },
     },
-    orderBy: { createdAt: "desc" },
-    take: 200,
-  });
+  },
+  orderBy: { createdAt: "desc" },
+  take: 200,
+});
+
+const invites = invitesRaw.map((inv) => ({
+  id: inv.id,
+  type: inv.type ?? "EMAIL", // ✅ defensive (in case older rows have null)
+  email: inv.email,
+  createdAt: inv.createdAt,
+  expiresAt: inv.expiresAt,
+  usedAt: inv.usedAt,
+  revokedAt: inv.revokedAt,
+  // OPTIONAL BUT NICE: expose explicit fields the UI can use
+  token: (inv.type ?? "EMAIL") === "EMAIL" ? inv.id : null,
+  code: (inv.type ?? "EMAIL") === "CODE" ? inv.id : null,
+
+  createdBy: inv.createdByUser
+    ? {
+        id: inv.createdByUser.id,
+        email: inv.createdByUser.email,
+        firstName: inv.createdByUser.firstName,
+        lastName: inv.createdByUser.lastName,
+        fullName: fullName(inv.createdByUser.firstName, inv.createdByUser.lastName),
+      }
+    : null,
+}));
 
   const admins = adminsRaw.map((a) => ({
     id: a.id,
@@ -58,23 +82,6 @@ export async function GET() {
     createdAt: a.createdAt,
   }));
 
-  const invites = invitesRaw.map((inv) => ({
-    id: inv.id,
-    email: inv.email,
-    createdAt: inv.createdAt,
-    expiresAt: inv.expiresAt,
-    usedAt: inv.usedAt,
-    revokedAt: inv.revokedAt, 
-    createdBy: inv.createdByUser
-      ? {
-          id: inv.createdByUser.id,
-          email: inv.createdByUser.email,
-          firstName: inv.createdByUser.firstName,
-          lastName: inv.createdByUser.lastName,
-          fullName: fullName(inv.createdByUser.firstName, inv.createdByUser.lastName),
-        }
-      : null,
-  }));
 
   return NextResponse.json({ ok: true, admins, invites }, { headers: { "Cache-Control": "no-store" } });
 }
@@ -125,6 +132,7 @@ export async function POST(req: Request) {
   // New invite row (ID becomes the token in the URL)
   const newInvite = await prisma.adminInvite.create({
     data: {
+      type: "EMAIL",
       email,
       expiresAt,
       createdByUserId: gate.dbUser!.id,

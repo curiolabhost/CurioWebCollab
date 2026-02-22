@@ -1,4 +1,7 @@
 // This route allows a user to redeem an admin invite code (type=CODE) to become an admin.
+// The code is the ID of an AdminInvite row with type=CODE, and it must be valid (not used, not revoked, not expired).
+
+//app/api/admin/redeem-code/route.ts
 
 import { NextResponse } from "next/server";
 import { auth, currentUser } from "@clerk/nextjs/server";
