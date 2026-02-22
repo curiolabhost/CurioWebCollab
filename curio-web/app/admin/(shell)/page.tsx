@@ -3,8 +3,8 @@
 
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
-import { StudentsView } from "../components/admin/StudentsView";
-import { ProjectsView } from "../components/admin/ProjectsView";
+import { StudentsView } from "../../components/admin/StudentsView";
+import { ProjectsView } from "../../components/admin/ProjectsView";
 
 function AdminContent() {
   const searchParams = useSearchParams();

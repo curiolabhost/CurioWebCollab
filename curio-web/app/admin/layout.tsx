@@ -2,7 +2,6 @@
 import * as React from "react";
 import { redirect } from "next/navigation";
 
-import AdminShellClient from "./AdminShellClient";
 import { requireAdmin } from "@/lib/authz";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -12,9 +11,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     redirect("/dashboard");
   }
 
-  return (
-    <React.Suspense fallback={null}>
-      <AdminShellClient>{children}</AdminShellClient>
-    </React.Suspense>
-  );
+  // IMPORTANT: no AdminShellClient here anymore.
+  // Shell vs noshell is handled by route groups below.
+  return <React.Suspense fallback={null}>{children}</React.Suspense>;
 }

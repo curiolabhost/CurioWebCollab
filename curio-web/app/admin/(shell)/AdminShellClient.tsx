@@ -22,6 +22,7 @@ export default function AdminShellClient({ children }: { children: React.ReactNo
   const navItems = [
     { name: "Students View", href: "/admin", icon: Users, exact: true },
     { name: "Projects View", href: "/admin?view=projects", icon: LayoutGrid },
+    { name: "Lesson Studio", href: "/admin/lesson-studio", icon: BookOpen },
   ];
 
   const secondaryItems = [
@@ -62,8 +63,8 @@ export default function AdminShellClient({ children }: { children: React.ReactNo
             </div>
             <div>
               <h1 className="text-xl font-bold">
-                <span className="text-sky-600">CURIO</span>
-                <span className="text-orange-500">LAB</span>
+                <span className="text-sky-600">CURI</span>
+                <span className="text-orange-500">O.</span>
               </h1>
             </div>
           </div>
