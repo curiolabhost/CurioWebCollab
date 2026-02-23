@@ -2,6 +2,10 @@
 "use client";
 import * as React from "react";
 
+const INVITES_PER_PAGE = 10;
+const MAX_INVITE_PAGES = 6;
+const MAX_VISIBLE_INVITES = 60;
+
 type AdminRow = {
   id: string;
   email: string | null;
@@ -24,6 +28,7 @@ type InviteRow = {
   email: string | null;
   type: "EMAIL" | "CODE";
   token: string | null;       // for EMAIL invites
+  inviteUrl: string | null;
   code: string | null;        // for CODE invites
   createdAt: string;
   expiresAt: string;
@@ -67,6 +72,7 @@ async function copyToClipboard(text: string) {
 export default function AdminsPage() {
   const [email, setEmail] = React.useState("");
   const [inviteUrl, setInviteUrl] = React.useState("");
+  const [inviteCode, setInviteCode] = React.useState("");
   const [err, setErr] = React.useState("");
   const [okMsg, setOkMsg] = React.useState("");
 
@@ -78,6 +84,10 @@ export default function AdminsPage() {
       "You’ve been invited to become a Curio admin.",
       "",
       "Accept here: {{inviteUrl}}",
+      "",
+      "If the link doesn't work, use this manual code after you log in in the Dashboard:",
+      "{{code}}",
+      "",
       "This link expires on: {{expiresAt}}",
       "",
       "— Curio",
@@ -86,12 +96,10 @@ export default function AdminsPage() {
 
   const [admins, setAdmins] = React.useState<AdminRow[]>([]);
   const [invites, setInvites] = React.useState<InviteRow[]>([]);
+  const [invitePage, setInvitePage] = React.useState(1);
   const [loading, setLoading] = React.useState(false);
   const [copyMsg, setCopyMsg] = React.useState("");
 
-  const [adminCode, setAdminCode] = React.useState("");
-  const [adminCodeExpiresAt, setAdminCodeExpiresAt] = React.useState("");
-  const [codeMsg, setCodeMsg] = React.useState("");
 
   async function loadData() {
     setLoading(true);
@@ -104,7 +112,12 @@ export default function AdminsPage() {
         return;
       }
       setAdmins(json.admins ?? []);
-      setInvites(json.invites ?? []);
+      const sliced = (json.invites ?? []).slice(0, MAX_VISIBLE_INVITES);
+      setInvites(sliced);
+      setInvitePage((p) => {
+        const total = Math.min(MAX_INVITE_PAGES, Math.ceil(sliced.length / INVITES_PER_PAGE) || 1);
+        return Math.min(p, total);
+      });
     } finally {
       setLoading(false);
     }
@@ -118,6 +131,7 @@ export default function AdminsPage() {
     setErr("");
     setOkMsg("");
     setInviteUrl("");
+    setInviteCode("");
     setCopyMsg("");
 
     const res = await fetch("/api/admin/invites", {
@@ -130,34 +144,18 @@ export default function AdminsPage() {
 
     if (!res.ok || !json?.ok) {
       setErr(json?.error ?? "Failed to create invite.");
-      if (json?.inviteUrl) setInviteUrl(json.inviteUrl); // backup link if email send fails
+      if (json?.inviteUrl) setInviteUrl(json.inviteUrl);
+      if (json?.code) setInviteCode(json.code);
       return;
     }
 
-    setInviteUrl(json.inviteUrl);
+    setInviteUrl(json.inviteUrl ?? "");
+    setInviteCode(json.code ?? "");
     setOkMsg(json.sent ? "Invite email sent." : "Invite created.");
     setEmail("");
+    setInvitePage(1);
     await loadData();
   }
-
-  async function generateAdminCode() {
-  setErr("");
-  setCodeMsg("");
-  setAdminCode("");
-  setAdminCodeExpiresAt("");
-
-  const res = await fetch("/api/admin/invites/create-code", { method: "POST" });
-  const json = await res.json().catch(() => null);
-
-  if (!res.ok || !json?.ok) {
-    setErr(json?.error ?? "Failed to generate admin code.");
-    return;
-  }
-
-  setAdminCode(String(json.code || ""));
-  setAdminCodeExpiresAt(String(json.expiresAt || ""));
-  setCodeMsg("Admin code generated.");
-}
 
   const card: React.CSSProperties = {
     border: "1px solid #e5e7eb",
@@ -183,8 +181,29 @@ export default function AdminsPage() {
     verticalAlign: "top",
   };
 
+  const totalPages = Math.min(MAX_INVITE_PAGES, Math.ceil(invites.length / INVITES_PER_PAGE) || 1);
+  const pagedInvites = invites.slice((invitePage - 1) * INVITES_PER_PAGE, invitePage * INVITES_PER_PAGE);
+
+  const paginationPages: (number | "ellipsis")[] = (() => {
+    if (totalPages <= 6) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+    const pages: (number | "ellipsis")[] = [1];
+    if (invitePage > 2) pages.push("ellipsis");
+    for (let i = Math.max(2, invitePage - 1); i <= Math.min(totalPages - 1, invitePage + 1); i++) {
+      if (pages[pages.length - 1] !== i) pages.push(i);
+    }
+    if (invitePage < totalPages - 1) pages.push("ellipsis");
+    if (totalPages > 1) pages.push(totalPages);
+    return pages;
+  })();
+
   return (
     <div style={{ padding: 24, maxWidth: 980 }}>
+      <style>{`
+        .invite-url-scroll::-webkit-scrollbar { display: none; }
+        .invite-url-scroll { scrollbar-width: none; -ms-overflow-style: none; }
+      `}</style>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
         <h1 style={{ fontSize: 22, fontWeight: 700 }}>Admin Console</h1>
         <button
@@ -304,68 +323,14 @@ export default function AdminsPage() {
             <code style={{ display: "block", padding: 12, borderRadius: 10, border: "1px solid #e5e7eb", marginTop: 8 }}>
               {inviteUrl}
             </code>
+            {inviteCode && (
+              <div style={{ marginTop: 10, fontSize: 13, color: "#6b7280" }}>
+                Manual code: <code style={{ padding: "2px 6px", background: "#f9fafb", borderRadius: 4 }}>{inviteCode}</code>
+              </div>
+            )}
           </div>
         )}
       </div>
-
-      {/* Generate Admin Code (backup option) */}
-<div style={{ ...card, marginTop: 14 }}>
-  <div style={{ fontWeight: 700, color: "#354790", marginBottom: 10 }}>Backup Option: Admin Code</div>
-
-  <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 10 }}>
-    Generate a single-use code (expires in 7 days). A signed-in student can enter it to become an admin.
-  </div>
-
-  <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-    <button
-      onClick={generateAdminCode}
-      style={{
-        padding: "6px 14px",
-        borderRadius: 10,
-        border: "1px solid #355291",
-        background: "#4a69ad",
-        color: "white",
-      }}
-    >
-      Generate code
-    </button>
-
-    {codeMsg ? <span style={{ color: "#047857", fontSize: 13 }}>{codeMsg}</span> : null}
-  </div>
-
-  {adminCode ? (
-    <div style={{ marginTop: 12 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
-        <div style={{ fontSize: 13, color: "#6b7280" }}>
-          Code (expires {adminCodeExpiresAt ? fmtDate(adminCodeExpiresAt) : "in 7 days"}):
-        </div>
-
-        <button
-          onClick={async () => {
-            const ok = await copyToClipboard(adminCode);
-            setCopyMsg(ok ? "Copied!" : "Copy failed");
-            setTimeout(() => setCopyMsg(""), 1200);
-          }}
-          style={{
-            padding: "8px 10px",
-            borderRadius: 10,
-            border: "1px solid #e5e7eb",
-            background: "white",
-            fontSize: 13,
-          }}
-        >
-          Copy
-        </button>
-      </div>
-
-      {!!copyMsg && <div style={{ fontSize: 12, color: "#6b7280", marginTop: 6 }}>{copyMsg}</div>}
-
-      <code style={{ display: "block", padding: 12, borderRadius: 10, border: "1px solid #e5e7eb", marginTop: 8 }}>
-        {adminCode}
-      </code>
-    </div>
-  ) : null}
-</div>
 
       {/* Admins table */}
       <div style={{ ...card, marginTop: 14 }}>
@@ -417,17 +382,14 @@ export default function AdminsPage() {
               </tr>
             </thead>
             <tbody>
-              {invites.map((inv) => {
+              {pagedInvites.map((inv) => {
                 const st = statusForInvite(inv);
                 const creator = inv.createdBy;
                 const creatorLabel = creator?.fullName
                   ? `${creator.fullName}${creator.email ? ` (${creator.email})` : ""}`
                   : creator?.email ?? null;
 
-                const canUseLink = inv.type === "EMAIL" && !!inv.token && !inv.usedAt && !inv.revokedAt;
-                const url = inv.token ? inviteLinkFor(inv.token) : "";
-
-              return (
+                return (
                 <tr key={inv.id}>
                   <td style={td}>{inv.email ?? <span style={{ color: "#6b7280" }}>—</span>}</td>
 
@@ -457,48 +419,54 @@ export default function AdminsPage() {
 
                   {/* Invite Link (EMAIL invites only) */}
                   <td style={td}>
-                    {inv.type === "EMAIL" && inv.token && !inv.usedAt && !inv.revokedAt ? (
-                      (() => {
-                        const url = inviteLinkFor(inv.token);
-                        return (
-                          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                            <a
-                              href={url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              style={{ color: "#2563eb", fontSize: 13, textDecoration: "underline" }}
-                            >
-                              Open
-                            </a>
-
-                            <button
-                              onClick={async () => {
-                                const ok = await copyToClipboard(url);
-                                setCopyMsg(ok ? "Copied!" : "Copy failed");
-                                setTimeout(() => setCopyMsg(""), 1200);
-                              }}
-                              style={{
-                                padding: "6px 10px",
-                                borderRadius: 10,
-                                border: "1px solid #e5e7eb",
-                                background: "white",
-                                fontSize: 13,
-                                cursor: "pointer",
-                              }}
-                            >
-                              Copy
-                            </button>
-                          </div>
-                        );
-                      })()
+                    {inv.inviteUrl ? (
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <code
+                          className="invite-url-scroll"
+                          style={{
+                            flex: "0 0 360px",
+                            width: 160,
+                            minWidth: 160,
+                            maxWidth: 160,
+                            overflowX: "auto",
+                            overflowY: "hidden",
+                            whiteSpace: "nowrap",
+                            padding: 10,
+                            borderRadius: 10,
+                            border: "1px solid #e5e7eb",
+                            background: "#fff",
+                            fontSize: 12,
+                          }}
+                        >
+                          {inv.inviteUrl}
+                        </code>
+                        <button
+                          onClick={async () => {
+                            const ok = await copyToClipboard(inv.inviteUrl!);
+                            setCopyMsg(ok ? "Copied!" : "Copy failed");
+                            setTimeout(() => setCopyMsg(""), 1200);
+                          }}
+                          style={{
+                            padding: "6px 10px",
+                            borderRadius: 10,
+                            border: "1px solid #e5e7eb",
+                            background: "white",
+                            fontSize: 13,
+                            cursor: "pointer",
+                            flexShrink: 0,
+                          }}
+                        >
+                          Copy
+                        </button>
+                      </div>
                     ) : (
                       <span style={{ color: "#6b7280" }}>—</span>
                     )}
                   </td>
 
-                  {/* Admin Code (CODE invites only) */}
+                  {/* Code (manual code on EMAIL invites) */}
                   <td style={td}>
-                    {inv.type === "CODE" && inv.code ? (
+                    {inv.code ? (
                       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                         <code
                           style={{
@@ -548,6 +516,64 @@ export default function AdminsPage() {
             </tbody>
           </table>
         </div>
+
+        {invites.length > 0 && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
+            <button
+              onClick={() => setInvitePage((p) => Math.max(1, p - 1))}
+              disabled={invitePage <= 1}
+              style={{
+                padding: "6px 12px",
+                borderRadius: 8,
+                border: "1px solid #e5e7eb",
+                background: "white",
+                fontSize: 13,
+                cursor: invitePage <= 1 ? "default" : "pointer",
+                opacity: invitePage <= 1 ? 0.5 : 1,
+              }}
+            >
+              Prev
+            </button>
+            {paginationPages.map((p, i) =>
+              p === "ellipsis" ? (
+                <span key={`ellipsis-${i}`} style={{ padding: "0 4px", color: "#6b7280", fontSize: 13 }}>
+                  …
+                </span>
+              ) : (
+                <button
+                  key={p}
+                  onClick={() => setInvitePage(p)}
+                  style={{
+                    padding: "6px 12px",
+                    borderRadius: 8,
+                    border: invitePage === p ? "1px solid #4a69ad" : "1px solid #e5e7eb",
+                    background: invitePage === p ? "#4a69ad" : "white",
+                    color: invitePage === p ? "white" : "#353536",
+                    fontSize: 13,
+                    cursor: "pointer",
+                  }}
+                >
+                  {p}
+                </button>
+              )
+            )}
+            <button
+              onClick={() => setInvitePage((p) => Math.min(totalPages, p + 1))}
+              disabled={invitePage >= totalPages}
+              style={{
+                padding: "6px 12px",
+                borderRadius: 8,
+                border: "1px solid #e5e7eb",
+                background: "white",
+                fontSize: 13,
+                cursor: invitePage >= totalPages ? "default" : "pointer",
+                opacity: invitePage >= totalPages ? 0.5 : 1,
+              }}
+            >
+              Next
+            </button>
+          </div>
+        )}
 
         {!!copyMsg && <div style={{ fontSize: 12, color: "#6b7280", marginTop: 10 }}>{copyMsg}</div>}
       </div>

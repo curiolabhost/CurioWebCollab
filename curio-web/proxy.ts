@@ -1,7 +1,3 @@
-// This middleware applies Clerk authentication to all routes except for the public ones defined in `isPublicRoute`.
-// curio-web/proxy.ts
-
-
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { assertNoTestKeysInProduction } from "@/lib/clerkEnvGuard";
 
@@ -12,17 +8,13 @@ const isPublicRoute = createRouteMatcher([
   "/sign-in(.*)",
   "/sign-up(.*)",
   "/account-setup(.*)",
-
-  // allow invite links to load (page will prompt sign-in)
   "/accept-admin-invite(.*)",
-
-  // allow invite accept API to be called
   "/api/admin/accept-invite(.*)",
 ]);
 
-const proxy = clerkMiddleware((auth, req) => {
+const proxy = clerkMiddleware(async (auth, req) => {
   if (isPublicRoute(req)) return;
-  auth.protect();
+  await auth.protect();
 });
 
 export default proxy;

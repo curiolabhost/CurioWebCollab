@@ -203,10 +203,14 @@ enum AdminInviteType {
 }
 
 model AdminInvite {
-  id String @id @default(cuid()) 
+  id String @id @default(cuid())
 
   email     String?
-  code String? @unique
+  code      String? @unique
+
+  tokenHash String? @unique  // sha256(token) for lookup/verification
+  tokenEnc  String?          // <-- ADD: encrypted token so you can display URL later
+
   type      AdminInviteType @default(EMAIL)
 
   expiresAt DateTime
@@ -214,13 +218,12 @@ model AdminInvite {
 
   createdAt DateTime @default(now())
 
-  // created by
   createdByUserId String?
-  createdByUser   User?   @relation("AdminInviteCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  createdByUser   User? @relation("AdminInviteCreatedBy", fields: [createdByUserId], references: [id], onDelete: SetNull)
 
   revokedAt       DateTime?
   revokedByUserId String?
-  revokedByUser   User?   @relation("AdminInviteRevokedBy", fields: [revokedByUserId], references: [id], onDelete: SetNull)
+  revokedByUser   User? @relation("AdminInviteRevokedBy", fields: [revokedByUserId], references: [id], onDelete: SetNull)
 
   replacesInviteId String?
 

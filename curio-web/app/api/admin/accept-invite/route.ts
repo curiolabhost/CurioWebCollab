@@ -1,32 +1,41 @@
-// Accept Admin Invite
+// Accept Admin Invite (token OR manual code)
 // app/api/admin/accept-invite/route.ts
-// Verifies invite token (NOW: token = AdminInvite.id),
-// checks signed-in user's emails match invite email,
-// promotes user to ADMIN, stores email + first/last name, marks invite used.
+// - token: /accept-admin-invite?token=... (link-based)
+// - code: manual code stored in AdminInvite.code
+// Security: signed-in Clerk account must contain invite.email
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
 import { NextResponse } from "next/server";
+import crypto from "crypto";
 import { auth, currentUser } from "@clerk/nextjs/server";
 import { prisma } from "@/lib/prisma";
 
-function normalizeEmail(s: string | null) {
-  return String(s || "").trim().toLowerCase();
+function sha256(s: string) {
+  return crypto.createHash("sha256").update(s).digest("hex");
+}
+
+function normalizeEmail(s: string | null | undefined) {
+  return String(s ?? "").trim().toLowerCase();
 }
 
 export async function POST(req: Request) {
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ ok: false, error: "Not signed in" }, { status: 401 });
 
-  const body = (await req.json().catch(() => null)) as { token?: string } | null;
+  const body = (await req.json().catch(() => null)) as { token?: string; code?: string } | null;
   const token = String(body?.token ?? "").trim();
-  if (!token) return NextResponse.json({ ok: false, error: "Missing token" }, { status: 400 });
+  const code = String(body?.code ?? "").trim();
 
-  const cu = await currentUser();
-  if (!cu) {
-    return NextResponse.json({ ok: false, error: "Not signed in" }, { status: 401 });
+  if (!token && !code) {
+    return NextResponse.json({ ok: false, error: "Missing token or code" }, { status: 400 });
   }
 
+  const cu = await currentUser();
+  if (!cu) return NextResponse.json({ ok: false, error: "Not signed in" }, { status: 401 });
+
+  // Collect ALL emails on the signed-in account (stronger than picking [0])
   const emails =
     cu.emailAddresses?.map((e) => normalizeEmail(e.emailAddress))?.filter(Boolean) ?? [];
   const uniqueEmails = Array.from(new Set(emails));
@@ -38,9 +47,25 @@ export async function POST(req: Request) {
     );
   }
 
-  // token is the AdminInvite.id now (no hashing)
+  const tokenHash = token ? sha256(token) : null;
+  const submittedCode = code ? code.toUpperCase() : null;
+
   const result = await prisma.$transaction(async (tx) => {
-    const invite = await tx.adminInvite.findUnique({ where: { id: token } });
+    let invite = null as any;
+
+    // Prefer token flow if provided
+    if (token) {
+      invite = await tx.adminInvite.findUnique({ where: { tokenHash: tokenHash! } });
+      if (!invite) {
+        // legacy token flow (id used as token)
+        invite = await tx.adminInvite.findUnique({ where: { id: token } });
+      }
+    }
+
+    // If no token match and code provided, try code
+    if (!invite && submittedCode) {
+      invite = await tx.adminInvite.findUnique({ where: { code: submittedCode } });
+    }
 
     if (!invite) return { ok: false as const, status: 404, error: "Invite not found" };
     if (invite.usedAt) return { ok: false as const, status: 409, error: "Invite already used" };
@@ -49,8 +74,9 @@ export async function POST(req: Request) {
       return { ok: false as const, status: 410, error: "Invite expired" };
 
     const inviteEmail = normalizeEmail(invite.email);
+    if (!inviteEmail) return { ok: false as const, status: 400, error: "Invite missing email" };
 
-    // Critical check: invite email must match one of the signed-in user's emails
+    // SECURITY: invite email must match one of the signed-in user's emails
     if (!uniqueEmails.includes(inviteEmail)) {
       return {
         ok: false as const,
@@ -59,25 +85,13 @@ export async function POST(req: Request) {
       };
     }
 
-    // Save canonical email + names from Clerk, promote to ADMIN
     const firstName = cu.firstName ?? null;
     const lastName = cu.lastName ?? null;
 
     await tx.user.upsert({
-      where: { id: userId }, // User.id is Clerk userId
-      update: {
-        email: inviteEmail,
-        firstName,
-        lastName,
-        role: "ADMIN",
-      },
-      create: {
-        id: userId,
-        email: inviteEmail,
-        firstName,
-        lastName,
-        role: "ADMIN",
-      },
+      where: { id: userId },
+      update: { email: inviteEmail, firstName, lastName, role: "ADMIN" },
+      create: { id: userId, email: inviteEmail, firstName, lastName, role: "ADMIN" },
     });
 
     await tx.adminInvite.update({

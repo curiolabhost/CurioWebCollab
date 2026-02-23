@@ -584,7 +584,7 @@ const handleSaveSchedule = async () => {
     setAdminCodeStatus("submitting");
     setAdminCodeError("");
 
-    const res = await fetch("/api/admin/redeem-code", {
+    const res = await fetch("/api/admin/accept-invite", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ code }),
@@ -606,13 +606,24 @@ const handleSaveSchedule = async () => {
     router.push("/admin");
   }
 
-  function openAdminCodeModal() {
-    setProfileMenuOpen(false);
-    setAdminCode("");
-    setAdminCodeStatus("idle");
-    setAdminCodeError("");
-    setShowAdminCodeModal(true);
+async function handleAdminClick() {
+  setProfileMenuOpen(false);
+
+  const res = await fetch("/api/me/is-admin", { cache: "no-store" }).catch(() => null);
+  const json = res ? await res.json().catch(() => null) : null;
+
+  // If they're already admin, go straight in
+  if (res?.ok && json?.ok && json?.isAdmin) {
+    router.push("/admin");
+    return;
   }
+
+  // Otherwise show code modal
+  setAdminCode("");
+  setAdminCodeStatus("idle");
+  setAdminCodeError("");
+  setShowAdminCodeModal(true);
+}
 
   const handleLogout = async () => {
     setProfileMenuOpen(false);
@@ -760,7 +771,7 @@ const handleSaveSchedule = async () => {
                       <span>Settings</span>
                     </button>
                     <button
-                      onClick={openAdminCodeModal}
+                      onClick={handleAdminClick}
                       className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 text-gray-700 rounded-lg transition-colors"
                     >
                       <ShieldCheck className="w-5 h-5" />
