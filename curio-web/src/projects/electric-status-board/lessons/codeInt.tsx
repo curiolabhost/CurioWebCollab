@@ -2756,7 +2756,7 @@ if (__BLANK[64]__) {                   // Check if the NEXT button was pressed
       code: `^^
 if (__BLANK[69]__) {                  // Check if the SELECT button was pressed
   if (__BLANK[70]__) {                // Check which menu option is currently selected
-    screenMode = 1;                   // Switch to the Clock screen (example)
+    __BLANK[31]__ = 1;                   // Switch to the Clock screen (example)
   }
   else {
     __BLANK[71]__;                    // Switch to the other screen (example: Pomodoro)
@@ -2793,7 +2793,7 @@ if (__BLANK[69]__) {                  // Check if the SELECT button was pressed
 
         71: {
           type: "pattern",
-          parts: ["screenMode", "=", "2"],
+          parts: [{ p: "sameAs", target: "screenMode" }, "=", "2"],
         } as const,
 
         72: {
@@ -3829,7 +3829,7 @@ void __BLANK[149]__() {  // Function that handles selecting how many work sessio
 
   if (__BLANK[159]__) {  // Check if the SELECT button was pressed
     startPomodoroRun();  // Start the Pomodoro timer function <to be coded soon>
-    screenMode = 5;      // Switch to the running timer screen
+    __BLANK[31]__ = 5;      // Switch to the running timer screen
     delay(200);          // Small delay to prevent double selection
   }
 }^^`,
@@ -4093,27 +4093,98 @@ This approach allows:
 - Accurate timing without drifting
 `,
             code: `^^
-DateTime now = rtc.now();
-TimeSpan remaining = endTime - now;
+void handlePomodoroCountdown() {
+  //<< PREV stops and returns to menu
+  if (__BLANK[166]__) {          // Detect a press of the PREV button
+    __BLANK[167]__;              // Set screen mode back to the Main Menu (mode 0)
+    delay(200);                  // Small delay to prevent double presses
+    return;                      // Exit this function immediately
+  }
 
-// Calculate how many seconds remain
-long secondsLeft = remaining.totalseconds();
+  DateTime now = rtc.now();      
+  TimeSpan remaining = endTime - now;
+  long secLeft = remaining.totalseconds();  // Calculate how many seconds remain in this block
 
-// Check if block has finished
-if (secondsLeft __BLANK[POMOTIMEUP]__) {
-  // Block has finished
-}
-^^`,
-            answerKey: {
-              POMOTIMEUP: { type: "string", regex: "^<=\\s*0$" },
-            },
-            blankExplanations: {
-              POMOTIMEUP:
-                "Condition to detect whether the block is finished (i.e., time has reached or passed endTime).",
-            },
-            blankDifficulties: {
-              POMOTIMEUP: "easy",
-            },
+  //<< Block finished?
+  if (secLeft <= 0) {            // If time has run out for the current block
+    __BLANK[168]__;              // Increase the number of completed blocks by 1
+
+    //<< Done with all blocks?
+    if (blocksDone >= totalBlocks) {  // If all required work/rest blocks are finished
+      __BLANK[31]__ = 6;            // Move to the "Pomodoro finished" screen
+      delay(200);                // Prevent accidental double trigger
+      return;                    // Exit function
+    }
+
+    //<< Flip work <-> break (only if not timer mode)
+    if (__BLANK[160]__ != 0) {         // Only switch modes if we are in full Pomodoro mode
+      if (isWork == true) {      
+        isWork = false;          // If we were in WORK, switch to BREAK
+      }
+      else {
+        isWork = true;           // If we were in BREAK, switch to WORK
+      }
+    }
+    startCurrentBlock();         // Start the next work or break block
+    delay(200);                  // Small delay before continuing
+    return;                      // Exit so countdown restarts fresh
+  }
+
+  //<< Convert seconds to minutes/seconds 
+  int minsLeft = secLeft / 60;                 // Whole minutes remaining
+  int secsLeft = secLeft - (minsLeft * 60);    // Remaining seconds after removing minutes
+
+  if (__BLANK[160]__ == 0) {  
+    showTimerScreen("Pomodoro", "Timer running...", minsLeft, secsLeft, "PREV: Menu");
+    //<< Display simple timer screen (no work/rest switching)
+  } 
+  else {
+    if (isWork == true) {
+      showTimerScreen("Pomodoro", "WORK", minsLeft, secsLeft, "PREV: Menu");
+      //<< Display WORK countdown screen
+    }
+    else {
+      showTimerScreen("Pomodoro", "BREAK", minsLeft, secsLeft, "PREV: Menu");
+      //<< Display BREAK countdown screen
+    }
+  }
+}`,         answerKey: buildAnswerKey({
+  // if (isPressed(PREV))
+  166: ({
+    type: "pattern",
+    parts: ["isPressed", "(", "PREV", ")"],
+  } as const),
+
+  // screenMode = 0;
+  167: ({
+    type: "pattern",
+    parts: [{ p: "sameAs", target: "screenMode" }, "=", "0"],
+  } as const),
+
+  // blocksDone = blocksDone + 1;   (allow ++ too)
+  168: ({
+    type: "any_of",
+    options: [
+      {
+        type: "pattern",
+        parts: [
+          { p: "sameAs", target: "blocksDone" },
+          "=",
+          { p: "sameAs", target: "blocksDone" },
+          "+",
+          "1",
+        ],
+      },
+      {
+        type: "pattern",
+        parts: [{ p: "sameAs", target: "blocksDone" }, "+", "+"],
+      },
+      {
+        type: "pattern",
+        parts: ["+", "+", { p: "sameAs", target: "blocksDone" }],
+      },
+    ],
+  } as const) }),
             descAfterCode: `
 **Understanding the Logic:**
 - \`now\` gets the current time from the RTC.
@@ -4133,86 +4204,50 @@ if (secondsLeft __BLANK[POMOTIMEUP]__) {
 
       {
         id: 8,
-        title: "Step 8: Countdown Runtime + Finish Screen",
+        title: "Step 8: Finish Screen",
         codes: [
-          {
-            topicTitle: "Pomodoro Countdown Function",
-            descBeforeCode: `While the Pomodoro timer is running, the program must continuously manage several tasks at once: checking for user input, calculating how much time remains, determining when a work or break block has ended, and deciding what should happen next. To handle all of this logic in one place, we need to create a function to handle the countdown.
-        
-        This function acts as the “engine” of the Pomodoro timer. It will be called repeatedly while the timer screen is active, and it uses the functions we have created in the earlier lessons to:
-        1) Update the display
-        2) Track completed blocks
-        3) Switch between work and break periods
-        4) Return the user to the menu when necessary.`,
-            code: `^^
-  void handlePomodoroCountdown() {
-  if (isPressed(PREV)) { // PREV stops and returns to menu
-    screenMode = 0;
-    delay(200);
-    return;
-  }
-
-  DateTime now = rtc.now();
-  TimeSpan remaining = endTime - now;
-  long secLeft = remaining.totalseconds();
-
-  // Checking if block is finished
-  if (secLeft <= 0) {
-    blocksDone = blocksDone + 1;
-
-    // Done with all blocks?
-    if (blocksDone >= totalBlocks) {
-      screenMode = 6;
-      delay(200);
-      return;
-    }
-
-    // Flip work <-> break (only if not timer mode)
-    if (repeatT1 != 0) {
-      if (isWork == true) isWork = false;
-      else                isWork = true;
-    }
-
-    startCurrentBlock();
-    delay(200);
-    return;
-  }
-
-  // Convert seconds to minutes/seconds 
-  int minsLeft = secLeft / 60;
-  int secsLeft = secLeft - (minsLeft * 60);
-
-  if (repeatT1 == 0) {
-    showTimerScreen("Pomodoro", "Timer running...", minsLeft, secsLeft, "PREV: Menu");
-  } else {
-    if (isWork == true) showTimerScreen("Pomodoro", "WORK (T1)...", minsLeft, secsLeft, "PREV: Menu");
-    else                showTimerScreen("Pomodoro", "BREAK (T2)...", minsLeft, secsLeft, "PREV: Menu");
-  }
-}
-  ^^`,
-          },
           {
             topicTitle: `Pomodoro Finish Screen Function`,
             descBeforeCode: `When the Pomodoro timer completes all its work and break blocks, we want to display a finish screen to inform the user that their session is over. This function will utilize the time-up screen function we created earlier to show a message indicating that the Pomodoro session has finished. Refer back to the previous lesson for the structure of that function.`,
             code: `^^
 void handlePomodoroFinished() {
-  showTimeUpScreen("__BLANK[POMOFINISH1]__", "__BLANK[POMOFINISH2]__", "__BLANK[POMOFINISHHINT]__");
+  showTimeUpScreen("DONE", "!", "SEL: Again  PREV: Menu");
+  //<< Display the final screen when all Pomodoro blocks are complete
 
-  if (isPressed(SEL)) {
-    screenMode = 2; // back to T1 setup
-    delay(200);
+  if (__BLANK[169]__) {      // Check if the SELECT button was pressed
+    __BLANK[170]__;          // Change screen mode to return to the WORK setup screen
+    delay(200);              // Short delay to prevent multiple button triggers
   }
-  if (isPressed(PREV)) {
-    screenMode = 0; // menu
-    delay(200);
+
+  if (__BLANK[171]__) {      // Check if the PREV button was pressed
+    __BLANK[172]__;          // Change screen mode to return to the Main Menu
+    delay(200);              // Short delay to prevent multiple button triggers
   }
-}
 }^^`,
-            answerKey: {
-              POMOFINISH1: { type: "string" },
-              POMOFINISH2: { type: "string" },
-              POMOFINISHHINT: { type: "string" },
-            },
+            answerKey: buildAnswerKey({
+  // if (isPressed(SEL))
+  169: ({
+    type: "pattern",
+    parts: ["isPressed", "(", "SEL", ")"],
+  } as const),
+
+  // screenMode = 2;
+  170: ({
+    type: "pattern",
+    parts: [{ p: "sameAs", target: "screenMode" }, "=", "2"],
+  } as const),
+
+  // if (isPressed(PREV))
+  171: ({
+    type: "pattern",
+    parts: ["isPressed", "(", "PREV", ")"],
+  } as const),
+
+  // screenMode = 0;
+  172: ({
+    type: "pattern",
+    parts: [{ p: "sameAs", target: "screenMode" }, "=", "0"],
+  } as const),}),
             blankExplanations: {},
           },
         ],
