@@ -1,4 +1,5 @@
 // app/tools/lesson-studio/_lib/projectTypes.ts
+// This file defines the TypeScript types for projects in Lesson Studio, including both the core identity fields and the additional configuration for the intro page and levels. These types are used throughout the Lesson Studio admin interface to ensure type safety and consistency when working with project data.
 
 /* ============================================================
    Level + Intro Identity Types
@@ -105,8 +106,6 @@ export type LessonStudioProject = {
   prerequisites: string;
 
   hardwareRequired: string[];
-
-  // ❌ removed: materialsRequired: string[];
 
   softwareRequired: string[];
 

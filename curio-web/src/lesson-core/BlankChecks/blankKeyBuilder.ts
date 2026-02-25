@@ -1,4 +1,5 @@
 // blankKeyBuilder.ts
+// This file defines a fluent API for building "keys" that represent expected answer patterns for blank checks.
 
 import { BlankTypedSpec, AnswerSpec, PatternPart, CheckPolicy } from "./blankCheckUtils";
 

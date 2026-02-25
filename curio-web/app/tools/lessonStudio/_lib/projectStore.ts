@@ -1,4 +1,5 @@
 // app/tools/lesson-studio/_lib/projectStore.ts
+// This file implements a simple client-side project store for Lesson Studio using localStorage. It provides functions to get, upsert, and list projects, as well as a helper function to create a blank project with default values. This allows the Lesson Studio admin interface to persist project data across sessions without needing a backend database, making it easier to develop and test the interface.
 import type { LessonStudioProject } from "./projectTypes";
 
 const KEY = "curio_admin_lesson_studio_projects_v1";

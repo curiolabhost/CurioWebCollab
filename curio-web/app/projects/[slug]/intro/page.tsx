@@ -1,3 +1,5 @@
+// app/projects/[slug]/intro/page.tsx
+
 "use client";
 
 import { useParams, useRouter } from "next/navigation";

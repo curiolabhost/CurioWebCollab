@@ -1,4 +1,6 @@
 // app/account/page.tsx
+// This is the main account page where users can view and edit their profile information. It fetches additional profile data from the backend and allows saving it. It also shows info from Clerk about the user's account.
+
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
