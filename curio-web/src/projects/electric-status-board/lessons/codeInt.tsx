@@ -8,6 +8,7 @@ import ESBProjectMindMapLesson from "./ProjectMindMapLesson";
 import InputPullupCircuitInteractive from "./InputPullupCircuitInteractive";
 import { buildAnswerKey, K } from "@/src/lesson-core/BlankChecks/blankKeyBuilder";
 import { generateKeyFromReference } from "@/src/lesson-core/BlankChecks/blankKeyGenerator";
+import { PanelTopInactive } from "lucide-react";
 
 export const LESSON_STEPS_INTERMEDIATE: Record<
   number,
@@ -1638,18 +1639,18 @@ while (__BLANK[P6_IDXVAR]__ < total2) {
         {
           topicTitle: "Print the menu + highlight the selected option",
           descBeforeCode: `**Here is the idea:**
-When you press a navigation button (Next or Previous), the value of __BLANK[MINDEX]__ increases or decreases to change which menu option is selected (0 → 1 → 2).
-For example, if the Next button is pressed once, __BLANK[MINDEX]__ becomes 1.
+When you press a navigation button (Next or Previous), the value of __BLANK[41]__ increases or decreases to change which menu option is selected (0 → 1 → 2).
+For example, if the Next button is pressed once, __BLANK[41]__ becomes 1.
 
-As the program loops through the menu array, it checks each option’s index. When the loop index equals __BLANK[MINDEX]__, that option is marked as selected and highlighted on the screen. In this example, the selected item is shown with an arrow \`>\`, but you can use any symbol you prefer.
+As the program loops through the menu array, it checks each option’s index. When the loop index equals __BLANK[41]__, that option is marked and highlighted on the screen. In this example, the selected item is shown with an arrow \`>\`, but you can use any symbol you prefer.
 
 This function draws the **Main Menu screen** on the OLED.
 
 **This function should:**
 @ Clear the screen and set up text styling
 @ Print a title ("Main Menu:") and a divider line
-@ Use a while loop to print every menu item in the array __BLANK[MMENUNAME]__
-@ Add a highlight indicator (like ">") next to the selected item (when i == __BLANK[MINDEX]__)
+@ Use a while loop to print every menu item in the array __BLANK[34]__
+@ Add a highlight indicator (like ">") next to the selected item (when i == __BLANK[41]__)
 @ Print other menu items normally (with spacing so everything stays aligned)
 
 You will fill in a few key blanks to make the loop and highlighting work.`,
@@ -2097,9 +2098,6 @@ void __BLANK[43]__() {
 
             // This is a checkpoint view only—no new blanks introduced here.
             // So we keep keys empty to avoid confusing grading in this “review” step.
-            answerKey: {},
-            blankExplanations: {},
-            blankDifficulties: {},
 
             descAfterCode: `**Common placement mistakes (quick check):**
 @ If you put arrays or counters **inside setup()**, other functions may not be able to use them.
@@ -2215,6 +2213,7 @@ We’ll use this pattern for all the buttons in the FocusBoard project.`,
       hint: "All of these use INPUT_PULLUP and treat LOW as 'pressed'.",
       codes: [
         {
+          topicTitle: "Practice 1: Count Button Presses",
           title: "Practice 1: Count Button Presses",
           descBeforeCode:
             "Each time you press the button, increase a counter by 1 and print it to the Serial Monitor.",
@@ -2259,6 +2258,7 @@ We’ll use this pattern for all the buttons in the FocusBoard project.`,
         },
 
         {
+          topicTitle: "Practice 2: Toggle an LED On/Off",
           title: "Practice 2: Toggle an LED On/Off",
           descBeforeCode:
             "Use the button to turn an LED on and off, switching state each time you press.",
@@ -2324,6 +2324,7 @@ We’ll use this pattern for all the buttons in the FocusBoard project.`,
         },
 
         {
+          topicTitle: "Practice 3: Cycle Through Options in an Array",
           title: "Practice 3: Cycle Through Options in an Array",
           descBeforeCode:
             "This practice is similar to your menu page. Each press moves to the next item in the list and wraps around when it reaches the end.",
@@ -2388,6 +2389,7 @@ We’ll use this pattern for all the buttons in the FocusBoard project.`,
         },
 
         {
+          topicTitle: "Practice 4: Only React to a Long Press",
           title: "Practice 4: Only React to a Long Press",
           descBeforeCode:
             "Make your code respond only if the button is held down for about 2 seconds, not just tapped.",
@@ -2399,10 +2401,10 @@ We’ll use this pattern for all the buttons in the FocusBoard project.`,
 ^^}^^
 
 ^^void loop() {^^
-^^  if (digitalRead(BUTTON) == __BLANK[BUTTON17]__) {^^
-^^    delay(2000);^^
+^^  if (digitalRead(BUTTON) == __BLANK[BUTTON17]__) {  // button press is first detected ^^
+^^    delay(2000);// wait for 2 seconds^^
 
-^^    if (digitalRead(BUTTON) == __BLANK[BUTTON18]__) {^^
+^^    if (digitalRead(BUTTON) == __BLANK[BUTTON18]__) {// check the button press again to make sure it's still pressed^^
 ^^      Serial.println("You held the button!");^^
 ^^      delay(500);^^
 ^^    }^^
@@ -2453,27 +2455,29 @@ We’ll use this pattern for all the buttons in the FocusBoard project.`,
     "The helper checks the pin, waits briefly, and checks again to confirm the press. Make sure your variable names match throughout the example.",
   codes: [
     {
+      topicTitle: "Create Debounce Helper Function",
       title: "Practice Code: Debounce Helper Function",
+      descBeforeCode: `Make sure to create the function first at the bottom of the sketch, then you can call it from loop().`,
       code: `^^#define button 4
 
 //<< Example of how this function can be used in void loop()
 void loop() {
-  if (__BLANK[53]__(__BLANK[BUTTONPINEX]__) == __BLANK[TRUEFALSE1]__) { // if helper returns true/false
+  if (isPressed(__BLANK[BUTTONPINEX]__) == __BLANK[TRUEFALSE1]__) { // if helper returns true/false
     Serial.println("Clean press detected!");
     delay(200);
   }
 }
 
 //<< Button Helper Function
-bool __BLANK[53]__(int myPin) { // boolean function because it returns true or false (not void)
+bool isPressed(int myPin) { // boolean function because it returns true or false (not void)
   if (__BLANK[54]__(myPin) == __BLANK[55]__) { // pressed state (HIGH/LOW)
     __BLANK[56]__; // short delay to filter bounce
     if (__BLANK[57]__) { // check again after the delay
       return __BLANK[58]__; // stable press
     }
-    return __BLANK[59]__; // not stable
+    return __BLANK[59]__; // pressed but not stable
   }
-  return false; // not pressed
+  return false; // not even pressed at all
 }^^`,
 
       // Flexible answerKey (spaces allowed via pattern)
@@ -2537,7 +2541,7 @@ bool __BLANK[53]__(int myPin) { // boolean function because it returns true or f
 
       descAfterCode: `The helper reads the pin, waits briefly, and checks again. If the pin is still in the pressed state, it returns true. This reduces false triggers from button bounce.
 
-**Place this boolean function** __BLANK[53]__ **into your current code draft with the rest of your functions.**`,
+**Place this boolean function** \`isPressed(myPin)\` **into your current code draft with the rest of your functions.**`,
     },
   ],
 },
@@ -2585,7 +2589,7 @@ Every time the index changes, we call __BLANK[43]__() again so the OLED redraws 
       descBeforeCode: `When the PREV button is pressed, we move **up** in the Main Menu.
 
 **Here’s what this code should do:**
-- Use your debouncing helper function __BLANK[53]__ to check PREV.
+- Use your debouncing helper function \`isPressed(int myPin)\` to check PREV.
 - Decrease __BLANK[41]__ by 1.
 - If the index goes below 0, wrap it to the last menu item:
   last index = __BLANK[38]__ - 1
@@ -2648,7 +2652,7 @@ if (isPressed(PREV)) {                 // Check if the PREV button was pressed
       descBeforeCode: `When the NEXT button is pressed, we move **down** in the Main Menu.
 
 **Here’s what this code should do:**
-- Use your debouncing helper function __BLANK[53]__ to check NEXT.
+- Use your debouncing helper function \`isPressed(int myPin)\` to check NEXT.
 - Increase __BLANK[41]__ by 1.
 - If the index goes past the last item, wrap it back to 0.
 - Call __BLANK[43]__() to redraw the menu.
@@ -3224,7 +3228,7 @@ void loop() {
           },{
             topicTitle: "Pomodoro Screen Functions",
             descBeforeCode:
-`**1) Button Helper: isPressed(int myPin)**
+`**1) Button Helper:** \`isPressed(int myPin)\`
 @ This is the “button detector.”
 @ It checks if a button is really pressed (not a fake tap).
 @ It waits a tiny moment (debounce), checks again, then returns true/false.
@@ -3342,44 +3346,34 @@ void showTimeUpScreen(__BLANK[103]__, __BLANK[104]__, __BLANK[105]__){
 }^^`,
 
             answerKey: buildAnswerKey({
-                103: ({
-                "type": "pattern",
-                "parts": [
-                  "const char*",
-                  {
-                    "p": "string"
-                  }
+              103: {
+                type: "pattern",
+                parts: [
+                  "const",
+                  "char",
+                  "*",
+                  { p: "identifier" },
                 ],
-                "policy": {
-                  "requireNoSpacesAround": [
-                    "."
-                  ]
-                },
-              } as const),
-                104: ({
-                "type": "pattern",
-                "parts": [
-                  "const char*",
-                  {
-                    "p": "string"
-                  }
+              } as const,
+              104: {
+                type: "pattern",
+                parts: [
+                  "const",
+                  "char",
+                  "*",
+                  { p: "identifier" },
                 ],
-                "policy": {
-                  "requireNoSpacesAround": [
-                    "."
-                  ]
-                },
-              } as const),
-                105: ({
-                "type": "pattern",
-                "parts": [
-                  "const char*",
-                  {
-                    "p": "string"
-                  }
+              } as const,
+              105: {
+                type: "pattern",
+                parts: [
+                  "const",
+                  "char",
+                  "*",
+                  { p: "identifier" },
                 ],
-              } as const),
-              }),
+              } as const,
+            }),
             blankExplanations: {
               103: "Define the data type for the first line of text that will be displayed on the screen. This parameter represents a short message shown near the top of the display.",
               104: "Define the data type for the second line of text that will be displayed below the first line. This allows the screen to show a multi-line message.",
@@ -3408,8 +3402,8 @@ For example:\`showTimeUpScreen ("Timer","Done!","SEL: Again PREV: Menu")\``,
       {
         id:3,
         title: "Step 3: Timer Safety Lock",
-        desc:`Sometimes in our Pomodoro timer, numbers can go too low or too high.
-To prevent bugs and weird behavior, we use a helper function that keeps numbers within a safe range.`,
+        desc:`Sometimes in our Pomodoro timer, the minutes you set can go too low or too high.
+To prevent bugs and weird behavior, we use a helper function that keeps minutes within a safe range when setting up.`,
         codes:[{
           topicTitle: "Safety Lock Function",
           descBeforeCode:`**What the function should do:**
@@ -3436,65 +3430,49 @@ static int __BLANK[106]__(__BLANK[107]__, __BLANK[108]__, __BLANK[109]__) {   //
         answerKey: buildAnswerKey({
           106: K.id().bind("clampRange"),
           107: ({
-          "type": "pattern",
-          "parts": [
-            "int",
-            {
-              "p": "string",
-              "bindAs": "v"
-            }
-          ],
-        } as const),
+            type: "pattern",
+            parts: [
+              "int",
+              { p: "identifier", bindAs: "v" },
+            ],
+          } as const),
+
           108: ({
-          "type": "pattern",
-          "parts": [
-            "int",
-            {
-              "p": "string",
-              "bindAs": "vmin"
-            }
-          ],
-        } as const),
+            type: "pattern",
+            parts: [
+              "int",
+              { p: "identifier", bindAs: "vmin" },
+            ],
+          } as const),
+
           109: ({
-          "type": "pattern",
-          "parts": [
-            "int",
-            {
-              "p": "string",
-              "bindAs": "vmax"
-            }
-          ],
-        } as const),
+            type: "pattern",
+            parts: [
+              "int",
+              { p: "identifier", bindAs: "vmax" },
+            ],
+          } as const),
           110: ({
-          "type": "pattern",
-          "parts": [
-            {
-              "p": "sameAs",
-              "target": "v"
-            },
-            "<",
-            {
-              "p": "sameAs",
-              "target": "vmin"
-            }
-          ],
-        } as const),
+            type: "pattern",
+            parts: [
+              { p: "sameAs", target: "v" },
+              "<",
+              { p: "sameAs", target: "vmin" },
+            ],
+          } as const),
+
           111: K.same("v"),
+
           112: K.same("vmin"),
+
           113: ({
-          "type": "pattern",
-          "parts": [
-            {
-              "p": "sameAs",
-              "target": "v"
-            },
-            ">",
-            {
-              "p": "sameAs",
-              "target": "vmax"
-            }
-          ],
-        } as const),
+            type: "pattern",
+            parts: [
+              { p: "sameAs", target: "v" },
+              ">",
+              { p: "sameAs", target: "vmax" },
+            ],
+          } as const),
           114: K.same("v"),
           115: K.same("vmax"),
           116: K.same("v"),
@@ -3527,15 +3505,22 @@ static int __BLANK[106]__(__BLANK[107]__, __BLANK[108]__, __BLANK[109]__) {   //
         },
         },{
         title: "Trying out",
-        code: `^^__BLANK[106]__ (30,5,25);^^`,
-        descAfterCode: `What happens? 30 is bigger than 25, so the function will output \`25\``,
+        code: `^^output = __BLANK[106]__ (30,5,25);
+            
+value = __BLANK[106]__(output,5,10)^^`,
+        descAfterCode: `What happens? 30 is bigger than 25, so the function will result in \`output == 25\`
+        
+What would the \`value\` variable be after the second line? __BLANK[VALUEANS]__`,
+          answerKey: buildAnswerKey({
+            VALUEANS: K.num({ oneOf: [10] }),
+          }),
         }]
       },
       {
         id: 4,
         title: "Step 4: Set up for Pomodoro Active and Rest blocks",
         codes:[{
-          topicTitle:"Setting Active/Work Promodoro Block",
+          topicTitle:"Setting Active Promodoro Block",
           descBeforeCode:`In this lesson, you will build the screen that lets the user set the length of a Pomodoro work timer.
 **This function listens for button presses and updates the timer value on the screen:**
 @ Pressing \`NEXT\` increases the number of minutes.
@@ -3546,10 +3531,14 @@ static int __BLANK[106]__(__BLANK[107]__, __BLANK[108]__, __BLANK[109]__) {   //
 
 Think of this function like a settings page on a device: you use buttons to adjust a number, see the change on the screen, and then press a button to move on once you’re happy with your choice.`,
           code:`^^//<< ---------------- POMODORO STATE ----------------
-//<< Create a variable for minutes of the active session. Set it as 5 for now.  
+//<< Create a variable for minutes of the ACTIVE session. Set it as 5 for now.  
 //<< PREV, NEXT buttons will decrease/increase this variable value. 
 int __BLANK[143]__ = __BLANK[144]__;        
 ^^`,
+        answerKey: buildAnswerKey({
+          143: K.id().bind("t1Min"),
+          144: K.num({ oneOf: [5] }),
+        }),
         },{
           code:`^^
 void __BLANK[117]__() {                         // Function that handles selecting the first Pomodoro timer duration for active session
@@ -3577,10 +3566,149 @@ void __BLANK[117]__() {                         // Function that handles selecti
     __BLANK[142]__;                             // Add a short delay to prevent multiple selections
   }
 
-  // optional: PREV could return to menu from setup screens
-  // if (isPressed(PREV)) { 
-  // screen mode = 0 for Main Menu, followed by a longer delay so a long PREV press means go back to Main Menu}
-}^^`
+  //<< optional: PREV could return to menu from setup screens
+  //<< if (isPressed(PREV)) { 
+  //<< screen mode = 0 for Main Menu, followed by a longer delay so a long PREV press means go back to Main Menu}
+}^^`, 
+answerKey: buildAnswerKey({
+  117: K.id().bind("handlePomodoroSelectT1"),
+  118: K.id().bind("MIN_M"),
+  119: K.num(),
+  120: K.id().bind("MAX_M"),
+  121: K.num(),
+  122: {
+  type: "pattern",
+  parts: [
+      "isPressed",
+    "(",
+    {
+      p: "sameAs",
+      target: "NEXT",
+    },
+    ")",
+  ],
+} as const,
+123: ({
+  type: "any_of",
+  options: [
+    { type: "pattern", parts: [{ p: "sameAs", target: "t1Min" }, "+", "=", "5"] },
+    { type: "pattern", parts: [{ p: "sameAs", target: "t1Min" }, "=", { p: "sameAs", target: "t1Min" }, "+", "5"] },
+  ],
+} as const),
+  124: {
+  type: "pattern",
+  parts: [
+    {
+      p: "sameAs",
+      target: "t1Min",
+    },
+    ",",
+    {
+      p: "sameAs",
+      target: "MIN_M",
+    },
+    ",",
+    {
+      p: "sameAs",
+      target: "MAX_M",
+    },
+  ],
+} as const,
+  125: K.same("t1Min"),
+  126: K.same("clampRange"),
+  127: {
+  type: "pattern",
+  parts: [
+    "delay",
+    "(",
+    {
+      p: "number",
+    },
+    ")",
+  ],
+} as const,
+  128: {
+  type: "pattern",
+  parts: [
+      "isPressed",
+    "(",
+    {
+      p: "sameAs",
+      target: "PREV",
+    },
+    ")",
+  ],
+} as const,
+129: {
+  type: "any_of",
+  options: [
+    { type: "pattern", parts: [{ p: "sameAs", target: "t1Min" }, "-", "=", "5"] },
+    { type: "pattern", parts: [{ p: "sameAs", target: "t1Min" }, "=", { p: "sameAs", target: "t1Min" }, "-", "5"] },
+  ],
+} as const,
+  130: K.same("t1Min"),
+  131: K.same("clampRange"),
+  132: {
+  type: "pattern",
+  parts: [
+    {
+      p: "sameAs",
+      target: "t1Min",
+    },
+    ",",
+    {
+      p: "sameAs",
+      target: "MIN_M",
+    },
+    ",",
+    {
+      p: "sameAs",
+      target: "MAX_M",
+    },
+  ],
+} as const,
+  133: {
+  type: "pattern",
+  parts: [
+    "delay",
+    "(",
+    {
+      p: "number",
+    },
+    ")",
+  ],
+} as const,
+  134: K.str(),
+  135: K.str(),
+  136: K.same("t1Min"),
+  137: K.num({ oneOf: [0] }),
+  138: K.str(),
+  139: {
+  type: "pattern",
+  parts: [
+      "isPressed",
+    "(",
+    {
+      p: "sameAs",
+      target: "SELECT",
+    },
+    ")",
+  ],
+} as const,
+  140: K.same("screenMode"),
+  141: K.num(),
+  142: {
+  type: "pattern",
+  parts: [
+    "delay",
+    "(",
+    {
+      p: "number",
+    },
+    ")",
+  ],
+} as const,
+})
         ,blankExplanations: {
           117: "Name the function that manages the first Pomodoro timer selection screen and its button interactions.",
           118: "Define a constant that represents the minimum allowed value for the timer setting.",
@@ -3637,74 +3765,220 @@ void __BLANK[117]__() {                         // Function that handles selecti
           141: "intermediate",
           142: "easy"
         },
+        },{
+          topicTitle: "Rest Block Setup",
+          descBeforeCode: `The function for setting up the break timer is very similar to the work timer setup function above. The main differences are:
+- It updates a different variable that tracks the break timer duration.
+- It displays different text on the screen to indicate that the user is setting the break timer instead of the work timer.
+- It advances to the next screen mode number after selection, which will be the Pomodoro repeats setup screen.`,
+          code: `^^
 
+// ##EDIT:RESTBLOCK:INDENT=1##
+//<< Create an integer type variable for minutes of the rest timer
 
+//<< void [function name](){
+//<< set up minumum minutes allowed
+//<< set up maximum minutes allowed
+//<< if pressed NEXT ...
+//<< if pressed PREV ...
+//<< showTimerScreen(...)
+//<< if pressed SELECT ...
+// ##END:RESTBLOCK## 
+
+^^`,                       
 
         }]
       },
       {
         id: 5,
-        title: "Step 5: Run Structure and State Machine",
+        title: "Step 5: Run Pomodoro Sessions",
         codes: [
           {
-            topicTitle: "What does a Pomodoro run mean in code?",
-            descBeforeCode: `
-Before any countdown begins, we must define what kind of session is being run, how long it will last, and how progress will be tracked. To do this, we will create a function that initiliazes a Pomodoro session and ensures the system starts in a clean, predictable state.
+            topicTitle: "Pomodoro vs Simple Timer?",
+            descBeforeCode: `Before any countdown begins, we must define what kind of session is being run, how long it will last, and how progress will be tracked. 
 
-We also want the function to determine whether to run a simple timer or a pomodoro session based on the user's input. To manage both modes cleanly, we will utilize a block model, where a block represents one continuous countdown period. This can either be a work block or a break block. In timer mode, there is only one block, whereas in pomodoro mode, there can be multiple alternating blocks of work and break.
-
-We want to:
-- Distinguish between Timer mode and Pomodoro Mode
-- Reset state variables
-- Call \`startCurrentBlock()\` function to begin the first block countdown
+We also want the function to determine whether to **run a simple timer or a pomodoro session** based on the user's input. 
+@ **To run Pomodoro:** multiple blocks of work and break sessions that alternate
+@ **To run Timer:** only one block of work session, no breaks
 `,
-            code: `^^
-void startPomodoroRun() {
-  if (__BLANK[TIMERCOND]__) { // check condition for timer mode
-    __BLANK[TIMERBLOCK]__;  // set total block count for timer mode
+          code:`^^
+int __BLANK[160]__ = 0;  // Create a variable to store the number of work sessions (start at 0)
+
+void __BLANK[149]__() {  // Function that handles selecting how many work sessions to repeat
+
+  if (__BLANK[150]__) {  // Check if the NEXT button was pressed
+    __BLANK[151]__;      // Increase the repeat counter by 1 (you may use +1 or ++)
+
+    if (__BLANK[160]__ > __BLANK[152]__) {  // If the counter is greater than the maximum allowed value (5)
+      __BLANK[153]__;   // Set the counter back to (=) the maximum (prevent going above 5)
+    }
+    delay(180);         // Short delay to prevent multiple fast button presses
   }
-  else {  // else, pomodoro mode
-    totalBlocks = __BLANK[POMBLOCK]__;  // set total block count for pomodoro mode
+
+  if (__BLANK[154]__) {  // Check if the PREV button was pressed
+    __BLANK[155]__;      // Decrease the repeat counter by 1 (you may use -1 or --)
+
+    if (__BLANK[156]__) {  // If the counter is less than the minimum allowed value (0)
+      __BLANK[157]__;   // Set the counter back to (=) 0 (prevent going below 0)
+    }
+    delay(180);         // Short delay to prevent multiple fast button presses
   }
-  __BLANK[BLOCKRES]__;     // reset finished block counter to 0
-  __BLANK[WORKCHECK]__;      // reset block status to work block
-  __BLANK[STARTFUNC]__; // call function to start the first block
+
+  showTimerScreen("Pomodoro", "Work sessions (0..5):", __BLANK[158]__, 0, "SEL: Start  PREV/NEXT:+/-");  
+  //<< Display the current repeat counter value on the screen
+
+  if (__BLANK[159]__) {  // Check if the SELECT button was pressed
+    startPomodoroRun();  // Start the Pomodoro timer function <to be coded soon>
+    screenMode = 5;      // Switch to the running timer screen
+    delay(200);          // Small delay to prevent double selection
+  }
+}^^`,
+          answerKey: buildAnswerKey({
+  // int __BLANK[160]__ = 0;
+  160: K.id().bind("repeatVar"),
+
+  // void __BLANK[149]__() {
+  149: K.id().bind("fnRepeats"),
+
+  // if (__BLANK[150]__)
+  150: ({
+    type: "pattern",
+    parts: ["isPressed", "(", "NEXT", ")"],
+  } as const),
+
+  // repeatVar increment
+  151: ({
+    type: "any_of",
+    options: [
+      // repeatVar = repeatVar + 1
+      {
+        type: "pattern",
+        parts: [
+          { p: "sameAs", target: "repeatVar" },
+          "=",
+          { p: "sameAs", target: "repeatVar" },
+          "+",
+          "1",
+        ],
+      },
+      // repeatVar++
+      {
+        type: "pattern",
+        parts: [
+          { p: "sameAs", target: "repeatVar" },
+          "+",
+          "+",
+        ],
+      },
+      // ++repeatVar
+      {
+        type: "pattern",
+        parts: [
+          "+",
+          "+",
+          { p: "sameAs", target: "repeatVar" },
+        ],
+      },
+    ],
+  } as const),
+
+  // if (repeatVar > 5)
+  152: K.num({ intOnly: true, oneOf: [5] }),
+
+  // repeatVar = 5;
+  153: ({
+    type: "pattern",
+    parts: [{ p: "sameAs", target: "repeatVar" }, "=", "5"],
+  } as const),
+
+  // if (isPressed(PREV))
+  154: ({
+    type: "pattern",
+    parts: ["isPressed", "(", "PREV", ")"],
+  } as const),
+
+  // repeatVar decrement
+  155: ({
+    type: "any_of",
+    options: [
+      // repeatVar = repeatVar - 1
+      {
+        type: "pattern",
+        parts: [
+          { p: "sameAs", target: "repeatVar" },
+          "=",
+          { p: "sameAs", target: "repeatVar" },
+          "-",
+          "1",
+        ],
+      },
+      // repeatVar--
+      {
+        type: "pattern",
+        parts: [
+          { p: "sameAs", target: "repeatVar" },
+          "-",
+          "-",
+        ],
+      },
+      // --repeatVar
+      {
+        type: "pattern",
+        parts: [
+          "-",
+          "-",
+          { p: "sameAs", target: "repeatVar" },
+        ],
+      },
+    ],
+  } as const),
+
+  // if (repeatVar < 0)
+  156: ({
+    type: "pattern",
+    parts: [{ p: "sameAs", target: "repeatVar" }, "<", "0"],
+  } as const),
+
+  // repeatVar = 0;
+  157: ({
+    type: "pattern",
+    parts: [{ p: "sameAs", target: "repeatVar" }, "=", "0"],
+  } as const),
+
+  // showTimerScreen(..., repeatVar, ...)
+  158: K.same("repeatVar"),
+
+  // if (isPressed(SEL))
+  159: ({
+    type: "pattern",
+    parts: ["isPressed", "(", "SEL", ")"],
+  } as const)
+  })},{
+    topicTitle: "Start Pomodoro Run Function",
+    descBeforeCode: `This function initializes the Pomodoro run based on the user's selections. It determines whether to run a simple timer or a full Pomodoro session, sets the total number of blocks accordingly, resets progress tracking variables, and starts the first block.`,
+            code: `^^isWork = true;  // Global variable to track whether the current block is a work session (true) or a break session (false)
+int totalBlocks = 0;  // Total number of blocks (work + break) to run in this Pomodoro session
+int blocksDone = 0;   // Counter to track how many blocks have been completed so far
+
+void startPomodoroRun() {  // This function prepares and starts the full Pomodoro session cycle.
+  if (__BLANK[160]__ == 0) {  // If the user selected 0 repeat sessions (meaning no extra repeats),
+    totalBlocks = 1;  // Run just one work block (single session, no rest blocks in between)
+  }
+  else {  
+    //<< If the user selected one or more repeat sessions,
+    totalBlocks = __BLANK[160]__ * 2;  
+    //<< Each repeat includes 1 WORK block and 1 REST block,
+    //<< so total blocks = repeats × 2
+  }
+  blocksDone = 0;  // Reset the counter that tracks how many blocks (work/rest) have finished
+
+  isWork = true;  // Always begin the Pomodoro cycle with a WORK session
+
+  startCurrentBlock();  // Start the first block (this will begin either a work or rest timer depending on isWork)
 }
 ^^`,
-            answerKey: {
-              TIMERCOND: { type: "string", regex: "^repeatT1\\s*==\\s*0$" },
-              POMBLOCK: { type: "string", regex: "^repeatT1\\s**\\s*2$" },
-              BLOCKRES: { type: "string", regex: "^blocksDone\\s*=\\s*0$" },
-              WORKCHECK: { type: "string", regex: "^isWork\\s*=\\s*true$" },
-              STARTFUNC: {
-                type: "string",
-                regex: "^startCurrentBlock\\s*\\(\\s*\\)\\s*;?$",
-              },
-              TIMERBLOCK: {
-                type: "string",
-                regex: "^totalBlocks\\s*=\\s*1\\s*;?$",
-              },
-            },
-            blankExplanations: {
-              TIMERCOND:
-                "The condition to check if the timer is in single-block mode.",
-              POMBLOCK: "The total number of blocks in a pomodoro session.",
-              BLOCKRES: "Reset the finished block counter to 0.",
-              WORKCHECK: "Reset the current block to a work session.",
-              STARTFUNC:
-                "The name of the function that starts the current block.",
-              TIMERBLOCK: "The total number of blocks in a single-block timer.",
-            },
-            blankDifficulties: {
-              TIMERCOND: "easy",
-              POMBLOCK: "medium",
-              BLOCKRES: "easy",
-              WORKCHECK: "easy",
-              STARTFUNC: "easy",
-              TIMERBLOCK: "easy",
-            },
             descAfterCode: `
-Once you fill in the blanks, you have completed the function that initializes a Pomodoro run. The next lesson will cover the function that begins the actual countdown block.
+Function initializes a Pomodoro run. The next lesson will cover the function that begins the actual countdown block.
 `,
           },
         ],
@@ -3715,9 +3989,8 @@ Once you fill in the blanks, you have completed the function that initializes a 
         title: "Step 6: Understanding the Timer Engine",
         codes: [
           {
-            topicTitle: "Choosing Block Duration and Setting endTime",
-            descBeforeCode: `
-Unlike simple timers that count seconds using delay(), this Pomodoro timer uses a Real-Time Clock (RTC) to measure time accurately.
+            topicTitle: "Setting Active and Rest Block and Setting endTime",
+            descBeforeCode: `Unlike simple timers that count seconds using delay(), this Pomodoro timer uses a Real-Time Clock (RTC) to measure time accurately.
 
 In this timer, a **block** is a single period of time:
 - A **work block** is a focused work session (e.g., 25 minutes)
@@ -3729,62 +4002,65 @@ Instead of counting down, we:
 3) Calculate the exact clock time when the block should end
 4) Store that future time in a variable
 `,
-            code: `^^
-void startCurrentBlock() {
-  int mins = 0;
+            code: `^^void startCurrentBlock() {  // This function decides how many minutes the next block should run,
+  // based on whether we are in simple timer mode or Pomodoro repeat mode.
+  int mins = 0;  // Variable to store how many minutes this block will run
 
-  // Decide how long this block should run
-  // Check if the timer is in single-block mode
-  if (__BLANK[POMOTIMERMODE]__) {
-    // Use work block duration for single-block mode
-    mins = __BLANK[POMOT1]__;
-  } else {
-    // Determine if current block is work or break
-    if (__BLANK[POMOWORKCHECK]__) 
-      mins = __BLANK[POMOT1]__; // work duration
-    else
-      mins = __BLANK[POMOT2]__; // break duration
+  if (__BLANK[161]__ == 0) {  // Check if the repeat counter is 0 (meaning Timer Mode — no repeats)
+    mins = __BLANK[163]__;  // In Timer Mode, use the main work timer value (ACTIVE minutes)
+  } 
+  else {  
+    //<< Otherwise, we are in full Pomodoro mode (with repeats)
+    if (isWork == __BLANK[162]__) {  // If we are currently in a WORK block 
+      mins = __BLANK[163]__;  // Use the work time value (ACTIVE minutes)
+    }
+    else if (isWork == __BLANK[164]__) {  // If we are currently in a REST block 
+      mins = __BLANK[165]__;  // Use the rest time value (REST minutes)
+    }
   }
 
-  // Get current time from RTC
-  DateTime __BLANK[POMONOW]__ = rtc.now();
+  DateTime now = rtc.now();  // Get the current time from the RTC module
 
-  // Set the block end time by adding a TimeSpan to now
-  endTime = __BLANK[POMOTIMESPAN]__ + __BLANK[POMONOW]__;
+  endTime = now + TimeSpan(0, 0, mins, 0);  // Set the ending time of that block (active/rest) by adding the selected number of minutes
 }
 ^^`,
-            answerKey: {
-              POMOTIMERMODE: { type: "string", regex: "^repeatT1\\s*==\\s*0$" },
-              POMOT1: { type: "string" },
-              POMOT2: { type: "string" },
-              POMOWORKCHECK: {
-                type: "string",
-                regex: "^isWork\\s*==\\s*true$",
-              },
-              POMONOW: { type: "string" },
-              POMOTIMESPAN: {
-                type: "string",
-                regex:
-                  "^TimeSpan\\(\\s*0\\s*,\\s*0\\s*,\\s*mins\\s*,\\s*0\\s*\\)$",
-              },
-            },
+            answerKey: buildAnswerKey({
+  // if (__BLANK[161]__ == 0)
+  161: K.same("repeatVar"),
+
+  // if (isWork == __BLANK[162]__)  -> true OR 1
+  162: ({
+    type: "any_of",
+    options: [
+      { type: "identifier", values: ["true"] },
+      { type: "number", intOnly: true, oneOf: [1] },
+    ],
+  } as const),
+
+  // mins = __BLANK[163]__  -> t1Min
+  163: K.same("t1Min"),
+
+  // else if (isWork == __BLANK[164]__)  -> false OR 0
+  164: ({
+    type: "any_of",
+    options: [
+      { type: "identifier", values: ["false"] },
+      { type: "number", intOnly: true, oneOf: [0] },
+    ],
+  } as const),
+
+  // mins = __BLANK[165]__  -> t2Min (bind here)
+  165: K.id().bind("t2Min")}),
             blankExplanations: {
-              POMOTIMERMODE: "Check if the timer is in single-block mode.",
-              POMOT1: "The duration of a work block in minutes.",
-              POMOT2: "The duration of a break block in minutes.",
-              POMOWORKCHECK:
-                "Check whether the current block is a work session.",
-              POMONOW: "The current time retrieved from the RTC.",
-              POMOTIMESPAN:
-                "A TimeSpan representing the length of this block. Use the minutes variable in the middle parameter (hours, minutes, seconds, ms).",
-            },
-            blankDifficulties: {
-              POMOTIMERMODE: "easy",
-              POMOT1: "easy",
-              POMOT2: "easy",
-              POMOWORKCHECK: "easy",
-              POMONOW: "easy",
-              POMOTIMESPAN: "medium",
+              161: "Use the variable that stores how many work sessions (repeats) the user selected. If this value is 0, the system runs in simple Timer Mode.",
+              
+              162: "Provide the value that represents the WORK state of the isWork variable. This can be either the boolean true or its numeric equivalent (1).",
+              
+              163: "Use the variable that stores the WORK session duration (T1 minutes). This value determines how long a work block lasts.",
+              
+              164: "Provide the value that represents the REST state of the isWork variable. This can be either the boolean false or its numeric equivalent (0).",
+              
+              165: "Use the variable that stores the REST session duration (T2 minutes). This value determines how long a rest block lasts."
             },
             descAfterCode: `
 **Understanding the Logic:**
@@ -3808,8 +4084,7 @@ void startCurrentBlock() {
         codes: [
           {
             topicTitle: "How the Timer Knows When Time Is Up",
-            descBeforeCode: `
-Once a block starts, we want to know exactly when it ends without pausing the microcontroller.  
+            descBeforeCode: `Once a block starts, we want to know exactly when it ends without pausing the microcontroller.  
 Instead of using delay(), we repeatedly check the current time against the block’s end time.  
 
 This approach allows:
