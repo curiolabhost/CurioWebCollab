@@ -2487,7 +2487,7 @@ bool isPressed(int myPin) { // boolean function because it returns true or false
         // button pin used in the example call: allow either `button` or `BUTTON` (students might mirror casing)
         BUTTONPINEX: {
           type: "oneOf",
-          values: ["button", "BUTTON"],
+          values: ["button"],
         } as const,
 
         // message should print when helper returns true
