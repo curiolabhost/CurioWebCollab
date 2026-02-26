@@ -2642,96 +2642,112 @@ void __BLANK[71]__() {
         desc: "Now try a few different ways of using buttons so you’re ready for the menu page logic in the FocusBoard project.",
         hint: "All of these still use INPUT_PULLUP and treat LOW as 'pressed'.",
         codes: [
-          {
-            title: "Practice 1: Count Button Presses",
-            topicTitle: "Practice 1: Counting the number of Button presses",
-            descBeforeCode:
-              "Each time you press the button, increase a counter by 1 and print it to the Serial Monitor.",
-            code: `^^#define BUTTON 2^^
-  ^^int counter = 0;^^
+        {
+          topicTitle: "Practice 1: Count Button Presses",
+          title: "Practice 1: Count Button Presses",
+          descBeforeCode:
+            "Each time you press the button, increase a counter by 1 and print it to the Serial Monitor.",
+          code: `^^#define BUTTON 2^^
+^^int counter = 0;^^
 
-  ^^void setup() {^^
-  ^^  pinMode(BUTTON, __BLANK[BUTTON1]__);^^     // set button as INPUT_PULLUP
-  ^^  Serial.begin(9600);^^
-  ^^}^^
+^^void setup() {^^
+^^  pinMode(BUTTON, __BLANK[BUTTON1]__);^^     // set button as INPUT_PULLUP
+^^  Serial.begin(9600);^^
+^^}^^
 
-  ^^void loop() {^^
-  ^^  if (digitalRead(BUTTON) == __BLANK[BUTTON2]__) {^^
-  ^^    counter = counter + __BLANK[BUTTON3]__;^^
-  ^^    Serial.println(counter);^^
-  ^^    delay(250);^^                            // small pause so one press doesn’t count many times
-  ^^  }^^
-  ^^}^^`,
-            answerKey: {
-              BUTTON1: ["INPUT_PULLUP"],
-              BUTTON2: ["LOW"],
-              BUTTON3: ["1"],
-            },
-            blankExplanations: {
-              BUTTON1:
-                "Choose the pin mode that enables the internal pull-up resistor for a button wired to GND.",
-              BUTTON2:
-                "With INPUT_PULLUP, choose the value that indicates the button is pressed.",
-              BUTTON3:
-                "Choose how much the counter should increase by for each press.",
-            },
-            blankDifficulties: {
-              BUTTON1: "easy",
-              BUTTON2: "easy",
-              BUTTON3: "easy",
-            },
-            descAfterCode:
-              "Try pressing the button multiple times and watch the numbers go up. This is similar to how we move through menu items with each press.",
+^^void loop() {^^
+^^  if (digitalRead(BUTTON) == __BLANK[BUTTON2]__) {^^
+^^    counter = counter + __BLANK[BUTTON3]__;^^
+^^    Serial.println(counter);^^
+^^    delay(250);^^                            // small pause so one press doesn’t count many times
+^^  }^^
+^^}^^`,
+
+          // Flexible: allow correct equivalents like `1` vs `+1` is not relevant here, so keep simple.
+          answerKey: buildAnswerKey({
+            BUTTON1: K.str({ oneOf: ["INPUT_PULLUP"] }),
+            BUTTON2: K.str({ oneOf: ["LOW"] }),
+            BUTTON3: K.num({ oneOf: [1] }),
+          }),
+
+          blankExplanations: {
+            BUTTON1:
+              "Enable the internal pull-up resistor for a button wired to GND.",
+            BUTTON2:
+              "With INPUT_PULLUP, LOW means the button is pressed.",
+            BUTTON3:
+              "Increase the counter by 1 each time the button is pressed.",
           },
+          blankDifficulties: {
+            BUTTON1: "easy",
+            BUTTON2: "easy",
+            BUTTON3: "easy",
+          },
+          descAfterCode:
+            "Press the button multiple times and watch the numbers go up. This is similar to how we move through menu items with each press.",
+        },
+                  {
+          topicTitle: "Practice 2: Toggle an LED On/Off",
+          title: "Practice 2: Toggle an LED On/Off",
+          descBeforeCode:
+            "Use the button to turn an LED on and off, switching state each time you press.",
+          // IMPORTANT: keep Arduino-style `#define BUTTON 2` (no '=')
+          code: `^^__BLANK[BUTTON4]__ BUTTON 2^^
+^^#define LED 13^^
 
-          {
-            topicTitle: "Practice 2: Tracking States with Button Presses",
-            title: "Practice 2: Toggle an LED On/Off",
-            descBeforeCode:
-              "Use the button to turn an LED on and off, switching state each time you press.",
-            code: `^^__BLANK[BUTTON4]__ BUTTON 2^^
-  ^^#define LED 13^^
+^^bool ledState = false;^^
 
-  ^^bool ledState = false;^^
+^^void setup() {^^
+^^  pinMode(__BLANK[BUTTON5]__, __BLANK[BUTTON6]__);^^   // pin mode for button
+^^  pinMode(LED, OUTPUT);^^                              // pin mode for LED (output)
+^^}^^
 
-  ^^void setup() {^^
-  ^^  pinMode(__BLANK[BUTTON5]__, __BLANK[BUTTON6]__);^^   // pin mode for button
-  ^^  pinMode(LED, OUTPUT);^^                              // pin mode for LED which is an output
-  ^^}^^
+^^void loop() {^^
+^^  if (__BLANK[BUTTON7]__ == __BLANK[BUTTON8]__) {^^    // if button is pressed
+^^    ledState = !ledState;^^                            // flip true ↔ false
+^^    digitalWrite(LED, ledState);^^                     // write true/false to LED
+^^    delay(250);^^                                      // simple debounce
+^^  }^^
+^^}^^`,
 
-  ^^void loop() {^^
-  ^^  if (__BLANK[BUTTON7]__ == __BLANK[BUTTON8]__) {^^    // if button is pressed
-  ^^    ledState = !ledState;^^                            // flip true ↔ false
-  ^^    digitalWrite(LED, ledState);^^                     // write true/false to LED
-  ^^    delay(250);^^                                      // simple debounce
-  ^^  }^^
-  ^^}^^`,
-            answerKey: {
-              BUTTON4: ["#define"],
-              BUTTON5: ["BUTTON"],
-              BUTTON6: ["INPUT_PULLUP"],
-              BUTTON7: ["digitalRead(BUTTON)"],
-              BUTTON8: ["LOW"],
-            },
-            blankExplanations: {
-              BUTTON4:
-                "Write the preprocessor keyword used to define constants like pin labels.",
-              BUTTON5:
-                "Use the constant name you defined for the button pin.",
-              BUTTON6:
-                "Choose the button pin mode that uses the internal pull-up resistor.",
-              BUTTON7:
-                "Read the button pin so you can compare it to pressed/not-pressed.",
-              BUTTON8:
-                "With INPUT_PULLUP, choose the value that indicates a press.",
-            },
-            blankDifficulties: {
-              BUTTON4: "easy",
-              BUTTON5: "easy",
-              BUTTON6: "easy",
-              BUTTON7: "easy",
-              BUTTON8: "easy",
-            },
+          // Flexible: accept spacing variants + common equivalent reads
+          answerKey: buildAnswerKey({
+            BUTTON4: K.str({ oneOf: ["#define"] }),
+
+            BUTTON5: K.str({ oneOf: ["BUTTON"] }),
+            BUTTON6: K.str({ oneOf: ["INPUT_PULLUP"] }),
+
+            BUTTON7: {
+              type: "pattern",
+              parts: [
+                "digitalRead",
+                "(",
+                "BUTTON",
+                ")",
+              ],
+            } as const,
+
+            BUTTON8: K.str({ oneOf: ["LOW"] }),
+          }),
+
+          blankExplanations: {
+            BUTTON4:
+              "Use the preprocessor keyword that defines a constant like a pin label.",
+            BUTTON5: "Use the constant name you defined for the button pin.",
+            BUTTON6:
+              "Enable the internal pull-up resistor for the button input.",
+            BUTTON7:
+              "Read the button pin so you can compare it to pressed/not pressed.",
+            BUTTON8:
+              "With INPUT_PULLUP, LOW indicates a press.",
+          },
+          blankDifficulties: {
+            BUTTON4: "easy",
+            BUTTON5: "easy",
+            BUTTON6: "easy",
+            BUTTON7: "easy",
+            BUTTON8: "easy",
+          },
             descAfterCode: `First press turns the LED **on**, second press turns it **off**, and so on. This idea of flipping a state is exactly how we’ll switch screens or modes later.
   ----------------------------------          
   **The \`!\` in code means "Not"**:
@@ -2750,114 +2766,126 @@ void __BLANK[71]__() {
   ------------------------------------`,
           },
 
-          {
-            title: "Practice 3: Cycle Through Options in an Array",
-            descBeforeCode:
-              "This practice is similar to your menu page. Each press moves to the next item in the list and wraps around when it reaches the end.",
-            code: `^^#define BUTTON 2^^
+        {
+          topicTitle: "Practice 3: Cycle Through Options in an Array",
+          title: "Practice 3: Cycle Through Options in an Array",
+          descBeforeCode:
+            "This practice is similar to your menu page. Each press moves to the next item in the list and wraps around when it reaches the end.",
+          code: `^^#define BUTTON 2^^
 
-  ^^String options[] = {"Red", "Blue", "Green", "Yellow"};^^
-  ^^int totalOptions = 4;^^
-  ^^int index = 0;^^
+^^String options[] = {"Red", "Blue", "Green", "Yellow"};^^
+^^int totalOptions = 4;^^
+^^int index = 0;^^
 
-  ^^void setup() {^^
-  ^^  __BLANK[BUTTON9]__  __BLANK[BUTTON10]__ = __BLANK[BUTTON11]__;^^   // define button pin number
-  ^^  Serial.begin(9600);^^
-  ^^  Serial.println(options[index]);^^
-  ^^}^^
+^^void setup() {^^
+^^  pinMode(__BLANK[BUTTON9]__, __BLANK[BUTTON10]__);^^   // pin mode for button
+^^  Serial.begin(9600);^^
+^^  Serial.println(options[index]);^^
+^^}^^
 
-  ^^void loop() {^^
-  ^^  if (__BLANK[BUTTON12]__ == __BLANK[BUTTON13]__) {^^
-  ^^    index = index + 1;^^
+^^void loop() {^^
+^^  if (__BLANK[BUTTON12]__ == __BLANK[BUTTON13]__) {^^
+^^    index = index + 1;^^
 
-  ^^    if (index >= totalOptions) {^^
-  ^^      index = 0;^^
-  ^^    }^^
+^^    if (index >= totalOptions) {^^
+^^      index = 0;^^
+^^    }^^
 
-  ^^    Serial.println(options[index]);^^
-  ^^    delay(250);^^
-  ^^  }^^
-  ^^}^^`,
-            answerKey: {
-              BUTTON9: ["int"],
-              BUTTON10: ["BUTTON"],
-              BUTTON11: ["10"],
-              BUTTON12: ["digitalRead(BUTTON)"],
-              BUTTON13: ["LOW"],
-            },
-            blankExplanations: {
-              BUTTON9:
-                "Choose a numeric type for storing a pin number constant.",
-              BUTTON10:
-                "Use the constant name for the button pin.",
-              BUTTON11:
-                "Choose a valid digital pin number for the button connection.",
-              BUTTON12:
-                "Read the button pin so you can check if it’s pressed.",
-              BUTTON13:
-                "With INPUT_PULLUP, choose the value that means pressed.",
-            },
-            blankDifficulties: {
-              BUTTON9: "easy",
-              BUTTON10: "easy",
-              BUTTON11: "easy",
-              BUTTON12: "easy",
-              BUTTON13: "easy",
-            },
-            descAfterCode:
-              "This is very close to how the focusBoard scrolls through different options. The variable `index` is like a menu cursor that moves and wraps around.",
+^^    Serial.println(options[index]);^^
+^^    delay(250);^^
+^^  }^^
+^^}^^`,
+
+        answerKey: buildAnswerKey({
+          BUTTON9: K.str({ oneOf: ["BUTTON"] }),
+          BUTTON10: K.str({ oneOf: ["INPUT_PULLUP"] }),
+
+          BUTTON12: {
+            type: "pattern",
+            parts: [
+              "digitalRead",
+              "(",
+              "BUTTON",
+              ")",
+            ],
+          } as const,
+
+          BUTTON13: K.str({ oneOf: ["LOW"] }),
+        }),
+
+          blankExplanations: {
+            BUTTON9: "Use the constant name you defined for the button pin.",
+            BUTTON10:
+              "Enable the internal pull-up resistor for the button input.",
+            BUTTON12: "Read the button pin so you can check if it’s pressed.",
+            BUTTON13:
+              "With INPUT_PULLUP, LOW means pressed.",
           },
-
-          {
-            title: "Practice 4: Only React to a Long Press",
-            descBeforeCode:
-              "Make your code respond only if the button is held down for about 2 seconds, not just tapped.",
-            code: `^^__BLANK[BUTTON14]__  __BLANK[BUTTON15]__  __BLANK[BUTTON16]__^^   // define button pin number
-
-  ^^void setup() {^^
-  ^^  pinMode(BUTTON, INPUT_PULLUP);^^
-  ^^  Serial.begin(9600);^^
-  ^^}^^
-
-  ^^void loop() {^^
-  ^^  if (digitalRead(BUTTON) == __BLANK[BUTTON17]__) {^^
-  ^^    delay(2000);^^
-
-  ^^    if (digitalRead(BUTTON) == __BLANK[BUTTON18]__) {^^
-  ^^      Serial.println("You held the button!");^^
-  ^^      delay(500);^^
-  ^^    }^^
-  ^^  }^^
-  ^^}^^`,
-            answerKey: {
-              BUTTON14: ["#define"],
-              BUTTON15: ["BUTTON"],
-              BUTTON16: ["10"],
-              BUTTON17: ["LOW"],
-              BUTTON18: ["LOW"],
-            },
-            blankExplanations: {
-              BUTTON14:
-                "Write the preprocessor keyword used to define constants.",
-              BUTTON15:
-                "Use the same constant name for the button pin.",
-              BUTTON16:
-                "Choose a valid digital pin number for the button connection.",
-              BUTTON17:
-                "With INPUT_PULLUP, choose the value that indicates the button is currently pressed.",
-              BUTTON18:
-                "If still pressed after waiting, this should match the pressed value again.",
-            },
-            blankDifficulties: {
-              BUTTON14: "easy",
-              BUTTON15: "easy",
-              BUTTON16: "easy",
-              BUTTON17: "easy",
-              BUTTON18: "easy",
-            },
-            descAfterCode:
-              "This pattern is useful for features like a 'long-press to reset' or special settings mode, where you don’t want a quick tap to trigger the action.",
+          blankDifficulties: {
+            BUTTON9: "easy",
+            BUTTON10: "easy",
+            BUTTON12: "easy",
+            BUTTON13: "easy",
           },
+          descAfterCode:
+            "This is very close to how FocusBoard scrolls through menu options. The variable `index` is like a menu cursor that moves and wraps around.",
+        },
+
+        {
+          topicTitle: "Practice 4: Only React to a Long Press",
+          title: "Practice 4: Only React to a Long Press",
+          descBeforeCode:
+            "Make your code respond only if the button is held down for about 2 seconds, not just tapped.",
+          code: `^^__BLANK[BUTTON14]__  __BLANK[BUTTON15]__  __BLANK[BUTTON16]__^^   // define button pin number
+
+^^void setup() {^^
+^^  pinMode(BUTTON, INPUT_PULLUP);^^
+^^  Serial.begin(9600);^^
+^^}^^
+
+^^void loop() {^^
+^^  if (digitalRead(BUTTON) == __BLANK[BUTTON17]__) {  // button press is first detected ^^
+^^    delay(2000);// wait for 2 seconds^^
+
+^^    if (digitalRead(BUTTON) == __BLANK[BUTTON18]__) {// check the button press again to make sure it's still pressed^^
+^^      Serial.println("You held the button!");^^
+^^      delay(500);^^
+^^    }^^
+^^  }^^
+^^}^^`,
+
+          answerKey: buildAnswerKey({
+            BUTTON14: K.str({ oneOf: ["#define"] }),
+            BUTTON15: K.str({ oneOf: ["BUTTON"] }),
+
+            // keep flexible, but avoid 0/1 to reduce Serial confusion
+            BUTTON16: K.num({ min: 2, max: 13 }),
+
+            BUTTON17: K.str({ oneOf: ["LOW"] }),
+            BUTTON18: K.str({ oneOf: ["LOW"] }),
+          }),
+
+          blankExplanations: {
+            BUTTON14:
+              "Use the preprocessor keyword that defines a constant.",
+            BUTTON15: "Use the constant name for the button pin.",
+            BUTTON16:
+              "Choose a valid digital pin number for the button (2–13).",
+            BUTTON17:
+              "With INPUT_PULLUP, LOW indicates the button is currently pressed.",
+            BUTTON18:
+              "If the button is still pressed after waiting, it should read LOW again.",
+          },
+          blankDifficulties: {
+            BUTTON14: "easy",
+            BUTTON15: "easy",
+            BUTTON16: "easy",
+            BUTTON17: "easy",
+            BUTTON18: "easy",
+          },
+          descAfterCode:
+            "This pattern is useful for features like a 'long-press to reset' or a special settings mode, where you don’t want a quick tap to trigger the action.",
+        },
         ],
       },
 
@@ -2871,6 +2899,7 @@ void __BLANK[71]__() {
         codes: [
           {
             title: "Practice Code: Debouncing Function",
+            descBeforeCode: `Make sure to create the function first at the bottom of the sketch, then you can call it from loop().`,
             code: `^^#define button 4
 
   //<< Example of how this function can be used in the void loop() 
@@ -2895,48 +2924,35 @@ void __BLANK[71]__() {
   `,
             answerKey: 
               buildAnswerKey({
-              BUTTONPINEX: { type: "string", regex: "^(button|4)$" },
-              TRUEFALSE1: ["true", "false"],
+                BUTTONPINEX: {
+                  type: "oneOf",
+                  values: ["button"],
+                } as const,
+
+                // message should print when helper returns true
+                TRUEFALSE1: K.str({ oneOf: ["true"] }),
 
                 84: K.id().bind("isPressed"),
-                85: ({
-                "type": "pattern",
-                "parts": [
-                  "digitalRead",
-                  "(",
-                  "pin",
-                  ")",
-                  "==",
-                  "LOW"
-                ],
-              } as const),
-                87: ({
-                "type": "pattern",
-                "parts": [
-                  "digitalRead",
-                  "(",
-                  "pin",
-                  ")",
-                  "==",
-                  "LOW"
-                ],
-              } as const),
-                86: ({
-                "type": "pattern",
-                "parts": [
-                  "delay",
-                  "(",
-                  {
-                    "p": "number"
-                  },
-                  ")"
-                ],
-              } as const),
+                HELPER1: K.same("isPressed"),
+                85: {
+                  type: "pattern",
+                  parts: ["digitalRead", "(", "buttonPin", ")", "==", "LOW"],
+                } as const,
+                87: {
+                  type: "pattern",
+                  parts: ["digitalRead", "(", "buttonPin", ")", "==", "LOW"],
+                } as const,
+                86: {
+                  type: "pattern",
+                  parts: ["delay", "(", { p: "number" }, ")"],
+                } as const,
                 88: K.str({ oneOf: ["true"] }),
                 89: K.str({ oneOf: ["false"] }),
               }),
 
             blankExplanations: {
+              HELPER1: 
+                "This is the name of the helper function you created below. You call that same name here to use the function.",
               84:
                 "This is the name of your helper function. It must be the same everywhere it appears (both where you call it in loop() and where you define it).",
 
@@ -3018,7 +3034,7 @@ void __BLANK[71]__() {
   - Add a short delay so it doesn’t scroll too fast.`,
             code: `^^
     if (__BLANK[84]__(PREV)) { //if the button helper function is true (previous button is truly pressed)
-      __BLANK[91]__ == __BLANK[92]__ - 1; //decrease the menu index by 1
+      __BLANK[91]__ = __BLANK[92]__ - 1; //decrease the menu index by 1
       if (__BLANK[93]__ < 0){ //if the menu index is less than 0
         __BLANK[110]__ = __BLANK[94]__ - 1; //update the menu index to go to the last index so total number of menu items - 1
       } 
@@ -3030,25 +3046,17 @@ void __BLANK[71]__() {
   blankExplanations: {
 
   },
-        answerKey: buildAnswerKey({
-          90: K.same("isPressed"),
-          91: K.same("mainIndex"),
-          92: K.same("mainIndex"),
-          93: K.same("mainIndex"),
-          94: K.same("totalMain"),
-          95: ({
-          "type": "pattern",
-          "parts": [
-            "delay",
-            "(",
-            {
-              "p": "number"
-            },
-            ")"
-          ],
-        } as const),
-          110: K.same("mainIndex"),
-        }),
+answerKey: buildAnswerKey({
+  91: K.same("mainIndex"),
+  92: K.same("mainIndex"),
+  93: K.same("mainIndex"),
+  94: K.same("totalMain"),
+  95: ({
+    type: "pattern",
+    parts: ["delay", "(", { p: "number" }, ")"],
+  } as const),
+  110: K.same("mainIndex"),
+}),
           },
           {
             topicTitle: `Using NEXT button to toggle downward (Main Menu)`,
@@ -3061,45 +3069,63 @@ void __BLANK[71]__() {
   - Call __BLANK[71]__() to redraw the menu.
   - Add a short delay so it doesn’t scroll too fast.`,
             code: `^^
-
   if (__BLANK[96]__(__BLANK[97]__)) {  //if the button helper function is true (next button is truly pressed)
     __BLANK[98]__; //increment the menu idex by one
     if (__BLANK[99]__> __BLANK[100]__ - 1) { //if the menu index is equal to total main menu items (ex. Index is 2 and total items is 3. Remember index starts at 0)
-      mainIndex = 0; //wrap-around to first item (0th item) if past last item
+      __BLANK[68]__ = 0; //wrap-around to first item (0th item) if past last item
     }
     __BLANK[101]__; //short delay
   }
   ^^`,// Block 2 (NEXT) — add to this code block object
   // ,
-  answerKey: buildAnswerKey({
-    96: K.same("isPressed"),
-    97: K.str({ oneOf: ["NEXT"] }),
-    98: ({
-    "type": "pattern",
-    "parts": [
+answerKey: buildAnswerKey({
+  96: K.same("isPressed"),
+
+  97: ({ type: "identifier", values: ["NEXT"] } as const),
+
+  98: ({
+    type: "any_of",
+    options: [
+      // mainIndex = mainIndex + 1
       {
-        "p": "sameAs",
-        "target": "mainIndex"
-      },
-      {
-        "p": "oneOf",
-        "values": [
+        type: "pattern",
+        parts: [
+          { p: "sameAs", target: "mainIndex" },
           "=",
-          "++"
-        ]
+          { p: "sameAs", target: "mainIndex" },
+          "+",
+          "1",
+        ],
       },
+      // mainIndex += 1  (tokenizes as: mainIndex + = 1)
       {
-        "p": "sameAs",
-        "target": "mainIndex"
+        type: "pattern",
+        parts: [{ p: "sameAs", target: "mainIndex" }, "+", "=", "1"],
       },
-      "+",
-      "1"
+      // mainIndex++
+      {
+        type: "pattern",
+        parts: [{ p: "sameAs", target: "mainIndex" }, "+", "+"],
+      },
+      // ++mainIndex
+      {
+        type: "pattern",
+        parts: ["+", "+", { p: "sameAs", target: "mainIndex" }],
+      },
     ],
   } as const),
-    99: K.same("mainIndex"),
-    100: K.same("totalMain"),
-    111: K.same("mainIndex"),
-  }),
+
+  99: K.same("mainIndex"),
+  100: K.same("totalMain"),
+
+  101: ({
+    type: "pattern",
+    parts: ["delay", "(", { p: "number" }, ")"],
+  } as const),
+
+  111: K.same("mainIndex"),
+}),
+
           },
           {
             topicTitle: `Using SELECT button to enter the highlighted page`,
@@ -3120,40 +3146,24 @@ void __BLANK[71]__() {
     __BLANK[109]__; //short delay 
   }
   ^^`,
-        answerKey: buildAnswerKey({
-          102: ({
-          "type": "pattern",
-          "parts": [
-            {
-              "p": "sameAs",
-              "target": "isPressed"
-            },
-            "(",
-            {
-              "p": "sameAs",
-              "target": "SELECT"
-            },
-            ")"
-          ],
-        } as const),
-          103: K.same("mainIndex"),
-          104: K.same("screenMode"),
-          105: K.num({ oneOf: [1] }),
-          106: K.same("mainIndex"),
-          107: K.same("screenMode"),
-          108: K.num({ oneOf: [2] }),
-          109: ({
-          "type": "pattern",
-          "parts": [
-            "delay",
-            "(",
-            {
-              "p": "number"
-            },
-            ")"
-          ],
-        } as const),
-        }),
+answerKey: buildAnswerKey({
+  102: ({
+    type: "pattern",
+    parts: [{ p: "sameAs", target: "isPressed" }, "(", {p:"sameAs", target:"SELECT"}, ")"],
+  } as const),
+
+  103: K.same("mainIndex"),
+  104: K.same("screenMode"),
+  105: K.num({ oneOf: [1] }),
+  106: K.same("mainIndex"),
+  107: K.same("screenMode"),
+  108: K.num({ oneOf: [2] }),
+
+  109: ({
+    type: "pattern",
+    parts: ["delay", "(", { p: "number" }, ")"],
+  } as const),
+}),
           },
         ],
       },
@@ -3194,7 +3204,7 @@ void __BLANK[71]__() {
 
     // buttons
     if (__BLANK[90]__(PREV)) {
-      __BLANK[91]__ == __BLANK[92]__ - 1;
+      __BLANK[91]__ = __BLANK[92]__ - 1;
       if (__BLANK[93]__ < 0) __BLANK[110]__= __BLANK[94]__ - 1;
       __BLANK[95]__;
     }
@@ -3308,123 +3318,92 @@ void __BLANK[71]__() {
       __BLANK[125]__(); // short delay
     }
   }^^`,
-        answerKey: buildAnswerKey({
-          112: ({
-          "type": "pattern",
-          "parts": [
-            {
-              "p": "sameAs",
-              "target": "isPressed"
-            },
-            "(",
-            "PREV",
-            ")"
-          ],
-        } as const),
-          113: K.id().bind("screenMode"),
-          114: K.num({ oneOf: [0] }),
-          116: ({
-          "type": "pattern",
-          "parts": [
-            {
-              "p": "sameAs",
-              "target": "isPressed"
-            },
-            "(",
-            "NEXT",
-            ")"
-          ],
-        } as const),
-          122: ({
-          "type": "pattern",
-          "parts": [
-            {
-              "p": "sameAs",
-              "target": "isPressed"
-            },
-            "(",
-            {
-              "p": "sameAs",
-              "target": "SELECT"
-            },
-            ")"
-          ],
-        } as const),
-          115: ({
-          "type": "pattern",
-          "parts": [
-            "delay",
-            "(",
-            {
-              "p": "number"
-            },
-            ")"
-          ],
-        } as const),
-          121: ({
-          "type": "pattern",
-          "parts": [
-            "delay",
-            "(",
-            {
-              "p": "number"
-            },
-            ")"
-          ],
-        } as const),
-          125: ({
-          "type": "pattern",
-          "parts": [
-            "delay",
-            "(",
-            {
-              "p": "number"
-            },
-            ")"
-          ],
-        } as const),
-          117: ({
-          "type": "pattern",
-          "parts": [
-            {
-              "p": "sameAs",
-              "target": "statusIndex"
-            },
-            {
-              "p": "oneOf",
-              "values": [
-                "==",
-                "++"
-              ]
-            },
-            {
-              "p": "sameAs",
-              "target": "statusIndex"
-            },
-            "+",
-            "1"
-          ],
-        } as const),
-          118: ({
-          "type": "pattern",
-          "parts": [
-            {
-              "p": "sameAs",
-              "target": "statusIndex"
-            },
-            ">",
-            {
-              "p": "sameAs",
-              "target": "totalIndex"
-            },
-            "-",
-            "1"
-          ],
-        } as const),
-          119: K.same("statusIndex"),
-          123: K.same("screenMode"),
-          124: K.num({ oneOf: [3] }),
-        }),
+answerKey: buildAnswerKey({
+  112: ({
+    type: "pattern",
+    parts: [{ p: "sameAs", target: "isPressed" }, "(", "PREV", ")"],
+  } as const),
+
+  113: K.id().bind("screenMode"),
+  114: K.num({ oneOf: [0] }),
+
+  115: ({
+    type: "pattern",
+    parts: ["delay", "(", { p: "number" }, ")"],
+  } as const),
+
+  116: ({
+    type: "pattern",
+    parts: [{ p: "sameAs", target: "isPressed" }, "(", "NEXT", ")"],
+  } as const),
+
+  // Increment statusIndex by 1 — allow multiple valid forms
+  117: ({
+    type: "any_of",
+    options: [
+      // statusIndex = statusIndex + 1
+      {
+        type: "pattern",
+        parts: [
+          { p: "sameAs", target: "statusIndex" },
+          "=",
+          { p: "sameAs", target: "statusIndex" },
+          "+",
+          "1",
+        ],
+      },
+      // statusIndex += 1   (tokenizes as: statusIndex + = 1)
+      {
+        type: "pattern",
+        parts: [{ p: "sameAs", target: "statusIndex" }, "+", "=", "1"],
+      },
+      // statusIndex++
+      {
+        type: "pattern",
+        parts: [{ p: "sameAs", target: "statusIndex" }, "+", "+"],
+      },
+      // ++statusIndex
+      {
+        type: "pattern",
+        parts: ["+", "+", { p: "sameAs", target: "statusIndex" }],
+      },
+    ],
+  } as const),
+
+  // If statusIndex > totalStatus - 1  (totalStatus is defined/bound earlier elsewhere)
+  118: ({
+    type: "pattern",
+    parts: [
+      { p: "sameAs", target: "statusIndex" },
+      ">",
+      { p: "sameAs", target: "totalStatus" },
+      "-",
+      "1",
+    ],
+  } as const),
+
+  119: K.same("statusIndex"),
+  // your code uses __BLANK[120]__ for wrap value; if you want it checked too, add 120: K.num({ oneOf:[0] })
+
+  121: ({
+    type: "pattern",
+    parts: ["delay", "(", { p: "number" }, ")"],
+  } as const),
+
+  122: ({
+    type: "pattern",
+    parts: [{ p: "sameAs", target: "isPressed" }, "(", { p: "sameAs", target: "SELECT" }, ")"],
+  } as const),
+
+  123: K.same("screenMode"),
+  124: K.num({ oneOf: [3] }),
+
+  125: ({
+    type: "pattern",
+    parts: ["delay", "(", { p: "number" }, ")"],
+  } as const),
+}),
+
           },
           {
             topicTitle:`Simulation with Status Menu buttons`,
