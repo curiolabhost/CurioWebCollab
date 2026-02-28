@@ -4254,6 +4254,134 @@ void handlePomodoroFinished() {
       },
     ],
   },
+
+  10:{
+    phrase: "Void Loop to run all the functions",
+    advanced: false,
+    steps: [
+      {
+        id: 1,
+        title: "How to use void loop",
+        codes:[{
+          topicTitle:`Functions made so far`,
+          code:`^^
+bool isPressed (int myPin); //button debounce function
+
+void __BLANK[WELCOMEFUNC]__(); //welcome funtion name
+
+void __BLANK[43]__(); //show main menu
+
+void __BLANK[73]__(); //print clock time 00:00:00 format
+
+void showTimerScreen(...);
+
+void showTimeUpScreen(...);
+
+void __BLANK[117]__(); //active block and your own rest block
+
+void __BLANK[149]__(); //handles repeats
+
+void startPomodoroRun() ; //runs pomororo 
+
+void startCurrentBlock(); //runs the current pomodoro block
+
+void handlePomodoroCountdown();    //count down
+
+void handlePomodoroFinished();  //check timer finished
+^^`,
+
+        descAfterCode:`In \`void loop()\` you place them in the order they should run. For example, you want the welcome function to show up then the main menu screen. In the main menu, you select which screen to enter.
+When you click on the pomodoro option in the menu, you want to start by: setting up Active Block, Rest Block, number of repeats, countdown for each block, then finally show the pomdoro finished screen. You will place them in this order for the loop.`,
+        },{
+          topicTitle: "Code the loop",
+          code: `^^
+void setup() {
+  Wire.begin();
+  __BLANK[17]__;
+
+  pinMode(PREV, INPUT_PULLUP);
+  __BLANK[18]__;
+  __BLANK[19]__;
+
+  //<< 1) Call Welcome Function once
+  __BLANK[WELCOMEFUNC]__();
+
+  //<< 2) Short delay before the main menu so you can see the welcome screen
+  delay(__BLANK[DELAY_MS]__);
+}
+
+void loop(){
+  if (__BLANK[31]__ == 0){
+    __BLANK[43]__();
+  }
+  else if (__BLANK[31]__ == 1){
+    __BLANK[83]__();
+  }
+  else if (__BLANK[SM1]__){
+    __BLANK[HPT1]__();
+  }
+  else if (__BLANK[SM2]__){
+    __BLANK[HPT2]__();
+  }
+  else if (__BLANK[SM3]__){
+    __BLANK[REPEATS]__();
+  }
+  else if (__BLANK[SM4]__){
+    __BLANK[CDOWN]__();
+  }
+  else if (__BLANK[SM5]__){
+    __BLANK[FINISHED]__();
+  }
+}^^ `,
+        answerKey: buildAnswerKey({
+  // ---- ScreenMode conditions (SM*) ----
+  // These are the full boolean conditions like: screenMode == 2, etc.
+  // (Assumes screenMode was bound earlier via blank 31 as "screenMode".)
+
+  SM1: ({
+    type: "pattern",
+    parts: [{ p: "sameAs", target: "screenMode" }, "==", "2"],
+  } as const),
+
+  SM2: ({
+    type: "pattern",
+    parts: [{ p: "sameAs", target: "screenMode" }, "==", "3"],
+  } as const),
+
+  SM3: ({
+    type: "pattern",
+    parts: [{ p: "sameAs", target: "screenMode" }, "==", "4"],
+  } as const),
+
+  SM4: ({
+    type: "pattern",
+    parts: [{ p: "sameAs", target: "screenMode" }, "==", "5"],
+  } as const),
+
+  SM5: ({
+    type: "pattern",
+    parts: [{ p: "sameAs", target: "screenMode" }, "==", "6"],
+  } as const),
+
+  // ---- Function call blanks (worded blanks) ----
+  // Active (T1) setup screen function name was bound earlier at blank 117
+  HPT1: K.same("handlePomodoroSelectT1"),
+
+  // Rest (T2) setup screen function name — bind here (or change to K.same(...) if you bind it earlier elsewhere)
+  HPT2: K.id().bind("handlePomodoroSelectT2"),
+
+  // Repeats screen function name was bound earlier at blank 149 (you bound it as "fnRepeats")
+  REPEATS: K.same("fnRepeats"),
+
+  // Countdown + Finished are fixed function names (not previously bound in your list)
+  CDOWN: ({ type: "identifier", values: ["handlePomodoroCountdown"] } as const),
+  FINISHED: ({ type: "identifier", values: ["handlePomodoroFinished"] } as const),
+} as const),
+
+        }]
+      }] 
+
+  },
 };
 
 export default function CodeIntLesson({
